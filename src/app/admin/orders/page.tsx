@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { createBrowserClient } from "@supabase/ssr"
 import { useRouter } from "next/navigation"
-import { Clock, ChefHat, Bike, CheckCircle, MapPin, DollarSign, Package, AlertCircle, Printer } from "lucide-react"
+import { Clock, Bike, CheckCircle, MapPin, DollarSign, Package, Printer } from "lucide-react"
 
 // Tipos
 interface Order {
@@ -102,15 +102,15 @@ export default function OrdersPage() {
       return cleaned;
   }
 
-  // --- NOVA FUNÇÃO DE STATUS COM DISPARO NO WHATSAPP ---
+  // --- NOVA FUNÇÃO DE STATUS (LIMPA E AUTOMATIZADA) 🤖✅ ---
   const updateStatus = async (order: Order, newStatus: string) => {
-    // 1. Atualiza a tela na hora
+    // 1. Atualiza a tela na hora (Feedback instantâneo)
     setOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: newStatus as any } : o))
     
     // 2. Atualiza no Supabase
     await supabase.from('orders').update({ status: newStatus }).eq('id', order.id)
 
-    // 3. Monta a mensagem e envia para o nosso Robô! 🤖📱
+    // 3. Dispara o WhatsApp (Silenciosamente)
     if (order.customer_phone) {
         let mensagem = "";
         const storeName = restaurantConfig?.name || "Delivery";
@@ -127,19 +127,15 @@ export default function OrdersPage() {
         }
 
         if (mensagem) {
-            try {
-                await fetch('http://localhost:3001/enviar', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        telefone: formatPhoneForWhatsapp(order.customer_phone),
-                        mensagem: mensagem
-                    })
-                });
-                console.log("Ordem enviada ao Robô!");
-            } catch (error) {
-                console.error("Erro ao contatar API do WhatsApp:", error);
-            }
+            // "Fire and forget" - Envia sem travar a tela esperando resposta
+            fetch('http://64.181.189.107:3001/enviar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    telefone: formatPhoneForWhatsapp(order.customer_phone),
+                    mensagem: mensagem
+                })
+            }).catch(err => console.error("⚠️ Robô desligado ou erro no envio:", err));
         }
     }
   }

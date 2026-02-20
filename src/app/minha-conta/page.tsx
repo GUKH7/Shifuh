@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { createBrowserClient } from "@supabase/ssr"
 import { useRouter } from "next/navigation"
-import { User, MapPin, ShoppingBag, LogOut, Loader2, Star, Home } from "lucide-react"
+import { User, MapPin, ShoppingBag, LogOut, Loader2, Star, Home, ArrowLeft } from "lucide-react"
 import ReviewModal from "@/components/review-modal"
 
 export default function MyAccountPage() {
@@ -23,14 +23,20 @@ export default function MyAccountPage() {
   const [reviewModalOpen, setReviewModalOpen] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<any>(null)
 
-  useEffect(() => { checkSession() }, [])
+  useEffect(() => { 
+      checkSession() 
+  }, [])
 
   const checkSession = async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
-        // Agora pegamos o nome do restaurante atual para passar pro Login!
-        const currentSlug = window.location.pathname.split('/')[1]
-        return router.push(`/auth?returnUrl=/${currentSlug}/minha-conta`)
+        const currentPath = typeof window !== 'undefined' ? window.location.pathname : ''
+        const slug = currentPath.split('/')[1]
+        const loginUrl = slug && slug !== 'minha-conta' && slug !== 'auth' 
+            ? `/auth?returnUrl=/${slug}/minha-conta`
+            : `/auth?returnUrl=/minha-conta`
+            
+        return router.push(loginUrl)
     }
     setUser(user)
     fetchUserData(user.id)
@@ -42,7 +48,7 @@ export default function MyAccountPage() {
             .from('orders')
             .select(`
                 *, 
-                restaurants (id, name, image_url, primary_color), 
+                restaurants (id, name, image_url, primary_color, slug), 
                 order_items (*),
                 reviews (id, rating) 
             `)
@@ -61,19 +67,47 @@ export default function MyAccountPage() {
       setReviewModalOpen(true)
   }
 
-  // 👇 A MÁGICA FOI FEITA AQUI 👇
   const handleLogout = async () => { 
     try {
-      // 1. Desloga do Supabase
       await supabase.auth.signOut(); 
-      
-      // 2. Pega o nome do restaurante atual na URL
-      const currentSlug = window.location.pathname.split('/')[1];
-      
-      // 3. Força o redirecionamento e recarrega a página (limpa o cache na hora)
-      window.location.href = `/${currentSlug}`;
+      handleBackToMenu(); 
     } catch (error) {
       console.error("Erro ao sair:", error);
+    }
+  }
+
+  // --- BOTÃO VOLTAR (MODO DETETIVE 🕵️‍♂️) ---
+  const handleBackToMenu = () => {
+    if (typeof window !== 'undefined') {
+        const currentPath = window.location.pathname;
+        const parts = currentPath.split('/').filter(p => p && p !== 'minha-conta');
+        
+        // 1. Tenta pela URL
+        if (parts.length > 0) {
+             console.log("📍 [Voltar] Achou loja na URL:", parts[0]);
+             router.push(`/${parts[0]}`);
+             return;
+        }
+
+        // 2. Tenta pelo último pedido
+        if (orders.length > 0) {
+             const restaurante = orders[0].restaurants;
+             console.log("🕵️‍♂️ [Voltar] Dados do restaurante no último pedido:", restaurante);
+
+             if (restaurante && restaurante.slug) {
+                 console.log("📍 [Voltar] Achou slug no banco:", restaurante.slug);
+                 router.push(`/${restaurante.slug}`);
+                 return;
+             } else {
+                 console.warn("⚠️ [Voltar] O campo 'slug' está vazio ou nulo no banco para este restaurante!");
+             }
+        } else {
+            console.warn("⚠️ [Voltar] Nenhum pedido encontrado para buscar o link.");
+        }
+
+        // 3. Fallback
+        console.log("🏠 [Voltar] Indo para Home (Plano C)");
+        router.push('/');
     }
   }
 
@@ -98,6 +132,17 @@ export default function MyAccountPage() {
 
         <div className="max-w-3xl mx-auto p-4 mt-6">
             
+            {/* --- BOTÃO DE VOLTAR --- */}
+            <div className="mb-4">
+                <button 
+                    onClick={handleBackToMenu}
+                    className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-red-600 transition-colors font-medium bg-transparent border-0 cursor-pointer"
+                >
+                    <ArrowLeft size={18} />
+                    Voltar para o Cardápio
+                </button>
+            </div>
+
             {/* Banner Pontos */}
             <div className="bg-gradient-to-r from-red-600 to-red-800 rounded-2xl p-6 text-white shadow-lg mb-8 flex justify-between items-center">
                 <div><p className="text-red-100 text-sm font-medium mb-1">Meus Pontos Fidelidade</p><p className="text-3xl font-extrabold">{orders.length * 10} <span className="text-lg font-normal opacity-80">pts</span></p></div>
