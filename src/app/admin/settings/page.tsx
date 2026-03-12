@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
-import { Save, Loader2, Plus, Trash2, Clock, MapPin, Store, Printer, Palette, UploadCloud, Image as ImageIcon } from 'lucide-react'
+import { Save, Loader2, Plus, Trash2, Clock, MapPin, Store, Printer, Palette, UploadCloud, Image as ImageIcon, Smartphone, QrCode, CheckCircle, RefreshCw } from 'lucide-react'
 
 interface DeliveryTier { distance: number; time: number; price: number; }
 interface WorkHour { day_id: number; day_label: string; is_open: boolean; open_time: string; close_time: string; }
@@ -23,26 +23,46 @@ export default function SettingsPage() {
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [uploading, setUploading] = useState(false) // Estado para loading de upload
+  const [uploading, setUploading] = useState(false)
   
   const [restaurantId, setRestaurantId] = useState('')
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [address, setAddress] = useState({ zip: '', street: '', number: '', neighborhood: '', city: '', state: '' })
   
-  // CONFIGURAÇÕES VISUAIS
   const [primaryColor, setPrimaryColor] = useState('#DC2626')
   const [logoUrl, setLogoUrl] = useState('')
   const [banners, setBanners] = useState<string[]>([])
 
-  // CONFIGURAÇÕES DE IMPRESSÃO
   const [printerWidth, setPrinterWidth] = useState(80)
   const [printerFontSize, setPrinterFontSize] = useState(12)
 
   const [tiers, setTiers] = useState<DeliveryTier[]>([])
   const [schedule, setSchedule] = useState<WorkHour[]>(DEFAULT_SCHEDULE)
 
+  const [wppStatus, setWppStatus] = useState<string>('iniciando')
+  const [wppQrCode, setWppQrCode] = useState<string>('')
+  const [isRestarting, setIsRestarting] = useState(false)
+
   useEffect(() => { fetchSettings() }, [])
+
+  useEffect(() => {
+    const checkWppStatus = async () => {
+      try {
+        const res = await fetch('http://64.181.189.107:3001/status')
+        const data = await res.json()
+        setWppStatus(data.status)
+        setWppQrCode(data.qrcode)
+      } catch (error) {
+        console.error("Erro ao obter status do WhatsApp:", error)
+        setWppStatus('desconectado')
+      }
+    }
+
+    checkWppStatus()
+    const interval = setInterval(checkWppStatus, 3000) 
+    return () => clearInterval(interval)
+  }, [])
 
   const fetchSettings = async () => {
     try {
@@ -58,38 +78,25 @@ export default function SettingsPage() {
             setPrimaryColor(data.primary_color || '#DC2626')
             setLogoUrl(data.logo_url || data.image_url || "")
             setBanners(data.banners || [])
-            
             setPrinterWidth(data.printer_width || 80)
             setPrinterFontSize(data.printer_font_size || 12)
-            
             setAddress({
                 zip: data.address_zip || '', street: data.address_street || '', number: data.address_number || '',
                 neighborhood: data.address_neighborhood || '', city: data.address_city || '', state: data.address_state || ''
             })
-
             if (data.delivery_tiers) setTiers(data.delivery_tiers)
             else setTiers([{ distance: 1, time: 20, price: 0 }])
-
             if (data.work_hours) setSchedule(data.work_hours)
         }
     } catch (err) { console.error(err) } finally { setLoading(false) }
   }
 
-  // --- LÓGICA DE UPLOAD ---
   const uploadFile = async (file: File) => {
       const fileExt = file.name.split('.').pop()
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
-      const filePath = `${fileName}`
-
-      const { error: uploadError } = await supabase.storage
-          .from('restaurant-images')
-          .upload(filePath, file)
-
-      if (uploadError) {
-          throw uploadError
-      }
-
-      const { data } = supabase.storage.from('restaurant-images').getPublicUrl(filePath)
+      const { error: uploadError } = await supabase.storage.from('restaurant-images').upload(fileName, file)
+      if (uploadError) throw uploadError
+      const { data } = supabase.storage.from('restaurant-images').getPublicUrl(fileName)
       return data.publicUrl
   }
 
@@ -99,12 +106,7 @@ export default function SettingsPage() {
       try {
           const publicUrl = await uploadFile(e.target.files[0])
           setLogoUrl(publicUrl)
-      } catch (error) {
-          alert('Erro ao enviar imagem. Verifique se o bucket "restaurant-images" existe e é público.')
-          console.error(error)
-      } finally {
-          setUploading(false)
-      }
+      } catch (error) { alert('Erro ao enviar imagem.'); console.error(error) } finally { setUploading(false) }
   }
 
   const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -113,31 +115,20 @@ export default function SettingsPage() {
       try {
           const publicUrl = await uploadFile(e.target.files[0])
           setBanners([...banners, publicUrl])
-      } catch (error) {
-          alert('Erro ao enviar banner.')
-          console.error(error)
-      } finally {
-          setUploading(false)
-      }
+      } catch (error) { alert('Erro ao enviar banner.'); console.error(error) } finally { setUploading(false) }
   }
 
-  const handleRemoveBanner = (index: number) => {
-      setBanners(banners.filter((_, i) => i !== index))
-  }
+  const handleRemoveBanner = (index: number) => setBanners(banners.filter((_, i) => i !== index))
 
   const handleSave = async () => {
     setSaving(true)
     const sortedTiers = [...tiers].sort((a, b) => a.distance - b.distance)
-
     const { error } = await supabase.from('restaurants').update({
             name, phone, delivery_tiers: sortedTiers, work_hours: schedule,
             address_zip: address.zip, address_street: address.street, address_number: address.number,
             address_neighborhood: address.neighborhood, address_city: address.city, address_state: address.state,
-            printer_width: printerWidth, printer_font_size: printerFontSize,
-            primary_color: primaryColor,
-            logo_url: logoUrl,
-            image_url: logoUrl,
-            banners: banners
+            printer_width: printerWidth, printer_font_size: printerFontSize, primary_color: primaryColor,
+            logo_url: logoUrl, image_url: logoUrl, banners: banners
         }).eq('id', restaurantId)
 
     if (error) alert('Erro ao salvar.')
@@ -145,15 +136,28 @@ export default function SettingsPage() {
     setSaving(false)
   }
 
-  // Helpers
+  // ==============================================
+  // FUNÇÃO DO BOTÃO DE REINICIAR O WHATSAPP
+  // ==============================================
+  const handleRestartWpp = async () => {
+      setIsRestarting(true)
+      setWppStatus('iniciando')
+      setWppQrCode('')
+      try {
+          // Chama a nova rota na Oracle que manda o robô se reiniciar
+          await fetch('http://64.181.189.107:3001/restart')
+      } catch (error) {
+          console.error("Erro ao reiniciar:", error)
+      }
+      setTimeout(() => setIsRestarting(false), 3000) // Libera o botão após 3 segundos
+  }
+
   const handleBlurCep = async () => {
       const cep = address.zip.replace(/\D/g, '')
       if (cep.length < 8) return
       const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`)
       const data = await res.json()
-      if (!data.erro) {
-          setAddress(prev => ({ ...prev, street: data.logradouro, neighborhood: data.bairro, city: data.localidade, state: data.uf }))
-      }
+      if (!data.erro) setAddress(prev => ({ ...prev, street: data.logradouro, neighborhood: data.bairro, city: data.localidade, state: data.uf }))
   }
   const updateTier = (index: number, field: keyof DeliveryTier, value: string) => {
     const newTiers = [...tiers]; newTiers[index] = { ...newTiers[index], [field]: parseFloat(value) || 0 }; setTiers(newTiers)
@@ -179,7 +183,6 @@ export default function SettingsPage() {
 
       <div className="max-w-4xl mx-auto space-y-8 p-6">
         
-        {/* DADOS BÁSICOS */}
         <div className="space-y-4">
             <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2"><Store className="text-red-600"/> Dados da Loja</h2>
             <div className="grid md:grid-cols-2 gap-4">
@@ -200,7 +203,60 @@ export default function SettingsPage() {
 
         <hr />
 
-        {/* IDENTIDADE VISUAL COM UPLOAD 🎨 */}
+        {/* ========================================== */}
+        {/* CONEXÃO WHATSAPP COM BOTÃO DE REINICIAR    */}
+        {/* ========================================== */}
+        <div className="space-y-4">
+            <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                <Smartphone className="text-green-600"/> Conexão WhatsApp
+            </h2>
+            <div className="grid md:grid-cols-2 gap-6 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                <div className="flex flex-col justify-center space-y-3">
+                    <p className="text-sm text-gray-600">
+                        Conecte o seu celular para que o sistema envie automaticamente as notificações de pedido para os clientes.
+                    </p>
+                    <div className="flex items-center flex-wrap gap-2 mt-2">
+                        <span className="text-sm font-bold text-gray-700">Status atual:</span>
+                        {wppStatus === 'conectado' && <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold">Conectado e Operante</span>}
+                        {wppStatus === 'aguardando_qr' && <span className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1"><Loader2 size={12} className="animate-spin"/> Aguardando leitura...</span>}
+                        {wppStatus === 'iniciando' && <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1"><Loader2 size={12} className="animate-spin"/> Iniciando servidor...</span>}
+                        {(wppStatus === 'desconectado' || wppStatus === 'erro' || !wppStatus) && <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold">Desconectado</span>}
+                        
+                        {/* BOTÃO MÁGICO AQUI */}
+                        <button 
+                            onClick={handleRestartWpp} 
+                            disabled={isRestarting}
+                            className="ml-auto flex items-center gap-1 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-50 shadow-sm"
+                            title="Desconectar e gerar novo QR Code"
+                        >
+                            <RefreshCw size={14} className={isRestarting ? "animate-spin" : ""} />
+                            Reiniciar
+                        </button>
+
+                    </div>
+                </div>
+                <div className="flex justify-center">
+                    <div className="w-48 h-48 bg-white border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center overflow-hidden relative shadow-sm">
+                        {wppStatus === 'aguardando_qr' && wppQrCode ? (
+                            <img src={wppQrCode} alt="QR Code WhatsApp" className="w-full h-full object-contain p-2" />
+                        ) : wppStatus === 'conectado' ? (
+                            <div className="text-center text-green-600 flex flex-col items-center">
+                                <CheckCircle size={48} className="mb-2" />
+                                <span className="font-bold text-sm">Pronto para Enviar!</span>
+                            </div>
+                        ) : (
+                            <div className="text-center text-gray-400 flex flex-col items-center">
+                                <QrCode size={48} className="mb-2 opacity-50" /> 
+                                <span className="text-xs">Aguardando API...</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <hr />
+
         <div className="space-y-4">
             <div className="flex items-center justify-between">
                 <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2"><Palette className="text-red-600"/> Identidade Visual</h2>
@@ -208,7 +264,6 @@ export default function SettingsPage() {
             </div>
             
             <div className="grid md:grid-cols-2 gap-6 bg-gray-50 p-4 rounded-xl border border-gray-200">
-                {/* Logo e Cor */}
                 <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2">Logo da Loja</label>
                     <div className="flex items-center gap-4 mb-4">
@@ -228,7 +283,6 @@ export default function SettingsPage() {
                     </div>
                 </div>
 
-                {/* Banners */}
                 <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2">Banners Promocionais</label>
                     
@@ -256,7 +310,6 @@ export default function SettingsPage() {
 
         <hr />
 
-        {/* IMPRESSÃO */}
         <div className="space-y-4">
             <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2"><Printer className="text-red-600"/> Impressão</h2>
             <div className="grid md:grid-cols-2 gap-6 bg-gray-50 p-4 rounded-xl border border-gray-200">
@@ -276,7 +329,6 @@ export default function SettingsPage() {
 
         <hr />
         
-        {/* TAXAS */}
         <div className="space-y-4">
             <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2"><MapPin className="text-red-600"/> Taxas de Entrega</h2>
             <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
@@ -292,7 +344,6 @@ export default function SettingsPage() {
             </div>
         </div>
 
-        {/* HORÁRIOS */}
         <div className="space-y-4">
             <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2"><Clock className="text-red-600"/> Horários</h2>
             <div className="border border-gray-200 rounded-xl divide-y">
