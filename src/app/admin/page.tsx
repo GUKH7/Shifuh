@@ -61,16 +61,17 @@ export default function AdminDashboard() {
     if (!user) {
         setLoading(false)
         return router.push('/admin/login')
-    }
-
+    }// 1. Alterado de .single() para .maybeSingle()
+    
     const { data: resto, error } = await supabase.from('restaurants')
         .select('id, name')
         .eq('user_id', user.id)
-        .single()
+        .maybeSingle()
 
+    // 2. Adicionado o redirecionamento para a tela de setup
     if (error || !resto) {
-        console.error("Erro ao buscar restaurante:", error)
-        setLoading(false) // <- AQUI ESTÁ A SALVAÇÃO! Impede o carregamento infinito.
+        console.log("Restaurante não encontrado. Redirecionando para Setup...")
+        router.push('/admin/setup')
         return
     }
 

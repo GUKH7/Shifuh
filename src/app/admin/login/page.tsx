@@ -14,9 +14,20 @@ export default function AdminLogin() {
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  // Novos estados para o cadastro
+  const [restaurantName, setRestaurantName] = useState('')
+  const [restaurantSlug, setRestaurantSlug] = useState('')
+
   const [loading, setLoading] = useState(false)
   const [isRegistering, setIsRegistering] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
+
+  // Função para gerar o slug automaticamente enquanto digita o nome
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newName = e.target.value
+    setRestaurantName(newName)
+    setRestaurantSlug(newName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''))
+  }
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -25,14 +36,43 @@ export default function AdminLogin() {
 
     try {
       if (isRegistering) {
-        // FLUXO DE CRIAÇÃO DE CONTA (O gatilho do Supabase vai criar a loja automaticamente)
-        const { error } = await supabase.auth.signUp({
+        // 1. Validar se preencheu os dados da loja
+        if (!restaurantName.trim() || !restaurantSlug.trim()) {
+          throw new Error("Preencha o nome e o link da sua loja.")
+        }
+
+        // 2. Verificar se o link (slug) já está em uso no banco
+        const { data: existingSlug } = await supabase
+          .from('restaurants')
+          .select('id')
+          .eq('slug', restaurantSlug)
+          .maybeSingle()
+
+        if (existingSlug) {
+          throw new Error("Este link já está em uso. Tente adicionar números ou a sua cidade (ex: burger-house-sp).")
+        }
+
+        // 3. Criar usuário no Supabase Auth
+        const { data: authData, error: authError } = await supabase.auth.signUp({
           email,
           password,
         })
-        if (error) throw error
-        alert("Conta criada com sucesso! Você já pode entrar.")
-        setIsRegistering(false) // Muda para a tela de login
+
+        if (authError) throw authError
+
+        // 4. Se o usuário foi criado, insere o restaurante atrelado a ele
+        if (authData.user) {
+          const { error: dbError } = await supabase.from('restaurants').insert({
+            name: restaurantName.trim(),
+            slug: restaurantSlug.trim(),
+            user_id: authData.user.id
+          })
+
+          if (dbError) throw dbError
+          
+          // 5. Tudo certo! Redireciona direto para o painel de controle
+          router.push('/admin')
+        }
       } else {
         // FLUXO DE LOGIN NORMAL
         const { error } = await supabase.auth.signInWithPassword({
@@ -56,10 +96,10 @@ export default function AdminLogin() {
           <Store className="text-red-600 w-8 h-8" />
         </div>
         <h2 className="text-3xl font-extrabold text-gray-900">
-          {isRegistering ? 'Crie sua loja' : 'Painel do Lojista'}
+          {isRegistering ? 'Crie sua loja digital' : 'Painel do Lojista'}
         </h2>
         <p className="mt-2 text-sm text-gray-600">
-          {isRegistering ? 'Preencha os dados para começar a vender.' : 'Acesse a sua loja para gerenciar os pedidos.'}
+          {isRegistering ? 'Preencha os dados e comece a vender em minutos.' : 'Acesse a sua loja para gerenciar os pedidos.'}
         </p>
       </div>
 
@@ -67,12 +107,49 @@ export default function AdminLogin() {
         <div className="bg-white py-8 px-4 shadow-xl sm:rounded-2xl sm:px-10 border border-gray-100">
           
           {errorMsg && (
-            <div className="mb-4 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm font-medium text-center">
+            <div className="mb-6 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm font-medium text-center">
               {errorMsg}
             </div>
           )}
 
-          <form className="space-y-6" onSubmit={handleAuth}>
+          <form className="space-y-5" onSubmit={handleAuth}>
+            
+            {/* CAMPOS EXCLUSIVOS DE CADASTRO */}
+            {isRegistering && (
+              <>
+                <div className="animate-in fade-in slide-in-from-top-2">
+                  <label className="block text-sm font-bold text-gray-700">Nome do seu Negócio</label>
+                  <div className="mt-1">
+                    <input
+                      type="text"
+                      required={isRegistering}
+                      value={restaurantName}
+                      onChange={handleNameChange}
+                      className="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-red-500 focus:border-red-500 transition-all"
+                      placeholder="Ex: Burger House"
+                    />
+                  </div>
+                </div>
+
+                <div className="animate-in fade-in slide-in-from-top-2">
+                  <label className="block text-sm font-bold text-gray-700">Link do seu Cardápio</label>
+                  <div className="mt-1 flex shadow-sm rounded-xl">
+                    <span className="inline-flex items-center px-3 rounded-l-xl border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm select-none">
+                      whatsmenu.com/
+                    </span>
+                    <input
+                      type="text"
+                      required={isRegistering}
+                      value={restaurantSlug}
+                      onChange={(e) => setRestaurantSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                      className="flex-1 block w-full px-4 py-3 border border-gray-300 rounded-none rounded-r-xl focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm transition-all"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* CAMPOS PADRÃO (SEMPRE APARECEM) */}
             <div>
               <label className="block text-sm font-bold text-gray-700">Email</label>
               <div className="mt-1">
@@ -81,7 +158,7 @@ export default function AdminLogin() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-red-500 focus:border-red-500"
+                  className="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-red-500 focus:border-red-500 transition-all"
                   placeholder="seu@email.com"
                 />
               </div>
@@ -95,7 +172,7 @@ export default function AdminLogin() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-red-500 focus:border-red-500"
+                  className="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-red-500 focus:border-red-500 transition-all"
                   placeholder="••••••••"
                 />
               </div>
@@ -104,26 +181,29 @@ export default function AdminLogin() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-xl shadow-sm text-base font-bold text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 transition-all"
+              className="w-full mt-2 flex justify-center items-center gap-2 py-3.5 px-4 border border-transparent rounded-xl shadow-sm text-base font-bold text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 transition-all"
             >
               {loading ? (
                 <Loader2 className="animate-spin w-5 h-5" />
               ) : (
                 <>
-                  {isRegistering ? 'Criar Conta' : 'Entrar no Painel'}
+                  {isRegistering ? 'Criar Loja e Entrar' : 'Entrar no Painel'}
                   <ArrowRight className="w-5 h-5" />
                 </>
               )}
             </button>
           </form>
 
-          <div className="mt-6 text-center">
+          <div className="mt-8 pt-6 border-t border-gray-100 text-center">
             <button
-              onClick={() => setIsRegistering(!isRegistering)}
-              className="text-sm font-bold text-red-600 hover:text-red-500"
+              onClick={() => {
+                setIsRegistering(!isRegistering)
+                setErrorMsg('')
+              }}
+              className="text-sm font-bold text-gray-600 hover:text-red-600 transition-colors"
             >
               {isRegistering 
-                ? 'Já tem uma conta? Clique aqui para entrar.' 
+                ? 'Já tem uma conta? Clique aqui para fazer login.' 
                 : 'Ainda não tem loja? Crie uma conta grátis.'}
             </button>
           </div>
