@@ -42,29 +42,48 @@ export default function AdminDashboard() {
   }
 
   const fetchData = async () => {
-    const { data: resto } = await supabase.from('restaurants').select('*').single()
-    if(resto) setRestaurant(resto)
+    try {
+      // Opcional mas recomendado: pegar o usuário logado para filtrar
+      const { data: { user } } = await supabase.auth.getUser()
 
-    const { data: cats } = await supabase.from('categories').select('*').eq('restaurant_id', resto.id).order('order')
-    if(cats) {
+      const { data: resto, error } = await supabase
+        .from('restaurants')
+        .select('*')
+        // .eq('user_id', user?.id) // Descomente esta linha se a sua tabela restaurants tiver a coluna user_id
+        .maybeSingle() // <- Evita o erro 406 Not Acceptable
+
+      // Se não encontrou o restaurante, interrompe aqui e não tenta acessar resto.id
+      if (error || !resto) {
+        console.error("Nenhum restaurante encontrado para este usuário.", error)
+        return 
+      }
+
+      setRestaurant(resto)
+
+      // Agora é 100% seguro usar resto.id
+      const { data: cats } = await supabase.from('categories').select('*').eq('restaurant_id', resto.id).order('order')
+      if (cats) {
         setCategories(cats)
-        // Expande todas as categorias no início
         setExpandedCategories(prev => {
-            if(Object.keys(prev).length === 0) {
-                const initial: any = {}
-                cats.forEach((c: any) => initial[c.id] = true)
-                return initial
-            }
-            return prev
+          if (Object.keys(prev).length === 0) {
+            const initial: any = {}
+            cats.forEach((c: any) => initial[c.id] = true)
+            return initial
+          }
+          return prev
         })
+      }
+
+      const { data: prods } = await supabase.from('products').select('*').eq('restaurant_id', resto.id)
+      if (prods) setProducts(prods)
+
+    } catch (err) {
+      console.error("Erro inesperado ao buscar cardápio:", err)
+    } finally {
+      // O finally garante que o loading sempre ficará false, dando certo ou errado
+      setLoading(false)
     }
-
-    const { data: prods } = await supabase.from('products').select('*').eq('restaurant_id', resto.id)
-    if(prods) setProducts(prods)
-    
-    setLoading(false)
   }
-
   // --- AÇÕES DE PRODUTO ---
   const handleOpenNewProduct = () => {
       setEditingProduct(null)
