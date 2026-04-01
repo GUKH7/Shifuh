@@ -144,14 +144,42 @@ export default function SettingsPage() {
       setWppStatus('iniciando')
       setWppQrCode('')
       try {
-          // Chama a nova rota na Oracle que manda o robô se reiniciar
           await fetch('http://64.181.189.107:3001/restart')
       } catch (error) {
           console.error("Erro ao reiniciar:", error)
       }
-      setTimeout(() => setIsRestarting(false), 3000) // Libera o botão após 3 segundos
+      setTimeout(() => setIsRestarting(false), 3000) 
   }
 
+  // ==============================================
+  // FUNÇÃO DO BOTÃO DE TESTE DE MENSAGEM
+  // ==============================================
+  const handleTestMessage = async () => {
+      try {
+          // ⚠️ ATENÇÃO: COLOQUE SEU NÚMERO REAL AQUI ⚠️
+          const meuNumero = "5511967967777"; 
+          
+          const res = await fetch('http://64.181.189.107:3001/send-message', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                  phone: meuNumero, 
+                  message: '🚀 Teste do sistema! Se você recebeu isso, o envio está 100% funcionando!' 
+              })
+          });
+          
+          const data = await res.json();
+          if (data.success) {
+              alert('Mensagem enviada! Olha o celular 👀');
+          } else {
+              alert('Erro na API: ' + data.error);
+          }
+      } catch (error) {
+          console.error("Erro:", error);
+          alert('Erro de conexão com o servidor da Oracle.');
+      }
+  }
+  
   const handleBlurCep = async () => {
       const cep = address.zip.replace(/\D/g, '')
       if (cep.length < 8) return
@@ -204,7 +232,7 @@ export default function SettingsPage() {
         <hr />
 
         {/* ========================================== */}
-        {/* CONEXÃO WHATSAPP COM BOTÃO DE REINICIAR    */}
+        {/* CONEXÃO WHATSAPP                             */}
         {/* ========================================== */}
         <div className="space-y-4">
             <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
@@ -222,7 +250,6 @@ export default function SettingsPage() {
                         {wppStatus === 'iniciando' && <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1"><Loader2 size={12} className="animate-spin"/> Iniciando servidor...</span>}
                         {(wppStatus === 'desconectado' || wppStatus === 'erro' || !wppStatus) && <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold">Desconectado</span>}
                         
-                        {/* BOTÃO MÁGICO AQUI */}
                         <button 
                             onClick={handleRestartWpp} 
                             disabled={isRestarting}
@@ -232,6 +259,16 @@ export default function SettingsPage() {
                             <RefreshCw size={14} className={isRestarting ? "animate-spin" : ""} />
                             Reiniciar
                         </button>
+
+                        {/* BOTÃO DE TESTE DE ENVIO FICA AQUI */}
+                        {wppStatus === 'conectado' && (
+                            <button 
+                                onClick={handleTestMessage} 
+                                className="flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-sm ml-2"
+                            >
+                                Testar Envio
+                            </button>
+                        )}
 
                     </div>
                 </div>
