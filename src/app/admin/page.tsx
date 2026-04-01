@@ -54,32 +54,41 @@ export default function AdminDashboard() {
     }
   }
 
-  const fetchDashboardData = async () => {
+ const fetchDashboardData = async () => {
     setLoading(true)
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return router.push('/admin/login')
+    
+    if (!user) {
+        setLoading(false)
+        return router.push('/admin/login')
+    }
 
-    const { data: resto } = await supabase.from('restaurants').select('id, name').single()
-    if (!resto) return
+    const { data: resto, error } = await supabase.from('restaurants')
+        .select('id, name')
+        .eq('user_id', user.id)
+        .single()
+
+    if (error || !resto) {
+        console.error("Erro ao buscar restaurante:", error)
+        setLoading(false) // <- AQUI ESTÁ A SALVAÇÃO! Impede o carregamento infinito.
+        return
+    }
 
     let startDate: Date;
-    let endDate: Date = new Date(); // Padrão: até o momento atual
+    let endDate: Date = new Date(); 
 
-    // Lógica para definir as datas baseadas no filtro
     if (period === 'custom') {
       if (!customStart || !customEnd) {
         alert("Por favor, selecione a data de início e fim.")
         setLoading(false)
         return
       }
-      // Pega do início do dia 1 até o final do dia 2
       startDate = new Date(customStart + 'T00:00:00')
       endDate = new Date(customEnd + 'T23:59:59')
     } else {
       startDate = getStartDate(period)
     }
 
-    // Busca pedidos filtrando entre a data inicial e final
     const { data: orders } = await supabase
       .from('orders')
       .select('*, order_items(*)')
