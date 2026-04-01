@@ -1,7 +1,8 @@
 "use client"
 
-import AdminSidebar from "@/components/admin-sidebar"
+import { useState } from "react"
 import { usePathname } from "next/navigation"
+import AdminSidebar from "@/components/admin-sidebar" 
 
 export default function AdminLayout({
   children,
@@ -9,6 +10,8 @@ export default function AdminLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
+  // Estado para controlar se a sidebar está minimizada
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   
   // Verifica se o usuário está na tela de login
   const isLoginPage = pathname === '/admin/login'
@@ -18,11 +21,16 @@ export default function AdminLayout({
     return <>{children}</>
   }
 
-  // Se for qualquer outra tela do admin, renderiza a estrutura completa com o menu
   return (
     <div className="flex min-h-screen bg-[#F2F4F7]">
-      <AdminSidebar />
-      <div className="flex-1 md:ml-64 p-8">
+      {/* Passa o estado e a função para a Sidebar */}
+      <AdminSidebar 
+        isCollapsed={isSidebarCollapsed} 
+        toggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)} 
+      />
+
+      {/* A margem esquerda (ml) ajusta-se suavemente baseada no estado */}
+      <div className={`flex-1 p-8 transition-all duration-300 ${isSidebarCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
         {children}
       </div>
     </div>
