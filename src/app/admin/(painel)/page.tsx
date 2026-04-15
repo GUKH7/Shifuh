@@ -44,20 +44,36 @@ export default function AdminLogin() {
         const { data: authData, error: authError } = await supabase.auth.signUp({ email, password })
         if (authError) throw authError
 
-        // 2. Cria loja vinculada ao usuário
+        // Trava de segurança para emails repetidos
+        if (authData.user && authData.user.identities && authData.user.identities.length === 0) {
+            throw new Error("Este e-mail já está cadastrado. Clique em 'Faça login'.")
+        }
+
+        // 2. Força o login para gravar o cookie
+        const { error: loginError } = await supabase.auth.signInWithPassword({ email, password })
+        if (loginError) throw loginError
+
+        // 3. Cria loja no banco
         if (authData.user) {
           const { error: dbError } = await supabase.from('restaurants').insert({
             name: restaurantName.trim(),
             slug: restaurantSlug.trim(),
             user_id: authData.user.id
           })
-          if (dbError) throw dbError
           
-          router.push('/admin') // Vai direto pro painel
+          if (dbError) throw new Error("Conta criada, mas erro ao salvar a loja no banco.")
+          
+          router.push('/admin') 
         }
       } else {
+        // Fluxo de LOGIN NORMAL
         const { error } = await supabase.auth.signInWithPassword({ email, password })
-        if (error) throw error
+        if (error) {
+            if (error.message.includes("Invalid login credentials")) {
+                throw new Error("E-mail ou senha incorretos.")
+            }
+            throw error
+        }
         router.push('/admin')
       }
     } catch (error: any) {
@@ -87,13 +103,14 @@ export default function AdminLogin() {
               <>
                 <div>
                   <label className="block text-sm font-bold text-gray-700">Nome do seu Negócio</label>
-                  <input type="text" required value={restaurantName} onChange={handleNameChange} className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-red-500 focus:border-red-500" placeholder="Ex: Burger House" />
+                  {/* CORES CORRIGIDAS ABAIXO: text-gray-900 e bg-white */}
+                  <input type="text" required value={restaurantName} onChange={handleNameChange} className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-red-500 focus:border-red-500 text-gray-900 bg-white placeholder-gray-400" placeholder="Ex: Burger House" />
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-gray-700">Link do seu Cardápio</label>
                   <div className="mt-1 flex shadow-sm rounded-xl">
                     <span className="inline-flex items-center px-3 rounded-l-xl border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">whatsmenu.com/</span>
-                    <input type="text" required value={restaurantSlug} onChange={(e) => setRestaurantSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))} className="flex-1 block w-full px-4 py-3 border border-gray-300 rounded-r-xl focus:ring-red-500 focus:border-red-500" />
+                    <input type="text" required value={restaurantSlug} onChange={(e) => setRestaurantSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))} className="flex-1 block w-full px-4 py-3 border border-gray-300 rounded-r-xl focus:ring-red-500 focus:border-red-500 text-gray-900 bg-white" />
                   </div>
                 </div>
               </>
@@ -101,12 +118,14 @@ export default function AdminLogin() {
 
             <div>
               <label className="block text-sm font-bold text-gray-700">Email</label>
-              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-red-500 focus:border-red-500" placeholder="seu@email.com" />
+              {/* CORES CORRIGIDAS ABAIXO */}
+              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-red-500 focus:border-red-500 text-gray-900 bg-white placeholder-gray-400" placeholder="seu@email.com" />
             </div>
 
             <div>
               <label className="block text-sm font-bold text-gray-700">Senha</label>
-              <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-red-500 focus:border-red-500" placeholder="••••••••" />
+              {/* CORES CORRIGIDAS ABAIXO */}
+              <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-red-500 focus:border-red-500 text-gray-900 bg-white placeholder-gray-400" placeholder="••••••••" />
             </div>
 
             <button type="submit" disabled={loading} className="w-full flex justify-center items-center gap-2 py-3.5 px-4 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 transition-all">
