@@ -54,9 +54,11 @@ export default function OrdersPage() {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return router.push("/admin/login")
 
-        const { data: resto } = await supabase.from('restaurants').select('*').single()
+        const { data: resto, error: restoError } = await supabase.from('restaurants').select('*').maybeSingle()
         if (!resto) return
         setRestaurantConfig(resto)
+
+        
 
         const { data, error } = await supabase
             .from('orders')

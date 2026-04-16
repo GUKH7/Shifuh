@@ -63,23 +63,18 @@ export default function AdminLogin() {
           
           if (dbError) throw new Error("Conta criada, mas erro ao salvar a loja no banco.")
           
-          // FORÇA O REFRESH DA PÁGINA PARA GRAVAR O COOKIE DE SESSÃO
-          window.location.href = '/admin'
+          router.push('/admin') 
         }
       } else {
         // Fluxo de LOGIN NORMAL
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+        const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) {
             if (error.message.includes("Invalid login credentials")) {
                 throw new Error("E-mail ou senha incorretos.")
             }
             throw error
         }
-        
-        if (data.user) {
-            // FORÇA O REFRESH DA PÁGINA PARA GRAVAR O COOKIE DE SESSÃO
-            window.location.href = '/admin'
-        }
+        router.push('/admin')
       }
     } catch (error: any) {
       setErrorMsg(error.message || 'Ocorreu um erro. Tente novamente.')
@@ -108,14 +103,14 @@ export default function AdminLogin() {
               <>
                 <div>
                   <label className="block text-sm font-bold text-gray-700">Nome do seu Negócio</label>
-                  {/* CORES CORRIGIDAS: text-black, font-semibold */}
-                  <input type="text" required value={restaurantName} onChange={handleNameChange} className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-red-500 focus:border-red-500 text-black font-semibold bg-white placeholder-gray-500" placeholder="Ex: Burger House" />
+                  {/* CORES CORRIGIDAS ABAIXO: text-gray-900 e bg-white */}
+                  <input type="text" required value={restaurantName} onChange={handleNameChange} className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-red-500 focus:border-red-500 text-gray-900 bg-white placeholder-gray-400" placeholder="Ex: Burger House" />
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-gray-700">Link do seu Cardápio</label>
                   <div className="mt-1 flex shadow-sm rounded-xl">
                     <span className="inline-flex items-center px-3 rounded-l-xl border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">whatsmenu.com/</span>
-                    <input type="text" required value={restaurantSlug} onChange={(e) => setRestaurantSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))} className="flex-1 block w-full px-4 py-3 border border-gray-300 rounded-r-xl focus:ring-red-500 focus:border-red-500 text-black font-semibold bg-white" />
+                    <input type="text" required value={restaurantSlug} onChange={(e) => setRestaurantSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))} className="flex-1 block w-full px-4 py-3 border border-gray-300 rounded-r-xl focus:ring-red-500 focus:border-red-500 text-gray-900 bg-white" />
                   </div>
                 </div>
               </>
@@ -123,14 +118,14 @@ export default function AdminLogin() {
 
             <div>
               <label className="block text-sm font-bold text-gray-700">Email</label>
-              {/* CORES CORRIGIDAS: text-black, font-semibold */}
-              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-red-500 focus:border-red-500 text-black font-semibold bg-white placeholder-gray-500" placeholder="seu@email.com" />
+              {/* CORES CORRIGIDAS ABAIXO */}
+              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-red-500 focus:border-red-500 text-gray-900 bg-white placeholder-gray-400" placeholder="seu@email.com" />
             </div>
 
             <div>
               <label className="block text-sm font-bold text-gray-700">Senha</label>
-              {/* CORES CORRIGIDAS: text-black, font-semibold */}
-              <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-red-500 focus:border-red-500 text-black font-semibold bg-white placeholder-gray-500" placeholder="••••••••" />
+              {/* CORES CORRIGIDAS ABAIXO */}
+              <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-red-500 focus:border-red-500 text-gray-900 bg-white placeholder-gray-400" placeholder="••••••••" />
             </div>
 
             <button type="submit" disabled={loading} className="w-full flex justify-center items-center gap-2 py-3.5 px-4 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 transition-all">
