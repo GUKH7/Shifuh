@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useRouter } from "next/navigation";
 import { ArrowRight, CheckCircle2, Loader2, Store } from "lucide-react";
+import { getRestaurantByUserId } from "@/lib/supabase/restaurant";
 
 export default function SetupPage() {
   const [loading, setLoading] = useState(true);
@@ -30,8 +31,8 @@ export default function SetupPage() {
     if (!user) return router.push("/admin/login");
     setUser(user);
 
-    const { data: resto } = await supabase.from("restaurants").select("id").eq("user_id", user.id).maybeSingle();
-    if (resto) router.push("/admin");
+    const { restaurant } = await getRestaurantByUserId(supabase, user.id);
+    if (restaurant) router.push("/admin");
     else setLoading(false);
   };
 
@@ -75,11 +76,7 @@ export default function SetupPage() {
       let createdRestaurant = null;
 
       for (let attempt = 0; attempt < 6; attempt += 1) {
-        const { data: restaurant } = await supabase
-          .from("restaurants")
-          .select("id")
-          .eq("user_id", user.id)
-          .maybeSingle();
+        const { restaurant } = await getRestaurantByUserId(supabase, user.id);
 
         if (restaurant) {
           createdRestaurant = restaurant;

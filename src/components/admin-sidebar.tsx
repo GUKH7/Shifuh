@@ -20,6 +20,7 @@ import {
   Users,
 } from "lucide-react";
 import { getCurrentRestaurant } from "@/lib/supabase/restaurant";
+import { isPlatformAdminEmail } from "@/lib/platform-admin";
 
 const MENU_ITEMS = [
   { name: "Inicio", href: "/admin", icon: LayoutDashboard },
@@ -41,6 +42,7 @@ export default function AdminSidebar({ isCollapsed, toggleSidebar }: AdminSideba
   const pathname = usePathname();
   const router = useRouter();
   const [storeSlug, setStoreSlug] = useState("");
+  const [canAccessPlatform, setCanAccessPlatform] = useState(false);
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -50,6 +52,12 @@ export default function AdminSidebar({ isCollapsed, toggleSidebar }: AdminSideba
     const loadRestaurant = async () => {
       const { restaurant } = await getCurrentRestaurant(supabase);
       if (restaurant?.slug) setStoreSlug(restaurant.slug);
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      setCanAccessPlatform(isPlatformAdminEmail(user?.email));
     };
 
     loadRestaurant();
@@ -111,6 +119,22 @@ export default function AdminSidebar({ isCollapsed, toggleSidebar }: AdminSideba
               </Link>
             );
           })}
+          {canAccessPlatform && (
+            <Link
+              href="/admin/platform"
+              title={isCollapsed ? "Lojas cadastradas" : undefined}
+              className={`flex items-center rounded-2xl text-sm font-semibold transition-all ${
+                isCollapsed ? "justify-center px-3 py-3" : "gap-3 px-4 py-3"
+              } ${
+                pathname === "/admin/platform"
+                  ? "bg-[var(--brand-soft)] text-[var(--brand)]"
+                  : "text-gray-600 hover:bg-[#faf5ef] hover:text-gray-950"
+              }`}
+            >
+              <Store size={19} className={pathname === "/admin/platform" ? "text-[var(--brand)]" : "text-gray-400"} />
+              {!isCollapsed && <span>Lojas cadastradas</span>}
+            </Link>
+          )}
         </nav>
       </div>
 

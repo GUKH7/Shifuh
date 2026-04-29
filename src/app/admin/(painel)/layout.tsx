@@ -5,6 +5,7 @@ import { createBrowserClient } from "@supabase/ssr";
 import { usePathname, useRouter } from "next/navigation";
 import AdminSidebar from "@/components/admin-sidebar";
 import { Bell, HelpCircle, Loader2, Search } from "lucide-react";
+import { getRestaurantByUserId } from "@/lib/supabase/restaurant";
 
 export default function AdminPanelLayout({ children }: { children: React.ReactNode }) {
   const [isCollapsed, setIsCollapsed] = useState(true);
@@ -37,11 +38,7 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
           return;
         }
 
-        const { data: restaurant } = await supabase
-          .from("restaurants")
-          .select("id")
-          .eq("user_id", user.id)
-          .maybeSingle();
+        const { restaurant } = await getRestaurantByUserId(supabase, user.id);
 
         const isSetupPage = pathname === "/admin/setup";
 
