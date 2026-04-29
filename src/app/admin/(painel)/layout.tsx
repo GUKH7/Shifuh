@@ -1,11 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createBrowserClient } from "@supabase/ssr";
+import { usePathname, useRouter } from "next/navigation";
 import AdminSidebar from "@/components/admin-sidebar";
-import { Bell, HelpCircle, Search } from "lucide-react";
+import { Bell, HelpCircle, Loader2, Search } from "lucide-react";
 
 export default function AdminPanelLayout({ children }: { children: React.ReactNode }) {
   const [isCollapsed, setIsCollapsed] = useState(true);
+  const [isGuardLoading, setIsGuardLoading] = useState(true);
+  const router = useRouter();
+  const pathname = usePathname();
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  );
 
   useEffect(() => {
     const savedState = window.localStorage.getItem("admin-sidebar-collapsed");
@@ -14,6 +23,49 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
     }
   }, []);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    const guardAdminAccess = async () => {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (!user) {
+          router.replace("/admin/login");
+          return;
+        }
+
+        const { data: restaurant } = await supabase
+          .from("restaurants")
+          .select("id")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        const isSetupPage = pathname === "/admin/setup";
+
+        if (!restaurant && !isSetupPage) {
+          router.replace("/admin/setup");
+          return;
+        }
+
+        if (restaurant && isSetupPage) {
+          router.replace("/admin");
+          return;
+        }
+      } finally {
+        if (isMounted) setIsGuardLoading(false);
+      }
+    };
+
+    guardAdminAccess();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [pathname, router, supabase]);
+
   const toggleSidebar = () => {
     setIsCollapsed((current) => {
       const next = !current;
@@ -21,6 +73,14 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
       return next;
     });
   };
+
+  if (isGuardLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#fbf7f2]">
+        <Loader2 className="animate-spin text-[var(--brand)]" size={30} />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#fbf7f2] text-gray-950">

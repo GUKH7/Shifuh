@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { createBrowserClient } from "@supabase/ssr";
+import { useRouter } from "next/navigation";
 import {
   ArrowUpRight,
   Bike,
@@ -72,6 +73,7 @@ function DashboardSkeleton() {
 }
 
 export default function AdminHomePage() {
+  const router = useRouter();
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -95,7 +97,7 @@ export default function AdminHomePage() {
     try {
       const { restaurant } = await getCurrentRestaurant(supabase);
       if (!restaurant) {
-        setErrorMsg("Nao foi possivel localizar a loja.");
+        router.replace("/admin/setup");
         return;
       }
 
