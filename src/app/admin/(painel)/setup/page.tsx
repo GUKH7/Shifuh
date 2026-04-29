@@ -47,6 +47,10 @@ export default function SetupPage() {
       setError("Preencha todos os campos obrigatorios.");
       return;
     }
+    if (!user?.id) {
+      setError("Sua sessao expirou. Entre novamente para continuar.");
+      return;
+    }
 
     setIsSaving(true);
     setError("");
@@ -63,13 +67,38 @@ export default function SetupPage() {
         name: name.trim(),
         slug: slug.trim(),
         user_id: user.id,
+        phone: "",
       });
 
       if (insertError) throw insertError;
-      router.push("/admin");
+
+      let createdRestaurant = null;
+
+      for (let attempt = 0; attempt < 6; attempt += 1) {
+        const { data: restaurant } = await supabase
+          .from("restaurants")
+          .select("id")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (restaurant) {
+          createdRestaurant = restaurant;
+          break;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      }
+
+      if (!createdRestaurant) {
+        setError("A loja foi criada, mas o painel ainda nao conseguiu carregar. Atualize a pagina.");
+        return;
+      }
+
+      router.refresh();
+      window.location.replace("/admin/settings");
     } catch (err) {
       console.error(err);
-      setError("Ocorreu um erro ao criar o restaurante.");
+      setError(err instanceof Error ? err.message : "Ocorreu um erro ao criar o restaurante.");
     } finally {
       setIsSaving(false);
     }
