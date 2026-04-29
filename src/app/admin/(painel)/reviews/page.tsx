@@ -1,164 +1,305 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { createBrowserClient } from "@supabase/ssr"
-import { useRouter } from "next/navigation"
-import { Star, Loader2, Quote, ThumbsUp, Calendar } from "lucide-react"
+import { useEffect, useMemo, useState } from "react";
+import { createBrowserClient } from "@supabase/ssr";
+import { useRouter } from "next/navigation";
+import { Loader2, MessageSquareQuote, Sparkles, Star, TrendingUp } from "lucide-react";
+import { getCurrentRestaurant } from "@/lib/supabase/restaurant";
 
-export default function ReviewsPage() {
-  const router = useRouter()
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+type Review = {
+  id: string;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+  orders: {
+    id: string;
+    customer_name: string;
+  } | null;
+};
 
-  const [loading, setLoading] = useState(true)
-  const [reviews, setReviews] = useState<any[]>([])
-  const [stats, setStats] = useState({ average: 0, total: 0, starsBreakdown: [0,0,0,0,0] })
+const REVIEW_FILTERS = [
+  { id: "all", label: "Todas" },
+  { id: "positive", label: "4 e 5 estrelas" },
+  { id: "neutral", label: "3 estrelas" },
+  { id: "critical", label: "1 e 2 estrelas" },
+] as const;
 
-  useEffect(() => {
-    fetchReviews()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+function formatDate(date: string) {
+  return new Date(date).toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
-  const fetchReviews = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return router.push("/admin/login")
-
-    const { data: resto } = await supabase.from('restaurants').select('id').single()
-    if (!resto) return
-
-    const { data } = await supabase
-        .from('reviews')
-        .select(`*, orders (customer_name, id)`)
-        .eq('restaurant_id', resto.id)
-        .order('created_at', { ascending: false })
-
-    if (data) {
-        setReviews(data)
-        calculateStats(data)
-    }
-    setLoading(false)
-  }
-
-  const calculateStats = (data: any[]) => {
-      if (data.length === 0) return setStats({ average: 0, total: 0, starsBreakdown: [0,0,0,0,0] })
-
-      const total = data.length
-      const sum = data.reduce((acc, curr) => acc + curr.rating, 0)
-      const average = sum / total
-      const breakdown = [0, 0, 0, 0, 0]
-      data.forEach(r => { if (r.rating >= 1 && r.rating <= 5) breakdown[r.rating - 1]++ })
-
-      setStats({ average, total, starsBreakdown: breakdown })
-  }
-
-  const formatDate = (date: string) => {
-      return new Date(date).toLocaleDateString('pt-BR', {
-          day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
-      })
-  }
-
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-red-600"/></div>
-
+function ReviewsSkeleton() {
   return (
-    <div className="max-w-5xl mx-auto pb-20">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-            <Star className="text-red-600 fill-red-600"/> Avaliações da Loja
-        </h1>
-        <p className="text-gray-500 text-sm">Veja o que seus clientes estão falando sobre seus pedidos.</p>
+    <div className="mx-auto max-w-6xl animate-pulse">
+      <div className="mb-8 flex items-center gap-4">
+        <div className="h-14 w-14 rounded-2xl bg-white" />
+        <div className="space-y-3">
+          <div className="h-6 w-36 rounded-full bg-white" />
+          <div className="h-4 w-72 rounded-full bg-white" />
+        </div>
       </div>
-
-      {/* DASHBOARD DE NOTAS */}
-      <div className="grid md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
-              <div>
-                  <p className="text-gray-500 font-medium mb-1">Nota Média</p>
-                  <p className="text-4xl font-black text-gray-800 flex items-center gap-2">
-                      {stats.average.toFixed(1)} <Star size={28} className="text-yellow-400 fill-yellow-400"/>
-                  </p>
-              </div>
-              <div className="text-right">
-                  <p className="text-gray-400 text-sm">{stats.total} avaliações</p>
-                  <p className="text-green-600 text-xs font-bold bg-green-50 px-2 py-1 rounded-full mt-2 inline-block">
-                    {stats.average >= 4.5 ? 'Excelente' : stats.average >= 3 ? 'Bom' : 'Atenção'}
-                  </p>
-              </div>
-          </div>
-
-          <div className="md:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-              <div className="space-y-2">
-                  {[5, 4, 3, 2, 1].map((star) => {
-                      const count = stats.starsBreakdown[star - 1]
-                      const percent = stats.total > 0 ? (count / stats.total) * 100 : 0
-                      return (
-                          <div key={star} className="flex items-center gap-3 text-xs">
-                              <span className="font-bold w-3">{star}</span>
-                              <Star size={12} className="text-gray-300"/>
-                              <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                                  <div className="h-full bg-yellow-400 rounded-full" style={{ width: `${percent}%` }}></div>
-                              </div>
-                              <span className="text-gray-400 w-8 text-right">{count}</span>
-                          </div>
-                      )
-                  })}
-              </div>
-          </div>
+      <div className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
+        <div className="surface-card h-56 rounded-[28px]" />
+        <div className="surface-card h-56 rounded-[28px]" />
       </div>
-
-      {/* LISTA DE REVIEWS */}
-      <div className="space-y-4">
-          {reviews.length === 0 && (
-              <div className="bg-white p-12 rounded-xl border border-dashed text-center text-gray-400">
-                  Nenhuma avaliação recebida ainda.
-              </div>
-          )}
-
-          {reviews.map(review => (
-              <div key={review.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-6">
-                  {/* ESQUERDA: CLIENTE E NOTA */}
-                  <div className="md:w-48 flex-shrink-0">
-                      <div className="flex gap-1 mb-2">
-                          {[1, 2, 3, 4, 5].map(s => (
-                              <Star key={s} size={16} className={s <= review.rating ? "text-yellow-400 fill-yellow-400" : "text-gray-200"} />
-                          ))}
-                      </div>
-                      <p className="font-bold text-gray-800 text-sm">{review.orders?.customer_name || "Cliente"}</p>
-                      <div className="flex items-center gap-1 text-xs text-gray-400 mt-1">
-                          <Calendar size={10}/> {formatDate(review.created_at)}
-                      </div>
-                      <div className="mt-2 inline-block bg-gray-100 text-gray-500 text-[10px] px-2 py-0.5 rounded font-mono">
-                          Pedido #{review.orders?.id.slice(0,4)}
-                      </div>
-                  </div>
-
-                  {/* DIREITA: COMENTÁRIO (CORRIGIDO) */}
-                  <div className="flex-1 border-l border-gray-100 md:pl-6 pt-4 md:pt-0">
-                      {review.comment ? (
-                          <div className="flex gap-3">
-                              {/* Ícone de Citação agora é flex item, não absolute (evita bugs visuais) */}
-                              <Quote className="text-gray-200 flex-shrink-0 fill-gray-100" size={24}/>
-                              <div>
-                                  {/* whitespace-pre-wrap: Mantém quebras de linha se o cliente der enter */}
-                                  <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap font-medium">
-                                      {review.comment}
-                                  </p>
-                              </div>
-                          </div>
-                      ) : (
-                          <p className="text-gray-300 text-sm italic">O cliente não deixou comentário, apenas a nota.</p>
-                      )}
-                      
-                      {review.rating === 5 && (
-                          <div className="mt-4 ml-9 flex items-center gap-2 text-green-600 text-xs font-bold bg-green-50 px-3 py-1 rounded-full w-fit">
-                              <ThumbsUp size={12}/> Cliente muito satisfeito!
-                          </div>
-                      )}
-                  </div>
-              </div>
-          ))}
+      <div className="mt-6 space-y-4">
+        {Array.from({ length: 3 }).map((_, index) => (
+          <div key={index} className="surface-card h-40 rounded-[28px]" />
+        ))}
       </div>
     </div>
-  )
+  );
+}
+
+export default function ReviewsPage() {
+  const router = useRouter();
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  );
+
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [filter, setFilter] = useState<(typeof REVIEW_FILTERS)[number]["id"]>("all");
+
+  useEffect(() => {
+    fetchReviews();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const fetchReviews = async () => {
+    try {
+      const { restaurant, user } = await getCurrentRestaurant(supabase);
+      if (!user) return router.push("/admin/login");
+      if (!restaurant) {
+        setErrorMsg("Nao foi possivel localizar a loja.");
+        return;
+      }
+
+      const { data, error } = await (supabase as any)
+        .from("reviews")
+        .select("id, rating, comment, created_at, orders (id, customer_name)")
+        .eq("restaurant_id", restaurant.id)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        setErrorMsg(error.message);
+        return;
+      }
+
+      setReviews((data || []) as Review[]);
+    } catch (error) {
+      console.error(error);
+      setErrorMsg("Erro ao carregar as reviews.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const stats = useMemo(() => {
+    if (reviews.length === 0) {
+      return {
+        average: 0,
+        total: 0,
+        breakdown: [0, 0, 0, 0, 0],
+        positiveRate: 0,
+      };
+    }
+
+    const total = reviews.length;
+    const average = reviews.reduce((sum, review) => sum + review.rating, 0) / total;
+    const positiveCount = reviews.filter((review) => review.rating >= 4).length;
+    const breakdown = [0, 0, 0, 0, 0];
+
+    reviews.forEach((review) => {
+      if (review.rating >= 1 && review.rating <= 5) {
+        breakdown[review.rating - 1] += 1;
+      }
+    });
+
+    return {
+      average,
+      total,
+      breakdown,
+      positiveRate: (positiveCount / total) * 100,
+    };
+  }, [reviews]);
+
+  const visibleReviews = useMemo(() => {
+    if (filter === "all") return reviews;
+    if (filter === "positive") return reviews.filter((review) => review.rating >= 4);
+    if (filter === "neutral") return reviews.filter((review) => review.rating === 3);
+    return reviews.filter((review) => review.rating <= 2);
+  }, [filter, reviews]);
+
+  if (loading) {
+    return <ReviewsSkeleton />;
+  }
+
+  if (errorMsg) {
+    return (
+      <div className="rounded-[28px] border border-red-200 bg-red-50 px-6 py-5 text-red-700">
+        {errorMsg}
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-6xl">
+      <div className="mb-8 flex items-center gap-4">
+        <div className="brand-gradient flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-sm">
+          <Star size={24} />
+        </div>
+        <div>
+          <h1 className="text-3xl font-black tracking-tight text-gray-950">Avaliacoes</h1>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            Leia o sentimento dos clientes e acompanhe a reputacao da operacao.
+          </p>
+        </div>
+      </div>
+
+      <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="surface-card overflow-hidden rounded-[28px] p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-gray-500">Nota media</p>
+              <div className="mt-4 flex items-end gap-3">
+                <p className="text-6xl font-black text-gray-950">{stats.average.toFixed(1)}</p>
+                <div className="mb-2 flex gap-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star
+                      key={star}
+                      size={18}
+                      className={star <= Math.round(stats.average) ? "fill-yellow-400 text-yellow-400" : "text-gray-200"}
+                    />
+                  ))}
+                </div>
+              </div>
+              <p className="mt-3 text-sm text-gray-500">{stats.total} avaliacoes recebidas</p>
+            </div>
+            <div className="rounded-2xl bg-[#fff2ea] p-3 text-[var(--brand)]">
+              <Sparkles size={18} />
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-3 md:grid-cols-2">
+            <div className="rounded-[22px] bg-[#fcfaf7] px-4 py-4">
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-gray-400">Taxa positiva</p>
+              <p className="mt-2 text-2xl font-black text-gray-950">{stats.positiveRate.toFixed(0)}%</p>
+            </div>
+            <div className="rounded-[22px] bg-[#fcfaf7] px-4 py-4">
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-gray-400">Media por pedido</p>
+              <p className="mt-2 inline-flex items-center gap-2 text-2xl font-black text-gray-950">
+                <TrendingUp size={18} className="text-emerald-600" />
+                {stats.average.toFixed(1)}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="surface-card rounded-[28px] p-6">
+          <p className="text-sm font-medium text-gray-500">Distribuicao das notas</p>
+          <div className="mt-6 space-y-4">
+            {[5, 4, 3, 2, 1].map((star) => {
+              const count = stats.breakdown[star - 1];
+              const width = stats.total > 0 ? (count / stats.total) * 100 : 0;
+
+              return (
+                <div key={star} className="grid grid-cols-[58px_1fr_42px] items-center gap-4 text-sm">
+                  <div className="inline-flex items-center gap-2 font-bold text-gray-700">
+                    <span>{star}</span>
+                    <Star size={14} className="fill-yellow-400 text-yellow-400" />
+                  </div>
+                  <div className="h-3 overflow-hidden rounded-full bg-[#f3ebe4]">
+                    <div className="h-full rounded-full bg-[var(--brand)]" style={{ width: `${width}%` }} />
+                  </div>
+                  <span className="text-right text-gray-400">{count}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      <section className="surface-card mt-6 rounded-[28px] p-5 md:p-6">
+        <div className="flex flex-wrap gap-2">
+          {REVIEW_FILTERS.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setFilter(item.id)}
+              className={`rounded-full px-4 py-2 text-sm font-bold transition-colors ${
+                filter === item.id
+                  ? "bg-[#171311] text-white"
+                  : "border border-[var(--line)] bg-white text-gray-600"
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-6 space-y-4">
+          {visibleReviews.length === 0 ? (
+            <div className="rounded-[24px] border border-dashed border-[var(--line)] bg-white px-6 py-16 text-center text-sm text-gray-500">
+              Nenhuma avaliacao encontrada para este filtro.
+            </div>
+          ) : (
+            visibleReviews.map((review) => (
+              <div key={review.id} className="overflow-hidden rounded-[24px] border border-[var(--line)] bg-white">
+                <div className="flex flex-col gap-4 border-b border-[var(--line)] px-6 py-5 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="rounded-2xl bg-[#fcfaf7] px-4 py-3">
+                      <div className="flex gap-1">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Star
+                            key={star}
+                            size={16}
+                            className={star <= review.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-200"}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="font-bold text-gray-950">{review.orders?.customer_name || "Cliente"}</p>
+                      <p className="mt-1 text-xs text-gray-400">{formatDate(review.created_at)}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    {review.orders?.id ? (
+                      <span className="inline-flex rounded-full bg-[#f8f3ec] px-3 py-1 text-xs font-bold text-gray-500">
+                        Pedido #{review.orders.id.slice(0, 4)}
+                      </span>
+                    ) : null}
+                    <span className="inline-flex rounded-full bg-[#fff4dc] px-3 py-1 text-xs font-bold text-[#a56b00]">
+                      {review.rating} estrela{review.rating > 1 ? "s" : ""}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="px-6 py-5">
+                  {review.comment ? (
+                    <div className="flex gap-3 rounded-[20px] bg-[#fcfaf7] px-5 py-4">
+                      <MessageSquareQuote className="mt-0.5 flex-shrink-0 text-[var(--brand)]" size={18} />
+                      <p className="whitespace-pre-wrap text-sm leading-7 text-gray-700">{review.comment}</p>
+                    </div>
+                  ) : (
+                    <p className="rounded-[20px] bg-[#fcfaf7] px-5 py-4 text-sm italic text-gray-400">
+                      O cliente deixou apenas a nota, sem comentario.
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
+    </div>
+  );
 }

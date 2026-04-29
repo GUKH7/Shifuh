@@ -1,126 +1,492 @@
-"use client"
+"use client";
 
-import { useState } from 'react'
-import { createBrowserClient } from '@supabase/ssr'
-import { useRouter } from 'next/navigation'
-import { Store, Loader2, ArrowRight } from 'lucide-react'
+import { useEffect, useMemo, useState } from "react";
+import { createBrowserClient } from "@supabase/ssr";
+import { useRouter } from "next/navigation";
+import {
+  Copy,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  History,
+  MessageCircle,
+  Search,
+} from "lucide-react";
+import { getCurrentRestaurant } from "@/lib/supabase/restaurant";
+import { PERIOD_OPTIONS, PeriodKey, isWithinPeriod } from "@/lib/admin-period";
+import { useToast } from "@/components/ui/toast-provider";
 
-export default function AdminLogin() {
-  const router = useRouter()
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+type HistoryOrder = {
+  id: string;
+  customer_name: string;
+  customer_phone: string;
+  total: number;
+  subtotal: number;
+  delivery_fee: number;
+  discount: number;
+  status: "pending" | "preparing" | "delivering" | "done" | "canceled";
+  payment_method: string;
+  created_at: string;
+};
 
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [restaurantName, setRestaurantName] = useState('')
-  const [restaurantSlug, setRestaurantSlug] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [isRegistering, setIsRegistering] = useState(false)
-  const [errorMsg, setErrorMsg] = useState('')
+const FILTERS = [
+  { id: "all", label: "Todos" },
+  { id: "pending", label: "Em aberto" },
+  { id: "done", label: "Concluidos" },
+  { id: "canceled", label: "Cancelados" },
+];
 
-  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newName = e.target.value
-    setRestaurantName(newName)
-    setRestaurantSlug(newName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''))
+const PAGE_SIZE = 20;
+
+function formatMoney(value: number) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(value);
+}
+
+function formatHour(date: string) {
+  return new Date(date).toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatDate(date: string) {
+  return new Date(date).toLocaleDateString("pt-BR");
+}
+
+function getDayLabel(date: string) {
+  const target = new Date(date);
+  const now = new Date();
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+
+  const sameDay =
+    target.getFullYear() === now.getFullYear() &&
+    target.getMonth() === now.getMonth() &&
+    target.getDate() === now.getDate();
+
+  if (sameDay) return "Hoje";
+
+  const isYesterday =
+    target.getFullYear() === yesterday.getFullYear() &&
+    target.getMonth() === yesterday.getMonth() &&
+    target.getDate() === yesterday.getDate();
+
+  if (isYesterday) return "Ontem";
+
+  return target.toLocaleDateString("pt-BR", {
+    weekday: "long",
+    day: "2-digit",
+    month: "2-digit",
+  });
+}
+
+function getStatusLabel(status: HistoryOrder["status"]) {
+  switch (status) {
+    case "pending":
+      return "Confirmado";
+    case "preparing":
+      return "Em preparo";
+    case "delivering":
+      return "Em rota";
+    case "done":
+      return "Concluido";
+    case "canceled":
+      return "Cancelado";
+    default:
+      return status;
   }
+}
 
-  const handleAuth = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setErrorMsg('')
-
-    try {
-      if (isRegistering) {
-        if (!restaurantName.trim() || !restaurantSlug.trim()) {
-          throw new Error("Preencha o nome e o link da sua loja.")
-        }
-
-        const { data: existingSlug } = await supabase.from('restaurants').select('id').eq('slug', restaurantSlug).maybeSingle()
-        if (existingSlug) throw new Error("Este link já está em uso.")
-
-        // 1. Cria usuário
-        const { data: authData, error: authError } = await supabase.auth.signUp({ email, password })
-        if (authError) throw authError
-
-        // 2. Cria loja vinculada ao usuário
-        if (authData.user) {
-          const { error: dbError } = await supabase.from('restaurants').insert({
-            name: restaurantName.trim(),
-            slug: restaurantSlug.trim(),
-            user_id: authData.user.id
-          })
-          if (dbError) throw dbError
-          
-          router.push('/admin') // Vai direto pro painel
-        }
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password })
-        if (error) throw error
-        router.push('/admin')
-      }
-    } catch (error: any) {
-      setErrorMsg(error.message || 'Ocorreu um erro. Tente novamente.')
-    } finally {
-      setLoading(false)
-    }
+function getStatusClasses(status: HistoryOrder["status"]) {
+  switch (status) {
+    case "done":
+      return "bg-emerald-100 text-emerald-700";
+    case "canceled":
+      return "bg-red-100 text-red-700";
+    case "preparing":
+      return "bg-amber-100 text-amber-700";
+    case "delivering":
+      return "bg-blue-100 text-blue-700";
+    default:
+      return "bg-gray-100 text-gray-700";
   }
+}
 
+function exportCsv(rows: HistoryOrder[]) {
+  const header = ["Data", "Hora", "Pedido", "Cliente", "Telefone", "Situacao", "Pagamento", "Subtotal", "Entrega", "Desconto", "Total"];
+  const lines = rows.map((order) => [
+    formatDate(order.created_at),
+    formatHour(order.created_at),
+    order.id.slice(0, 4),
+    order.customer_name,
+    order.customer_phone,
+    getStatusLabel(order.status),
+    order.payment_method,
+    Number(order.subtotal || 0).toFixed(2),
+    Number(order.delivery_fee || 0).toFixed(2),
+    Number(order.discount || 0).toFixed(2),
+    Number(order.total || 0).toFixed(2),
+  ]);
+
+  const csv = [header, ...lines]
+    .map((line) => line.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(","))
+    .join("\n");
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = "historico-pedidos.csv";
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function HistorySkeleton() {
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <div className="mx-auto w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mb-6 shadow-sm">
-          <Store className="text-red-600 w-8 h-8" />
+    <div className="mx-auto max-w-6xl animate-pulse">
+      <div className="mb-8 flex items-center gap-4">
+        <div className="h-14 w-14 rounded-2xl bg-white" />
+        <div className="space-y-3">
+          <div className="h-6 w-40 rounded-full bg-white" />
+          <div className="h-4 w-72 rounded-full bg-white" />
         </div>
-        <h2 className="text-3xl font-extrabold text-gray-900">
-          {isRegistering ? 'Crie sua loja digital' : 'Painel do Lojista'}
-        </h2>
       </div>
-
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow-xl sm:rounded-2xl sm:px-10 border border-gray-100">
-          {errorMsg && <div className="mb-6 bg-red-50 text-red-600 px-4 py-3 rounded-xl text-sm font-medium text-center">{errorMsg}</div>}
-
-          <form className="space-y-5" onSubmit={handleAuth}>
-            {isRegistering && (
-              <>
-                <div>
-                  <label className="block text-sm font-bold text-gray-700">Nome do seu Negócio</label>
-                  <input type="text" required value={restaurantName} onChange={handleNameChange} className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-red-500 focus:border-red-500" placeholder="Ex: Burger House" />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-gray-700">Link do seu Cardápio</label>
-                  <div className="mt-1 flex shadow-sm rounded-xl">
-                    <span className="inline-flex items-center px-3 rounded-l-xl border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">whatsmenu.com/</span>
-                    <input type="text" required value={restaurantSlug} onChange={(e) => setRestaurantSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))} className="flex-1 block w-full px-4 py-3 border border-gray-300 rounded-r-xl focus:ring-red-500 focus:border-red-500" />
-                  </div>
-                </div>
-              </>
-            )}
-
-            <div>
-              <label className="block text-sm font-bold text-gray-700">Email</label>
-              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-red-500 focus:border-red-500" placeholder="seu@email.com" />
-            </div>
-
-            <div>
-              <label className="block text-sm font-bold text-gray-700">Senha</label>
-              <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-red-500 focus:border-red-500" placeholder="••••••••" />
-            </div>
-
-            <button type="submit" disabled={loading} className="w-full flex justify-center items-center gap-2 py-3.5 px-4 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 transition-all">
-              {loading ? <Loader2 className="animate-spin w-5 h-5" /> : <>{isRegistering ? 'Criar Loja e Entrar' : 'Entrar no Painel'} <ArrowRight className="w-5 h-5" /></>}
-            </button>
-          </form>
-
-          <div className="mt-8 pt-6 border-t border-gray-100 text-center">
-            <button onClick={() => { setIsRegistering(!isRegistering); setErrorMsg(''); }} className="text-sm font-bold text-gray-600 hover:text-red-600 transition-colors">
-              {isRegistering ? 'Já tem uma conta? Faça login.' : 'Ainda não tem loja? Crie uma conta.'}
-            </button>
-          </div>
+      <div className="surface-card rounded-[28px] p-6">
+        <div className="h-12 rounded-2xl bg-white" />
+        <div className="mt-6 space-y-3">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <div key={index} className="h-16 rounded-2xl bg-white" />
+          ))}
         </div>
       </div>
     </div>
-  )
+  );
+}
+
+export default function HistoryPage() {
+  const router = useRouter();
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  );
+
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [orders, setOrders] = useState<HistoryOrder[]>([]);
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState("all");
+  const [period, setPeriod] = useState<PeriodKey>("30d");
+  const [page, setPage] = useState(1);
+  const { showToast } = useToast();
+
+  useEffect(() => {
+    fetchHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const fetchHistory = async () => {
+    try {
+      const { restaurant, user } = await getCurrentRestaurant(supabase);
+      if (!user) return router.push("/admin/login");
+      if (!restaurant) {
+        setErrorMsg("Nao foi possivel localizar a loja.");
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("orders")
+        .select("id, customer_name, customer_phone, total, subtotal, delivery_fee, discount, status, payment_method, created_at")
+        .eq("restaurant_id", restaurant.id)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        setErrorMsg(error.message);
+        return;
+      }
+
+      setOrders((data || []) as HistoryOrder[]);
+    } catch (error) {
+      console.error(error);
+      setErrorMsg("Erro ao carregar o historico.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const visibleOrders = useMemo(() => {
+    const term = query.trim().toLowerCase();
+
+    return orders.filter((order) => {
+      const matchesPeriod = isWithinPeriod(order.created_at, period);
+      const matchesFilter =
+        filter === "all"
+          ? true
+          : filter === "pending"
+            ? ["pending", "preparing", "delivering"].includes(order.status)
+            : order.status === filter;
+
+      const matchesSearch =
+        term.length === 0
+          ? true
+          : order.id.toLowerCase().includes(term) ||
+            order.customer_name.toLowerCase().includes(term) ||
+            order.customer_phone.toLowerCase().includes(term);
+
+      return matchesPeriod && matchesFilter && matchesSearch;
+    });
+  }, [filter, orders, period, query]);
+
+  const totalPages = Math.max(1, Math.ceil(visibleOrders.length / PAGE_SIZE));
+  const paginatedOrders = visibleOrders.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const groupedOrders = useMemo(() => {
+    const groups: Array<{
+      key: string;
+      label: string;
+      orders: HistoryOrder[];
+      total: number;
+    }> = [];
+
+    paginatedOrders.forEach((order) => {
+      const key = formatDate(order.created_at);
+      const lastGroup = groups[groups.length - 1];
+
+      if (!lastGroup || lastGroup.key !== key) {
+        groups.push({
+          key,
+          label: getDayLabel(order.created_at),
+          orders: [order],
+          total: Number(order.status === "canceled" ? 0 : order.total || 0),
+        });
+        return;
+      }
+
+      lastGroup.orders.push(order);
+      lastGroup.total += Number(order.status === "canceled" ? 0 : order.total || 0);
+    });
+
+    return groups;
+  }, [paginatedOrders]);
+
+  const summary = useMemo(() => {
+    const totalSales = visibleOrders
+      .filter((order) => order.status !== "canceled")
+      .reduce((sum, order) => sum + Number(order.total || 0), 0);
+    return {
+      count: visibleOrders.length,
+      value: totalSales,
+    };
+  }, [visibleOrders]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [query, filter, period]);
+
+  const handleCopyOrder = async (orderId: string) => {
+    try {
+      await navigator.clipboard.writeText(orderId);
+      showToast({
+        title: "Pedido copiado",
+        description: "O identificador completo foi copiado para a area de transferencia.",
+        tone: "success",
+      });
+    } catch (error) {
+      showToast({
+        title: "Nao foi possivel copiar",
+        description: "Tente novamente em alguns segundos.",
+        tone: "error",
+      });
+    }
+  };
+
+  if (loading) return <HistorySkeleton />;
+
+  if (errorMsg) {
+    return (
+      <div className="rounded-[28px] border border-red-200 bg-red-50 px-6 py-5 text-red-700">
+        {errorMsg}
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-6xl">
+      <div className="mb-8 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="brand-gradient flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-sm">
+            <History size={24} />
+          </div>
+          <div>
+            <h1 className="text-3xl font-black tracking-tight text-gray-950">Pedidos</h1>
+            <p className="mt-1 text-sm text-[var(--muted)]">
+              Consulte todo o historico da operacao da sua loja.
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => exportCsv(visibleOrders)}
+          className="inline-flex items-center gap-2 rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700"
+        >
+          <Download size={16} />
+          Exportar
+        </button>
+      </div>
+
+      <section className="surface-card rounded-[28px] p-5 md:p-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+          <div className="flex flex-1 items-center gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
+            <Search size={18} className="text-gray-400" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Digite o numero do pedido, cliente ou telefone"
+              className="w-full bg-transparent text-sm outline-none placeholder:text-gray-400"
+            />
+          </div>
+        </div>
+
+        <div className="mt-5 flex flex-wrap gap-2">
+          {FILTERS.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setFilter(item.id)}
+              className={`rounded-full px-4 py-2 text-sm font-bold transition-colors ${
+                filter === item.id
+                  ? "bg-[#171311] text-white"
+                  : "border border-[var(--line)] bg-white text-gray-600"
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          {PERIOD_OPTIONS.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setPeriod(item.id)}
+              className={`rounded-full px-4 py-2 text-sm font-bold transition-colors ${
+                period === item.id
+                  ? "bg-[var(--brand-soft)] text-[var(--brand)]"
+                  : "border border-[var(--line)] bg-white text-gray-600"
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-8 overflow-hidden rounded-[24px] border border-[var(--line)] bg-white">
+          <div className="grid grid-cols-[88px_1.1fr_1fr_0.9fr_0.9fr_140px_132px] gap-4 border-b border-[var(--line)] px-6 py-4 text-xs font-bold uppercase tracking-[0.16em] text-gray-400">
+            <span>Horario</span>
+            <span>Pedido</span>
+            <span>Cliente</span>
+            <span>Situacao</span>
+            <span>Valor da venda</span>
+            <span className="text-right">Liquido</span>
+            <span className="text-right">Acoes</span>
+          </div>
+
+          <div className="border-b border-[var(--line)] bg-[#fcfaf7] px-6 py-4 text-sm text-gray-500">
+            <span className="font-bold text-gray-950">{summary.count} pedidos</span>
+            <span> • Valor das vendas de {formatMoney(summary.value)}</span>
+          </div>
+
+          <div className="divide-y divide-[var(--line)]">
+            {paginatedOrders.length === 0 ? (
+              <div className="px-6 py-16 text-center text-sm text-gray-500">
+                Nenhum pedido encontrado para este filtro.
+              </div>
+            ) : (
+              groupedOrders.map((group) => (
+                <div key={group.key}>
+                  <div className="flex items-center justify-between border-b border-[var(--line)] bg-[#fcfaf7] px-6 py-3 text-sm">
+                    <div className="flex items-center gap-3">
+                      <span className="font-bold text-gray-950">{group.label}</span>
+                      <span className="text-gray-400">{group.orders.length} pedidos</span>
+                    </div>
+                    <span className="font-semibold text-gray-500">
+                      Valor das vendas de {formatMoney(group.total)}
+                    </span>
+                  </div>
+
+                  {group.orders.map((order) => (
+                    <div
+                      key={order.id}
+                      className="grid grid-cols-[88px_1.1fr_1fr_0.9fr_0.9fr_140px_132px] gap-4 px-6 py-5 text-sm text-gray-700"
+                    >
+                      <div className="font-bold text-gray-950">{formatHour(order.created_at)}</div>
+                      <div>
+                        <p className="font-bold text-gray-950">#{order.id.slice(0, 4)}</p>
+                        <p className="mt-1 text-xs text-gray-400">{formatDate(order.created_at)}</p>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-950">{order.customer_name}</p>
+                        <p className="mt-1 text-xs text-gray-400">{order.customer_phone}</p>
+                      </div>
+                      <div>
+                        <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${getStatusClasses(order.status)}`}>
+                          {getStatusLabel(order.status)}
+                        </span>
+                      </div>
+                      <div className="font-semibold text-gray-950">{formatMoney(Number(order.total || 0))}</div>
+                      <div className="text-right font-semibold text-gray-700">
+                        {formatMoney(Number(order.total || 0) - Number(order.discount || 0))}
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={() => handleCopyOrder(order.id)}
+                          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--line)] bg-white text-gray-600"
+                          title="Copiar ID do pedido"
+                        >
+                          <Copy size={15} />
+                        </button>
+                        <button
+                          onClick={() => window.open(`https://wa.me/${order.customer_phone.replace(/\D/g, "")}`, "_blank")}
+                          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700"
+                          title="Abrir WhatsApp"
+                        >
+                          <MessageCircle size={15} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ))
+            )}
+          </div>
+
+          {visibleOrders.length > PAGE_SIZE && (
+            <div className="flex items-center justify-between border-t border-[var(--line)] px-6 py-4 text-sm text-gray-500">
+              <p>
+                Pagina {page} de {totalPages}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  disabled={page === 1}
+                  className="inline-flex items-center gap-2 rounded-xl border border-[var(--line)] bg-white px-3 py-2 font-semibold disabled:opacity-50"
+                >
+                  <ChevronLeft size={16} />
+                  Anterior
+                </button>
+                <button
+                  onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                  disabled={page === totalPages}
+                  className="inline-flex items-center gap-2 rounded-xl border border-[var(--line)] bg-white px-3 py-2 font-semibold disabled:opacity-50"
+                >
+                  Proxima
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+    </div>
+  );
 }

@@ -1,0 +1,480 @@
+import { NextResponse } from "next/server";
+import { calculateDeliveryFee, calculateDistance, getCoordinates } from "@/lib/geo";
+import { createClient } from "@/lib/supabase/server";
+
+type CheckoutAddress = {
+  cep?: string;
+  street?: string;
+  number?: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
+  complement?: string;
+};
+
+type CheckoutAddon = {
+  groupId?: string;
+  name: string;
+};
+
+type CheckoutItem = {
+  productId: string;
+  quantity: number;
+  selectedAddons?: CheckoutAddon[];
+  observation?: string;
+};
+
+type CheckoutPayload = {
+  restaurantId?: string;
+  customerName?: string;
+  customerPhone?: string;
+  address?: CheckoutAddress;
+  paymentMethod?: string;
+  changeFor?: string;
+  couponCode?: string;
+  cart?: CheckoutItem[];
+  usingSavedAddress?: boolean;
+  clientCoords?: { lat: number; lon: number } | null;
+  deliveryPreview?: { price: number; time: number; distance: number; valid: boolean } | null;
+};
+
+function roundMoney(value: number) {
+  return Math.round(value * 100) / 100;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function normalizeAddress(address: CheckoutAddress = {}) {
+  return {
+    cep: address.cep?.trim() || "",
+    street: address.street?.trim() || "",
+    number: address.number?.trim() || "",
+    neighborhood: address.neighborhood?.trim() || "",
+    city: address.city?.trim() || "",
+    state: address.state?.trim() || "",
+    complement: address.complement?.trim() || "",
+  };
+}
+
+function buildAddressQuery(address: ReturnType<typeof normalizeAddress>) {
+  return [
+    address.cep,
+    address.street,
+    address.number,
+    address.neighborhood,
+    address.city,
+    address.state,
+    "Brasil",
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
+
+function parseNumber(value: unknown) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function resolveAddonSelection(selectedAddons: CheckoutAddon[], productAddons: unknown) {
+  if (!Array.isArray(selectedAddons) || selectedAddons.length === 0) {
+    return {
+      normalized: [] as Array<{ groupId?: string; name: string; price: number }>,
+      addonTotal: 0,
+    };
+  }
+
+  const groups = Array.isArray(productAddons) ? productAddons : [];
+  const normalized: Array<{ groupId?: string; name: string; price: number }> = [];
+  let addonTotal = 0;
+
+  for (const selected of selectedAddons) {
+    if (!selected?.name) continue;
+
+    let matchedOption: Record<string, unknown> | undefined;
+
+    if (selected.groupId) {
+      const group = groups.find(
+        (item) => isRecord(item) && String(item.id ?? "") === selected.groupId,
+      ) as Record<string, unknown> | undefined;
+      const options = Array.isArray(group?.options) ? group.options : [];
+      matchedOption = options.find(
+        (option) => isRecord(option) && String(option.name ?? "") === selected.name,
+      ) as Record<string, unknown> | undefined;
+    } else {
+      for (const group of groups) {
+        if (!isRecord(group)) continue;
+        const options = Array.isArray(group.options) ? group.options : [];
+        const option = options.find(
+          (candidate) => isRecord(candidate) && String(candidate.name ?? "") === selected.name,
+        ) as Record<string, unknown> | undefined;
+        if (option) {
+          matchedOption = option;
+          break;
+        }
+      }
+    }
+
+    if (!matchedOption) {
+      throw new Error(`Complemento invalido: ${selected.name}`);
+    }
+
+    const optionPrice = parseNumber(matchedOption.price);
+    addonTotal += optionPrice;
+    normalized.push({
+      groupId: selected.groupId,
+      name: selected.name,
+      price: optionPrice,
+    });
+  }
+
+  return {
+    normalized,
+    addonTotal: roundMoney(addonTotal),
+  };
+}
+
+function hasCurrentUser(user: { id: string } | null) {
+  return Boolean(user?.id);
+}
+
+export async function POST(request: Request) {
+  try {
+    const body = (await request.json()) as CheckoutPayload;
+    const address = normalizeAddress(body.address);
+    const cart = Array.isArray(body.cart) ? body.cart : [];
+
+    if (!body.restaurantId) {
+      return NextResponse.json({ error: "Loja invalida." }, { status: 400 });
+    }
+
+    if (!body.customerName?.trim() || !body.customerPhone?.trim()) {
+      return NextResponse.json({ error: "Preencha os dados do cliente." }, { status: 400 });
+    }
+
+    if (!address.street || !address.number || !address.neighborhood) {
+      return NextResponse.json({ error: "Informe o endereco de entrega." }, { status: 400 });
+    }
+
+    if (cart.length === 0) {
+      return NextResponse.json({ error: "Seu carrinho esta vazio." }, { status: 400 });
+    }
+
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const { data: restaurant, error: restaurantError } = await supabase
+      .from("restaurants")
+      .select(
+        "id, name, phone, whatsapp_number, latitude, longitude, address_street, address_number, address_neighborhood, address_city, address_state, delivery_tiers",
+      )
+      .eq("id", body.restaurantId)
+      .maybeSingle();
+
+    if (restaurantError || !restaurant) {
+      return NextResponse.json({ error: "Loja nao encontrada." }, { status: 404 });
+    }
+
+    const productIds = cart.map((item) => item.productId).filter(Boolean);
+    const { data: products, error: productsError } = await supabase
+      .from("products")
+      .select("id, name, price, is_active, restaurant_id, addons")
+      .eq("restaurant_id", restaurant.id)
+      .in("id", productIds);
+
+    if (productsError || !products) {
+      return NextResponse.json(
+        { error: "Nao foi possivel validar os produtos." },
+        { status: 400 },
+      );
+    }
+
+    const productsById = new Map(products.map((product) => [product.id, product]));
+    const normalizedItems: Array<{
+      product_name: string;
+      quantity: number;
+      price: number;
+      observation: string | null;
+      addons: Array<{ groupId?: string; name: string; price: number }>;
+      lineTotal: number;
+    }> = [];
+
+    let subtotal = 0;
+
+    for (const item of cart) {
+      const quantity = Math.max(1, Math.floor(Number(item.quantity) || 1));
+      const product = productsById.get(item.productId);
+
+      if (!product || !product.is_active) {
+        return NextResponse.json(
+          { error: "Um dos itens do carrinho nao esta mais disponivel." },
+          { status: 400 },
+        );
+      }
+
+      const { normalized, addonTotal } = resolveAddonSelection(
+        Array.isArray(item.selectedAddons) ? item.selectedAddons : [],
+        product.addons,
+      );
+
+      const unitPrice = roundMoney(Number(product.price) + addonTotal);
+      const lineTotal = roundMoney(unitPrice * quantity);
+      subtotal += lineTotal;
+
+      normalizedItems.push({
+        product_name: product.name,
+        quantity,
+        price: unitPrice,
+        observation: item.observation?.trim() || null,
+        addons: normalized,
+        lineTotal,
+      });
+    }
+
+    subtotal = roundMoney(subtotal);
+
+    let discount = 0;
+    let appliedCouponCode: string | null = null;
+
+    if (body.couponCode?.trim()) {
+      const couponCode = body.couponCode.trim().toUpperCase();
+      const { data: coupon, error: couponError } = await (supabase as any)
+        .from("coupons")
+        .select("*")
+        .eq("restaurant_id", restaurant.id)
+        .eq("code", couponCode)
+        .eq("active", true)
+        .maybeSingle();
+
+      if (couponError || !coupon) {
+        return NextResponse.json({ error: "Cupom invalido." }, { status: 400 });
+      }
+
+      if (coupon.expires_at && new Date(coupon.expires_at).getTime() < Date.now()) {
+        return NextResponse.json({ error: "Este cupom expirou." }, { status: 400 });
+      }
+
+      if (coupon.usage_limit) {
+        const { count } = await supabase
+          .from("orders")
+          .select("id", { count: "exact", head: true })
+          .eq("restaurant_id", restaurant.id)
+          .eq("coupon_code", coupon.code);
+
+        if ((count || 0) >= Number(coupon.usage_limit)) {
+          return NextResponse.json(
+            { error: "Este cupom atingiu o limite de uso." },
+            { status: 400 },
+          );
+        }
+      }
+
+      appliedCouponCode = coupon.code;
+      if (coupon.discount_type === "percent") {
+        discount = subtotal * (Number(coupon.value) / 100);
+      } else {
+        discount = Number(coupon.value);
+      }
+      discount = Math.min(roundMoney(discount), subtotal);
+    }
+
+    let deliveryFee = 0;
+    let deliveryTime = 0;
+    let deliveryDistance: number | null = null;
+    let deliveryCalculated = false;
+    const tiers = Array.isArray(restaurant.delivery_tiers) ? restaurant.delivery_tiers : [];
+
+    let restaurantCoords =
+      restaurant.latitude !== null && restaurant.longitude !== null
+        ? { lat: Number(restaurant.latitude), lon: Number(restaurant.longitude) }
+        : null;
+
+    if (!restaurantCoords) {
+      const restaurantAddress = [
+        restaurant.address_street,
+        restaurant.address_number,
+        restaurant.address_neighborhood,
+        restaurant.address_city,
+        restaurant.address_state,
+        "Brasil",
+      ]
+        .filter(Boolean)
+        .join(", ");
+
+      if (restaurantAddress) {
+        restaurantCoords = await getCoordinates(restaurantAddress);
+      }
+    }
+
+    let clientCoords =
+      body.clientCoords &&
+      Number.isFinite(Number(body.clientCoords.lat)) &&
+      Number.isFinite(Number(body.clientCoords.lon))
+        ? {
+            lat: Number(body.clientCoords.lat),
+            lon: Number(body.clientCoords.lon),
+          }
+        : null;
+
+    if (!clientCoords) {
+      const addressQuery = buildAddressQuery(address);
+      if (addressQuery) {
+        clientCoords = await getCoordinates(addressQuery);
+      }
+    }
+
+    if (restaurantCoords && clientCoords) {
+      const distance = calculateDistance(
+        restaurantCoords.lat,
+        restaurantCoords.lon,
+        clientCoords.lat,
+        clientCoords.lon,
+      );
+      const fee = calculateDeliveryFee(distance, tiers);
+
+      deliveryDistance = distance;
+      deliveryTime = fee.time;
+      deliveryCalculated = true;
+
+      if (!fee.valid && tiers.length > 0) {
+        return NextResponse.json(
+          { error: "O endereco informado esta fora da area de entrega." },
+          { status: 400 },
+        );
+      }
+
+      deliveryFee = roundMoney(fee.price);
+    } else if (body.deliveryPreview?.valid) {
+      deliveryFee = roundMoney(Number(body.deliveryPreview.price) || 0);
+      deliveryTime = Number(body.deliveryPreview.time) || 0;
+      deliveryDistance = Number(body.deliveryPreview.distance) || null;
+    }
+
+    const total = roundMoney(subtotal + deliveryFee - discount);
+    const orderId = crypto.randomUUID();
+    const { data: latestDisplay } = await supabase
+      .from("orders")
+      .select("display_number")
+      .eq("restaurant_id", restaurant.id)
+      .order("display_number", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const displayNumber = String(Math.max(1, Number(latestDisplay?.display_number || 0) + 1))
+      .padStart(4, "0");
+
+    const { error: orderError } = await supabase.from("orders").insert({
+      id: orderId,
+      restaurant_id: restaurant.id,
+      user_id: user?.id || null,
+      customer_name: body.customerName.trim(),
+      customer_phone: body.customerPhone.trim(),
+      subtotal,
+      delivery_fee: deliveryFee,
+      discount,
+      total,
+      status: "pending",
+      payment_method: body.paymentMethod || "pix",
+      change_for: body.changeFor?.trim() || null,
+      coupon_code: appliedCouponCode,
+      display_number: Number(displayNumber),
+      address: {
+        ...address,
+        distance: deliveryDistance,
+        delivery_calculated: deliveryCalculated,
+      },
+    });
+
+    if (orderError) {
+      console.error("Erro ao inserir pedido:", orderError);
+      return NextResponse.json(
+        { error: orderError.message || "Nao foi possivel criar o pedido." },
+        { status: 400 },
+      );
+    }
+
+    const itemsToInsert = normalizedItems.map((item) => ({
+      order_id: orderId,
+      product_name: item.product_name,
+      quantity: item.quantity,
+      price: item.price,
+      observation: item.observation,
+      addons: item.addons,
+    }));
+
+    const { error: itemsError } = await supabase.from("order_items").insert(itemsToInsert);
+
+    if (itemsError) {
+      console.error("Erro ao inserir itens do pedido:", itemsError);
+      return NextResponse.json(
+        {
+          error:
+            itemsError.message || "Pedido criado sem itens. Revise as permissoes do banco.",
+        },
+        { status: 400 },
+      );
+    }
+
+    if (hasCurrentUser(user)) {
+      try {
+        await (supabase as any).from("profiles").upsert({
+          id: user!.id,
+          name: body.customerName.trim(),
+          phone: body.customerPhone.trim(),
+          updated_at: new Date().toISOString(),
+        });
+
+        if (!body.usingSavedAddress) {
+          await (supabase as any).from("customer_addresses").insert({
+            user_id: user!.id,
+            cep: address.cep,
+            street: address.street,
+            number: address.number,
+            neighborhood: address.neighborhood,
+            city: address.city,
+            state: address.state,
+            complement: address.complement,
+          });
+        }
+      } catch (profileError) {
+        console.error("Falha ao sincronizar perfil/endereco do cliente:", profileError);
+      }
+    }
+
+    try {
+      const { error: customerError } = await supabase.from("customers").insert({
+        restaurant_id: restaurant.id,
+        phone: body.customerPhone.trim(),
+        name: body.customerName.trim(),
+        address_json: address,
+      });
+
+      if (customerError && customerError.code !== "23505") {
+        console.error("Falha ao registrar cliente na agenda:", customerError);
+      }
+    } catch (customerError) {
+      console.error("Falha inesperada ao registrar cliente:", customerError);
+    }
+
+    return NextResponse.json({
+      orderId,
+      displayNumber,
+      restaurantPhone: restaurant.phone || restaurant.whatsapp_number || "",
+      subtotal,
+      deliveryFee,
+      deliveryTime,
+      deliveryDistance,
+      discount,
+      total,
+      paymentMethod: body.paymentMethod || "pix",
+      address,
+      items: normalizedItems,
+    });
+  } catch (error) {
+    console.error("Erro ao criar pedido:", error);
+    return NextResponse.json({ error: "Erro interno ao finalizar pedido." }, { status: 500 });
+  }
+}

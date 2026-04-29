@@ -1,111 +1,156 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
-import { createBrowserClient } from "@supabase/ssr"
-import { 
-  LayoutDashboard, 
-  UtensilsCrossed, 
-  ShoppingBag, 
-  Settings, 
-  LogOut, 
-  Store,
-  Ticket,
-  Users,
-  Star,
-  History,
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { createBrowserClient } from "@supabase/ssr";
+import {
   ChevronLeft,
-  ChevronRight
-} from "lucide-react"
+  ChevronRight,
+  ExternalLink,
+  History,
+  LayoutDashboard,
+  LogOut,
+  Percent,
+  Star,
+  Settings,
+  ShoppingBag,
+  Store,
+  UtensilsCrossed,
+  Users,
+} from "lucide-react";
+import { getCurrentRestaurant } from "@/lib/supabase/restaurant";
 
 const MENU_ITEMS = [
-  { name: "Visão Geral", href: "/admin", icon: LayoutDashboard },
-  { name: "Pedidos", href: "/admin/orders", icon: ShoppingBag }, 
-  { name: "Histórico", href: "/admin/history", icon: History },  
-  { name: "Cardápio", href: "/admin/menu", icon: UtensilsCrossed },
+  { name: "Inicio", href: "/admin", icon: LayoutDashboard },
+  { name: "Pedidos", href: "/admin/orders", icon: ShoppingBag },
+  { name: "Historico", href: "/admin/history", icon: History },
+  { name: "Cardapios", href: "/admin/menu", icon: UtensilsCrossed },
   { name: "Clientes", href: "/admin/clients", icon: Users },
-  { name: "Avaliações", href: "/admin/reviews", icon: Star },
-  { name: "Cupons", href: "/admin/coupons", icon: Ticket },
-  { name: "Configurações", href: "/admin/settings", icon: Settings },
-]
+  { name: "Cupons", href: "/admin/coupons", icon: Percent },
+  { name: "Reviews", href: "/admin/reviews", icon: Star },
+  { name: "Configuracoes", href: "/admin/settings", icon: Settings },
+];
 
-// Novas props para controlar o estado
 interface AdminSidebarProps {
   isCollapsed: boolean;
   toggleSidebar: () => void;
 }
 
 export default function AdminSidebar({ isCollapsed, toggleSidebar }: AdminSidebarProps) {
-  const pathname = usePathname()
-  const router = useRouter()
+  const pathname = usePathname();
+  const router = useRouter();
+  const [storeSlug, setStoreSlug] = useState("");
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  );
+
+  useEffect(() => {
+    const loadRestaurant = async () => {
+      const { restaurant } = await getCurrentRestaurant(supabase);
+      if (restaurant?.slug) setStoreSlug(restaurant.slug);
+    };
+
+    loadRestaurant();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push("/admin/login")
-  }
+    await supabase.auth.signOut();
+    router.push("/admin/login");
+  };
 
   return (
-    // A largura da sidebar muda com base no estado isCollapsed
-    <aside className={`fixed left-0 top-0 h-screen bg-white border-r border-gray-200 flex flex-col z-50 transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-64'}`}>
-      
-      {/* Botão de minimizar/expandir */}
-      <button 
+    <aside
+      className={`fixed left-0 top-0 z-50 flex h-screen flex-col border-r border-[var(--line)] bg-white transition-all duration-300 ${
+        isCollapsed ? "w-20" : "w-64"
+      }`}
+    >
+      <button
         onClick={toggleSidebar}
-        className="absolute -right-3 top-8 bg-white border border-gray-200 rounded-full p-1 text-gray-500 hover:text-red-600 hover:bg-red-50 shadow-sm transition-colors z-50"
+        className="absolute -right-3 top-8 z-50 rounded-full border border-[var(--line)] bg-white p-1 text-gray-500 shadow-sm transition-colors hover:bg-[var(--brand-soft)] hover:text-[var(--brand)]"
       >
         {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
       </button>
 
-      <div className={`p-6 border-b border-gray-100 flex items-center gap-3 ${isCollapsed ? 'justify-center px-2' : ''}`}>
-        <div className="bg-red-600 p-2 rounded-lg text-white shadow-md flex-shrink-0">
-          <Store size={20} />
+      <div className={`border-b border-[var(--line)] p-6 ${isCollapsed ? "px-2" : ""}`}>
+        <div className={`flex items-center gap-3 ${isCollapsed ? "justify-center" : ""}`}>
+          <div className="brand-gradient flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-white shadow-sm">
+            <Store size={18} />
+          </div>
+          {!isCollapsed && (
+            <div>
+              <p className="text-lg font-black tracking-tight text-gray-950">GESTOR.</p>
+              <p className="text-xs text-gray-500">Portal da loja</p>
+            </div>
+          )}
         </div>
-        {/* Esconde o texto da marca se minimizado */}
-        {!isCollapsed && (
-            <span className="font-bold text-gray-800 text-lg tracking-tight whitespace-nowrap overflow-hidden">Gestor Delivery</span>
-        )}
       </div>
 
-      <nav className={`flex-1 py-4 space-y-2 overflow-y-auto overflow-x-hidden ${isCollapsed ? 'px-2' : 'px-4'}`}>
-        {!isCollapsed && <p className="px-4 text-xs font-bold text-gray-400 uppercase mb-2 mt-2">Principal</p>}
-        {isCollapsed && <div className="h-6"></div> /* Espaçador para manter alinhamento quando recolhido */}
-        
-        {MENU_ITEMS.map((item) => {
-          const isActive = pathname === item.href
-          return (
-            <Link 
-                key={item.href} 
-                href={item.href} 
-                title={isCollapsed ? item.name : undefined} // Mostra tooltip nativo quando minimizado
-                className={`flex items-center rounded-xl transition-all font-medium text-sm cursor-pointer
-                    ${isCollapsed ? 'justify-center p-3' : 'gap-3 px-4 py-3'}
-                    ${isActive ? "bg-red-50 text-red-600 shadow-sm border border-red-100" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"}
-                `}
-            >
-              <item.icon size={20} className={`flex-shrink-0 ${isActive ? "text-red-600" : "text-gray-400"}`} />
-              {/* Esconde o nome do link se minimizado */}
-              {!isCollapsed && <span className="whitespace-nowrap">{item.name}</span>}
-            </Link>
-          )
-        })}
-      </nav>
+      <div className={`px-4 py-6 ${isCollapsed ? "px-2" : ""}`}>
+        {!isCollapsed && <p className="mb-3 px-3 text-xs font-bold uppercase tracking-[0.18em] text-gray-400">Operacao</p>}
+        <nav className="space-y-1.5">
+          {MENU_ITEMS.map((item) => {
+            const isActive = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                title={isCollapsed ? item.name : undefined}
+                className={`flex items-center rounded-2xl text-sm font-semibold transition-all ${
+                  isCollapsed ? "justify-center px-3 py-3" : "gap-3 px-4 py-3"
+                } ${
+                  isActive
+                    ? "bg-[var(--brand-soft)] text-[var(--brand)]"
+                    : "text-gray-600 hover:bg-[#faf5ef] hover:text-gray-950"
+                }`}
+              >
+                <item.icon size={19} className={isActive ? "text-[var(--brand)]" : "text-gray-400"} />
+                {!isCollapsed && <span>{item.name}</span>}
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
 
-      <div className="p-4 border-t border-gray-100">
-        <button 
-            onClick={handleLogout} 
-            title={isCollapsed ? "Sair" : undefined}
-            className={`flex items-center text-gray-500 hover:bg-red-50 hover:text-red-600 rounded-xl transition-all font-medium text-sm
-                ${isCollapsed ? 'justify-center p-3 w-full' : 'gap-3 px-4 py-3 w-full text-left'}
-            `}
+      <div className="mt-auto border-t border-[var(--line)] p-4">
+        {storeSlug ? (
+          <Link
+            href={`/${storeSlug}`}
+            target="_blank"
+            title={isCollapsed ? "Ver vitrine" : undefined}
+            className={`mb-2 flex w-full items-center rounded-2xl bg-[#171311] text-sm font-bold text-white transition-all hover:bg-black ${
+              isCollapsed ? "justify-center px-3 py-3" : "gap-3 px-4 py-3"
+            }`}
+          >
+            <ExternalLink size={18} />
+            {!isCollapsed && <span>Ver vitrine</span>}
+          </Link>
+        ) : (
+          <button
+            disabled
+            title={isCollapsed ? "Vitrine indisponivel" : undefined}
+            className={`mb-2 flex w-full cursor-not-allowed items-center rounded-2xl bg-gray-100 text-sm font-bold text-gray-400 ${
+              isCollapsed ? "justify-center px-3 py-3" : "gap-3 px-4 py-3"
+            }`}
+          >
+            <ExternalLink size={18} />
+            {!isCollapsed && <span>Ver vitrine</span>}
+          </button>
+        )}
+
+        <button
+          onClick={handleLogout}
+          title={isCollapsed ? "Sair" : undefined}
+          className={`flex w-full items-center rounded-2xl text-sm font-semibold text-gray-500 transition-all hover:bg-[#faf5ef] hover:text-gray-950 ${
+            isCollapsed ? "justify-center px-3 py-3" : "gap-3 px-4 py-3"
+          }`}
         >
-          <LogOut size={20} className="flex-shrink-0" /> 
+          <LogOut size={19} className="text-gray-400" />
           {!isCollapsed && <span>Sair</span>}
         </button>
       </div>
     </aside>
-  )
+  );
 }

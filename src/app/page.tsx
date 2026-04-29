@@ -1,123 +1,142 @@
-import Link from 'next/link'
-import { ArrowRight, CheckCircle, Smartphone, Store, TrendingUp, Zap } from 'lucide-react'
+import Link from "next/link";
+import { ArrowRight, BarChart3, ReceiptText, Smartphone, Store } from "lucide-react";
+
+const features = [
+  {
+    title: "Vitrine publica",
+    description: "Link unico para compartilhar no Instagram, Google e WhatsApp.",
+    icon: Store,
+  },
+  {
+    title: "Pedidos no Zap",
+    description: "Cliente monta o pedido e envia formatado direto para a loja.",
+    icon: ReceiptText,
+  },
+  {
+    title: "Metricas reais",
+    description: "Acompanhe volume de pedidos e operacao em um painel simples.",
+    icon: BarChart3,
+  },
+];
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-gray-50 font-sans text-gray-900">
-      {/* Navegação */}
-      <nav className="flex items-center justify-between px-6 py-4 bg-white border-b border-gray-100 sticky top-0 z-50">
-        <div className="flex items-center gap-2">
-          <Store className="text-red-600 w-8 h-8" />
-          <span className="text-xl font-bold tracking-tight">WhatsMenu</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <Link href="/admin/login" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
-            Entrar
-          </Link>
-          <Link href="/admin/login" className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors">
-            Criar Loja
-          </Link>
-        </div>
-      </nav>
-
-      {/* Secção Principal (Hero) */}
-      <section className="px-6 py-20 text-center max-w-4xl mx-auto">
-        <h1 className="text-5xl md:text-6xl font-extrabold text-gray-900 mb-6 tracking-tight">
-          O seu restaurante a um <span className="text-red-600">clique</span> de distância.
-        </h1>
-        <p className="text-lg md:text-xl text-gray-600 mb-10 max-w-2xl mx-auto">
-          Crie o seu cardápio digital em minutos. Receba os pedidos diretamente no WhatsApp, sem pagar comissões por venda às grandes plataformas.
-        </p>
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-          <Link href="/admin/login" className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-xl text-lg font-bold transition-transform hover:scale-105 flex items-center justify-center gap-2 shadow-lg shadow-red-200">
-            Começar Gratuitamente <ArrowRight size={20} />
-          </Link>
-          <a href="#como-funciona" className="w-full sm:w-auto bg-white border-2 border-gray-200 hover:border-gray-300 text-gray-700 px-8 py-4 rounded-xl text-lg font-bold transition-colors flex items-center justify-center">
-            Ver Funcionalidades
-          </a>
-        </div>
-      </section>
-
-      {/* Funcionalidades (Features) */}
-      <section id="como-funciona" className="bg-white py-20 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Tudo o que precisa para gerir e faturar mais</h2>
-            <p className="text-gray-600">Uma plataforma completa pensada para o crescimento do seu negócio.</p>
+    <div className="min-h-screen text-gray-950">
+      <nav className="sticky top-0 z-50 border-b border-[#eadfd4] bg-[#f8f3ec]/95 backdrop-blur">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
+          <div className="flex items-center gap-3">
+            <div className="brand-gradient flex h-8 w-8 items-center justify-center rounded-md text-white">
+              <Store size={16} />
+            </div>
+            <span className="text-xl font-bold tracking-tight">GESTOR.</span>
           </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100 hover:shadow-md transition-shadow">
-              <div className="w-12 h-12 bg-red-100 text-red-600 rounded-xl flex items-center justify-center mb-4">
-                <Smartphone size={24} />
-              </div>
-              <h3 className="text-xl font-bold mb-2">Pedidos no WhatsApp</h3>
-              <p className="text-gray-600">Os clientes montam o pedido no telemóvel e tudo chega formatado e organizado ao seu WhatsApp.</p>
-            </div>
-            
-            <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100 hover:shadow-md transition-shadow">
-              <div className="w-12 h-12 bg-red-100 text-red-600 rounded-xl flex items-center justify-center mb-4">
-                <Zap size={24} />
-              </div>
-              <h3 className="text-xl font-bold mb-2">Gestão Rápida</h3>
-              <p className="text-gray-600">Altere preços, adicione produtos ou pause o atendimento em tempo real através do nosso painel.</p>
-            </div>
-
-            <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100 hover:shadow-md transition-shadow">
-              <div className="w-12 h-12 bg-red-100 text-red-600 rounded-xl flex items-center justify-center mb-4">
-                <TrendingUp size={24} />
-              </div>
-              <h3 className="text-xl font-bold mb-2">Zero Taxas</h3>
-              <p className="text-gray-600">Diga adeus às comissões absurdas das aplicações de entrega. O lucro de cada pedido é 100% seu.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Tabela de Preços (Pricing) */}
-      <section className="py-20 px-6 max-w-4xl mx-auto text-center">
-        <h2 className="text-3xl font-bold text-gray-900 mb-12">Planos simples e transparentes</h2>
-        
-        <div className="bg-white rounded-3xl shadow-xl border border-gray-200 overflow-hidden max-w-lg mx-auto relative">
-          <div className="absolute top-0 inset-x-0 h-2 bg-red-600"></div>
-          <div className="p-8">
-            <h3 className="text-2xl font-bold mb-2">Plano Pro</h3>
-            <p className="text-gray-500 mb-6">Ideal para quem quer profissionalizar o atendimento.</p>
-            <div className="flex items-end justify-center gap-1 mb-8">
-              <span className="text-5xl font-extrabold">R$ 49</span>
-              <span className="text-gray-500 font-medium mb-1">/mês</span>
-            </div>
-            
-            <ul className="space-y-4 text-left mb-8">
-              {[
-                'Produtos ilimitados', 
-                'Painel de gestão completo', 
-                'Cálculo de entrega automático', 
-                'Gestão de horários de funcionamento', 
-                'Acesso via subdomínio exclusivo'
-              ].map((item, i) => (
-                <li key={i} className="flex items-center gap-3">
-                  <CheckCircle className="text-green-500 shrink-0" size={20} />
-                  <span className="text-gray-700 font-medium">{item}</span>
-                </li>
-              ))}
-            </ul>
-            
-            <Link href="/admin/login" className="block w-full bg-gray-900 hover:bg-black text-white py-4 rounded-xl font-bold transition-colors">
-              Criar Conta Agora
+          <div className="flex items-center gap-4 text-sm font-medium">
+            <Link href="/admin/login" className="text-gray-700 transition-colors hover:text-black">
+              Entrar
+            </Link>
+            <Link
+              href="/admin/login"
+              className="inline-flex items-center gap-2 rounded-xl bg-[#171311] px-4 py-2.5 text-white transition-colors hover:bg-black"
+            >
+              Criar conta gratis <ArrowRight size={15} />
             </Link>
           </div>
         </div>
-      </section>
+      </nav>
 
-      {/* Rodapé (Footer) */}
-      <footer className="bg-gray-900 text-gray-400 py-12 text-center">
-        <div className="flex items-center justify-center gap-2 mb-4 opacity-50">
-          <Store size={24} />
-          <span className="text-xl font-bold text-white">WhatsMenu</span>
-        </div>
-        <p>© {new Date().getFullYear()} WhatsMenu. Todos os direitos reservados.</p>
+      <main>
+        <section className="mx-auto grid max-w-6xl gap-10 px-6 pb-16 pt-12 md:grid-cols-[1.05fr_0.95fr] md:items-center md:pt-20">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-[var(--brand-soft)] px-4 py-2 text-xs font-semibold text-[#9f4d2b]">
+              <Smartphone size={12} />
+              Multi-tenant • WhatsApp • sem mensalidade
+            </div>
+            <h1 className="mt-8 max-w-2xl text-5xl font-black leading-[0.95] tracking-[-0.05em] md:text-7xl">
+              Sua vitrine digital com pedidos direto no{" "}
+              <span className="italic text-[var(--brand)]">WhatsApp.</span>
+            </h1>
+            <p className="mt-6 max-w-xl text-lg leading-8 text-[var(--muted)]">
+              Crie seu cardapio em minutos, gerencie pedidos em tempo real e receba tudo
+              formatado no seu Zap. Sem comissao, sem complicacao.
+            </p>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Link
+                href="/admin/login"
+                className="brand-gradient inline-flex items-center justify-center gap-2 rounded-xl px-6 py-4 text-base font-bold text-white shadow-[0_12px_30px_rgba(255,90,31,0.18)]"
+              >
+                Comecar agora <ArrowRight size={17} />
+              </Link>
+              <Link
+                href="/admin/login"
+                className="inline-flex items-center justify-center rounded-xl border border-[var(--line)] bg-[var(--surface)] px-6 py-4 text-base font-semibold text-gray-900"
+              >
+                Ja tenho conta
+              </Link>
+            </div>
+          </div>
+
+          <div className="relative">
+            <div className="absolute -left-16 top-6 hidden h-36 w-36 rounded-full bg-[radial-gradient(circle,_rgba(255,90,31,0.16)_0%,_rgba(255,90,31,0)_72%)] md:block" />
+            <div className="rounded-[28px] border border-[#221d19] bg-[#13100e] p-6 shadow-[0_40px_80px_rgba(15,12,10,0.16)]">
+              <div className="mb-8 flex gap-2">
+                <span className="h-3 w-3 rounded-full bg-[#ce4338]" />
+                <span className="h-3 w-3 rounded-full bg-[#d0a62b]" />
+                <span className="h-3 w-3 rounded-full bg-[#3aa66d]" />
+              </div>
+              <div className="space-y-4">
+                <div className="rounded-2xl border-l-4 border-[var(--brand)] bg-white px-4 py-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-lg font-extrabold text-gray-950">#2841</p>
+                      <p className="mt-1 text-sm text-gray-500">2x Pizza Calabresa G</p>
+                    </div>
+                    <span className="text-2xl font-black text-gray-950">R$ 114,90</span>
+                  </div>
+                </div>
+                <div className="rounded-2xl border-l-4 border-[#2f9cff] bg-white px-4 py-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-lg font-extrabold text-gray-950">#2839</p>
+                      <p className="mt-1 text-sm text-gray-500">1x Smash Burger Combo</p>
+                    </div>
+                    <span className="text-2xl font-black text-gray-950">R$ 58,00</span>
+                  </div>
+                </div>
+                <div className="rounded-2xl border-l-4 border-[#28b16d] bg-[#6b6865] px-4 py-4 text-black/45">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-lg font-extrabold">#2835</p>
+                      <p className="mt-1 text-sm">1x Acai 500ml</p>
+                    </div>
+                    <span className="text-2xl font-black">R$ 22,00</span>
+                  </div>
+                </div>
+              </div>
+              <p className="mt-8 text-center text-xs font-medium uppercase tracking-[0.3em] text-[#a28f80]">
+                Cozinha em pico • 19:42
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section className="border-t border-[var(--line)] bg-[rgba(255,255,255,0.35)]">
+          <div className="mx-auto grid max-w-6xl gap-5 px-6 py-14 md:grid-cols-3">
+            {features.map((feature) => (
+              <div key={feature.title} className="surface-card rounded-[24px] p-8">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--brand-soft)] text-[var(--brand)]">
+                  <feature.icon size={20} />
+                </div>
+                <h3 className="mt-6 text-xl font-bold text-gray-950">{feature.title}</h3>
+                <p className="mt-3 text-sm leading-7 text-[var(--muted)]">{feature.description}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      </main>
+
+      <footer className="border-t border-[var(--line)] px-6 py-10 text-center text-sm text-[var(--muted)]">
+        © {new Date().getFullYear()} Gestor Delivery
       </footer>
     </div>
-  )
+  );
 }

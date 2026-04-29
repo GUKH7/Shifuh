@@ -1,172 +1,179 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { createBrowserClient } from "@supabase/ssr"
-import { useRouter } from "next/navigation"
-import { Store, Loader2, ArrowRight, CheckCircle2 } from "lucide-react"
+import { useEffect, useState } from "react";
+import { createBrowserClient } from "@supabase/ssr";
+import { useRouter } from "next/navigation";
+import { ArrowRight, CheckCircle2, Loader2, Store } from "lucide-react";
 
 export default function SetupPage() {
-  const [loading, setLoading] = useState(true)
-  const [isSaving, setIsSaving] = useState(false)
-  const [error, setError] = useState("")
-  const [user, setUser] = useState<any>(null)
-  
-  // Campos do formulário
-  const [name, setName] = useState("")
-  const [slug, setSlug] = useState("")
+  const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [user, setUser] = useState<any>(null);
+  const [name, setName] = useState("");
+  const [slug, setSlug] = useState("");
 
-  const router = useRouter()
+  const router = useRouter();
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  );
 
   useEffect(() => {
-    checkStatus()
-  }, [])
+    checkStatus();
+  }, []);
 
   const checkStatus = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      return router.push("/admin/login")
-    }
-    setUser(user)
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return router.push("/admin/login");
+    setUser(user);
 
-    // Verifica se já tem restaurante. Se tiver, manda para o painel.
-    const { data: resto } = await supabase
-      .from('restaurants')
-      .select('id')
-      .eq('user_id', user.id)
-      .maybeSingle()
+    const { data: resto } = await supabase.from("restaurants").select("id").eq("user_id", user.id).maybeSingle();
+    if (resto) router.push("/admin");
+    else setLoading(false);
+  };
 
-    if (resto) {
-      router.push("/admin")
-    } else {
-      setLoading(false)
-    }
-  }
-
-  // Gera o slug automaticamente com base no nome
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newName = e.target.value
-    setName(newName)
-    setSlug(newName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''))
-  }
+    const newName = e.target.value;
+    setName(newName);
+    setSlug(newName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, ""));
+  };
 
   const handleSetup = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     if (!name.trim() || !slug.trim()) {
-      setError("Preencha todos os campos obrigatórios.")
-      return
+      setError("Preencha todos os campos obrigatorios.");
+      return;
     }
 
-    setIsSaving(true)
-    setError("")
+    setIsSaving(true);
+    setError("");
 
     try {
-      // 1. Verificar se o slug já existe (pois tem de ser único para o link)
-      const { data: existingSlug } = await supabase
-        .from('restaurants')
-        .select('id')
-        .eq('slug', slug)
-        .maybeSingle()
-
+      const { data: existingSlug } = await supabase.from("restaurants").select("id").eq("slug", slug).maybeSingle();
       if (existingSlug) {
-        setError("Este link já está a ser utilizado. Tente adicionar números ou a sua cidade (ex: burger-house-sp).")
-        setIsSaving(false)
-        return
+        setError("Este link ja esta em uso. Tente outra variacao.");
+        setIsSaving(false);
+        return;
       }
 
-      // 2. Criar o restaurante no banco de dados
-      const { error: insertError } = await supabase
-        .from('restaurants')
-        .insert({
-          name: name.trim(),
-          slug: slug.trim(),
-          user_id: user.id
-        })
+      const { error: insertError } = await supabase.from("restaurants").insert({
+        name: name.trim(),
+        slug: slug.trim(),
+        user_id: user.id,
+      });
 
-      if (insertError) throw insertError
-
-      // 3. Sucesso! Redirecionar para o painel
-      router.push("/admin")
-
-    } catch (err: any) {
-      console.error(err)
-      setError("Ocorreu um erro ao criar o restaurante. Tente novamente.")
+      if (insertError) throw insertError;
+      router.push("/admin");
+    } catch (err) {
+      console.error(err);
+      setError("Ocorreu um erro ao criar o restaurante.");
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
+  };
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center bg-[#F2F4F7]"><Loader2 className="animate-spin text-red-600" size={32} /></div>
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#f6f1ea]">
+        <Loader2 className="animate-spin text-[var(--brand)]" size={30} />
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#F2F4F7] p-4 font-sans">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
-        
-        <div className="flex justify-center mb-6">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center text-red-600">
-            <Store size={32} />
+    <div className="min-h-screen bg-[#f6f1ea] px-4 py-10">
+      <div className="mx-auto grid min-h-[calc(100vh-5rem)] max-w-6xl items-center gap-10 lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="hidden lg:block">
+          <div className="inline-flex items-center gap-3">
+            <div className="brand-gradient flex h-10 w-10 items-center justify-center rounded-xl text-white">
+              <Store size={18} />
+            </div>
+            <span className="text-2xl font-black tracking-tight text-gray-950">GESTOR.</span>
           </div>
+          <h1 className="mt-8 max-w-xl text-6xl font-black leading-[0.95] tracking-[-0.05em] text-gray-950">
+            Configure sua loja e publique sua vitrine digital.
+          </h1>
+          <p className="mt-6 max-w-lg text-lg leading-8 text-[var(--muted)]">
+            Defina nome, link e identidade inicial da operacao para comecar a vender com pedidos direto no WhatsApp.
+          </p>
         </div>
 
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Bem-vindo ao WhatsMenu! 🎉</h1>
-          <p className="text-gray-500 text-sm">Vamos configurar o seu catálogo digital. Como se chama o seu negócio?</p>
-        </div>
-
-        {error && (
-          <div className="mb-6 p-3 bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg text-center">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSetup} className="space-y-5">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Nome do Restaurante</label>
-            <input 
-              type="text" 
-              required
-              value={name}
-              onChange={handleNameChange}
-              placeholder="Ex: Burger House"
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all"
-            />
+        <div className="surface-card mx-auto w-full max-w-lg rounded-[32px] p-8 shadow-[0_30px_80px_rgba(17,16,15,0.08)]">
+          <div className="mb-8 text-center lg:hidden">
+            <div className="brand-gradient mx-auto flex h-12 w-12 items-center justify-center rounded-xl text-white">
+              <Store size={20} />
+            </div>
+            <p className="mt-4 text-2xl font-black tracking-tight text-gray-950">GESTOR.</p>
           </div>
 
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Link do seu Cardápio</label>
-            <div className="flex items-center">
-              <span className="bg-gray-100 border border-r-0 border-gray-300 px-3 py-3 rounded-l-lg text-gray-500 text-sm select-none">
-                whatsmenu.com/
-              </span>
-              <input 
-                type="text" 
+          <h2 className="text-3xl font-black tracking-tight text-gray-950">Primeira configuracao</h2>
+          <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+            Escolha o nome do negocio e o slug que vai virar o link publico do seu cardapio.
+          </p>
+
+          {error && <div className="mt-6 rounded-2xl bg-[#fff0e8] px-4 py-3 text-sm font-medium text-[var(--brand)]">{error}</div>}
+
+          <form onSubmit={handleSetup} className="mt-6 space-y-5">
+            <div>
+              <label className="mb-1.5 block text-sm font-bold text-gray-700">Nome da loja</label>
+              <input
+                type="text"
                 required
-                value={slug}
-                onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                className="w-full px-4 py-3 rounded-r-lg border border-gray-300 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all"
+                value={name}
+                onChange={handleNameChange}
+                placeholder="Ex: Burger House"
+                className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3.5 text-sm outline-none focus:border-[var(--brand)]"
               />
             </div>
-            <p className="text-xs text-gray-400 mt-1">Este será o link que vai partilhar com os seus clientes.</p>
-          </div>
 
-          <button 
-            type="submit" 
-            disabled={isSaving}
-            className="w-full mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-70"
-          >
-            {isSaving ? (
-              <><Loader2 size={20} className="animate-spin" /> A criar restaurante...</>
-            ) : (
-              <>Concluir Configuração <CheckCircle2 size={20} /></>
-            )}
-          </button>
-        </form>
+            <div>
+              <label className="mb-1.5 block text-sm font-bold text-gray-700">Link do cardapio</label>
+              <div className="flex overflow-hidden rounded-2xl border border-[var(--line)] bg-white">
+                <span className="inline-flex items-center border-r border-[var(--line)] bg-[#fbf7f2] px-3 text-sm text-gray-500">
+                  gestordelivery.com.br/
+                </span>
+                <input
+                  type="text"
+                  required
+                  value={slug}
+                  onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
+                  className="w-full px-4 py-3.5 text-sm outline-none"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSaving}
+              className="brand-gradient flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-4 text-sm font-bold text-white disabled:opacity-60"
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  Criando loja...
+                </>
+              ) : (
+                <>
+                  Concluir configuracao
+                  <CheckCircle2 size={18} />
+                </>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => router.push("/admin/login")}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl border border-[var(--line)] bg-white px-4 py-4 text-sm font-bold text-gray-700"
+            >
+              Voltar para login
+              <ArrowRight size={16} />
+            </button>
+          </form>
+        </div>
       </div>
     </div>
-  )
+  );
 }

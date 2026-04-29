@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Outfit } from "next/font/google";
 import "./globals.css";
-import { CartProvider } from "@/contexts/cart-context"; 
+import { CartProvider } from "@/contexts/cart-context";
+import { ToastProvider } from "@/components/ui/toast-provider";
 
-const inter = Inter({ subsets: ["latin"] });
+const outfit = Outfit({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "WhatsMenu",
-  description: "Seu cardápio digital",
+  title: "Gestor Delivery",
+  description: "Vitrine digital com pedidos direto no WhatsApp",
 };
 
 export default function RootLayout({
@@ -17,10 +18,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
-      <body className={inter.className}>
-        <CartProvider>
-            {children}
-        </CartProvider>
+      <body className={outfit.className}>
+        <ToastProvider>
+          <CartProvider>{children}</CartProvider>
+        </ToastProvider>
       </body>
     </html>
   );

@@ -1,358 +1,383 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { createBrowserClient } from "@supabase/ssr"
-import { useRouter } from "next/navigation"
-import { Plus, Search, Power, Edit3, ChevronDown, ChevronUp, GripVertical, Trash2, Save, X, Loader2 } from "lucide-react"
-import ProductModal from "@/components/product-modal"
+import { useEffect, useState } from "react";
+import { createBrowserClient } from "@supabase/ssr";
+import { useRouter } from "next/navigation";
+import {
+  ChevronDown,
+  ChevronUp,
+  Edit3,
+  GripVertical,
+  Loader2,
+  Plus,
+  Power,
+  Save,
+  Search,
+  Trash2,
+  X,
+} from "lucide-react";
+import ProductModal from "@/components/product-modal";
+import { getCurrentRestaurant } from "@/lib/supabase/restaurant";
 
 export default function AdminDashboard() {
-  const [loading, setLoading] = useState(true)
-  const [restaurant, setRestaurant] = useState<any>(null)
-  const [categories, setCategories] = useState<any[]>([])
-  const [products, setProducts] = useState<any[]>([])
-  const [searchTerm, setSearchTerm] = useState("")
-  
-  // --- CONTROLE DO MODAL DE PRODUTO ---
-  const [isProductModalOpen, setIsProductModalOpen] = useState(false)
-  const [editingProduct, setEditingProduct] = useState<any>(null)
+  const [loading, setLoading] = useState(true);
+  const [restaurant, setRestaurant] = useState<any>(null);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<any>(null);
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
+  const [draggedCategoryIndex, setDraggedCategoryIndex] = useState<number | null>(null);
+  const [isSavingCategory, setIsSavingCategory] = useState(false);
 
-  // Estados de Categoria
-  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({})
-  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null)
-  const [editingName, setEditingName] = useState("")
-  const [draggedCategoryIndex, setDraggedCategoryIndex] = useState<number | null>(null)
-  const [isSavingCategory, setIsSavingCategory] = useState(false)
-
-  const router = useRouter()
+  const router = useRouter();
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  );
 
   useEffect(() => {
-    checkUser()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    checkUser();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const checkUser = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return router.push("/admin/login")
-    fetchData()
-  }
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return router.push("/admin/login");
+    fetchData();
+  };
 
   const fetchData = async () => {
     try {
-      // Opcional mas recomendado: pegar o usuário logado para filtrar
-      const { data: { user } } = await supabase.auth.getUser()
+      const { restaurant: resto, error } = await getCurrentRestaurant(supabase);
+      if (error || !resto) return;
 
-      const { data: resto, error } = await supabase
-        .from('restaurants')
-        .select('*')
-        // .eq('user_id', user?.id) // Descomente esta linha se a sua tabela restaurants tiver a coluna user_id
-        .maybeSingle() // <- Evita o erro 406 Not Acceptable
+      setRestaurant(resto);
 
-      // Se não encontrou o restaurante, interrompe aqui e não tenta acessar resto.id
-      if (error || !resto) {
-        console.error("Nenhum restaurante encontrado para este usuário.", error)
-        return 
-      }
+      const { data: cats } = await supabase
+        .from("categories")
+        .select("*")
+        .eq("restaurant_id", resto.id)
+        .order("order");
 
-      setRestaurant(resto)
-
-      // Agora é 100% seguro usar resto.id
-      const { data: cats } = await supabase.from('categories').select('*').eq('restaurant_id', resto.id).order('order')
       if (cats) {
-        setCategories(cats)
-        setExpandedCategories(prev => {
+        setCategories(cats);
+        setExpandedCategories((prev) => {
           if (Object.keys(prev).length === 0) {
-            const initial: any = {}
-            cats.forEach((c: any) => initial[c.id] = true)
-            return initial
+            const initial: Record<string, boolean> = {};
+            cats.forEach((category: any) => {
+              initial[category.id] = true;
+            });
+            return initial;
           }
-          return prev
-        })
+          return prev;
+        });
       }
 
-      const { data: prods } = await supabase.from('products').select('*').eq('restaurant_id', resto.id)
-      if (prods) setProducts(prods)
-
-    } catch (err) {
-      console.error("Erro inesperado ao buscar cardápio:", err)
+      const { data: prods } = await supabase.from("products").select("*").eq("restaurant_id", resto.id);
+      if (prods) setProducts(prods);
+    } catch (error) {
+      console.error("Erro ao buscar cardapio:", error);
     } finally {
-      // O finally garante que o loading sempre ficará false, dando certo ou errado
-      setLoading(false)
+      setLoading(false);
     }
-  }
-  // --- AÇÕES DE PRODUTO ---
+  };
+
   const handleOpenNewProduct = () => {
-      setEditingProduct(null)
-      setIsProductModalOpen(true)
-  }
+    setEditingProduct(null);
+    setIsProductModalOpen(true);
+  };
 
   const handleEditProduct = (product: any) => {
-      setEditingProduct(product)
-      setIsProductModalOpen(true)
-  }
+    setEditingProduct(product);
+    setIsProductModalOpen(true);
+  };
 
   const handleProductSaved = () => {
-      fetchData()
-      setIsProductModalOpen(false)
-  }
+    fetchData();
+    setIsProductModalOpen(false);
+  };
 
   const toggleProductStatus = async (product: any) => {
-    const newStatus = !product.is_active
-    // Atualização Otimista (Visual)
-    setProducts(current => 
-        current.map(p => p.id === product.id ? { ...p, is_active: newStatus } : p)
-    )
-    // Banco
-    await supabase.from('products').update({ is_active: newStatus }).eq('id', product.id)
-  }
+    const newStatus = !product.is_active;
+    setProducts((current) => current.map((item) => (item.id === product.id ? { ...item, is_active: newStatus } : item)));
+    await supabase.from("products").update({ is_active: newStatus }).eq("id", product.id);
+  };
 
-  // --- AÇÕES DE CATEGORIA ---
   const handleAddCategory = async () => {
-    const name = prompt("Nome da nova categoria (ex: Lanches, Bebidas):")
-    if (!name) return
+    const name = prompt("Nome da nova categoria:");
+    if (!name || !restaurant) return;
 
-    const nextOrder = categories.length > 0 ? Math.max(...categories.map(c => c.order)) + 1 : 1
-    const { data } = await supabase.from('categories').insert({ 
-        name, restaurant_id: restaurant.id, order: nextOrder 
-    }).select().single()
+    const nextOrder = categories.length > 0 ? Math.max(...categories.map((category) => category.order)) + 1 : 1;
+    const { data } = await supabase
+      .from("categories")
+      .insert({ name, restaurant_id: restaurant.id, order: nextOrder })
+      .select()
+      .single();
 
     if (data) {
-        setCategories([...categories, data])
-        setExpandedCategories(prev => ({...prev, [data.id]: true}))
+      setCategories([...categories, data]);
+      setExpandedCategories((prev) => ({ ...prev, [data.id]: true }));
     }
-  }
+  };
 
   const handleDeleteCategory = async (id: string) => {
-    if(!confirm("Tem certeza? Produtos nesta categoria ficarão ocultos!")) return;
-    await supabase.from('categories').delete().eq('id', id)
-    setCategories(categories.filter(c => c.id !== id))
-  }
+    if (!confirm("Tem certeza?")) return;
+    await supabase.from("categories").delete().eq("id", id);
+    setCategories(categories.filter((category) => category.id !== id));
+  };
 
-  const startEditingCat = (cat: any) => {
-      setEditingCategoryId(cat.id)
-      setEditingName(cat.name)
-  }
+  const startEditingCat = (category: any) => {
+    setEditingCategoryId(category.id);
+    setEditingName(category.name);
+  };
 
   const saveCategoryName = async (id: string) => {
-      if(!editingName.trim()) return;
-      await supabase.from('categories').update({ name: editingName }).eq('id', id)
-      setCategories(categories.map(c => c.id === id ? { ...c, name: editingName } : c))
-      setEditingCategoryId(null)
-  }
+    if (!editingName.trim()) return;
+    await supabase.from("categories").update({ name: editingName }).eq("id", id);
+    setCategories(categories.map((category) => (category.id === id ? { ...category, name: editingName } : category)));
+    setEditingCategoryId(null);
+  };
 
-  // --- DRAG AND DROP CATEGORIAS ---
-  const handleDragStart = (index: number) => setDraggedCategoryIndex(index)
+  const handleDragStart = (index: number) => setDraggedCategoryIndex(index);
+
   const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault()
-    if (draggedCategoryIndex === null || draggedCategoryIndex === index) return
-    const newCats = [...categories]
-    const item = newCats[draggedCategoryIndex]
-    newCats.splice(draggedCategoryIndex, 1)
-    newCats.splice(index, 0, item)
-    setCategories(newCats)
-    setDraggedCategoryIndex(index)
-  }
+    e.preventDefault();
+    if (draggedCategoryIndex === null || draggedCategoryIndex === index) return;
+    const newCategories = [...categories];
+    const item = newCategories[draggedCategoryIndex];
+    newCategories.splice(draggedCategoryIndex, 1);
+    newCategories.splice(index, 0, item);
+    setCategories(newCategories);
+    setDraggedCategoryIndex(index);
+  };
+
   const handleDragEnd = async () => {
-    setDraggedCategoryIndex(null)
-    setIsSavingCategory(true)
-    const updates = categories.map((cat, index) => ({ id: cat.id, order: index + 1 }))
+    setDraggedCategoryIndex(null);
+    setIsSavingCategory(true);
+    const updates = categories.map((category, index) => ({ id: category.id, order: index + 1 }));
     for (const update of updates) {
-        await supabase.from('categories').update({ order: update.order }).eq('id', update.id)
+      await supabase.from("categories").update({ order: update.order }).eq("id", update.id);
     }
-    setIsSavingCategory(false)
-  }
+    setIsSavingCategory(false);
+  };
 
-  const toggleCategory = (catId: string) => {
-    setExpandedCategories(prev => ({...prev, [catId]: !prev[catId]}))
-  }
-  const formatPrice = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
+  const toggleCategory = (categoryId: string) => {
+    setExpandedCategories((prev) => ({ ...prev, [categoryId]: !prev[categoryId] }));
+  };
 
-  if (loading) return <div className="flex items-center justify-center h-64 text-red-600 font-bold"><Loader2 className="animate-spin mr-2"/> Carregando Cardápio...</div>
+  const formatPrice = (value: number) =>
+    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center text-sm font-semibold text-gray-500">
+        <Loader2 className="mr-2 animate-spin text-[var(--brand)]" size={18} />
+        Carregando cardapio...
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-5xl mx-auto font-sans pb-20">
-      
-      {/* Header da Página */}
-      <div className="flex flex-col md:flex-row justify-between items-end md:items-center mb-8 gap-4">
-          <div>
-              <h2 className="text-2xl font-bold text-gray-800">Cardápio Digital</h2>
-              <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
-                  {isSavingCategory ? <span className="text-orange-500 font-bold flex gap-1"><Loader2 size={14} className="animate-spin"/> Salvando ordem...</span> : <span>Gerencie seus produtos e categorias</span>}
-              </div>
+    <div className="mx-auto max-w-6xl pb-20">
+      <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <h1 className="text-3xl font-black tracking-tight text-gray-950">Cardapios</h1>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            Organize categorias, destaque itens e ligue ou desligue produtos em segundos.
+          </p>
+          <div className="mt-3 text-sm font-medium text-gray-500">
+            {isSavingCategory ? "Salvando ordem das categorias..." : `${categories.length} categorias na loja`}
           </div>
-          
-          <div className="flex gap-2 w-full md:w-auto">
-              <div className="relative flex-1 md:w-60">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                  <input 
-                      type="text" 
-                      placeholder="Buscar item..." 
-                      value={searchTerm}
-                      onChange={e => setSearchTerm(e.target.value)}
-                      className="w-full pl-9 pr-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none text-sm shadow-sm"
-                  />
-              </div>
-              
-              <button 
-                  onClick={handleAddCategory}
-                  className="bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 font-bold px-4 py-2 rounded-lg flex items-center gap-2 transition-all shadow-sm active:scale-[0.95] text-sm"
-              >
-                  <Plus size={16} /> Categoria
-              </button>
-              <button 
-                  onClick={handleOpenNewProduct} 
-                  className="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded-lg flex items-center gap-2 transition-all shadow-sm active:scale-[0.95] text-sm"
-              >
-                  <Plus size={16} /> Produto
-              </button>
+        </div>
+
+        <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
+          <div className="relative min-w-[280px]">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+            <input
+              type="text"
+              placeholder="Buscar item..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full rounded-2xl border border-[var(--line)] bg-white py-3 pl-11 pr-4 text-sm outline-none transition-colors focus:border-[var(--brand)]"
+            />
           </div>
+          <button
+            onClick={handleAddCategory}
+            className="rounded-2xl border border-[var(--line)] bg-white px-5 py-3 text-sm font-bold text-gray-700"
+          >
+            <span className="inline-flex items-center gap-2">
+              <Plus size={16} />
+              Categoria
+            </span>
+          </button>
+          <button
+            onClick={handleOpenNewProduct}
+            className="brand-gradient rounded-2xl px-5 py-3 text-sm font-bold text-white"
+          >
+            <span className="inline-flex items-center gap-2">
+              <Plus size={16} />
+              Produto
+            </span>
+          </button>
+        </div>
       </div>
 
-      {/* Lista de Categorias */}
-      <div className="space-y-6">
-          {categories.map((category, index) => {
-              const catProducts = products.filter(p => 
-                  p.category_id === category.id && 
-                  p.name.toLowerCase().includes(searchTerm.toLowerCase())
-              )
-              if (searchTerm && catProducts.length === 0) return null
-              const isExpanded = expandedCategories[category.id]
-              const isEditing = editingCategoryId === category.id
+      <div className="space-y-5">
+        {categories.map((category, index) => {
+          const categoryProducts = products.filter(
+            (product) =>
+              product.category_id === category.id &&
+              product.name.toLowerCase().includes(searchTerm.toLowerCase()),
+          );
 
-              return (
-                  <div 
-                      key={category.id} 
-                      draggable={!isEditing} 
-                      onDragStart={() => handleDragStart(index)}
-                      onDragOver={(e) => handleDragOver(e, index)}
-                      onDragEnd={handleDragEnd}
-                      className={`bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-gray-100 overflow-hidden transition-all
-                          ${draggedCategoryIndex === index ? 'opacity-40 border-dashed border-red-400' : ''}
-                      `}
-                  >
-                      {/* Header Categoria */}
-                      <div className="flex items-center justify-between p-4 bg-white border-b border-gray-50 group">
-                          <div className="flex items-center gap-3 flex-1">
-                              <div className="cursor-move text-gray-300 hover:text-gray-600 p-1">
-                                  <GripVertical size={20} />
-                              </div>
-                              {isEditing ? (
-                                  <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2">
-                                      <input 
-                                          autoFocus
-                                          value={editingName}
-                                          onChange={e => setEditingName(e.target.value)}
-                                          className="border border-red-300 rounded px-2 py-1 text-lg font-bold text-gray-800 outline-none focus:ring-2 focus:ring-red-200"
-                                      />
-                                      <button onClick={() => saveCategoryName(category.id)} className="p-1 bg-green-100 text-green-700 rounded hover:bg-green-200"><Save size={16}/></button>
-                                      <button onClick={() => setEditingCategoryId(null)} className="p-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200"><X size={16}/></button>
-                                  </div>
-                              ) : (
-                                  <div className="flex items-center gap-3" onClick={() => toggleCategory(category.id)}>
-                                      <h3 className="font-bold text-lg text-gray-800 cursor-pointer hover:text-red-600 transition-colors">{category.name}</h3>
-                                      <span className="text-xs font-medium text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{catProducts.length} itens</span>
-                                      <button onClick={(e) => { e.stopPropagation(); startEditingCat(category); }} className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all" title="Renomear">
-                                          <Edit3 size={14} />
-                                      </button>
-                                  </div>
-                              )}
-                          </div>
+          if (searchTerm && categoryProducts.length === 0) return null;
 
-                          <div className="flex items-center gap-2">
-                              <button onClick={() => handleDeleteCategory(category.id)} className="opacity-0 group-hover:opacity-100 p-2 text-gray-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Excluir Categoria">
-                                  <Trash2 size={16} />
-                              </button>
-                              <button onClick={() => toggleCategory(category.id)} className="text-gray-400 hover:bg-gray-100 p-1 rounded transition-colors">
-                                  {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                              </button>
-                          </div>
+          const isExpanded = expandedCategories[category.id];
+          const isEditing = editingCategoryId === category.id;
+
+          return (
+            <div
+              key={category.id}
+              draggable={!isEditing}
+              onDragStart={() => handleDragStart(index)}
+              onDragOver={(e) => handleDragOver(e, index)}
+              onDragEnd={handleDragEnd}
+              className={`surface-card overflow-hidden rounded-[26px] ${
+                draggedCategoryIndex === index ? "opacity-50" : ""
+              }`}
+            >
+              <div className="flex items-center justify-between gap-4 border-b border-[var(--line)] bg-white px-5 py-4">
+                <div className="flex min-w-0 flex-1 items-center gap-3">
+                  <button className="rounded-xl bg-[#fbf7f2] p-2 text-gray-400">
+                    <GripVertical size={18} />
+                  </button>
+
+                  {isEditing ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        autoFocus
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
+                        className="rounded-xl border border-[var(--brand)] px-3 py-2 text-sm font-bold outline-none"
+                      />
+                      <button onClick={() => saveCategoryName(category.id)} className="rounded-xl bg-emerald-100 p-2 text-emerald-700">
+                        <Save size={15} />
+                      </button>
+                      <button onClick={() => setEditingCategoryId(null)} className="rounded-xl bg-gray-100 p-2 text-gray-600">
+                        <X size={15} />
+                      </button>
+                    </div>
+                  ) : (
+                    <button onClick={() => toggleCategory(category.id)} className="flex min-w-0 items-center gap-3 text-left">
+                      <div>
+                        <p className="text-lg font-black text-gray-950">{category.name}</p>
+                        <p className="text-xs font-medium text-gray-400">{categoryProducts.length} itens</p>
                       </div>
+                    </button>
+                  )}
+                </div>
 
-                      {/* LISTA DE PRODUTOS */}
-                      {isExpanded && (
-                          <div className="divide-y divide-gray-50">
-                              {catProducts.length > 0 ? (
-                                  catProducts.map((product) => (
-                                      <div 
-                                          key={product.id} 
-                                          className={`group p-4 flex items-center gap-4 hover:bg-gray-50/80 transition-colors ${!product.is_active ? 'opacity-60 bg-gray-50' : ''}`}
-                                      >
-                                          
-                                          <div className="w-14 h-14 bg-gray-100 rounded-md overflow-hidden border border-gray-200 flex-shrink-0 relative">
-                                              {product.image_url ? (
-                                                  <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
-                                              ) : (
-                                                  <div className="w-full h-full flex items-center justify-center text-gray-300"><span className="text-[9px]">FOTO</span></div>
-                                              )}
-                                              {!product.is_active && (
-                                                <div className="absolute inset-0 bg-white/60 flex items-center justify-center backdrop-blur-[1px]">
-                                                    <Power size={16} className="text-gray-500" />
-                                                </div>
-                                              )}
-                                          </div>
-
-                                          <div className="flex-1 min-w-0">
-                                              <div className="flex items-center gap-2">
-                                                  <h4 className="font-bold text-gray-800 text-sm">{product.name}</h4>
-                                                  {!product.is_active && <span className="text-[9px] bg-red-100 text-red-600 px-1.5 rounded font-bold uppercase tracking-wider">Pausado</span>}
-                                              </div>
-                                              <p className="text-xs text-gray-500 truncate max-w-lg mt-0.5">{product.description}</p>
-                                              <div className="mt-1 font-semibold text-gray-900 text-sm">{formatPrice(product.price)}</div>
-                                          </div>
-
-                                          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                              <button 
-                                                  onClick={() => handleEditProduct(product)} 
-                                                  className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-gray-600 bg-white border border-gray-200 rounded-md hover:border-red-200 hover:text-red-600 shadow-sm transition-all"
-                                              >
-                                                  <Edit3 size={12} /> Editar
-                                              </button>
-                                              
-                                              <button 
-                                                  onClick={() => toggleProductStatus(product)}
-                                                  className={`p-1.5 rounded transition-colors ${
-                                                      product.is_active 
-                                                      ? 'text-gray-400 hover:text-red-600 hover:bg-red-50' 
-                                                      : 'text-red-600 bg-red-50 hover:bg-red-100 ring-1 ring-red-100'
-                                                  }`}
-                                                  title={product.is_active ? "Pausar Vendas" : "Ativar Vendas"}
-                                              >
-                                                  <Power size={16} />
-                                              </button>
-                                          </div>
-                                      </div>
-                                  ))
-                              ) : (
-                                  <div className="p-8 flex flex-col items-center justify-center text-gray-400 gap-2">
-                                      <span className="text-sm">Categoria vazia</span>
-                                      <button 
-                                          onClick={handleOpenNewProduct}
-                                          className="text-red-600 font-bold text-xs hover:underline bg-red-50 px-3 py-1.5 rounded-full transition-colors"
-                                      >
-                                          + Adicionar Produto aqui
-                                      </button>
-                                  </div>
-                              )}
-                          </div>
-                      )}
+                {!isEditing && (
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => startEditingCat(category)} className="rounded-xl p-2 text-gray-400 hover:bg-[#fbf7f2] hover:text-[var(--brand)]">
+                      <Edit3 size={16} />
+                    </button>
+                    <button onClick={() => handleDeleteCategory(category.id)} className="rounded-xl p-2 text-gray-400 hover:bg-[#fff0e8] hover:text-[var(--brand)]">
+                      <Trash2 size={16} />
+                    </button>
+                    <button onClick={() => toggleCategory(category.id)} className="rounded-xl p-2 text-gray-400 hover:bg-[#fbf7f2]">
+                      {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                    </button>
                   </div>
-              )
-          })}
+                )}
+              </div>
+
+              {isExpanded && (
+                <div className="divide-y divide-[var(--line)] bg-[#fffdfa]">
+                  {categoryProducts.length > 0 ? (
+                    categoryProducts.map((product) => (
+                      <div key={product.id} className="group flex items-center gap-4 px-5 py-4">
+                        <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-2xl border border-[var(--line)] bg-[#fbf7f2]">
+                          {product.image_url ? (
+                            <img src={product.image_url} alt={product.name} className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-gray-300">
+                              FOTO
+                            </div>
+                          )}
+                          {!product.is_active && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-white/75">
+                              <Power size={16} className="text-gray-500" />
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="truncate font-bold text-gray-950">{product.name}</p>
+                            {!product.is_active && (
+                              <span className="rounded-full bg-[#fff0e8] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--brand)]">
+                                Pausado
+                              </span>
+                            )}
+                          </div>
+                          <p className="mt-1 truncate text-sm text-gray-500">{product.description}</p>
+                          <p className="mt-2 text-sm font-black text-gray-950">{formatPrice(product.price)}</p>
+                        </div>
+
+                        <div className="flex items-center gap-2 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100">
+                          <button
+                            onClick={() => handleEditProduct(product)}
+                            className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-xs font-bold text-gray-600"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => toggleProductStatus(product)}
+                            className={`rounded-xl p-2 ${
+                              product.is_active
+                                ? "bg-[#fbf7f2] text-gray-500"
+                                : "bg-[#fff0e8] text-[var(--brand)]"
+                            }`}
+                            title={product.is_active ? "Pausar vendas" : "Ativar vendas"}
+                          >
+                            <Power size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="px-5 py-10 text-center">
+                      <p className="text-sm font-medium text-gray-500">Categoria vazia</p>
+                      <button
+                        onClick={handleOpenNewProduct}
+                        className="mt-3 rounded-xl bg-[var(--brand-soft)] px-4 py-2 text-xs font-bold text-[var(--brand)]"
+                      >
+                        Adicionar produto
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
-      <ProductModal 
-          isOpen={isProductModalOpen}
-          onClose={() => setIsProductModalOpen(false)}
-          onProductSaved={handleProductSaved}
-          restaurantId={restaurant?.id}
-          categories={categories}
-          productToEdit={editingProduct} 
+      <ProductModal
+        isOpen={isProductModalOpen}
+        onClose={() => setIsProductModalOpen(false)}
+        onProductSaved={handleProductSaved}
+        restaurantId={restaurant?.id}
+        categories={categories}
+        productToEdit={editingProduct}
       />
-
     </div>
-  )
+  );
 }

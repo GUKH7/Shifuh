@@ -1,398 +1,979 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from 'react'
-import { createBrowserClient } from '@supabase/ssr'
-import { useRouter } from 'next/navigation'
-import { Save, Loader2, Plus, Trash2, Clock, MapPin, Store, Printer, Palette, UploadCloud, Image as ImageIcon, Smartphone, QrCode, CheckCircle, RefreshCw } from 'lucide-react'
+import { useEffect, useState } from "react";
+import { createBrowserClient } from "@supabase/ssr";
+import { useRouter } from "next/navigation";
+import {
+  CircleHelp,
+  CheckCircle,
+  Clock,
+  Image as ImageIcon,
+  Loader2,
+  MapPin,
+  Palette,
+  Plus,
+  QrCode,
+  RefreshCw,
+  Save,
+  Smartphone,
+  Store,
+  Trash2,
+  UploadCloud,
+} from "lucide-react";
+import { getCurrentRestaurant } from "@/lib/supabase/restaurant";
+import { getCoordinates } from "@/lib/geo";
+import { useToast } from "@/components/ui/toast-provider";
 
-interface DeliveryTier { distance: number; time: number; price: number; }
-interface WorkHour { day_id: number; day_label: string; is_open: boolean; open_time: string; close_time: string; }
+interface DeliveryTier {
+  distance: number;
+  time: number;
+  price: number;
+}
+
+interface WorkHour {
+  day_id: number;
+  day_label: string;
+  is_open: boolean;
+  open_time: string;
+  close_time: string;
+}
+
+interface StorefrontTheme {
+  preset: "sunset" | "forest" | "berry" | "midnight";
+  hero_style: "banner" | "split" | "spotlight";
+  catalog_layout: "grid" | "list";
+  card_style: "soft" | "outline" | "elevated";
+  show_logo: boolean;
+  show_reviews: boolean;
+  show_banners: boolean;
+  show_badges: boolean;
+  category_style: "underline" | "pill";
+  highlight_badge: string;
+  promo_text: string;
+}
+
+const DEFAULT_STOREFRONT_THEME: StorefrontTheme = {
+  preset: "sunset",
+  hero_style: "banner",
+  catalog_layout: "grid",
+  card_style: "soft",
+  show_logo: true,
+  show_reviews: true,
+  show_banners: true,
+  show_badges: true,
+  category_style: "underline",
+  highlight_badge: "Mais pedido",
+  promo_text: "Promo do dia",
+};
 
 const DAYS_OF_WEEK = [
-  { id: 0, label: "Domingo" }, { id: 1, label: "Segunda-feira" }, { id: 2, label: "Terça-feira" },
-  { id: 3, label: "Quarta-feira" }, { id: 4, label: "Quinta-feira" }, { id: 5, label: "Sexta-feira" }, { id: 6, label: "Sábado" },
-]
+  { id: 0, label: "Domingo" },
+  { id: 1, label: "Segunda-feira" },
+  { id: 2, label: "Terca-feira" },
+  { id: 3, label: "Quarta-feira" },
+  { id: 4, label: "Quinta-feira" },
+  { id: 5, label: "Sexta-feira" },
+  { id: 6, label: "Sabado" },
+];
 
-const DEFAULT_SCHEDULE: WorkHour[] = DAYS_OF_WEEK.map(day => ({
-  day_id: day.id, day_label: day.label, is_open: true, open_time: "18:00", close_time: "23:00"
-}))
+const DEFAULT_SCHEDULE: WorkHour[] = DAYS_OF_WEEK.map((day) => ({
+  day_id: day.id,
+  day_label: day.label,
+  is_open: true,
+  open_time: "18:00",
+  close_time: "23:00",
+}));
+
+function FieldHint({ label }: { label: string }) {
+  return (
+    <span
+      title={label}
+      className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-[var(--line)] bg-white text-gray-400"
+    >
+      <CircleHelp size={12} />
+    </span>
+  );
+}
 
 export default function SettingsPage() {
-  const router = useRouter()
-  const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+  const router = useRouter();
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  );
 
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [uploading, setUploading] = useState(false)
-  
-  const [restaurantId, setRestaurantId] = useState('')
-  const [name, setName] = useState('')
-  const [phone, setPhone] = useState('')
-  const [address, setAddress] = useState({ zip: '', street: '', number: '', neighborhood: '', city: '', state: '' })
-  
-  const [primaryColor, setPrimaryColor] = useState('#DC2626')
-  const [logoUrl, setLogoUrl] = useState('')
-  const [banners, setBanners] = useState<string[]>([])
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [restaurantId, setRestaurantId] = useState("");
+  const [restaurantLatitude, setRestaurantLatitude] = useState<number | null>(null);
+  const [restaurantLongitude, setRestaurantLongitude] = useState<number | null>(null);
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState({
+    zip: "",
+    street: "",
+    number: "",
+    neighborhood: "",
+    city: "",
+    state: "",
+  });
+  const [primaryColor, setPrimaryColor] = useState("#ff5a1f");
+  const [logoUrl, setLogoUrl] = useState("");
+  const [banners, setBanners] = useState<string[]>([]);
+  const [storefrontHeadline, setStorefrontHeadline] = useState("");
+  const [storefrontSubheadline, setStorefrontSubheadline] = useState("");
+  const [storefrontTheme, setStorefrontTheme] = useState<StorefrontTheme>(DEFAULT_STOREFRONT_THEME);
+  const [tiers, setTiers] = useState<DeliveryTier[]>([]);
+  const [schedule, setSchedule] = useState<WorkHour[]>(DEFAULT_SCHEDULE);
+  const [printerWidth, setPrinterWidth] = useState(80);
+  const [printerFontSize, setPrinterFontSize] = useState(12);
+  const [printerFontWeight, setPrinterFontWeight] = useState(700);
+  const [printerAutoPrint, setPrinterAutoPrint] = useState(false);
+  const [wppStatus, setWppStatus] = useState<string>("iniciando");
+  const [wppQrCode, setWppQrCode] = useState<string>("");
+  const [isRestarting, setIsRestarting] = useState(false);
+  const { showToast } = useToast();
 
-  const [printerWidth, setPrinterWidth] = useState(80)
-  const [printerFontSize, setPrinterFontSize] = useState(12)
-
-  const [tiers, setTiers] = useState<DeliveryTier[]>([])
-  const [schedule, setSchedule] = useState<WorkHour[]>(DEFAULT_SCHEDULE)
-
-  const [wppStatus, setWppStatus] = useState<string>('iniciando')
-  const [wppQrCode, setWppQrCode] = useState<string>('')
-  const [isRestarting, setIsRestarting] = useState(false)
-
-  useEffect(() => { fetchSettings() }, [])
+  useEffect(() => {
+    fetchSettings();
+  }, []);
 
   useEffect(() => {
     const checkWppStatus = async () => {
       try {
-        const res = await fetch('http://64.181.189.107:3001/status')
-        const data = await res.json()
-        setWppStatus(data.status)
-        setWppQrCode(data.qrcode)
+        const res = await fetch("http://64.181.189.107:3001/status");
+        const data = await res.json();
+        setWppStatus(data.status);
+        setWppQrCode(data.qrcode);
       } catch (error) {
-        console.error("Erro ao obter status do WhatsApp:", error)
-        setWppStatus('desconectado')
+        console.error("Erro ao obter status do WhatsApp:", error);
+        setWppStatus("desconectado");
       }
-    }
+    };
 
-    checkWppStatus()
-    const interval = setInterval(checkWppStatus, 3000) 
-    return () => clearInterval(interval)
-  }, [])
+    checkWppStatus();
+    const interval = setInterval(checkWppStatus, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   const fetchSettings = async () => {
     try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return router.push('/admin/login')
+      const { restaurant: data, user } = await getCurrentRestaurant(supabase);
+      if (!user) return router.push("/admin/login");
 
-        const { data } = await supabase.from('restaurants').select('*').single()
-        
-        if (data) {
-            setRestaurantId(data.id)
-            setName(data.name || "")
-            setPhone(data.phone || "")
-            setPrimaryColor(data.primary_color || '#DC2626')
-            setLogoUrl(data.logo_url || data.image_url || "")
-            setBanners(data.banners || [])
-            setPrinterWidth(data.printer_width || 80)
-            setPrinterFontSize(data.printer_font_size || 12)
-            setAddress({
-                zip: data.address_zip || '', street: data.address_street || '', number: data.address_number || '',
-                neighborhood: data.address_neighborhood || '', city: data.address_city || '', state: data.address_state || ''
-            })
-            if (data.delivery_tiers) setTiers(data.delivery_tiers)
-            else setTiers([{ distance: 1, time: 20, price: 0 }])
-            if (data.work_hours) setSchedule(data.work_hours)
-        }
-    } catch (err) { console.error(err) } finally { setLoading(false) }
-  }
+      if (data) {
+        setRestaurantId(data.id);
+        setRestaurantLatitude(data.latitude ?? null);
+        setRestaurantLongitude(data.longitude ?? null);
+        setName(data.name || "");
+        setPhone(data.phone || "");
+        setPrimaryColor(data.primary_color || "#ff5a1f");
+        setLogoUrl(data.logo_url || data.image_url || "");
+        setBanners(data.banners || []);
+        setStorefrontHeadline(data.storefront_headline || "");
+        setStorefrontSubheadline(data.storefront_subheadline || "");
+        setStorefrontTheme({
+          ...DEFAULT_STOREFRONT_THEME,
+          ...(data.storefront_theme || {}),
+        });
+        setAddress({
+          zip: data.address_zip || "",
+          street: data.address_street || "",
+          number: data.address_number || "",
+          neighborhood: data.address_neighborhood || "",
+          city: data.address_city || "",
+          state: data.address_state || "",
+        });
+        if (data.delivery_tiers) setTiers(data.delivery_tiers);
+        else setTiers([{ distance: 1, time: 20, price: 0 }]);
+        if (data.work_hours) setSchedule(data.work_hours);
+        setPrinterWidth(data.printer_width || 80);
+        setPrinterFontSize(data.printer_font_size || 12);
+        setPrinterFontWeight(data.printer_font_weight || 700);
+        setPrinterAutoPrint(Boolean(data.printer_auto_print));
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const uploadFile = async (file: File) => {
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
-      const { error: uploadError } = await supabase.storage.from('restaurant-images').upload(fileName, file)
-      if (uploadError) throw uploadError
-      const { data } = supabase.storage.from('restaurant-images').getPublicUrl(fileName)
-      return data.publicUrl
-  }
+    const fileExt = file.name.split(".").pop();
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+    const { error: uploadError } = await supabase.storage.from("restaurant-images").upload(fileName, file);
+    if (uploadError) throw uploadError;
+    const { data } = supabase.storage.from("restaurant-images").getPublicUrl(fileName);
+    return data.publicUrl;
+  };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (!e.target.files || e.target.files.length === 0) return
-      setUploading(true)
-      try {
-          const publicUrl = await uploadFile(e.target.files[0])
-          setLogoUrl(publicUrl)
-      } catch (error) { alert('Erro ao enviar imagem.'); console.error(error) } finally { setUploading(false) }
-  }
+    if (!e.target.files || e.target.files.length === 0) return;
+    setUploading(true);
+    try {
+      const publicUrl = await uploadFile(e.target.files[0]);
+      setLogoUrl(publicUrl);
+    } catch (error) {
+      console.error(error);
+      showToast({
+        title: "Falha no upload do logo",
+        description: "Tente novamente com outra imagem.",
+        tone: "error",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (!e.target.files || e.target.files.length === 0) return
-      setUploading(true)
-      try {
-          const publicUrl = await uploadFile(e.target.files[0])
-          setBanners([...banners, publicUrl])
-      } catch (error) { alert('Erro ao enviar banner.'); console.error(error) } finally { setUploading(false) }
-  }
-
-  const handleRemoveBanner = (index: number) => setBanners(banners.filter((_, i) => i !== index))
+    if (!e.target.files || e.target.files.length === 0) return;
+    setUploading(true);
+    try {
+      const publicUrl = await uploadFile(e.target.files[0]);
+      setBanners([...banners, publicUrl]);
+    } catch (error) {
+      console.error(error);
+      showToast({
+        title: "Falha no upload do banner",
+        description: "Tente novamente com outro arquivo.",
+        tone: "error",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleSave = async () => {
-    setSaving(true)
-    const sortedTiers = [...tiers].sort((a, b) => a.distance - b.distance)
-    const { error } = await supabase.from('restaurants').update({
-            name, phone, delivery_tiers: sortedTiers, work_hours: schedule,
-            address_zip: address.zip, address_street: address.street, address_number: address.number,
-            address_neighborhood: address.neighborhood, address_city: address.city, address_state: address.state,
-            printer_width: printerWidth, printer_font_size: printerFontSize, primary_color: primaryColor,
-            logo_url: logoUrl, image_url: logoUrl, banners: banners
-        }).eq('id', restaurantId)
+    setSaving(true);
+    const sortedTiers = [...tiers].sort((a, b) => a.distance - b.distance);
+    let latitude: number | null = restaurantLatitude;
+    let longitude: number | null = restaurantLongitude;
 
-    if (error) alert('Erro ao salvar.')
-    else { alert('Salvo com sucesso! ✅'); fetchSettings() }
-    setSaving(false)
-  }
+    const fullAddress = [
+      address.street,
+      address.number,
+      address.neighborhood,
+      address.city,
+      address.state,
+      "Brasil",
+    ]
+      .filter(Boolean)
+      .join(", ");
 
-  // ==============================================
-  // FUNÇÃO DO BOTÃO DE REINICIAR O WHATSAPP
-  // ==============================================
+    if (fullAddress) {
+      const coords = await getCoordinates(fullAddress);
+      if (coords) {
+        latitude = coords.lat;
+        longitude = coords.lon;
+      }
+    }
+
+    const { error } = await supabase
+      .from("restaurants")
+      .update({
+        name,
+        phone,
+        delivery_tiers: sortedTiers,
+        work_hours: schedule,
+        address_zip: address.zip,
+        address_street: address.street,
+        address_number: address.number,
+        address_neighborhood: address.neighborhood,
+        address_city: address.city,
+        address_state: address.state,
+        latitude,
+        longitude,
+        primary_color: primaryColor,
+        logo_url: logoUrl,
+        image_url: logoUrl,
+        banners,
+        storefront_headline: storefrontHeadline,
+        storefront_subheadline: storefrontSubheadline,
+        storefront_theme: storefrontTheme,
+        printer_width: printerWidth,
+        printer_font_size: printerFontSize,
+        printer_font_weight: printerFontWeight,
+        printer_auto_print: printerAutoPrint,
+      })
+      .eq("id", restaurantId);
+
+    if (error) {
+      console.error("Erro ao salvar configuracoes:", error);
+      const missingStorefrontColumn =
+        error.message?.includes("storefront_") || error.code === "42703";
+      const missingPrintColumn = error.message?.includes("printer_auto_print");
+
+      if (missingPrintColumn) {
+        showToast({
+          title: "Migration pendente no Supabase",
+          description: "A migration 010_auto_print_on_accept.sql ainda precisa ser aplicada.",
+          tone: "error",
+        });
+      } else if (missingStorefrontColumn) {
+        showToast({
+          title: "Migration pendente no Supabase",
+          description: "A migration 003_storefront_customization.sql ainda precisa ser aplicada.",
+          tone: "error",
+        });
+      } else {
+        showToast({
+          title: "Nao foi possivel salvar",
+          description: error.message,
+          tone: "error",
+        });
+      }
+    } else {
+      showToast({
+        title: "Configuracoes salvas",
+        description: "Os dados da loja foram atualizados com sucesso.",
+        tone: "success",
+      });
+      setRestaurantLatitude(latitude);
+      setRestaurantLongitude(longitude);
+      fetchSettings();
+    }
+    setSaving(false);
+  };
+
   const handleRestartWpp = async () => {
-      setIsRestarting(true)
-      setWppStatus('iniciando')
-      setWppQrCode('')
-      try {
-          await fetch('http://64.181.189.107:3001/restart')
-      } catch (error) {
-          console.error("Erro ao reiniciar:", error)
-      }
-      setTimeout(() => setIsRestarting(false), 3000) 
-  }
+    setIsRestarting(true);
+    setWppStatus("iniciando");
+    setWppQrCode("");
+    try {
+      await fetch("http://64.181.189.107:3001/restart");
+    } catch (error) {
+      console.error(error);
+    }
+    setTimeout(() => setIsRestarting(false), 3000);
+  };
 
-  // ==============================================
-  // FUNÇÃO DO BOTÃO DE TESTE DE MENSAGEM
-  // ==============================================
-  const handleTestMessage = async () => {
-      try {
-          // ⚠️ ATENÇÃO: COLOQUE SEU NÚMERO REAL AQUI ⚠️
-          const meuNumero = "5511967967777"; 
-          
-          const res = await fetch('http://64.181.189.107:3001/send-message', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
-                  phone: meuNumero, 
-                  message: '🚀 Teste do sistema! Se você recebeu isso, o envio está 100% funcionando!' 
-              })
-          });
-          
-          const data = await res.json();
-          if (data.success) {
-              alert('Mensagem enviada! Olha o celular 👀');
-          } else {
-              alert('Erro na API: ' + data.error);
-          }
-      } catch (error) {
-          console.error("Erro:", error);
-          alert('Erro de conexão com o servidor da Oracle.');
-      }
-  }
-  
   const handleBlurCep = async () => {
-      const cep = address.zip.replace(/\D/g, '')
-      if (cep.length < 8) return
-      const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`)
-      const data = await res.json()
-      if (!data.erro) setAddress(prev => ({ ...prev, street: data.logradouro, neighborhood: data.bairro, city: data.localidade, state: data.uf }))
-  }
-  const updateTier = (index: number, field: keyof DeliveryTier, value: string) => {
-    const newTiers = [...tiers]; newTiers[index] = { ...newTiers[index], [field]: parseFloat(value) || 0 }; setTiers(newTiers)
-  }
-  const addTier = () => setTiers([...tiers, { distance: 1, time: 30, price: 5 }])
-  const removeTier = (index: number) => setTiers(tiers.filter((_, i) => i !== index))
-  const handleTimeChange = (index: number, field: keyof WorkHour, value: any) => {
-    const newSchedule = [...schedule]; 
-    // @ts-ignore
-    newSchedule[index] = { ...newSchedule[index], [field]: value }; setSchedule(newSchedule)
-  }
+    const cep = address.zip.replace(/\D/g, "");
+    if (cep.length < 8) return;
+    const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+    const data = await res.json();
+    if (!data.erro) {
+      setAddress((prev) => ({
+        ...prev,
+        street: data.logradouro,
+        neighborhood: data.bairro,
+        city: data.localidade,
+        state: data.uf,
+      }));
+    }
+  };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-red-600"/></div>
+  const updateTier = (index: number, field: keyof DeliveryTier, value: string) => {
+    const newTiers = [...tiers];
+    newTiers[index] = { ...newTiers[index], [field]: parseFloat(value) || 0 };
+    setTiers(newTiers);
+  };
+
+  const addTier = () => setTiers([...tiers, { distance: 1, time: 30, price: 5 }]);
+  const removeTier = (index: number) => setTiers(tiers.filter((_, i) => i !== index));
+
+  const handleTimeChange = (index: number, field: keyof WorkHour, value: any) => {
+    const newSchedule = [...schedule];
+    newSchedule[index] = { ...newSchedule[index], [field]: value };
+    setSchedule(newSchedule);
+  };
+
+  const updateStorefrontTheme = <K extends keyof StorefrontTheme>(
+    field: K,
+    value: StorefrontTheme[K],
+  ) => {
+    setStorefrontTheme((current) => ({ ...current, [field]: value }));
+  };
+
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center text-sm font-semibold text-gray-500">
+        <Loader2 className="mr-2 animate-spin text-[var(--brand)]" size={18} />
+        Carregando configuracoes...
+      </div>
+    );
+  }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 pb-8 mb-20">
-        <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-gray-800">Configurações</h1>
-            <button onClick={handleSave} disabled={saving || uploading} className="bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-2 rounded-lg flex items-center gap-2 disabled:opacity-50">
-                {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />} Salvar
-            </button>
+    <div className="mx-auto max-w-6xl pb-20">
+      <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <h1 className="text-3xl font-black tracking-tight text-gray-950">Configuracoes</h1>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            Atualize dados da loja, identidade visual e regras de entrega.
+          </p>
         </div>
+        <button
+          onClick={handleSave}
+          disabled={saving || uploading}
+          className="brand-gradient rounded-2xl px-5 py-3 text-sm font-bold text-white disabled:opacity-60"
+        >
+          <span className="inline-flex items-center gap-2">
+            {saving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
+            Salvar alteracoes
+          </span>
+        </button>
+      </div>
 
-      <div className="max-w-4xl mx-auto space-y-8 p-6">
-        
-        <div className="space-y-4">
-            <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2"><Store className="text-red-600"/> Dados da Loja</h2>
-            <div className="grid md:grid-cols-2 gap-4">
-                <div><label className="block text-sm font-bold text-gray-700 mb-1">Nome</label><input value={name} onChange={e => setName(e.target.value)} className="w-full border p-3 rounded-lg outline-none focus:border-red-500" /></div>
-                <div><label className="block text-sm font-bold text-gray-700 mb-1">WhatsApp</label><input value={phone} onChange={e => setPhone(e.target.value)} className="w-full border p-3 rounded-lg outline-none focus:border-red-500" /></div>
+      <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+        <section className="surface-card rounded-[28px] p-6">
+          <div className="flex items-center gap-3">
+            <div className="rounded-2xl bg-[var(--brand-soft)] p-3 text-[var(--brand)]">
+              <Store size={20} />
             </div>
-            
-            <h3 className="font-bold text-gray-600 text-sm uppercase mt-4">Endereço</h3>
-            <div className="grid grid-cols-2 gap-4">
-                <input value={address.zip} onChange={e => setAddress({...address, zip: e.target.value})} onBlur={handleBlurCep} className="w-full border p-3 rounded-lg" placeholder="CEP" />
-                <input value={address.city} onChange={e => setAddress({...address, city: e.target.value})} className="w-full border p-3 rounded-lg bg-gray-50" placeholder="Cidade" />
+            <div>
+              <h2 className="text-xl font-black text-gray-950">Dados da loja</h2>
+              <p className="text-sm text-gray-500">Nome, WhatsApp e endereco da operacao.</p>
             </div>
-            <div className="grid grid-cols-3 gap-4">
-                <input value={address.street} onChange={e => setAddress({...address, street: e.target.value})} className="col-span-2 w-full border p-3 rounded-lg bg-gray-50" placeholder="Rua" />
-                <input value={address.number} onChange={e => setAddress({...address, number: e.target.value})} className="w-full border p-3 rounded-lg" placeholder="Número" />
+          </div>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome da loja" className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]" />
+            <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="WhatsApp" className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]" />
+            <input value={address.zip} onChange={(e) => setAddress({ ...address, zip: e.target.value })} onBlur={handleBlurCep} placeholder="CEP" className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]" />
+            <input value={address.city} onChange={(e) => setAddress({ ...address, city: e.target.value })} placeholder="Cidade" className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]" />
+            <input value={address.street} onChange={(e) => setAddress({ ...address, street: e.target.value })} placeholder="Rua" className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)] md:col-span-2" />
+            <input value={address.number} onChange={(e) => setAddress({ ...address, number: e.target.value })} placeholder="Numero" className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]" />
+            <input value={address.neighborhood} onChange={(e) => setAddress({ ...address, neighborhood: e.target.value })} placeholder="Bairro" className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]" />
+          </div>
+        </section>
+
+        <section className="surface-card rounded-[28px] p-6">
+          <div className="flex items-center gap-3">
+            <div className="rounded-2xl bg-[var(--brand-soft)] p-3 text-[var(--brand)]">
+              <Palette size={20} />
             </div>
-        </div>
+            <div>
+              <h2 className="text-xl font-black text-gray-950">Identidade visual</h2>
+              <p className="text-sm text-gray-500">Logo, cor principal e banners.</p>
+            </div>
+          </div>
 
-        <hr />
-
-        {/* ========================================== */}
-        {/* CONEXÃO WHATSAPP                             */}
-        {/* ========================================== */}
-        <div className="space-y-4">
-            <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                <Smartphone className="text-green-600"/> Conexão WhatsApp
-            </h2>
-            <div className="grid md:grid-cols-2 gap-6 bg-gray-50 p-4 rounded-xl border border-gray-200">
-                <div className="flex flex-col justify-center space-y-3">
-                    <p className="text-sm text-gray-600">
-                        Conecte o seu celular para que o sistema envie automaticamente as notificações de pedido para os clientes.
-                    </p>
-                    <div className="flex items-center flex-wrap gap-2 mt-2">
-                        <span className="text-sm font-bold text-gray-700">Status atual:</span>
-                        {wppStatus === 'conectado' && <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold">Conectado e Operante</span>}
-                        {wppStatus === 'aguardando_qr' && <span className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1"><Loader2 size={12} className="animate-spin"/> Aguardando leitura...</span>}
-                        {wppStatus === 'iniciando' && <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1"><Loader2 size={12} className="animate-spin"/> Iniciando servidor...</span>}
-                        {(wppStatus === 'desconectado' || wppStatus === 'erro' || !wppStatus) && <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold">Desconectado</span>}
-                        
-                        <button 
-                            onClick={handleRestartWpp} 
-                            disabled={isRestarting}
-                            className="ml-auto flex items-center gap-1 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-50 shadow-sm"
-                            title="Desconectar e gerar novo QR Code"
-                        >
-                            <RefreshCw size={14} className={isRestarting ? "animate-spin" : ""} />
-                            Reiniciar
-                        </button>
-
-                        {/* BOTÃO DE TESTE DE ENVIO FICA AQUI */}
-                        {wppStatus === 'conectado' && (
-                            <button 
-                                onClick={handleTestMessage} 
-                                className="flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-sm ml-2"
-                            >
-                                Testar Envio
-                            </button>
-                        )}
-
-                    </div>
+          <div className="mt-6 space-y-5">
+            <div className="flex items-center gap-4">
+              <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-[24px] border border-dashed border-[var(--line)] bg-white">
+                {logoUrl ? <img src={logoUrl} className="h-full w-full object-cover" /> : <ImageIcon className="text-gray-300" />}
+              </div>
+              <div className="space-y-3">
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700">
+                  <UploadCloud size={16} />
+                  Trocar logo
+                  <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={uploading} />
+                </label>
+                <div className="flex items-center gap-3">
+                  <input type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="h-11 w-11 rounded-xl border border-[var(--line)] bg-white p-1" />
+                  <span className="text-sm font-medium text-gray-500">{primaryColor}</span>
                 </div>
-                <div className="flex justify-center">
-                    <div className="w-48 h-48 bg-white border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center overflow-hidden relative shadow-sm">
-                        {wppStatus === 'aguardando_qr' && wppQrCode ? (
-                            <img src={wppQrCode} alt="QR Code WhatsApp" className="w-full h-full object-contain p-2" />
-                        ) : wppStatus === 'conectado' ? (
-                            <div className="text-center text-green-600 flex flex-col items-center">
-                                <CheckCircle size={48} className="mb-2" />
-                                <span className="font-bold text-sm">Pronto para Enviar!</span>
-                            </div>
-                        ) : (
-                            <div className="text-center text-gray-400 flex flex-col items-center">
-                                <QrCode size={48} className="mb-2 opacity-50" /> 
-                                <span className="text-xs">Aguardando API...</span>
-                            </div>
-                        )}
-                    </div>
-                </div>
+              </div>
             </div>
-        </div>
 
-        <hr />
-
-        <div className="space-y-4">
-            <div className="flex items-center justify-between">
-                <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2"><Palette className="text-red-600"/> Identidade Visual</h2>
-                {uploading && <span className="text-sm text-blue-600 flex items-center gap-2 font-bold"><Loader2 className="animate-spin" size={14}/> Enviando imagem...</span>}
-            </div>
-            
-            <div className="grid md:grid-cols-2 gap-6 bg-gray-50 p-4 rounded-xl border border-gray-200">
-                <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">Logo da Loja</label>
-                    <div className="flex items-center gap-4 mb-4">
-                        <div className="w-20 h-20 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center bg-white overflow-hidden relative">
-                            {logoUrl ? <img src={logoUrl} className="w-full h-full object-cover" /> : <ImageIcon className="text-gray-300"/>}
-                        </div>
-                        <label className="cursor-pointer bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg font-bold text-sm hover:bg-gray-50 flex items-center gap-2">
-                            <UploadCloud size={16}/> Trocar Logo
-                            <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={uploading} />
-                        </label>
-                    </div>
-
-                    <label className="block text-sm font-bold text-gray-700 mb-2">Cor Principal</label>
+            <div className="rounded-[24px] border border-[var(--line)] bg-[#fcfaf7] p-4">
+              <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--line)] bg-white px-4 py-6 text-center">
+                <Plus className="mb-2 text-gray-400" size={18} />
+                <span className="text-sm font-bold text-gray-700">Adicionar banner</span>
+                <span className="mt-1 text-xs text-gray-400">Suba imagens para destacar promocoes.</span>
+                <input type="file" accept="image/*" className="hidden" onChange={handleBannerUpload} disabled={uploading} />
+              </label>
+              <div className="mt-4 space-y-2">
+                {banners.map((banner, index) => (
+                  <div key={index} className="flex items-center justify-between rounded-2xl border border-[var(--line)] bg-white p-2.5">
                     <div className="flex items-center gap-3">
-                        <input type="color" value={primaryColor} onChange={e => setPrimaryColor(e.target.value)} className="w-12 h-12 p-1 rounded-lg border cursor-pointer"/>
-                        <span className="font-mono text-gray-500 font-medium">{primaryColor}</span>
+                      <img src={banner} className="h-10 w-16 rounded-xl object-cover" />
+                      <span className="text-sm font-medium text-gray-600">Banner {index + 1}</span>
                     </div>
-                </div>
-
-                <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">Banners Promocionais</label>
-                    
-                    <label className="w-full border-2 border-dashed border-gray-300 rounded-lg p-4 flex flex-col items-center justify-center cursor-pointer hover:border-red-400 hover:bg-red-50 transition-colors mb-3">
-                        <Plus className="text-gray-400 mb-1"/>
-                        <span className="text-xs font-bold text-gray-500">Clique para adicionar banner</span>
-                        <input type="file" accept="image/*" className="hidden" onChange={handleBannerUpload} disabled={uploading} />
-                    </label>
-
-                    <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
-                        {banners.map((b, i) => (
-                            <div key={i} className="flex items-center justify-between bg-white p-2 border rounded-lg shadow-sm group">
-                                <div className="flex items-center gap-3 overflow-hidden">
-                                    <img src={b} className="w-12 h-8 object-cover rounded bg-gray-100" />
-                                    <span className="text-xs text-gray-400 truncate max-w-[150px]">Banner {i + 1}</span>
-                                </div>
-                                <button onClick={() => handleRemoveBanner(i)} className="text-gray-400 hover:text-red-600 p-1"><Trash2 size={16}/></button>
-                            </div>
-                        ))}
-                        {banners.length === 0 && <p className="text-xs text-gray-400 text-center py-2">Nenhum banner adicionado.</p>}
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <hr />
-
-        <div className="space-y-4">
-            <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2"><Printer className="text-red-600"/> Impressão</h2>
-            <div className="grid md:grid-cols-2 gap-6 bg-gray-50 p-4 rounded-xl border border-gray-200">
-                <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">Largura</label>
-                    <div className="flex gap-4">
-                        <label className={`flex-1 p-3 rounded-lg border cursor-pointer flex items-center justify-center gap-2 ${printerWidth === 80 ? 'border-red-500 bg-white shadow-sm' : 'border-gray-300'}`}><input type="radio" name="width" className="hidden" checked={printerWidth === 80} onChange={() => setPrinterWidth(80)} /><span className="font-bold">80mm</span></label>
-                        <label className={`flex-1 p-3 rounded-lg border cursor-pointer flex items-center justify-center gap-2 ${printerWidth === 58 ? 'border-red-500 bg-white shadow-sm' : 'border-gray-300'}`}><input type="radio" name="width" className="hidden" checked={printerWidth === 58} onChange={() => setPrinterWidth(58)} /><span className="font-bold">58mm</span></label>
-                    </div>
-                </div>
-                <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">Tamanho Fonte: {printerFontSize}px</label>
-                    <input type="range" min="10" max="24" step="1" value={printerFontSize} onChange={(e) => setPrinterFontSize(Number(e.target.value))} className="w-full accent-red-600 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" />
-                </div>
-            </div>
-        </div>
-
-        <hr />
-        
-        <div className="space-y-4">
-            <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2"><MapPin className="text-red-600"/> Taxas de Entrega</h2>
-            <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
-                {tiers.map((tier, index) => (
-                    <div key={index} className="grid grid-cols-10 gap-4 items-center">
-                        <div className="col-span-3 relative"><input type="number" value={tier.distance} onChange={(e) => updateTier(index, 'distance', e.target.value)} className="w-full pl-3 pr-8 py-2 border rounded font-bold" /><span className="absolute right-3 top-2.5 text-xs text-gray-400 font-bold">km</span></div>
-                        <div className="col-span-3 relative"><input type="number" value={tier.time} onChange={(e) => updateTier(index, 'time', e.target.value)} className="w-full pl-3 pr-10 py-2 border rounded" /><span className="absolute right-3 top-2.5 text-xs text-gray-400">min</span></div>
-                        <div className="col-span-3 relative"><span className="absolute left-3 top-2.5 text-xs text-green-600 font-bold">R$</span><input type="number" value={tier.price} onChange={(e) => updateTier(index, 'price', e.target.value)} className="w-full pl-8 pr-3 py-2 border rounded font-bold" /></div>
-                        <div className="col-span-1 flex justify-center"><button onClick={() => removeTier(index)} className="p-2 text-gray-400 hover:text-red-600"><Trash2 size={18} /></button></div>
-                    </div>
+                    <button onClick={() => setBanners(banners.filter((_, i) => i !== index))} className="rounded-xl p-2 text-gray-400 hover:bg-[#fff0e8] hover:text-[var(--brand)]">
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 ))}
-                <button onClick={addTier} className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 font-bold hover:border-red-500 hover:text-red-600 flex items-center justify-center gap-2"><Plus size={18} /> Adicionar Faixa</button>
+                {banners.length === 0 && <p className="text-center text-sm text-gray-400">Nenhum banner enviado.</p>}
+              </div>
             </div>
-        </div>
+          </div>
+        </section>
 
-        <div className="space-y-4">
-            <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2"><Clock className="text-red-600"/> Horários</h2>
-            <div className="border border-gray-200 rounded-xl divide-y">
-                {schedule.map((item, index) => (
-                    <div key={item.day_id} className="p-3 flex items-center justify-between">
-                        <div className="flex items-center gap-3"><input type="checkbox" checked={item.is_open} onChange={(e) => handleTimeChange(index, 'is_open', e.target.checked)} className="w-5 h-5 accent-red-600" /><span className={item.is_open ? 'font-bold' : 'text-gray-400'}>{item.day_label}</span></div>
-                        {item.is_open && <div className="flex items-center gap-2"><input type="time" value={item.open_time} onChange={(e) => handleTimeChange(index, 'open_time', e.target.value)} className="border p-1 rounded" /><span>às</span><input type="time" value={item.close_time} onChange={(e) => handleTimeChange(index, 'close_time', e.target.value)} className="border p-1 rounded" /></div>}
-                    </div>
-                ))}
+        <section className="surface-card rounded-[28px] p-6 xl:col-span-2">
+          <div className="flex items-center gap-3">
+            <div className="rounded-2xl bg-[var(--brand-soft)] p-3 text-[var(--brand)]">
+              <Palette size={20} />
             </div>
-        </div>
+            <div>
+              <h2 className="text-xl font-black text-gray-950">Pagina de venda</h2>
+              <p className="text-sm text-gray-500">
+                Personalize a cara da vitrine publica de cada restaurante.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+            <div className="space-y-4">
+              <div className="grid gap-4">
+                <input
+                  value={storefrontHeadline}
+                  onChange={(e) => setStorefrontHeadline(e.target.value)}
+                  placeholder="Titulo comercial da vitrine"
+                  className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+                />
+                <textarea
+                  value={storefrontSubheadline}
+                  onChange={(e) => setStorefrontSubheadline(e.target.value)}
+                  rows={3}
+                  placeholder="Texto curto para destacar proposta, promocao ou estilo da loja"
+                  className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+                />
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="space-y-2">
+                  <span className="flex items-center gap-2 text-sm font-bold text-gray-700">
+                    Paleta da pagina
+                    <FieldHint label="Escolhe as cores e a atmosfera visual da vitrine." />
+                  </span>
+                  <select
+                    value={storefrontTheme.preset}
+                    onChange={(e) => updateStorefrontTheme("preset", e.target.value as StorefrontTheme["preset"])}
+                    className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+                  >
+                    <option value="sunset">Sunset</option>
+                    <option value="forest">Forest</option>
+                    <option value="berry">Berry</option>
+                    <option value="midnight">Midnight</option>
+                  </select>
+                </label>
+
+                <label className="space-y-2">
+                  <span className="flex items-center gap-2 text-sm font-bold text-gray-700">
+                    Estilo do topo
+                    <FieldHint label="Define a aparencia da capa principal da vitrine." />
+                  </span>
+                  <select
+                    value={storefrontTheme.hero_style}
+                    onChange={(e) => updateStorefrontTheme("hero_style", e.target.value as StorefrontTheme["hero_style"])}
+                    className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+                  >
+                    <option value="banner">Capa classica</option>
+                    <option value="split">Capa com destaque lateral</option>
+                    <option value="spotlight">Capa promocional</option>
+                  </select>
+                </label>
+
+                <label className="space-y-2">
+                  <span className="flex items-center gap-2 text-sm font-bold text-gray-700">
+                    Exibicao dos produtos
+                    <FieldHint label="Define se os produtos aparecem em blocos ou em lista corrida." />
+                  </span>
+                  <select
+                    value={storefrontTheme.catalog_layout}
+                    onChange={(e) => updateStorefrontTheme("catalog_layout", e.target.value as StorefrontTheme["catalog_layout"])}
+                    className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+                  >
+                    <option value="grid">Blocos</option>
+                    <option value="list">Lista</option>
+                  </select>
+                </label>
+
+                <label className="space-y-2">
+                  <span className="flex items-center gap-2 text-sm font-bold text-gray-700">
+                    Aparencia dos produtos
+                    <FieldHint label="Controla se os blocos ficam mais leves, com contorno ou com mais profundidade." />
+                  </span>
+                  <select
+                    value={storefrontTheme.card_style}
+                    onChange={(e) => updateStorefrontTheme("card_style", e.target.value as StorefrontTheme["card_style"])}
+                    className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+                  >
+                    <option value="soft">Suave</option>
+                    <option value="outline">Com contorno</option>
+                    <option value="elevated">Com profundidade</option>
+                  </select>
+                </label>
+
+                <label className="space-y-2">
+                  <span className="flex items-center gap-2 text-sm font-bold text-gray-700">
+                    Menu de categorias
+                    <FieldHint label="Escolhe se as categorias aparecem como abas ou botões arredondados." />
+                  </span>
+                  <select
+                    value={storefrontTheme.category_style}
+                    onChange={(e) => updateStorefrontTheme("category_style", e.target.value as StorefrontTheme["category_style"])}
+                    className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+                  >
+                    <option value="underline">Abas com linha</option>
+                    <option value="pill">Botoes arredondados</option>
+                  </select>
+                </label>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <label className="flex items-center justify-between rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
+                  <span className="flex items-center gap-2 text-sm font-bold text-gray-700">
+                    Mostrar logo no topo
+                    <FieldHint label="Exibe o logo da loja sobre a capa da vitrine." />
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={storefrontTheme.show_logo}
+                    onChange={(e) => updateStorefrontTheme("show_logo", e.target.checked)}
+                    className="h-4 w-4 accent-[var(--brand)]"
+                  />
+                </label>
+                <label className="flex items-center justify-between rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
+                  <span className="flex items-center gap-2 text-sm font-bold text-gray-700">
+                    Mostrar nota da loja
+                    <FieldHint label="Exibe a nota media da loja ao lado do nome." />
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={storefrontTheme.show_reviews}
+                    onChange={(e) => updateStorefrontTheme("show_reviews", e.target.checked)}
+                    className="h-4 w-4 accent-[var(--brand)]"
+                  />
+                </label>
+                <label className="flex items-center justify-between rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
+                  <span className="flex items-center gap-2 text-sm font-bold text-gray-700">
+                    Usar imagens de capa
+                    <FieldHint label="Mostra banners ou foto principal na capa da vitrine." />
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={storefrontTheme.show_banners}
+                    onChange={(e) => updateStorefrontTheme("show_banners", e.target.checked)}
+                    className="h-4 w-4 accent-[var(--brand)]"
+                  />
+                </label>
+                <label className="flex items-center justify-between rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
+                  <span className="flex items-center gap-2 text-sm font-bold text-gray-700">
+                    Mostrar destaques comerciais
+                    <FieldHint label="Exibe selos e blocos como mais pedido, entrega e promo do dia." />
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={storefrontTheme.show_badges}
+                    onChange={(e) => updateStorefrontTheme("show_badges", e.target.checked)}
+                    className="h-4 w-4 accent-[var(--brand)]"
+                  />
+                </label>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <input
+                  value={storefrontTheme.highlight_badge}
+                  onChange={(e) => updateStorefrontTheme("highlight_badge", e.target.value)}
+                  placeholder="Selo comercial: Ex. Mais pedido"
+                  className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+                />
+                <input
+                  value={storefrontTheme.promo_text}
+                  onChange={(e) => updateStorefrontTheme("promo_text", e.target.value)}
+                  placeholder="Faixa promocional: Ex. Promo do dia"
+                  className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+                />
+              </div>
+            </div>
+
+            <div className="rounded-[28px] border border-[var(--line)] bg-[#fcfaf7] p-5">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-gray-400">
+                Preview da vitrine
+              </p>
+              <div
+                className="mt-4 overflow-hidden rounded-[24px] border border-[var(--line)]"
+                style={{
+                  background:
+                    storefrontTheme.preset === "forest"
+                      ? "linear-gradient(135deg, #153b2e, #274d3c)"
+                      : storefrontTheme.preset === "berry"
+                        ? "linear-gradient(135deg, #5c1736, #9b2959)"
+                        : storefrontTheme.preset === "midnight"
+                          ? "linear-gradient(135deg, #12151d, #283246)"
+                          : "linear-gradient(135deg, #ff8b45, #f3b38c)",
+                }}
+              >
+                <div className="bg-black/15 p-5 text-white">
+                  <div className="max-w-xl rounded-[22px] border border-white/15 bg-white/12 p-4 backdrop-blur-md">
+                    <h3 className="text-xl font-black leading-tight">
+                      {storefrontHeadline || name || "Sua loja no WhatsApp com cara profissional"}
+                    </h3>
+                    <p className="mt-2 text-sm leading-6 text-white/80">
+                      {storefrontSubheadline || "A capa da vitrine ajuda a destacar sua marca, sua promocao e sua proposta de valor."}
+                    </p>
+                    {storefrontTheme.show_badges && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <span className="rounded-full bg-white/90 px-3 py-1 text-[11px] font-black uppercase tracking-[0.12em] text-gray-900">
+                          {storefrontTheme.highlight_badge || "Mais pedido"}
+                        </span>
+                        <span className="rounded-full bg-white/15 px-3 py-1 text-[11px] font-bold text-white">
+                          {storefrontTheme.promo_text || "Promo do dia"}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="bg-[#fffdfa] p-4">
+                  <div className="mb-3 flex gap-2 overflow-hidden">
+                    <span className={`text-xs font-bold ${storefrontTheme.category_style === "pill" ? "rounded-full bg-[#fff2e8] px-3 py-2" : "border-b-2 border-[var(--brand)] px-1 pb-2"}`}>
+                      Espetos
+                    </span>
+                    <span className={`text-xs font-bold text-gray-500 ${storefrontTheme.category_style === "pill" ? "rounded-full bg-white px-3 py-2 border border-gray-200" : "px-1 pb-2"}`}>
+                      Combos
+                    </span>
+                  </div>
+                  <div className={`grid gap-3 ${storefrontTheme.catalog_layout === "grid" ? "md:grid-cols-2" : "grid-cols-1"}`}>
+                    <div className={`rounded-2xl bg-white p-4 ${storefrontTheme.card_style === "outline" ? "border-2 border-gray-200" : storefrontTheme.card_style === "elevated" ? "shadow-[0_18px_32px_rgba(17,16,15,0.12)]" : "shadow-sm"}`}>
+                      <div className={`${storefrontTheme.catalog_layout === "grid" ? "h-24" : "h-14"} rounded-xl bg-[#f3ede5]`} />
+                      <p className="mt-3 font-bold text-gray-900">Espeto especial da casa</p>
+                      <p className="mt-1 text-sm text-gray-500">Com farofa, molho verde e acompanhamentos.</p>
+                      <p className="mt-3 text-sm font-black text-gray-950">R$ 18,90</p>
+                    </div>
+                    <div className={`rounded-2xl bg-white p-4 ${storefrontTheme.card_style === "outline" ? "border-2 border-gray-200" : storefrontTheme.card_style === "elevated" ? "shadow-[0_18px_32px_rgba(17,16,15,0.12)]" : "shadow-sm"}`}>
+                      <div className={`${storefrontTheme.catalog_layout === "grid" ? "h-24" : "h-14"} rounded-xl bg-[#f3ede5]`} />
+                      <p className="mt-3 font-bold text-gray-900">Combo promocional</p>
+                      <p className="mt-1 text-sm text-gray-500">Pedido rapido para destacar conversao e ticket medio.</p>
+                      <p className="mt-3 text-sm font-black text-gray-950">R$ 29,90</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="surface-card rounded-[28px] p-6">
+          <div className="flex items-center gap-3">
+            <div className="rounded-2xl bg-[var(--brand-soft)] p-3 text-[var(--brand)]">
+              <MapPin size={20} />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-gray-950">Taxas de entrega</h2>
+              <p className="text-sm text-gray-500">Defina preco e tempo por distancia.</p>
+            </div>
+          </div>
+
+          <div className="mt-6 space-y-3">
+            {tiers.map((tier, index) => (
+              <div key={index} className="grid items-end gap-3 rounded-2xl border border-[var(--line)] bg-white p-4 md:grid-cols-[1fr_1fr_1fr_auto]">
+                <label className="space-y-2">
+                  <span className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">
+                    Ate quantos km
+                  </span>
+                  <div className="flex items-center rounded-xl border border-[var(--line)] bg-white px-3 focus-within:border-[var(--brand)]">
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={tier.distance}
+                      onChange={(e) => updateTier(index, "distance", e.target.value)}
+                      className="w-full py-2 text-sm outline-none"
+                      placeholder="Ex: 3"
+                    />
+                    <span className="text-sm font-bold text-gray-400">km</span>
+                  </div>
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">
+                    Tempo estimado
+                  </span>
+                  <div className="flex items-center rounded-xl border border-[var(--line)] bg-white px-3 focus-within:border-[var(--brand)]">
+                    <input
+                      type="number"
+                      min="0"
+                      value={tier.time}
+                      onChange={(e) => updateTier(index, "time", e.target.value)}
+                      className="w-full py-2 text-sm outline-none"
+                      placeholder="Ex: 30"
+                    />
+                    <span className="text-sm font-bold text-gray-400">min</span>
+                  </div>
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">
+                    Valor da entrega
+                  </span>
+                  <div className="flex items-center rounded-xl border border-[var(--line)] bg-white px-3 focus-within:border-[var(--brand)]">
+                    <span className="mr-2 text-sm font-bold text-gray-400">R$</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={tier.price}
+                      onChange={(e) => updateTier(index, "price", e.target.value)}
+                      className="w-full py-2 text-sm outline-none"
+                      placeholder="Ex: 5,00"
+                    />
+                  </div>
+                </label>
+
+                <button onClick={() => removeTier(index)} className="rounded-xl p-3 text-gray-400 hover:bg-[#fff0e8] hover:text-[var(--brand)]">
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            ))}
+            <button onClick={addTier} className="rounded-2xl border border-dashed border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-600">
+              <span className="inline-flex items-center gap-2">
+                <Plus size={16} />
+                Adicionar faixa
+              </span>
+            </button>
+          </div>
+        </section>
+
+        <section className="surface-card rounded-[28px] p-6">
+          <div className="flex items-center gap-3">
+            <div className="rounded-2xl bg-[var(--brand-soft)] p-3 text-[var(--brand)]">
+              <Clock size={20} />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-gray-950">Horarios de funcionamento</h2>
+              <p className="text-sm text-gray-500">Marque os dias e ajuste a janela de atendimento.</p>
+            </div>
+          </div>
+
+          <div className="mt-6 space-y-3">
+            {schedule.map((item, index) => (
+              <div key={item.day_id} className="flex flex-col gap-3 rounded-2xl border border-[var(--line)] bg-white p-4 md:flex-row md:items-center md:justify-between">
+                <label className="flex items-center gap-3">
+                  <input type="checkbox" checked={item.is_open} onChange={(e) => handleTimeChange(index, "is_open", e.target.checked)} className="h-4 w-4 accent-[var(--brand)]" />
+                  <span className={`text-sm font-bold ${item.is_open ? "text-gray-950" : "text-gray-400"}`}>{item.day_label}</span>
+                </label>
+                {item.is_open && (
+                  <div className="flex items-center gap-2">
+                    <input type="time" value={item.open_time} onChange={(e) => handleTimeChange(index, "open_time", e.target.value)} className="rounded-xl border border-[var(--line)] px-3 py-2 text-sm outline-none focus:border-[var(--brand)]" />
+                    <span className="text-sm text-gray-400">as</span>
+                    <input type="time" value={item.close_time} onChange={(e) => handleTimeChange(index, "close_time", e.target.value)} className="rounded-xl border border-[var(--line)] px-3 py-2 text-sm outline-none focus:border-[var(--brand)]" />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="surface-card rounded-[28px] p-6">
+          <div className="flex items-center gap-3">
+            <div className="rounded-2xl bg-[var(--brand-soft)] p-3 text-[var(--brand)]">
+              <Smartphone size={20} />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-gray-950">Impressao termica</h2>
+              <p className="text-sm text-gray-500">Ajuste largura, tamanho e espessura da fonte do cupom.</p>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
+            <label className="space-y-2">
+              <span className="text-sm font-bold text-gray-700">Largura do papel</span>
+              <select
+                value={printerWidth}
+                onChange={(e) => setPrinterWidth(Number(e.target.value))}
+                className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+              >
+                <option value={58}>58 mm</option>
+                <option value={80}>80 mm</option>
+              </select>
+            </label>
+
+            <label className="space-y-2">
+              <span className="text-sm font-bold text-gray-700">Tamanho da fonte</span>
+              <input
+                type="number"
+                min="9"
+                max="18"
+                value={printerFontSize}
+                onChange={(e) => setPrinterFontSize(Number(e.target.value) || 12)}
+                className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+              />
+            </label>
+
+            <label className="space-y-2">
+              <span className="text-sm font-bold text-gray-700">Espessura da fonte</span>
+              <select
+                value={printerFontWeight}
+                onChange={(e) => setPrinterFontWeight(Number(e.target.value))}
+                className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+              >
+                <option value={500}>Media</option>
+                <option value={700}>Forte</option>
+                <option value={800}>Extra forte</option>
+                </select>
+            </label>
+          </div>
+
+          <label className="mt-4 flex items-center justify-between rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
+            <span className="text-sm font-bold text-gray-700">Imprimir automaticamente ao aceitar</span>
+            <input
+              type="checkbox"
+              checked={printerAutoPrint}
+              onChange={(e) => setPrinterAutoPrint(e.target.checked)}
+              className="h-4 w-4 accent-[var(--brand)]"
+            />
+          </label>
+
+          <div className="mt-5 rounded-[24px] border border-[var(--line)] bg-[#fcfaf7] p-4">
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-gray-400">Preview rapido</p>
+            <div
+              className="mt-3 rounded-2xl border border-dashed border-[var(--line)] bg-white px-4 py-4 text-gray-800"
+              style={{ fontFamily: "'Courier New', monospace", fontSize: `${printerFontSize}px`, fontWeight: printerFontWeight }}
+            >
+              <p className="text-center">{name || "Sua loja"}</p>
+              <p className="mt-2 text-center">Pedido #0042</p>
+              <p className="mt-3">1x Smash Burger ........ R$ 29,90</p>
+              <p>Entrega ..................... R$ 6,00</p>
+              <p className="mt-2">Total ....................... R$ 35,90</p>
+            </div>
+          </div>
+        </section>
+
+        <section className="surface-card rounded-[28px] p-6">
+          <div className="flex items-center gap-3">
+            <div className="rounded-2xl bg-[var(--brand-soft)] p-3 text-[var(--brand)]">
+              <Smartphone size={20} />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-gray-950">Conexao WhatsApp</h2>
+              <p className="text-sm text-gray-500">Acompanhe o status do robo e recarregue o QR code quando precisar.</p>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-5 lg:grid-cols-[1fr_220px]">
+            <div className="rounded-[24px] border border-[var(--line)] bg-[#fcfaf7] p-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-bold text-gray-700">Status:</span>
+                {wppStatus === "conectado" && <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">Conectado</span>}
+                {wppStatus === "aguardando_qr" && <span className="rounded-full bg-yellow-100 px-3 py-1 text-xs font-bold text-yellow-700">Aguardando leitura</span>}
+                {wppStatus === "iniciando" && <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700">Iniciando</span>}
+                {(wppStatus === "desconectado" || wppStatus === "erro" || !wppStatus) && <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700">Desconectado</span>}
+                <button onClick={handleRestartWpp} disabled={isRestarting} className="ml-auto rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-xs font-bold text-gray-600 disabled:opacity-60">
+                  <span className="inline-flex items-center gap-1.5">
+                    <RefreshCw size={13} className={isRestarting ? "animate-spin" : ""} />
+                    Reiniciar
+                  </span>
+                </button>
+              </div>
+              <p className="mt-3 text-sm leading-6 text-gray-500">
+                Use essa area para monitorar a conexao do seu numero e renovar o QR code quando necessario.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-center rounded-[24px] border border-dashed border-[var(--line)] bg-white p-4">
+              {wppStatus === "aguardando_qr" && wppQrCode ? (
+                <img src={wppQrCode} alt="QR Code WhatsApp" className="h-full w-full object-contain" />
+              ) : wppStatus === "conectado" ? (
+                <div className="text-center text-emerald-600">
+                  <CheckCircle className="mx-auto" size={44} />
+                  <p className="mt-2 text-sm font-bold">Pronto para enviar</p>
+                </div>
+              ) : (
+                <div className="text-center text-gray-400">
+                  <QrCode className="mx-auto" size={44} />
+                  <p className="mt-2 text-sm font-medium">Aguardando API</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
       </div>
     </div>
-  )
+  );
 }

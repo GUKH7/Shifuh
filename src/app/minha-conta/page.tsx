@@ -161,6 +161,7 @@ export default function MyAccountPage() {
                     {orders.length === 0 && <p className="text-center text-gray-500 py-10 bg-white rounded-xl border border-dashed border-gray-300">Nenhum pedido ainda.</p>}
                     {orders.map(order => {
                         const hasReview = order.reviews && order.reviews.length > 0
+                        const canReview = order.status === 'done' && !hasReview
                         return (
                             <div key={order.id} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
                                 <div className="flex justify-between items-start mb-4">
@@ -179,7 +180,7 @@ export default function MyAccountPage() {
                                     <p className="text-sm text-gray-500">Total: <span className="font-bold text-gray-900 text-base">{formatPrice(order.total)}</span></p>
                                     
                                     {/* BOTÃO AVALIAR */}
-                                    {!hasReview && (
+                                    {canReview && (
                                         <button 
                                             onClick={() => handleOpenReview(order)}
                                             className="text-xs font-bold px-3 py-1.5 rounded-lg bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border border-yellow-200 flex items-center gap-1 transition-colors"
