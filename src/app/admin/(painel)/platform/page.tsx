@@ -77,7 +77,7 @@ export default function PlatformPage() {
       setRestaurants((data || []) as RestaurantRow[]);
     } catch (err) {
       console.error(err);
-      setError(err instanceof Error ? err.message : "Nao foi possivel carregar as lojas.");
+      setError(err instanceof Error ? err.message : "Não foi possível carregar as lojas.");
     } finally {
       setLoading(false);
     }
@@ -129,12 +129,12 @@ export default function PlatformPage() {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || "Nao foi possivel atualizar a loja.");
+      throw new Error(result.error || "Não foi possível atualizar a loja.");
       }
 
       showToast({
         title: "Loja atualizada",
-        description: "As alteracoes foram salvas com sucesso.",
+      description: "As alterações foram salvas com sucesso.",
         tone: "success",
       });
 
@@ -143,7 +143,7 @@ export default function PlatformPage() {
     } catch (err) {
       showToast({
         title: "Falha ao salvar",
-        description: err instanceof Error ? err.message : "Nao foi possivel atualizar a loja.",
+        description: err instanceof Error ? err.message : "Não foi possível atualizar a loja.",
         tone: "error",
       });
     } finally {
@@ -153,7 +153,7 @@ export default function PlatformPage() {
 
   const deleteRestaurant = async (restaurant: RestaurantRow) => {
     const confirmed = window.confirm(
-      `Deseja realmente apagar a loja "${restaurant.name}"? Essa acao remove tambem os dados vinculados.`,
+        `Deseja realmente apagar a loja "${restaurant.name}"? Essa ação remove também os dados vinculados.`,
     );
 
     if (!confirmed) return;
@@ -167,7 +167,7 @@ export default function PlatformPage() {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || "Nao foi possivel apagar a loja.");
+      throw new Error(result.error || "Não foi possível apagar a loja.");
       }
 
       showToast({
@@ -181,7 +181,7 @@ export default function PlatformPage() {
     } catch (err) {
       showToast({
         title: "Falha ao apagar",
-        description: err instanceof Error ? err.message : "Nao foi possivel apagar a loja.",
+        description: err instanceof Error ? err.message : "Não foi possível apagar a loja.",
         tone: "error",
       });
     } finally {

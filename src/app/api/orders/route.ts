@@ -146,7 +146,7 @@ export async function POST(request: Request) {
     const cart = Array.isArray(body.cart) ? body.cart : [];
 
     if (!body.restaurantId) {
-      return NextResponse.json({ error: "Loja invalida." }, { status: 400 });
+    return NextResponse.json({ error: "Loja inválida." }, { status: 400 });
     }
 
     if (!body.customerName?.trim() || !body.customerPhone?.trim()) {
@@ -154,7 +154,7 @@ export async function POST(request: Request) {
     }
 
     if (!address.street || !address.number || !address.neighborhood) {
-      return NextResponse.json({ error: "Informe o endereco de entrega." }, { status: 400 });
+    return NextResponse.json({ error: "Informe o endereço de entrega." }, { status: 400 });
     }
 
     if (cart.length === 0) {
@@ -175,7 +175,7 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     if (restaurantError || !restaurant) {
-      return NextResponse.json({ error: "Loja nao encontrada." }, { status: 404 });
+    return NextResponse.json({ error: "Loja não encontrada." }, { status: 404 });
     }
 
     const productIds = cart.map((item) => item.productId).filter(Boolean);
@@ -187,7 +187,7 @@ export async function POST(request: Request) {
 
     if (productsError || !products) {
       return NextResponse.json(
-        { error: "Nao foi possivel validar os produtos." },
+      { error: "Não foi possível validar os produtos." },
         { status: 400 },
       );
     }
@@ -210,7 +210,7 @@ export async function POST(request: Request) {
 
       if (!product || !product.is_active) {
         return NextResponse.json(
-          { error: "Um dos itens do carrinho nao esta mais disponivel." },
+      { error: "Um dos itens do carrinho não está mais disponível." },
           { status: 400 },
         );
       }
@@ -341,7 +341,7 @@ export async function POST(request: Request) {
 
       if (!fee.valid && tiers.length > 0) {
         return NextResponse.json(
-          { error: "O endereco informado esta fora da area de entrega." },
+      { error: "O endereço informado está fora da área de entrega." },
           { status: 400 },
         );
       }
@@ -391,7 +391,7 @@ export async function POST(request: Request) {
     if (orderError) {
       console.error("Erro ao inserir pedido:", orderError);
       return NextResponse.json(
-        { error: orderError.message || "Nao foi possivel criar o pedido." },
+    { error: orderError.message || "Não foi possível criar o pedido." },
         { status: 400 },
       );
     }

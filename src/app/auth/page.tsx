@@ -44,7 +44,7 @@ function AuthContent() {
       router.refresh();
     } catch (error: any) {
       showToast({
-        title: "Nao foi possivel autenticar",
+        title: "Não foi possível autenticar",
         description: error.message || "Verifique seus dados e tente novamente.",
         tone: "error",
       });
@@ -64,7 +64,7 @@ function AuthContent() {
         {isLogin ? "Acessar conta" : "Criar conta"}
       </h1>
       <p className="mb-6 text-sm text-gray-500">
-        {isLogin ? "Faca login para continuar seu pedido." : "Crie sua conta em segundos."}
+        {isLogin ? "Faça login para continuar seu pedido." : "Crie sua conta em segundos."}
       </p>
 
       <form onSubmit={handleAuth} className="space-y-4">
@@ -101,9 +101,9 @@ function AuthContent() {
 
       <div className="mt-6 text-center">
         <button type="button" onClick={() => setIsLogin(!isLogin)} className="text-sm text-gray-600 hover:text-gray-900">
-          {isLogin ? "Ainda nao tem conta? " : "Ja tem uma conta? "}
+          {isLogin ? "Ainda não tem conta? " : "Já tem uma conta? "}
           <span className="font-bold text-red-600 hover:underline">
-            {isLogin ? "Cadastre-se" : "Faca login"}
+            {isLogin ? "Cadastre-se" : "Faça login"}
           </span>
         </button>
       </div>

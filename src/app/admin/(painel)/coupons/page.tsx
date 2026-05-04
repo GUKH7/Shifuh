@@ -94,7 +94,7 @@ export default function CouponsPage() {
       const { restaurant, user } = await getCurrentRestaurant(supabase);
       if (!user) return router.push("/admin/login");
       if (!restaurant) {
-        setErrorMsg("Nao foi possivel localizar a loja.");
+        setErrorMsg("Não foi possível localizar a loja.");
         return;
       }
 
@@ -207,14 +207,14 @@ export default function CouponsPage() {
       setForm({ code: "", value: "", type: "percent" });
       showToast({
         title: "Cupom criado",
-        description: "O novo cupom ja esta disponivel para uso no checkout.",
+        description: "O novo cupom já está disponível para uso no checkout.",
         tone: "success",
       });
       fetchCoupons();
     } catch (error: any) {
       console.error(error);
       showToast({
-        title: "Nao foi possivel criar o cupom",
+        title: "Não foi possível criar o cupom",
         description: error.message || "Revise os dados e tente novamente.",
         tone: "error",
       });
@@ -255,7 +255,7 @@ export default function CouponsPage() {
         <div>
           <h1 className="text-3xl font-black tracking-tight text-gray-950">Cupons</h1>
           <p className="mt-1 text-sm text-[var(--muted)]">
-            Crie campanhas e acompanhe o impacto de cada codigo promocional.
+            Crie campanhas e acompanhe o impacto de cada código promocional.
           </p>
         </div>
       </div>

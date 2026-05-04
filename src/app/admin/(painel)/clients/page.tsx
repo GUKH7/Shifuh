@@ -39,7 +39,7 @@ function formatDate(date: string) {
 }
 
 function exportClients(rows: Client[]) {
-  const header = ["Cliente", "Telefone", "Pedidos", "Total gasto", "Ultima compra", "Endereco"];
+  const header = ["Cliente", "Telefone", "Pedidos", "Total gasto", "Última compra", "Endereço"];
   const lines = rows.map((client) => [
     client.name,
     client.phone,
@@ -112,7 +112,7 @@ export default function ClientsPage() {
       const { restaurant, user } = await getCurrentRestaurant(supabase);
       if (!user) return router.push("/admin/login");
       if (!restaurant) {
-        setErrorMsg("Nao foi possivel localizar a loja.");
+        setErrorMsg("Não foi possível localizar a loja.");
         return;
       }
 
@@ -136,7 +136,7 @@ export default function ClientsPage() {
 
         const current = grouped.get(phone);
         const address = order.address
-          ? `${order.address.street || "Rua nao informada"}, ${order.address.number || "S/N"} - ${order.address.neighborhood || "Sem bairro"}`
+        ? `${order.address.street || "Rua não informada"}, ${order.address.number || "S/N"} - ${order.address.neighborhood || "Sem bairro"}`
           : "Retirada";
 
         if (!current) {
@@ -259,8 +259,8 @@ export default function ClientsPage() {
             <span>Contato</span>
             <span>Pedidos</span>
             <span>Total gasto</span>
-            <span>Ultima compra</span>
-            <span className="text-right">Acao</span>
+            <span>Última compra</span>
+            <span className="text-right">Ação</span>
           </div>
 
           <div className="divide-y divide-[var(--line)]">
@@ -305,7 +305,7 @@ export default function ClientsPage() {
           {filteredClients.length > PAGE_SIZE && (
             <div className="flex items-center justify-between border-t border-[var(--line)] px-6 py-4 text-sm text-gray-500">
               <p>
-                Pagina {page} de {totalPages}
+                Página {page} de {totalPages}
               </p>
               <div className="flex gap-2">
                 <button
@@ -321,7 +321,7 @@ export default function ClientsPage() {
                   disabled={page === totalPages}
                   className="inline-flex items-center gap-2 rounded-xl border border-[var(--line)] bg-white px-3 py-2 font-semibold disabled:opacity-50"
                 >
-                  Proxima
+                  Próxima
                   <ChevronRight size={16} />
                 </button>
               </div>

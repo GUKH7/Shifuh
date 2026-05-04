@@ -302,7 +302,7 @@ export default function StorePage({ params }: { params: { slug: string } }) {
 
     if (!resto) {
       showToast({
-        title: "Loja nao encontrada",
+        title: "Loja não encontrada",
         description: "Confira o link da vitrine e tente novamente.",
         tone: "error",
       });
@@ -540,8 +540,8 @@ export default function StorePage({ params }: { params: { slug: string } }) {
 
       if (error || !data) {
         showToast({
-          title: "Cupom invalido",
-          description: "Revise o codigo informado.",
+          title: "Cupom inválido",
+          description: "Revise o código informado.",
           tone: "error",
         });
         setAppliedCoupon(null);
@@ -580,7 +580,7 @@ export default function StorePage({ params }: { params: { slug: string } }) {
     const msg =
       `NOVO PEDIDO #${orderLabel}\n\n` +
       `Cliente: ${customerName}\n` +
-      `Endereco: ${summary.address.street}, ${summary.address.number}` +
+      `Endereço: ${summary.address.street}, ${summary.address.number}` +
       `${summary.address.complement ? `, ${summary.address.complement}` : ""}\n` +
       `${summary.address.neighborhood} - ${summary.address.city}/${summary.address.state}\n\n` +
       `PEDIDO:\n${itemsList}\n\n` +
@@ -598,15 +598,15 @@ export default function StorePage({ params }: { params: { slug: string } }) {
     if (!customerName || !customerPhone || !address.street || !address.number) {
       showToast({
         title: "Dados incompletos",
-        description: "Preencha nome, WhatsApp e endereco para continuar.",
+        description: "Preencha nome, WhatsApp e endereço para continuar.",
         tone: "error",
       });
       return;
     }
     if (!hasAddressMinimum) {
       showToast({
-        title: "Endereco incompleto",
-        description: "Informe rua, numero e bairro para seguir.",
+        title: "Endereço incompleto",
+        description: "Informe rua, número e bairro para seguir.",
         tone: "error",
       });
       return;
@@ -654,7 +654,7 @@ export default function StorePage({ params }: { params: { slug: string } }) {
       setAppliedCoupon(null);
     } catch (error: any) {
       showToast({
-        title: "Nao foi possivel finalizar o pedido",
+        title: "Não foi possível finalizar o pedido",
         description: error.message || "Tente novamente em instantes.",
         tone: "error",
       });
@@ -754,7 +754,7 @@ export default function StorePage({ params }: { params: { slug: string } }) {
             </p>
           )}
           <p className="mt-3 text-base leading-7 text-[var(--muted)]">
-            A loja ja recebeu seu pedido e voce pode confirmar tudo no WhatsApp.
+            A loja já recebeu seu pedido e você pode confirmar tudo no WhatsApp.
           </p>
           <button
             onClick={() => lastOrderSummary && sendToWhatsApp(lastOrderSummary)}
@@ -769,7 +769,7 @@ export default function StorePage({ params }: { params: { slug: string } }) {
             onClick={resetCheckout}
             className="mt-4 w-full rounded-2xl border border-[var(--line)] bg-white px-6 py-4 text-sm font-bold text-gray-700"
           >
-            Voltar ao cardapio
+            Voltar ao cardápio
           </button>
         </div>
       </div>
@@ -897,7 +897,7 @@ export default function StorePage({ params }: { params: { slug: string } }) {
             <input
               value={menuSearch}
               onChange={(e) => setMenuSearch(e.target.value)}
-              placeholder="Buscar no cardapio"
+              placeholder="Buscar no cardápio"
               className="w-full bg-transparent text-[12px] font-medium outline-none placeholder:text-gray-400 sm:text-sm"
             />
             {menuSearch && (
@@ -1116,7 +1116,7 @@ export default function StorePage({ params }: { params: { slug: string } }) {
                   <div className="mb-3 flex items-center gap-3">
                     <h3 className="text-lg font-black text-gray-950">{group.title}</h3>
                     <span className="rounded-full bg-[#f3ede6] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-gray-500">
-                      {group.required ? "Obrigatorio" : "Opcional"}
+                      {group.required ? "Obrigatório" : "Opcional"}
                     </span>
                   </div>
 
@@ -1161,7 +1161,7 @@ export default function StorePage({ params }: { params: { slug: string } }) {
 
               <div className="mt-8">
                 <label className="mb-2 block text-sm font-black text-gray-950">
-                  Observacao
+                  Observação
                 </label>
                 <textarea
                   value={observation}
@@ -1305,7 +1305,7 @@ export default function StorePage({ params }: { params: { slug: string } }) {
                   <div className="surface-card rounded-[24px] p-5">
                     <div className="flex items-center gap-2">
                       <MapPin size={18} style={{ color: primaryColor }} />
-                      <h3 className="text-lg font-black text-gray-950">Endereco de entrega</h3>
+                      <h3 className="text-lg font-black text-gray-950">Endereço de entrega</h3>
                     </div>
 
                     {savedAddresses.length > 0 && (
@@ -1352,7 +1352,7 @@ export default function StorePage({ params }: { params: { slug: string } }) {
                           className="text-sm font-bold"
                           style={{ color: primaryColor }}
                         >
-                          Usar outro endereco
+                          Usar outro endereço
                         </button>
                       </div>
                     )}
@@ -1388,7 +1388,7 @@ export default function StorePage({ params }: { params: { slug: string } }) {
                             value={address.number}
                             onChange={(e) => setAddress({ ...address, number: e.target.value })}
                             onBlur={() => calculateDeliveryForAddress(address)}
-                            placeholder="Numero"
+                            placeholder="Número"
                             className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none"
                           />
                         </div>
@@ -1420,13 +1420,13 @@ export default function StorePage({ params }: { params: { slug: string } }) {
                           <div>
                             <p className="font-black text-emerald-800">Entrega confirmada</p>
                             <p className="mt-1 text-sm text-emerald-700">
-                              Distancia: {deliveryInfo.distance} km
+                              Distância: {deliveryInfo.distance} km
                             </p>
                           </div>
                           <div className="text-right">
                             <p className="text-lg font-black text-emerald-800">
                               {deliveryInfo.price === 0
-                                ? "Gratis"
+                                ? "Grátis"
                                 : formatMoney(deliveryInfo.price)}
                             </p>
                             <p className="text-sm text-emerald-700">
@@ -1439,18 +1439,18 @@ export default function StorePage({ params }: { params: { slug: string } }) {
 
                     {deliveryInfo && !deliveryInfo.valid && !calculatingFee && (
                       <div className="mt-4 rounded-[18px] border border-red-200 bg-red-50 p-3.5 sm:mt-5 sm:rounded-[22px] sm:p-4">
-                        <p className="font-black text-red-800">Endereco fora da area de entrega</p>
+                        <p className="font-black text-red-800">Endereço fora da área de entrega</p>
                         <p className="mt-1 text-sm leading-6 text-red-700">
-                          A distancia calculada foi de {deliveryInfo.distance} km, acima da ultima faixa configurada pela loja.
+                          A distância calculada foi de {deliveryInfo.distance} km, acima da última faixa configurada pela loja.
                         </p>
                       </div>
                     )}
 
                     {hasAddressMinimum && !deliveryInfo && !calculatingFee && (
                       <div className="mt-4 rounded-[18px] border border-amber-200 bg-amber-50 p-3.5 sm:mt-5 sm:rounded-[22px] sm:p-4">
-                        <p className="font-black text-amber-800">Entrega sem calculo automatico</p>
+                        <p className="font-black text-amber-800">Entrega sem cálculo automático</p>
                         <p className="mt-1 text-sm leading-6 text-amber-700">
-                          Nao conseguimos calcular a distancia agora. O pedido pode seguir e a loja confirma a taxa no atendimento.
+                          Não conseguimos calcular a distância agora. O pedido pode seguir e a loja confirma a taxa no atendimento.
                         </p>
                       </div>
                     )}
@@ -1470,7 +1470,7 @@ export default function StorePage({ params }: { params: { slug: string } }) {
                       <input
                         value={couponCode}
                         onChange={(e) => setCouponCode(e.target.value)}
-                        placeholder="Codigo"
+                        placeholder="Código"
                         disabled={!!appliedCoupon}
                         className="flex-1 rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold uppercase outline-none disabled:bg-[#faf5ef]"
                       />

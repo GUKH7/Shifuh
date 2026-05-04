@@ -23,14 +23,14 @@ import { getCurrentRestaurant } from "@/lib/supabase/restaurant";
 import { isPlatformAdminEmail } from "@/lib/platform-admin";
 
 const MENU_ITEMS = [
-  { name: "Inicio", href: "/admin", icon: LayoutDashboard },
+  { name: "Início", href: "/admin", icon: LayoutDashboard },
   { name: "Pedidos", href: "/admin/orders", icon: ShoppingBag },
-  { name: "Historico", href: "/admin/history", icon: History },
-  { name: "Cardapios", href: "/admin/menu", icon: UtensilsCrossed },
+  { name: "Histórico", href: "/admin/history", icon: History },
+  { name: "Cardápios", href: "/admin/menu", icon: UtensilsCrossed },
   { name: "Clientes", href: "/admin/clients", icon: Users },
   { name: "Cupons", href: "/admin/coupons", icon: Percent },
   { name: "Reviews", href: "/admin/reviews", icon: Star },
-  { name: "Configuracoes", href: "/admin/settings", icon: Settings },
+  { name: "Configurações", href: "/admin/settings", icon: Settings },
 ];
 
 interface AdminSidebarProps {
@@ -97,7 +97,7 @@ export default function AdminSidebar({ isCollapsed, toggleSidebar }: AdminSideba
       </div>
 
       <div className={`px-4 py-6 ${isCollapsed ? "px-2" : ""}`}>
-        {!isCollapsed && <p className="mb-3 px-3 text-xs font-bold uppercase tracking-[0.18em] text-gray-400">Operacao</p>}
+          {!isCollapsed && <p className="mb-3 px-3 text-xs font-bold uppercase tracking-[0.18em] text-gray-400">Operação</p>}
         <nav className="space-y-1.5">
           {MENU_ITEMS.map((item) => {
             const isActive = pathname === item.href;
@@ -154,7 +154,7 @@ export default function AdminSidebar({ isCollapsed, toggleSidebar }: AdminSideba
         ) : (
           <button
             disabled
-            title={isCollapsed ? "Vitrine indisponivel" : undefined}
+            title={isCollapsed ? "Vitrine indisponível" : undefined}
             className={`mb-2 flex w-full cursor-not-allowed items-center rounded-2xl bg-gray-100 text-sm font-bold text-gray-400 ${
               isCollapsed ? "justify-center px-3 py-3" : "gap-3 px-4 py-3"
             }`}

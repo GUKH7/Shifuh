@@ -3,8 +3,8 @@ import { ArrowRight, BarChart3, ReceiptText, Smartphone, Store } from "lucide-re
 
 const features = [
   {
-    title: "Vitrine publica",
-    description: "Link unico para compartilhar no Instagram, Google e WhatsApp.",
+    title: "Vitrine pública",
+    description: "Link único para compartilhar no Instagram, Google e WhatsApp.",
     icon: Store,
   },
   {
@@ -13,8 +13,8 @@ const features = [
     icon: ReceiptText,
   },
   {
-    title: "Metricas reais",
-    description: "Acompanhe volume de pedidos e operacao em um painel simples.",
+    title: "Métricas reais",
+    description: "Acompanhe o volume de pedidos e a operação em um painel simples.",
     icon: BarChart3,
   },
 ];
@@ -38,7 +38,7 @@ export default function LandingPage() {
               href="/admin/login"
               className="inline-flex items-center gap-2 rounded-xl bg-[#171311] px-4 py-2.5 text-white transition-colors hover:bg-black"
             >
-              Criar conta gratis <ArrowRight size={15} />
+              Criar conta grátis <ArrowRight size={15} />
             </Link>
           </div>
         </div>
@@ -56,21 +56,21 @@ export default function LandingPage() {
               <span className="italic text-[var(--brand)]">WhatsApp.</span>
             </h1>
             <p className="mt-6 max-w-xl text-lg leading-8 text-[var(--muted)]">
-              Crie seu cardapio em minutos, gerencie pedidos em tempo real e receba tudo
-              formatado no seu Zap. Sem comissao, sem complicacao.
+              Crie seu cardápio em minutos, gerencie pedidos em tempo real e receba tudo
+              formatado no seu Zap. Sem comissão, sem complicação.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link
                 href="/admin/login"
                 className="brand-gradient inline-flex items-center justify-center gap-2 rounded-xl px-6 py-4 text-base font-bold text-white shadow-[0_12px_30px_rgba(255,90,31,0.18)]"
               >
-                Comecar agora <ArrowRight size={17} />
+                Começar agora <ArrowRight size={17} />
               </Link>
               <Link
                 href="/admin/login"
                 className="inline-flex items-center justify-center rounded-xl border border-[var(--line)] bg-[var(--surface)] px-6 py-4 text-base font-semibold text-gray-900"
               >
-                Ja tenho conta
+                Já tenho conta
               </Link>
             </div>
           </div>
@@ -106,7 +106,7 @@ export default function LandingPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-lg font-extrabold">#2835</p>
-                      <p className="mt-1 text-sm">1x Acai 500ml</p>
+                      <p className="mt-1 text-sm">1x Açaí 500 ml</p>
                     </div>
                     <span className="text-2xl font-black">R$ 22,00</span>
                   </div>

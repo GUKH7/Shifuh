@@ -14,7 +14,7 @@ export async function PATCH(request: Request, context: Params) {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Nao autenticado." }, { status: 401 });
+    return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
     }
 
     if (!isPlatformAdminEmail(user.email)) {
@@ -52,7 +52,7 @@ export async function PATCH(request: Request, context: Params) {
       .maybeSingle();
 
     if (conflictingSlug) {
-      return NextResponse.json({ error: "Este slug ja esta em uso." }, { status: 400 });
+    return NextResponse.json({ error: "Este slug já está em uso." }, { status: 400 });
     }
 
     const { error } = await adminSupabase
@@ -85,7 +85,7 @@ export async function DELETE(_: Request, context: Params) {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Nao autenticado." }, { status: 401 });
+    return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
     }
 
     if (!isPlatformAdminEmail(user.email)) {

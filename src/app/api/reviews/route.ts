@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     const rating = Number(body.rating || 0);
 
     if (!body.orderId || !body.restaurantId || rating < 1 || rating > 5) {
-      return NextResponse.json({ error: "Dados invalidos para a avaliacao." }, { status: 400 });
+  return NextResponse.json({ error: "Dados inválidos para a avaliação." }, { status: 400 });
     }
 
     const supabase = await createClient();
@@ -39,12 +39,12 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     if (orderError || !order) {
-      return NextResponse.json({ error: "Pedido nao encontrado para avaliacao." }, { status: 404 });
+    return NextResponse.json({ error: "Pedido não encontrado para avaliação." }, { status: 404 });
     }
 
     if (order.status !== "done") {
       return NextResponse.json(
-        { error: "O pedido precisa estar concluido para receber avaliacao." },
+      { error: "O pedido precisa estar concluído para receber avaliação." },
         { status: 400 },
       );
     }
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     if (existingReview?.id) {
-      return NextResponse.json({ error: "Esse pedido ja foi avaliado." }, { status: 400 });
+    return NextResponse.json({ error: "Esse pedido já foi avaliado." }, { status: 400 });
     }
 
     const { error: insertError } = await (supabase as any).from("reviews").insert({
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
     });
 
     if (insertError) {
-      return NextResponse.json({ error: insertError.message || "Erro ao enviar avaliacao." }, { status: 400 });
+  return NextResponse.json({ error: insertError.message || "Erro ao enviar avaliação." }, { status: 400 });
     }
 
     try {
@@ -99,6 +99,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Erro ao criar review:", error);
-    return NextResponse.json({ error: "Erro interno ao enviar avaliacao." }, { status: 500 });
+  return NextResponse.json({ error: "Erro interno ao enviar avaliação." }, { status: 500 });
   }
 }

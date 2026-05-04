@@ -29,7 +29,7 @@ export default function LoginPage() {
 
     if (error) {
       showToast({
-        title: "Nao foi possivel entrar",
+        title: "Não foi possível entrar",
         description: error.message,
         tone: "error",
       });
@@ -45,8 +45,8 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-md rounded-2xl border border-gray-100 bg-white p-8 shadow-lg">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold text-gray-800">Area Administrativa</h1>
-          <p className="text-sm text-gray-500">Faca login para gerenciar seu cardapio</p>
+          <h1 className="text-2xl font-bold text-gray-800">Área Administrativa</h1>
+          <p className="text-sm text-gray-500">Faça login para gerenciar seu cardápio</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4">
@@ -77,7 +77,7 @@ export default function LoginPage() {
             disabled={loading}
             className="flex w-full items-center justify-center rounded-lg bg-red-600 py-3 font-bold text-white transition-all hover:bg-red-700"
           >
-            {loading ? <Loader2 className="animate-spin" /> : "Entrar no Painel"}
+            {loading ? <Loader2 className="animate-spin" /> : "Entrar no painel"}
           </button>
         </form>
       </div>

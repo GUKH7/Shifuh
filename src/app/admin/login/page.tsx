@@ -43,11 +43,11 @@ export default function AdminLogin() {
           .eq("slug", restaurantSlug)
           .maybeSingle();
 
-        if (existingSlug) throw new Error("Este link ja esta em uso.");
+    if (existingSlug) throw new Error("Este link já está em uso.");
 
         const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
         if (authError) throw authError;
-        if (!authData.user) throw new Error("Nao foi possivel criar o usuario.");
+    if (!authData.user) throw new Error("Não foi possível criar o usuário.");
 
         const { error: dbError } = await supabase.from("restaurants").insert({
           name: restaurantName.trim(),
@@ -88,13 +88,13 @@ export default function AdminLogin() {
             Gerencie sua loja com pedidos direto no <span className="italic text-[var(--brand)]">WhatsApp.</span>
           </h1>
           <p className="mt-6 max-w-lg text-lg leading-8 text-[var(--muted)]">
-            Um painel simples para configurar a vitrine, publicar o cardapio e acompanhar os pedidos em tempo real.
+        Um painel simples para configurar a vitrine, publicar o cardápio e acompanhar os pedidos em tempo real.
           </p>
           <div className="mt-10 surface-card max-w-xl rounded-[28px] p-6">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400">Fluxo MVP</p>
             <div className="mt-4 space-y-3">
               <div className="rounded-2xl bg-white px-4 py-4 text-sm font-semibold text-gray-700">1. Criar conta da loja</div>
-              <div className="rounded-2xl bg-white px-4 py-4 text-sm font-semibold text-gray-700">2. Configurar cardapio e entrega</div>
+              <div className="rounded-2xl bg-white px-4 py-4 text-sm font-semibold text-gray-700">2. Configurar cardápio e entrega</div>
               <div className="rounded-2xl bg-white px-4 py-4 text-sm font-semibold text-gray-700">3. Receber pedidos no painel</div>
             </div>
           </div>
@@ -114,8 +114,8 @@ export default function AdminLogin() {
             </h2>
             <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
               {isRegistering
-                ? "Abra sua operacao digital em poucos minutos."
-                : "Use seu email para acessar cardapio, configuracoes e pedidos."}
+                ? "Abra sua operação digital em poucos minutos."
+                : "Use seu e-mail para acessar cardápio, configurações e pedidos."}
             </p>
           </div>
 
@@ -140,7 +140,7 @@ export default function AdminLogin() {
                   />
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-sm font-bold text-gray-700">Link do cardapio</label>
+                  <label className="mb-1.5 block text-sm font-bold text-gray-700">Link do cardápio</label>
                   <div className="flex overflow-hidden rounded-2xl border border-[var(--line)] bg-white">
                     <span className="inline-flex items-center border-r border-[var(--line)] bg-[#fbf7f2] px-3 text-sm text-gray-500">
                       gestordelivery.com.br/
@@ -205,7 +205,7 @@ export default function AdminLogin() {
               }}
               className="text-sm font-bold text-gray-600 transition-colors hover:text-[var(--brand)]"
             >
-              {isRegistering ? "Ja tem uma conta? Faca login." : "Ainda nao tem loja? Crie uma conta."}
+              {isRegistering ? "Já tem uma conta? Faça login." : "Ainda não tem loja? Crie uma conta."}
             </button>
           </div>
         </div>

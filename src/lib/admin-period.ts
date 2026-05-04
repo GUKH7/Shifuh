@@ -5,7 +5,7 @@ export const PERIOD_OPTIONS: Array<{ id: PeriodKey; label: string }> = [
   { id: "7d", label: "7 dias" },
   { id: "30d", label: "30 dias" },
   { id: "year", label: "Este ano" },
-  { id: "all", label: "Todo periodo" },
+  { id: "all", label: "Todo período" },
 ];
 
 export function isWithinPeriod(date: string, period: PeriodKey) {

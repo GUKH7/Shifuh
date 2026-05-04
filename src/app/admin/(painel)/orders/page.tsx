@@ -40,7 +40,7 @@ const STATUS_FILTERS = [
   { id: "pending", label: "Pendentes" },
   { id: "preparing", label: "Em preparo" },
   { id: "delivering", label: "Em rota" },
-  { id: "done", label: "Concluidos" },
+  { id: "done", label: "Concluídos" },
 ] as const;
 
 function formatPrice(value: number) {
@@ -107,7 +107,7 @@ function getStatusLabel(status: Order["status"]) {
     case "delivering":
       return "Em rota";
     case "done":
-      return "Concluido";
+    return "Concluído";
     case "canceled":
       return "Cancelado";
     default:
@@ -184,7 +184,7 @@ export default function OrdersPage() {
             const display = String(payload.new.display_number || 0).padStart(4, "0");
             showToast({
               title: "Novo pedido recebido",
-              description: `Pedido #${display === "0000" ? String(payload.new.id).slice(0, 4) : display} entrou na fila da operacao.`,
+          description: `Pedido #${display === "0000" ? String(payload.new.id).slice(0, 4) : display} entrou na fila da operação.`,
               tone: "success",
             });
           }
@@ -221,7 +221,7 @@ export default function OrdersPage() {
       const { restaurant: resto, user } = await getCurrentRestaurant(supabase);
       if (!user) return router.push("/admin/login");
       if (!resto) {
-        setErrorMsg("Nao foi possivel localizar a loja.");
+        setErrorMsg("Não foi possível localizar a loja.");
         return;
       }
 
@@ -259,7 +259,7 @@ export default function OrdersPage() {
       }
     } catch (err) {
       console.error(err);
-      setErrorMsg("Erro de conexao.");
+      setErrorMsg("Erro de conexão.");
     } finally {
       if (showLoading) setLoading(false);
     }
@@ -274,7 +274,7 @@ export default function OrdersPage() {
 
     if (error) {
       showToast({
-        title: "Nao foi possivel atualizar o pedido",
+        title: "Não foi possível atualizar o pedido",
         description: error.message,
         tone: "error",
       });
@@ -301,7 +301,7 @@ export default function OrdersPage() {
     const fontSize = restaurantConfig?.printer_font_size || 12;
     const fontWeight = restaurantConfig?.printer_font_weight || 700;
     const createdAt = new Date(order.created_at).toLocaleString("pt-BR");
-    const addressLineOne = `${order.address?.street || "Rua nao informada"}, ${order.address?.number || "S/N"}`;
+  const addressLineOne = `${order.address?.street || "Rua não informada"}, ${order.address?.number || "S/N"}`;
     const addressLineTwo = [order.address?.neighborhood, order.address?.city, order.address?.state]
       .filter(Boolean)
       .join(" - ");
@@ -428,7 +428,7 @@ export default function OrdersPage() {
         <div>
           <h1 className="text-3xl font-black tracking-tight text-gray-950">Pedidos</h1>
           <p className="mt-1 text-sm text-[var(--muted)]">
-            Acompanhe apenas os pedidos de hoje, com atualizacao automatica da operacao em tempo real.
+            Acompanhe apenas os pedidos de hoje, com atualização automática da operação em tempo real.
           </p>
         </div>
         <div className="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700">
@@ -450,7 +450,7 @@ export default function OrdersPage() {
           <p className="mt-2 text-2xl font-black text-gray-950">{summary.delivering}</p>
         </div>
         <div className="surface-card rounded-[20px] p-4">
-          <p className="text-sm font-medium text-gray-500">Concluidos</p>
+              <p className="text-sm font-medium text-gray-500">Concluídos</p>
           <p className="mt-2 text-2xl font-black text-gray-950">{summary.done}</p>
         </div>
         <div className="surface-card rounded-[20px] p-4">
@@ -468,12 +468,12 @@ export default function OrdersPage() {
       </section>
 
       <div className="mt-3 flex items-center justify-end text-xs font-medium text-gray-400">
-        Atualizacao automatica ativa
+        Atualização automática ativa
       </div>
 
       <div className="surface-card mt-6 rounded-[28px] p-4 md:p-6">
         <div className="mb-5 rounded-[22px] border border-[var(--line)] bg-[#fcfaf7] px-4 py-4 text-sm text-gray-600">
-          Esta tela mostra apenas os pedidos criados hoje. Para consultar dias anteriores, use a aba <span className="font-bold text-gray-950">Historico</span>.
+          Esta tela mostra apenas os pedidos criados hoje. Para consultar dias anteriores, use a aba <span className="font-bold text-gray-950">Histórico</span>.
         </div>
 
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
@@ -482,7 +482,7 @@ export default function OrdersPage() {
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Buscar por cliente, telefone ou numero do pedido"
+              placeholder="Buscar por cliente, telefone ou número do pedido"
               className="w-full bg-transparent text-sm outline-none placeholder:text-gray-400"
             />
           </div>
@@ -589,7 +589,7 @@ export default function OrdersPage() {
                           <div>
                             <p className="text-xs font-bold uppercase tracking-[0.14em] text-gray-400">Entrega</p>
                             <p className="mt-1 text-sm leading-6 text-gray-700">
-                              {order.address?.street || "Rua nao informada"}, {order.address?.number || "S/N"}
+                    {order.address?.street || "Rua não informada"}, {order.address?.number || "S/N"}
                               <br />
                               {order.address?.neighborhood || "Sem bairro"}
                             </p>
@@ -663,7 +663,7 @@ export default function OrdersPage() {
                           >
                             <span className="inline-flex items-center gap-2">
                               <CheckCircle size={16} />
-                              Marcar concluido
+                                Marcar concluído
                             </span>
                           </button>
                         )}

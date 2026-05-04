@@ -59,7 +59,7 @@ export default function SetupPage() {
     try {
       const { data: existingSlug } = await supabase.from("restaurants").select("id").eq("slug", slug).maybeSingle();
       if (existingSlug) {
-        setError("Este link ja esta em uso. Tente outra variacao.");
+      setError("Este link já está em uso. Tente outra variação.");
         setIsSaving(false);
         return;
       }
@@ -87,7 +87,7 @@ export default function SetupPage() {
       }
 
       if (!createdRestaurant) {
-        setError("A loja foi criada, mas o painel ainda nao conseguiu carregar. Atualize a pagina.");
+      setError("A loja foi criada, mas o painel ainda não conseguiu carregar. Atualize a página.");
         return;
       }
 
@@ -123,7 +123,7 @@ export default function SetupPage() {
             Configure sua loja e publique sua vitrine digital.
           </h1>
           <p className="mt-6 max-w-lg text-lg leading-8 text-[var(--muted)]">
-            Defina nome, link e identidade inicial da operacao para comecar a vender com pedidos direto no WhatsApp.
+          Defina nome, link e identidade inicial da operação para começar a vender com pedidos direto no WhatsApp.
           </p>
         </div>
 
@@ -135,9 +135,9 @@ export default function SetupPage() {
             <p className="mt-4 text-2xl font-black tracking-tight text-gray-950">GESTOR.</p>
           </div>
 
-          <h2 className="text-3xl font-black tracking-tight text-gray-950">Primeira configuracao</h2>
+              <h2 className="text-3xl font-black tracking-tight text-gray-950">Primeira configuração</h2>
           <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-            Escolha o nome do negocio e o slug que vai virar o link publico do seu cardapio.
+              Escolha o nome do negócio e o slug que vai virar o link público do seu cardápio.
           </p>
 
           {error && <div className="mt-6 rounded-2xl bg-[#fff0e8] px-4 py-3 text-sm font-medium text-[var(--brand)]">{error}</div>}
@@ -156,7 +156,7 @@ export default function SetupPage() {
             </div>
 
             <div>
-              <label className="mb-1.5 block text-sm font-bold text-gray-700">Link do cardapio</label>
+                  <label className="mb-1.5 block text-sm font-bold text-gray-700">Link do cardápio</label>
               <div className="flex overflow-hidden rounded-2xl border border-[var(--line)] bg-white">
                 <span className="inline-flex items-center border-r border-[var(--line)] bg-[#fbf7f2] px-3 text-sm text-gray-500">
                   gestordelivery.com.br/
@@ -183,7 +183,7 @@ export default function SetupPage() {
                 </>
               ) : (
                 <>
-                  Concluir configuracao
+                  Concluir configuração
                   <CheckCircle2 size={18} />
                 </>
               )}

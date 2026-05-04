@@ -82,7 +82,7 @@ export default function AdminDashboard() {
       const { data: prods } = await supabase.from("products").select("*").eq("restaurant_id", resto.id);
       if (prods) setProducts(prods);
     } catch (error) {
-      console.error("Erro ao buscar cardapio:", error);
+      console.error("Erro ao buscar cardápio:", error);
     } finally {
       setLoading(false);
     }
@@ -178,7 +178,7 @@ export default function AdminDashboard() {
     return (
       <div className="flex h-64 items-center justify-center text-sm font-semibold text-gray-500">
         <Loader2 className="mr-2 animate-spin text-[var(--brand)]" size={18} />
-        Carregando cardapio...
+        Carregando cardápio...
       </div>
     );
   }
@@ -187,7 +187,7 @@ export default function AdminDashboard() {
     <div className="mx-auto max-w-6xl pb-20">
       <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-3xl font-black tracking-tight text-gray-950">Cardapios</h1>
+            <h1 className="text-3xl font-black tracking-tight text-gray-950">Cardápios</h1>
           <p className="mt-1 text-sm text-[var(--muted)]">
             Organize categorias, destaque itens e ligue ou desligue produtos em segundos.
           </p>

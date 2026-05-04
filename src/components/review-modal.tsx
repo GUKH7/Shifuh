@@ -32,8 +32,8 @@ export default function ReviewModal({
   const handleSubmit = async () => {
     if (rating === 0) {
       showToast({
-        title: "Nota obrigatoria",
-        description: "Selecione de 1 a 5 estrelas para enviar a avaliacao.",
+        title: "Nota obrigatória",
+        description: "Selecione de 1 a 5 estrelas para enviar a avaliação.",
         tone: "error",
       });
       return;
@@ -56,7 +56,7 @@ export default function ReviewModal({
 
       const result = await response.json();
       if (!response.ok) {
-        throw new Error(result.error || "Erro ao enviar avaliacao.");
+        throw new Error(result.error || "Erro ao enviar avaliação.");
       }
 
       setRating(0);
@@ -65,14 +65,14 @@ export default function ReviewModal({
       onReviewSubmitted();
       onClose();
       showToast({
-        title: "Avaliacao enviada",
-        description: "Obrigado por compartilhar sua experiencia.",
+        title: "Avaliação enviada",
+        description: "Obrigado por compartilhar sua experiência.",
         tone: "success",
       });
     } catch (error: any) {
       console.error(error);
       showToast({
-        title: "Nao foi possivel enviar a avaliacao",
+        title: "Não foi possível enviar a avaliação",
         description: error.message || "Tente novamente em instantes.",
         tone: "error",
       });
@@ -93,7 +93,7 @@ export default function ReviewModal({
 
         <div className="flex flex-col items-center p-6">
           <p className="mb-4 text-center text-sm text-gray-600">
-            Como foi sua experiencia com este pedido?
+            Como foi sua experiência com este pedido?
           </p>
 
           <div className="mb-6 flex gap-2">
@@ -117,7 +117,7 @@ export default function ReviewModal({
           <textarea
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            placeholder="Deixe um comentario opcional..."
+            placeholder="Deixe um comentário opcional..."
             className="mb-4 min-h-[100px] w-full resize-none rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm focus:border-yellow-500 focus:outline-none"
           />
 
@@ -128,7 +128,7 @@ export default function ReviewModal({
             style={{ backgroundColor: primaryColor }}
           >
             {submitting ? <Loader2 className="animate-spin" size={20} /> : <Send size={18} />}
-            Enviar avaliacao
+            Enviar avaliação
           </button>
         </div>
       </div>

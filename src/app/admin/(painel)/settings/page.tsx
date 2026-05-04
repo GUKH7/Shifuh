@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
@@ -283,7 +283,7 @@ export default function SettingsPage() {
     setUploading(true);
     try {
       const croppedFile = await getCroppedImg(cropSource, croppedAreaPixels);
-      if (!croppedFile) throw new Error("Nao foi possivel recortar a imagem.");
+    if (!croppedFile) throw new Error("Não foi possível recortar a imagem.");
       const publicUrl = await uploadFile(croppedFile);
       if (cropTarget === "logo") {
         setLogoUrl(publicUrl);
@@ -363,7 +363,7 @@ export default function SettingsPage() {
       .eq("id", restaurantId);
 
     if (error) {
-      console.error("Erro ao salvar configuracoes:", error);
+      console.error("Erro ao salvar configurações:", error);
       const missingStorefrontColumn =
         error.message?.includes("storefront_") || error.code === "42703";
       const missingPrintColumn = error.message?.includes("printer_auto_print");
@@ -382,14 +382,14 @@ export default function SettingsPage() {
         });
       } else {
         showToast({
-          title: "Nao foi possivel salvar",
+          title: "Não foi possível salvar",
           description: error.message,
           tone: "error",
         });
       }
     } else {
       showToast({
-        title: "Configuracoes salvas",
+        title: "Configurações salvas",
         description: "Os dados da loja foram atualizados com sucesso.",
         tone: "success",
       });
@@ -454,7 +454,7 @@ export default function SettingsPage() {
     return (
       <div className="flex h-64 items-center justify-center text-sm font-semibold text-gray-500">
         <Loader2 className="mr-2 animate-spin text-[var(--brand)]" size={18} />
-        Carregando configuracoes...
+        Carregando configurações...
       </div>
     );
   }
@@ -463,7 +463,7 @@ export default function SettingsPage() {
     <div className="mx-auto max-w-6xl pb-20">
       <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-3xl font-black tracking-tight text-gray-950">Configuracoes</h1>
+          <h1 className="text-3xl font-black tracking-tight text-gray-950">Configurações</h1>
           <p className="mt-1 text-sm text-[var(--muted)]">
             Atualize dados da loja, identidade visual e regras de entrega.
           </p>
@@ -475,7 +475,7 @@ export default function SettingsPage() {
         >
           <span className="inline-flex items-center gap-2">
             {saving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
-            Salvar alteracoes
+            Salvar alterações
           </span>
         </button>
       </div>
@@ -488,7 +488,7 @@ export default function SettingsPage() {
             </div>
             <div>
               <h2 className="text-xl font-black text-gray-950">Dados da loja</h2>
-              <p className="text-sm text-gray-500">Nome, WhatsApp e endereco da operacao.</p>
+              <p className="text-sm text-gray-500">Nome, WhatsApp e endereço da operação.</p>
             </div>
           </div>
 
@@ -498,7 +498,7 @@ export default function SettingsPage() {
             <input value={address.zip} onChange={(e) => setAddress({ ...address, zip: e.target.value })} onBlur={handleBlurCep} placeholder="CEP" className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]" />
             <input value={address.city} onChange={(e) => setAddress({ ...address, city: e.target.value })} placeholder="Cidade" className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]" />
             <input value={address.street} onChange={(e) => setAddress({ ...address, street: e.target.value })} placeholder="Rua" className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)] md:col-span-2" />
-            <input value={address.number} onChange={(e) => setAddress({ ...address, number: e.target.value })} placeholder="Numero" className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]" />
+            <input value={address.number} onChange={(e) => setAddress({ ...address, number: e.target.value })} placeholder="Número" className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]" />
             <input value={address.neighborhood} onChange={(e) => setAddress({ ...address, neighborhood: e.target.value })} placeholder="Bairro" className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]" />
           </div>
         </section>
@@ -535,7 +535,7 @@ export default function SettingsPage() {
             <label className="space-y-2">
               <span className="flex items-center gap-2 text-sm font-bold text-gray-700">
                 Paleta visual da vitrine
-                <FieldHint label="Escolhe a atmosfera geral da pagina, junto da logo e da cor principal." />
+                <FieldHint label="Escolhe a atmosfera geral da página, junto da logo e da cor principal." />
               </span>
               <select
                 value={storefrontTheme.preset}
@@ -553,7 +553,7 @@ export default function SettingsPage() {
               <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--line)] bg-white px-4 py-6 text-center">
                 <Plus className="mb-2 text-gray-400" size={18} />
                 <span className="text-sm font-bold text-gray-700">Adicionar banner</span>
-                <span className="mt-1 text-xs text-gray-400">Suba imagens para destacar promocoes. Voce podera recortar antes de salvar.</span>
+                <span className="mt-1 text-xs text-gray-400">Suba imagens para destacar promoções. Você poderá recortar antes de salvar.</span>
                 <input type="file" accept="image/*" className="hidden" onChange={handleBannerUpload} disabled={uploading} />
               </label>
               <div className="mt-4 space-y-2">
@@ -580,9 +580,9 @@ export default function SettingsPage() {
               <Palette size={20} />
             </div>
             <div>
-              <h2 className="text-xl font-black text-gray-950">Pagina de venda</h2>
+              <h2 className="text-xl font-black text-gray-950">Página de venda</h2>
               <p className="text-sm text-gray-500">
-                Personalize a cara da vitrine publica de cada restaurante.
+                Personalize a cara da vitrine pública de cada restaurante.
               </p>
             </div>
           </div>
@@ -593,14 +593,14 @@ export default function SettingsPage() {
                 <input
                   value={storefrontHeadline}
                   onChange={(e) => setStorefrontHeadline(e.target.value)}
-                  placeholder="Titulo comercial da vitrine"
+                  placeholder="Título comercial da vitrine"
                   className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
                 />
                 <textarea
                   value={storefrontSubheadline}
                   onChange={(e) => setStorefrontSubheadline(e.target.value)}
                   rows={3}
-                  placeholder="Texto curto para destacar proposta, promocao ou estilo da loja"
+                  placeholder="Texto curto para destacar proposta, promoção ou estilo da loja"
                   className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
                 />
               </div>
@@ -609,14 +609,14 @@ export default function SettingsPage() {
                 <label className="space-y-2">
                   <span className="flex items-center gap-2 text-sm font-bold text-gray-700">
                     Estilo do topo
-                    <FieldHint label="Escolhe como a capa aparece antes do cardapio: mais direta, lateral ou promocional." />
+                    <FieldHint label="Escolhe como a capa aparece antes do cardápio: mais direta, lateral ou promocional." />
                   </span>
                   <select
                     value={storefrontTheme.hero_style}
                     onChange={(e) => updateStorefrontTheme("hero_style", e.target.value as StorefrontTheme["hero_style"])}
                     className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
                   >
-                    <option value="banner">Capa classica</option>
+                    <option value="banner">Capa clássica</option>
                     <option value="split">Capa com destaque lateral</option>
                     <option value="spotlight">Capa promocional</option>
                   </select>
@@ -624,8 +624,8 @@ export default function SettingsPage() {
 
                 <label className="space-y-2">
                   <span className="flex items-center gap-2 text-sm font-bold text-gray-700">
-                    Exibicao dos produtos
-                    <FieldHint label="Escolhe se o cardapio fica em lista mais classica ou em blocos destacados." />
+                    Exibição dos produtos
+                    <FieldHint label="Escolhe se o cardápio fica em lista mais clássica ou em blocos destacados." />
                   </span>
                   <select
                     value={storefrontTheme.catalog_layout}
@@ -639,7 +639,7 @@ export default function SettingsPage() {
 
                 <label className="space-y-2">
                   <span className="flex items-center gap-2 text-sm font-bold text-gray-700">
-                    Aparencia dos produtos
+                    Aparência dos produtos
                     <FieldHint label="Ajusta o relevo dos cards dos produtos para deixar a leitura mais leve ou mais destacada." />
                   </span>
                   <select
@@ -664,7 +664,7 @@ export default function SettingsPage() {
                     className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
                   >
                     <option value="underline">Abas com linha</option>
-                    <option value="pill">Botoes arredondados</option>
+                    <option value="pill">Botões arredondados</option>
                   </select>
                 </label>
               </div>
@@ -685,7 +685,7 @@ export default function SettingsPage() {
                 <label className="flex items-center justify-between rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
                   <span className="flex items-center gap-2 text-sm font-bold text-gray-700">
                     Mostrar nota da loja
-                    <FieldHint label="Exibe a nota media da loja ao lado do nome." />
+                    <FieldHint label="Exibe a nota média da loja ao lado do nome." />
                   </span>
                   <input
                     type="checkbox"
@@ -768,7 +768,7 @@ export default function SettingsPage() {
                           {storefrontHeadline || name || "Sua loja no WhatsApp com cara profissional"}
                         </h3>
                         <p className="mt-2 text-sm leading-6 text-white/80">
-                          {storefrontSubheadline || "A capa da vitrine ajuda a destacar sua marca, sua promocao e sua proposta de valor."}
+                          {storefrontSubheadline || "A capa da vitrine ajuda a destacar sua marca, sua promoção e sua proposta de valor."}
                         </p>
                       </div>
                       <button className="rounded-full border border-white/20 bg-white/90 px-3 py-1.5 text-[11px] font-bold text-gray-800">
@@ -811,7 +811,7 @@ export default function SettingsPage() {
                     <div className={`rounded-2xl bg-white p-4 ${storefrontTheme.card_style === "outline" ? "border-2 border-gray-200" : storefrontTheme.card_style === "elevated" ? "shadow-[0_18px_32px_rgba(17,16,15,0.12)]" : "shadow-sm"}`}>
                       <div className={`${storefrontTheme.catalog_layout === "grid" ? "h-24" : "h-14"} rounded-xl bg-[#f3ede5]`} />
                       <p className="mt-3 font-bold text-gray-900">Combo promocional</p>
-                      <p className="mt-1 text-sm text-gray-500">Pedido rapido para destacar conversao e ticket medio.</p>
+                      <p className="mt-1 text-sm text-gray-500">Pedido rápido para destacar conversão e ticket médio.</p>
                       <p className="mt-3 text-sm font-black text-gray-950">R$ 29,90</p>
                     </div>
                   </div>
@@ -828,7 +828,7 @@ export default function SettingsPage() {
             </div>
             <div>
               <h2 className="text-xl font-black text-gray-950">Taxas de entrega</h2>
-              <p className="text-sm text-gray-500">Defina preco e tempo por distancia.</p>
+              <p className="text-sm text-gray-500">Defina preço e tempo por distância.</p>
             </div>
           </div>
 
@@ -837,7 +837,7 @@ export default function SettingsPage() {
               <div key={index} className="grid items-end gap-3 rounded-2xl border border-[var(--line)] bg-white p-4 md:grid-cols-[1fr_1fr_1fr_auto]">
                 <label className="space-y-2">
                   <span className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">
-                    Ate quantos km
+                    Até quantos km
                   </span>
                   <div className="flex items-center rounded-xl border border-[var(--line)] bg-white px-3 focus-within:border-[var(--brand)]">
                     <input
@@ -908,7 +908,7 @@ export default function SettingsPage() {
               <Clock size={20} />
             </div>
             <div>
-              <h2 className="text-xl font-black text-gray-950">Horarios de funcionamento</h2>
+              <h2 className="text-xl font-black text-gray-950">Horários de funcionamento</h2>
               <p className="text-sm text-gray-500">Marque os dias e ajuste a janela de atendimento.</p>
             </div>
           </div>
@@ -938,7 +938,7 @@ export default function SettingsPage() {
               <Smartphone size={20} />
             </div>
             <div>
-              <h2 className="text-xl font-black text-gray-950">Impressao termica</h2>
+              <h2 className="text-xl font-black text-gray-950">Impressão térmica</h2>
               <p className="text-sm text-gray-500">Ajuste largura, tamanho e espessura da fonte do cupom.</p>
             </div>
           </div>
@@ -975,7 +975,7 @@ export default function SettingsPage() {
                 onChange={(e) => setPrinterFontWeight(Number(e.target.value))}
                 className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
               >
-                <option value={500}>Media</option>
+                <option value={500}>Média</option>
                 <option value={700}>Forte</option>
                 <option value={800}>Extra forte</option>
                 </select>
@@ -993,7 +993,7 @@ export default function SettingsPage() {
           </label>
 
           <div className="mt-5 rounded-[24px] border border-[var(--line)] bg-[#fcfaf7] p-4">
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-gray-400">Preview rapido</p>
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-gray-400">Preview rápido</p>
             <div
               className="mt-3 rounded-2xl border border-dashed border-[var(--line)] bg-white px-4 py-4 text-gray-800"
               style={{ fontFamily: "'Courier New', monospace", fontSize: `${printerFontSize}px`, fontWeight: printerFontWeight }}
@@ -1013,8 +1013,8 @@ export default function SettingsPage() {
               <Smartphone size={20} />
             </div>
             <div>
-              <h2 className="text-xl font-black text-gray-950">Conexao WhatsApp</h2>
-              <p className="text-sm text-gray-500">Acompanhe o status do robo e recarregue o QR code quando precisar.</p>
+              <h2 className="text-xl font-black text-gray-950">Conexão WhatsApp</h2>
+              <p className="text-sm text-gray-500">Acompanhe o status do robô e recarregue o QR code quando precisar.</p>
             </div>
           </div>
 
@@ -1034,7 +1034,7 @@ export default function SettingsPage() {
                 </button>
               </div>
               <p className="mt-3 text-sm leading-6 text-gray-500">
-                Use essa area para monitorar a conexao do seu numero e renovar o QR code quando necessario.
+                Use esta área para monitorar a conexão do seu número e renovar o QR Code quando necessário.
               </p>
             </div>
 
@@ -1105,3 +1105,6 @@ export default function SettingsPage() {
     </div>
   );
 }
+
+
+

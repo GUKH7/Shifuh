@@ -32,7 +32,7 @@ type HistoryOrder = {
 const FILTERS = [
   { id: "all", label: "Todos" },
   { id: "pending", label: "Em aberto" },
-  { id: "done", label: "Concluidos" },
+  { id: "done", label: "Concluídos" },
   { id: "canceled", label: "Cancelados" },
 ];
 
@@ -92,7 +92,7 @@ function getStatusLabel(status: HistoryOrder["status"]) {
     case "delivering":
       return "Em rota";
     case "done":
-      return "Concluido";
+    return "Concluído";
     case "canceled":
       return "Cancelado";
     default:
@@ -192,7 +192,7 @@ export default function HistoryPage() {
       const { restaurant, user } = await getCurrentRestaurant(supabase);
       if (!user) return router.push("/admin/login");
       if (!restaurant) {
-        setErrorMsg("Nao foi possivel localizar a loja.");
+        setErrorMsg("Não foi possível localizar a loja.");
         return;
       }
 
@@ -210,7 +210,7 @@ export default function HistoryPage() {
       setOrders((data || []) as HistoryOrder[]);
     } catch (error) {
       console.error(error);
-      setErrorMsg("Erro ao carregar o historico.");
+      setErrorMsg("Erro ao carregar o histórico.");
     } finally {
       setLoading(false);
     }
@@ -290,12 +290,12 @@ export default function HistoryPage() {
       await navigator.clipboard.writeText(orderId);
       showToast({
         title: "Pedido copiado",
-        description: "O identificador completo foi copiado para a area de transferencia.",
+      description: "O identificador completo foi copiado para a área de transferência.",
         tone: "success",
       });
     } catch (error) {
       showToast({
-        title: "Nao foi possivel copiar",
+        title: "Não foi possível copiar",
         description: "Tente novamente em alguns segundos.",
         tone: "error",
       });
@@ -322,7 +322,7 @@ export default function HistoryPage() {
           <div>
             <h1 className="text-3xl font-black tracking-tight text-gray-950">Pedidos</h1>
             <p className="mt-1 text-sm text-[var(--muted)]">
-              Consulte todo o historico da operacao da sua loja.
+              Consulte todo o histórico da operação da sua loja.
             </p>
           </div>
         </div>
@@ -342,7 +342,7 @@ export default function HistoryPage() {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Digite o numero do pedido, cliente ou telefone"
+              placeholder="Digite o número do pedido, cliente ou telefone"
               className="w-full bg-transparent text-sm outline-none placeholder:text-gray-400"
             />
           </div>
@@ -382,13 +382,13 @@ export default function HistoryPage() {
 
         <div className="mt-8 overflow-hidden rounded-[24px] border border-[var(--line)] bg-white">
           <div className="grid grid-cols-[88px_1.1fr_1fr_0.9fr_0.9fr_140px_132px] gap-4 border-b border-[var(--line)] px-6 py-4 text-xs font-bold uppercase tracking-[0.16em] text-gray-400">
-            <span>Horario</span>
+            <span>Horário</span>
             <span>Pedido</span>
             <span>Cliente</span>
-            <span>Situacao</span>
+            <span>Situação</span>
             <span>Valor da venda</span>
-            <span className="text-right">Liquido</span>
-            <span className="text-right">Acoes</span>
+            <span className="text-right">Líquido</span>
+            <span className="text-right">Ações</span>
           </div>
 
           <div className="border-b border-[var(--line)] bg-[#fcfaf7] px-6 py-4 text-sm text-gray-500">
@@ -463,7 +463,7 @@ export default function HistoryPage() {
           {visibleOrders.length > PAGE_SIZE && (
             <div className="flex items-center justify-between border-t border-[var(--line)] px-6 py-4 text-sm text-gray-500">
               <p>
-                Pagina {page} de {totalPages}
+                Página {page} de {totalPages}
               </p>
               <div className="flex gap-2">
                 <button

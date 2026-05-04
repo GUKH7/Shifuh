@@ -155,14 +155,14 @@ export default function AdminHomePage() {
         helper: `${activeOrders.length} pedido(s) validos`,
       },
       {
-        label: "Ticket medio",
+    label: "Ticket médio",
         value: formatMoney(averageTicket),
-        helper: "media por pedido nao cancelado",
+    helper: "média por pedido não cancelado",
       },
       {
-        label: "Pedidos no periodo",
+    label: "Pedidos no período",
         value: String(filteredOrders.length),
-        helper: `${completedOrders.length} concluidos`,
+    helper: `${completedOrders.length} concluídos`,
       },
       {
         label: "Cancelados",
@@ -202,7 +202,7 @@ export default function AdminHomePage() {
         <div>
           <h1 className="text-3xl font-black tracking-tight text-gray-950">Painel operacional</h1>
           <p className="mt-1 text-sm text-[var(--muted)]">
-            Acompanhe pedidos, faturamento e ritmo da operacao da {restaurantName}.
+          Acompanhe pedidos, faturamento e ritmo da operação da {restaurantName}.
           </p>
         </div>
       </div>
@@ -214,7 +214,7 @@ export default function AdminHomePage() {
               Dashboard em tempo real
             </div>
             <h2 className="mt-4 text-2xl font-black text-gray-950">
-              Sua operacao centralizada em um painel leve.
+            Sua operação centralizada em um painel leve.
             </h2>
             <p className="mt-2 max-w-2xl text-sm leading-7 text-[var(--muted)]">
               Veja faturamento, pedidos e os produtos que mais giram sem sair do fluxo da loja.
@@ -261,9 +261,9 @@ export default function AdminHomePage() {
         <div className="surface-card rounded-[28px] p-6">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h3 className="text-xl font-black text-gray-950">Atalhos da operacao</h3>
+              <h3 className="text-xl font-black text-gray-950">Atalhos da operação</h3>
               <p className="mt-1 text-sm text-[var(--muted)]">
-                O caminho mais rapido para manter a loja publicada e recebendo pedidos.
+              O caminho mais rápido para manter a loja publicada e recebendo pedidos.
               </p>
             </div>
           </div>
@@ -277,16 +277,16 @@ export default function AdminHomePage() {
             </Link>
             <Link href="/admin/menu" className="rounded-2xl border border-[var(--line)] bg-white p-5">
               <PackageCheck className="text-[var(--brand)]" size={22} />
-              <h4 className="mt-4 font-bold text-gray-950">Cardapio</h4>
+                <h4 className="mt-4 font-bold text-gray-950">Cardápio</h4>
               <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
                 Crie categorias, organize itens e pause produtos.
               </p>
             </Link>
             <Link href="/admin/settings" className="rounded-2xl border border-[var(--line)] bg-white p-5">
               <Wallet className="text-[var(--brand)]" size={22} />
-              <h4 className="mt-4 font-bold text-gray-950">Configuracoes</h4>
+                <h4 className="mt-4 font-bold text-gray-950">Configurações</h4>
               <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                Atualize WhatsApp, endereco e faixas de entrega.
+                Atualize WhatsApp, endereço e faixas de entrega.
               </p>
             </Link>
           </div>
@@ -297,7 +297,7 @@ export default function AdminHomePage() {
           <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
             <div className="flex items-center gap-3">
               <span className="h-3 w-3 rounded-full bg-emerald-500" />
-              <p className="font-bold text-emerald-800">Loja em operacao</p>
+              <p className="font-bold text-emerald-800">Loja em operação</p>
             </div>
             <p className="mt-2 text-sm leading-6 text-emerald-700">
               Sua vitrine esta pronta para receber pedidos e enviar tudo direto no WhatsApp.
@@ -306,7 +306,7 @@ export default function AdminHomePage() {
 
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
             <div className="rounded-2xl border border-[var(--line)] bg-white p-4">
-              <p className="text-xs font-bold uppercase tracking-[0.14em] text-gray-400">No periodo</p>
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-gray-400">No período</p>
               <p className="mt-2 text-2xl font-black text-gray-950">{dashboard.filteredOrdersCount}</p>
             </div>
             <div className="rounded-2xl border border-[var(--line)] bg-white p-4">
@@ -325,12 +325,12 @@ export default function AdminHomePage() {
         <div className="surface-card rounded-[28px] p-6">
           <h3 className="text-xl font-black text-gray-950">Top produtos</h3>
           <p className="mt-1 text-sm text-[var(--muted)]">
-            Itens mais vendidos com base nos pedidos do periodo.
+            Itens mais vendidos com base nos pedidos do período.
           </p>
           <div className="mt-6 space-y-3">
             {dashboard.topProducts.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-[var(--line)] bg-white py-12 text-center text-sm text-gray-500">
-                Nenhum produto vendido no periodo selecionado.
+              Nenhum produto vendido no período selecionado.
               </div>
             ) : (
               dashboard.topProducts.map((product, index) => (
@@ -359,12 +359,12 @@ export default function AdminHomePage() {
         <div className="surface-card rounded-[28px] p-6">
           <h3 className="text-xl font-black text-gray-950">Ultimos pedidos</h3>
           <p className="mt-1 text-sm text-[var(--muted)]">
-            Visao rapida dos pedidos mais recentes no periodo.
+            Visão rápida dos pedidos mais recentes no período.
           </p>
           <div className="mt-6 space-y-3">
             {dashboard.recentOrders.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-[var(--line)] bg-white py-12 text-center text-sm text-gray-500">
-                Nenhum pedido registrado no periodo selecionado.
+              Nenhum pedido registrado no período selecionado.
               </div>
             ) : (
               dashboard.recentOrders.map((order) => (

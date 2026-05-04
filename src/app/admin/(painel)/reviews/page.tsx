@@ -78,7 +78,7 @@ export default function ReviewsPage() {
       const { restaurant, user } = await getCurrentRestaurant(supabase);
       if (!user) return router.push("/admin/login");
       if (!restaurant) {
-        setErrorMsg("Nao foi possivel localizar a loja.");
+      setErrorMsg("Não foi possível localizar a loja.");
         return;
       }
 
@@ -157,9 +157,9 @@ export default function ReviewsPage() {
           <Star size={24} />
         </div>
         <div>
-          <h1 className="text-3xl font-black tracking-tight text-gray-950">Avaliacoes</h1>
+          <h1 className="text-3xl font-black tracking-tight text-gray-950">Avaliações</h1>
           <p className="mt-1 text-sm text-[var(--muted)]">
-            Leia o sentimento dos clientes e acompanhe a reputacao da operacao.
+            Leia o sentimento dos clientes e acompanhe a reputação da operação.
           </p>
         </div>
       </div>
@@ -168,7 +168,7 @@ export default function ReviewsPage() {
         <div className="surface-card overflow-hidden rounded-[28px] p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-sm font-medium text-gray-500">Nota media</p>
+              <p className="text-sm font-medium text-gray-500">Nota média</p>
               <div className="mt-4 flex items-end gap-3">
                 <p className="text-6xl font-black text-gray-950">{stats.average.toFixed(1)}</p>
                 <div className="mb-2 flex gap-1">
@@ -181,7 +181,7 @@ export default function ReviewsPage() {
                   ))}
                 </div>
               </div>
-              <p className="mt-3 text-sm text-gray-500">{stats.total} avaliacoes recebidas</p>
+              <p className="mt-3 text-sm text-gray-500">{stats.total} avaliações recebidas</p>
             </div>
             <div className="rounded-2xl bg-[#fff2ea] p-3 text-[var(--brand)]">
               <Sparkles size={18} />
@@ -194,7 +194,7 @@ export default function ReviewsPage() {
               <p className="mt-2 text-2xl font-black text-gray-950">{stats.positiveRate.toFixed(0)}%</p>
             </div>
             <div className="rounded-[22px] bg-[#fcfaf7] px-4 py-4">
-              <p className="text-xs font-bold uppercase tracking-[0.14em] text-gray-400">Media por pedido</p>
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-gray-400">Média por pedido</p>
               <p className="mt-2 inline-flex items-center gap-2 text-2xl font-black text-gray-950">
                 <TrendingUp size={18} className="text-emerald-600" />
                 {stats.average.toFixed(1)}
@@ -204,7 +204,7 @@ export default function ReviewsPage() {
         </div>
 
         <div className="surface-card rounded-[28px] p-6">
-          <p className="text-sm font-medium text-gray-500">Distribuicao das notas</p>
+          <p className="text-sm font-medium text-gray-500">Distribuição das notas</p>
           <div className="mt-6 space-y-4">
             {[5, 4, 3, 2, 1].map((star) => {
               const count = stats.breakdown[star - 1];
@@ -247,7 +247,7 @@ export default function ReviewsPage() {
         <div className="mt-6 space-y-4">
           {visibleReviews.length === 0 ? (
             <div className="rounded-[24px] border border-dashed border-[var(--line)] bg-white px-6 py-16 text-center text-sm text-gray-500">
-              Nenhuma avaliacao encontrada para este filtro.
+                Nenhuma avaliação encontrada para este filtro.
             </div>
           ) : (
             visibleReviews.map((review) => (

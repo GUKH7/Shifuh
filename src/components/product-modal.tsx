@@ -181,7 +181,7 @@ export default function ProductModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!restaurantId || !categoryId) return alert("Categoria obrigatoria!");
+    if (!restaurantId || !categoryId) return alert("Categoria obrigatória!");
     setIsLoading(true);
 
     try {
@@ -301,7 +301,7 @@ export default function ProductModal({
                 onChange={(e) => setDescription(e.target.value)}
                 className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3.5 text-sm outline-none focus:border-[var(--brand)]"
                 rows={3}
-                placeholder="Descricao curta do item"
+                placeholder="Descrição curta do item"
               />
               <div className="grid grid-cols-2 gap-4">
                 <input
@@ -311,7 +311,7 @@ export default function ProductModal({
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
                   className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3.5 text-sm font-bold outline-none focus:border-[var(--brand)]"
-                  placeholder="Preco"
+                placeholder="Preço"
                 />
                 <select
                   required
