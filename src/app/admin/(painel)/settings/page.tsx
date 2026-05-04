@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useRouter } from "next/navigation";
 import {
@@ -15,11 +15,14 @@ import {
   QrCode,
   RefreshCw,
   Save,
+  Scissors,
   Smartphone,
   Store,
   Trash2,
   UploadCloud,
+  X,
 } from "lucide-react";
+import Cropper from "react-easy-crop";
 import { getCurrentRestaurant } from "@/lib/supabase/restaurant";
 import { getCoordinates } from "@/lib/geo";
 import { useToast } from "@/components/ui/toast-provider";
@@ -84,6 +87,31 @@ const DEFAULT_SCHEDULE: WorkHour[] = DAYS_OF_WEEK.map((day) => ({
   close_time: "23:00",
 }));
 
+const createImage = (url: string): Promise<HTMLImageElement> =>
+  new Promise((resolve, reject) => {
+    const image = new Image();
+    image.addEventListener("load", () => resolve(image));
+    image.addEventListener("error", (error) => reject(error));
+    image.setAttribute("crossOrigin", "anonymous");
+    image.src = url;
+  });
+
+async function getCroppedImg(imageSrc: string, pixelCrop: { x: number; y: number; width: number; height: number }): Promise<File | null> {
+  const image = await createImage(imageSrc);
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  canvas.width = pixelCrop.width;
+  canvas.height = pixelCrop.height;
+  ctx.drawImage(image, pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height, 0, 0, pixelCrop.width, pixelCrop.height);
+  return new Promise((resolve) =>
+    canvas.toBlob((blob) => {
+      if (!blob) return resolve(null);
+      resolve(new File([blob], "cropped-image.jpg", { type: "image/jpeg" }));
+    }, "image/jpeg", 0.92),
+  );
+}
+
 function FieldHint({ label }: { label: string }) {
   return (
     <span
@@ -133,6 +161,12 @@ export default function SettingsPage() {
   const [wppStatus, setWppStatus] = useState<string>("iniciando");
   const [wppQrCode, setWppQrCode] = useState<string>("");
   const [isRestarting, setIsRestarting] = useState(false);
+  const [cropTarget, setCropTarget] = useState<"logo" | "banner" | null>(null);
+  const [cropSource, setCropSource] = useState<string | null>(null);
+  const [cropAspect, setCropAspect] = useState(1);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -209,34 +243,63 @@ export default function SettingsPage() {
     return data.publicUrl;
   };
 
+  const openCropper = (file: File, target: "logo" | "banner") => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => {
+      setCropSource(reader.result as string);
+      setCropTarget(target);
+      setCropAspect(target === "logo" ? 1 : 16 / 7);
+      setCrop({ x: 0, y: 0 });
+      setZoom(1);
+    });
+    reader.readAsDataURL(file);
+  };
+
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
-    setUploading(true);
-    try {
-      const publicUrl = await uploadFile(e.target.files[0]);
-      setLogoUrl(publicUrl);
-    } catch (error) {
-      console.error(error);
-      showToast({
-        title: "Falha no upload do logo",
-        description: "Tente novamente com outra imagem.",
-        tone: "error",
-      });
-    } finally {
-      setUploading(false);
-    }
+    openCropper(e.target.files[0], "logo");
+    e.target.value = "";
   };
 
   const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
+    openCropper(e.target.files[0], "banner");
+    e.target.value = "";
+  };
+
+  const closeCropper = () => {
+    setCropTarget(null);
+    setCropSource(null);
+    setCroppedAreaPixels(null);
+    setZoom(1);
+  };
+
+  const onCropComplete = useCallback((_: unknown, croppedArea: { x: number; y: number; width: number; height: number }) => {
+    setCroppedAreaPixels(croppedArea);
+  }, []);
+
+  const handleConfirmCrop = async () => {
+    if (!cropSource || !croppedAreaPixels || !cropTarget) return;
     setUploading(true);
     try {
-      const publicUrl = await uploadFile(e.target.files[0]);
-      setBanners([...banners, publicUrl]);
+      const croppedFile = await getCroppedImg(cropSource, croppedAreaPixels);
+      if (!croppedFile) throw new Error("Nao foi possivel recortar a imagem.");
+      const publicUrl = await uploadFile(croppedFile);
+      if (cropTarget === "logo") {
+        setLogoUrl(publicUrl);
+      } else {
+        setBanners((current) => [...current, publicUrl]);
+      }
+      closeCropper();
+      showToast({
+        title: cropTarget === "logo" ? "Logo atualizada" : "Banner adicionado",
+        description: "A imagem foi recortada e salva com sucesso.",
+        tone: "success",
+      });
     } catch (error) {
       console.error(error);
       showToast({
-        title: "Falha no upload do banner",
+        title: "Falha no upload da imagem",
         description: "Tente novamente com outro arquivo.",
         tone: "error",
       });
@@ -469,11 +532,28 @@ export default function SettingsPage() {
               </div>
             </div>
 
+            <label className="space-y-2">
+              <span className="flex items-center gap-2 text-sm font-bold text-gray-700">
+                Paleta visual da vitrine
+                <FieldHint label="Escolhe a atmosfera geral da pagina, junto da logo e da cor principal." />
+              </span>
+              <select
+                value={storefrontTheme.preset}
+                onChange={(e) => updateStorefrontTheme("preset", e.target.value as StorefrontTheme["preset"])}
+                className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+              >
+                <option value="sunset">Quente e vibrante</option>
+                <option value="forest">Natural</option>
+                <option value="berry">Marcante</option>
+                <option value="midnight">Escuro sofisticado</option>
+              </select>
+            </label>
+
             <div className="rounded-[24px] border border-[var(--line)] bg-[#fcfaf7] p-4">
               <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--line)] bg-white px-4 py-6 text-center">
                 <Plus className="mb-2 text-gray-400" size={18} />
                 <span className="text-sm font-bold text-gray-700">Adicionar banner</span>
-                <span className="mt-1 text-xs text-gray-400">Suba imagens para destacar promocoes.</span>
+                <span className="mt-1 text-xs text-gray-400">Suba imagens para destacar promocoes. Voce podera recortar antes de salvar.</span>
                 <input type="file" accept="image/*" className="hidden" onChange={handleBannerUpload} disabled={uploading} />
               </label>
               <div className="mt-4 space-y-2">
@@ -528,25 +608,8 @@ export default function SettingsPage() {
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="space-y-2">
                   <span className="flex items-center gap-2 text-sm font-bold text-gray-700">
-                    Paleta da pagina
-                    <FieldHint label="Escolhe as cores e a atmosfera visual da vitrine." />
-                  </span>
-                  <select
-                    value={storefrontTheme.preset}
-                    onChange={(e) => updateStorefrontTheme("preset", e.target.value as StorefrontTheme["preset"])}
-                    className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
-                  >
-                    <option value="sunset">Sunset</option>
-                    <option value="forest">Forest</option>
-                    <option value="berry">Berry</option>
-                    <option value="midnight">Midnight</option>
-                  </select>
-                </label>
-
-                <label className="space-y-2">
-                  <span className="flex items-center gap-2 text-sm font-bold text-gray-700">
                     Estilo do topo
-                    <FieldHint label="Define a aparencia da capa principal da vitrine." />
+                    <FieldHint label="Escolhe como a capa aparece antes do cardapio: mais direta, lateral ou promocional." />
                   </span>
                   <select
                     value={storefrontTheme.hero_style}
@@ -562,7 +625,7 @@ export default function SettingsPage() {
                 <label className="space-y-2">
                   <span className="flex items-center gap-2 text-sm font-bold text-gray-700">
                     Exibicao dos produtos
-                    <FieldHint label="Define se os produtos aparecem em blocos ou em lista corrida." />
+                    <FieldHint label="Escolhe se o cardapio fica em lista mais classica ou em blocos destacados." />
                   </span>
                   <select
                     value={storefrontTheme.catalog_layout}
@@ -577,7 +640,7 @@ export default function SettingsPage() {
                 <label className="space-y-2">
                   <span className="flex items-center gap-2 text-sm font-bold text-gray-700">
                     Aparencia dos produtos
-                    <FieldHint label="Controla se os blocos ficam mais leves, com contorno ou com mais profundidade." />
+                    <FieldHint label="Ajusta o relevo dos cards dos produtos para deixar a leitura mais leve ou mais destacada." />
                   </span>
                   <select
                     value={storefrontTheme.card_style}
@@ -690,27 +753,46 @@ export default function SettingsPage() {
                           : "linear-gradient(135deg, #ff8b45, #f3b38c)",
                 }}
               >
-                <div className="bg-black/15 p-5 text-white">
-                  <div className="max-w-xl rounded-[22px] border border-white/15 bg-white/12 p-4 backdrop-blur-md">
-                    <h3 className="text-xl font-black leading-tight">
-                      {storefrontHeadline || name || "Sua loja no WhatsApp com cara profissional"}
-                    </h3>
-                    <p className="mt-2 text-sm leading-6 text-white/80">
-                      {storefrontSubheadline || "A capa da vitrine ajuda a destacar sua marca, sua promocao e sua proposta de valor."}
-                    </p>
-                    {storefrontTheme.show_badges && (
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <span className="rounded-full bg-white/90 px-3 py-1 text-[11px] font-black uppercase tracking-[0.12em] text-gray-900">
-                          {storefrontTheme.highlight_badge || "Mais pedido"}
-                        </span>
-                        <span className="rounded-full bg-white/15 px-3 py-1 text-[11px] font-bold text-white">
-                          {storefrontTheme.promo_text || "Promo do dia"}
-                        </span>
+                <div className="bg-black/15 px-4 pb-4 pt-4 text-white">
+                  <div className={`rounded-[22px] border border-white/15 bg-white/12 p-4 backdrop-blur-md ${
+                    storefrontTheme.hero_style === "split" ? "ml-auto max-w-[82%]" : "max-w-xl"
+                  }`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        {storefrontTheme.show_badges && storefrontTheme.promo_text && (
+                          <span className="mb-2 inline-flex rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-gray-900">
+                            {storefrontTheme.promo_text || "Promo do dia"}
+                          </span>
+                        )}
+                        <h3 className="text-xl font-black leading-tight">
+                          {storefrontHeadline || name || "Sua loja no WhatsApp com cara profissional"}
+                        </h3>
+                        <p className="mt-2 text-sm leading-6 text-white/80">
+                          {storefrontSubheadline || "A capa da vitrine ajuda a destacar sua marca, sua promocao e sua proposta de valor."}
+                        </p>
                       </div>
-                    )}
+                      <button className="rounded-full border border-white/20 bg-white/90 px-3 py-1.5 text-[11px] font-bold text-gray-800">
+                        Minha conta
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <div className="bg-[#fffdfa] p-4">
+                  <div className="-mt-4 mb-3 flex items-end gap-3">
+                    {storefrontTheme.show_logo && (
+                      <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-[18px] border-[3px] border-white bg-white shadow-[0_10px_24px_rgba(17,16,15,0.12)]">
+                        {logoUrl ? <img src={logoUrl} className="h-full w-full object-cover" /> : <div className="h-full w-full" style={{ backgroundColor: primaryColor }} />}
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1 pb-1">
+                      <p className="truncate text-base font-black text-gray-950">{name || "Sua loja"}</p>
+                      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-medium text-gray-500">
+                        {storefrontTheme.show_reviews && <span>5,0</span>}
+                        <span>30-45 min</span>
+                        <span className="text-emerald-700">Aberto</span>
+                      </div>
+                    </div>
+                  </div>
                   <div className="mb-3 flex gap-2 overflow-hidden">
                     <span className={`text-xs font-bold ${storefrontTheme.category_style === "pill" ? "rounded-full bg-[#fff2e8] px-3 py-2" : "border-b-2 border-[var(--brand)] px-1 pb-2"}`}>
                       Espetos
@@ -974,6 +1056,52 @@ export default function SettingsPage() {
           </div>
         </section>
       </div>
+
+      {cropSource && cropTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-3xl rounded-[28px] bg-white p-5 shadow-2xl">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-xl font-black text-gray-950">{cropTarget === "logo" ? "Ajustar logo" : "Ajustar banner"}</h3>
+                <p className="mt-1 text-sm text-gray-500">Posicione a imagem para que ela fique no formato ideal da vitrine.</p>
+              </div>
+              <button onClick={closeCropper} className="rounded-full border border-[var(--line)] p-2 text-gray-500">
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="relative mt-5 h-[360px] overflow-hidden rounded-[24px] bg-gray-950">
+              <Cropper
+                image={cropSource}
+                crop={crop}
+                zoom={zoom}
+                aspect={cropAspect}
+                onCropChange={setCrop}
+                onCropComplete={onCropComplete}
+                onZoomChange={setZoom}
+              />
+            </div>
+
+            <div className="mt-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <label className="flex-1">
+                <span className="mb-2 block text-sm font-bold text-gray-700">Zoom da imagem</span>
+                <input type="range" min={1} max={3} step={0.1} value={zoom} onChange={(e) => setZoom(Number(e.target.value))} className="w-full accent-[var(--brand)]" />
+              </label>
+              <div className="flex items-center gap-3">
+                <button onClick={closeCropper} className="rounded-2xl border border-[var(--line)] px-4 py-3 text-sm font-bold text-gray-600">
+                  Cancelar
+                </button>
+                <button onClick={handleConfirmCrop} disabled={uploading} className="brand-gradient rounded-2xl px-4 py-3 text-sm font-bold text-white disabled:opacity-60">
+                  <span className="inline-flex items-center gap-2">
+                    {uploading ? <Loader2 className="animate-spin" size={16} /> : <Scissors size={16} />}
+                    Aplicar recorte
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

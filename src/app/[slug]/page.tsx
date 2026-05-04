@@ -695,6 +695,8 @@ export default function StorePage({ params }: { params: { slug: string } }) {
     storefrontSubheadline ||
     restaurant?.description ||
     "Monte seu pedido, personalize os itens e finalize direto com a loja.";
+  const showHeroHeadline = !storefrontTheme.show_logo;
+  const showHeroSupportText = showHeroHeadline || storefrontTheme.hero_style === "spotlight";
   const cardTone =
     storefrontTheme.card_style === "outline"
       ? "border-2 border-[var(--line)] bg-white shadow-none"
@@ -797,32 +799,36 @@ export default function StorePage({ params }: { params: { slug: string } }) {
               <div className="h-full w-full" style={{ background: themePalette.heroBg }} />
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
-            <div className={`absolute inset-x-0 bottom-0 p-3 sm:p-6 ${
+            <div className={`absolute inset-x-0 bottom-0 p-4 sm:p-7 ${
               storefrontTheme.hero_style === "split" ? "text-right" : ""
             }`}>
               {storefrontTheme.show_badges && storefrontTheme.promo_text && (
-                <span className="mb-2 inline-flex rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-gray-900 sm:mb-3 sm:px-3 sm:text-xs">
+                <span className="mb-3 inline-flex rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-gray-900 sm:mb-4 sm:px-3 sm:text-xs">
                   {storefrontTheme.promo_text}
                 </span>
               )}
-              <h2 className={`text-2xl font-black leading-tight tracking-tight text-white sm:text-4xl ${
-                storefrontTheme.hero_style === "split" ? "ml-auto max-w-lg" : "max-w-2xl"
-              }`}>
-                {heroTitle}
-              </h2>
-              <p className={`mt-1.5 max-w-xl text-xs leading-5 text-white/85 sm:mt-3 sm:text-base sm:leading-7 ${
-                storefrontTheme.hero_style === "split" ? "ml-auto max-w-lg" : "max-w-2xl"
-              }`}>
-                {heroSubtitle}
-              </p>
+              {showHeroHeadline && (
+                <h2 className={`text-2xl font-black leading-tight tracking-tight text-white sm:text-4xl ${
+                  storefrontTheme.hero_style === "split" ? "ml-auto max-w-lg" : "max-w-2xl"
+                }`}>
+                  {heroTitle}
+                </h2>
+              )}
+              {showHeroSupportText && (
+                <p className={`${showHeroHeadline ? "mt-1.5 sm:mt-3" : ""} max-w-xl text-xs leading-5 text-white/85 sm:text-base sm:leading-7 ${
+                  storefrontTheme.hero_style === "split" ? "ml-auto max-w-lg" : "max-w-2xl"
+                }`}>
+                  {heroSubtitle}
+                </p>
+              )}
             </div>
             </div>
           </div>
 
-          <div className="-mt-4 relative z-10 px-3 sm:-mt-6 sm:px-0">
-            <div className="flex min-w-0 items-end gap-2.5 sm:gap-4">
+          <div className="-mt-1 relative z-10 px-3 sm:mt-0 sm:px-0">
+            <div className="flex min-w-0 items-end gap-3 sm:gap-5">
               {storefrontTheme.show_logo && (
-                <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center overflow-hidden rounded-[16px] border-[3px] border-white bg-white shadow-[0_10px_24px_rgba(17,16,15,0.14)] sm:h-20 sm:w-20 sm:rounded-[18px] sm:border-4">
+                <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-[18px] border-[3px] border-white bg-white shadow-[0_10px_24px_rgba(17,16,15,0.14)] sm:h-20 sm:w-20 sm:rounded-[18px] sm:border-4">
                   {restaurant.logo_url ? (
                     <img src={restaurant.logo_url} alt={restaurant.name} className="h-full w-full object-cover" />
                   ) : restaurant.image_url ? (
@@ -834,30 +840,30 @@ export default function StorePage({ params }: { params: { slug: string } }) {
                   )}
                 </div>
               )}
-              <div className="min-w-0 flex-1 pb-1 pt-5 sm:pt-10">
-                <div className="flex items-start justify-between gap-2">
-                  <h1 className="truncate pr-2 text-[18px] font-black leading-tight tracking-tight text-gray-950 sm:text-[28px]">
+              <div className="min-w-0 flex-1 pb-2 pt-6 sm:pt-8">
+                <div className="flex items-start justify-between gap-3">
+                  <h1 className="truncate pr-2 text-[20px] font-black leading-tight tracking-tight text-gray-950 sm:text-[28px]">
                     {restaurant.name}
                   </h1>
                   <div className="sm:hidden">
                     {currentUser ? (
                       <button
                         onClick={() => router.push("/minha-conta")}
-                        className="rounded-full border border-gray-200 px-2.5 py-1 text-[11px] font-bold text-gray-700"
+                        className="rounded-full border border-gray-200 px-3 py-1.5 text-[11px] font-bold text-gray-700"
                       >
                         Minha conta
                       </button>
                     ) : (
                       <button
                         onClick={() => router.push(`/auth?returnUrl=${encodeURIComponent(pathname)}`)}
-                        className="rounded-full border border-gray-200 px-2.5 py-1 text-[11px] font-bold text-gray-700"
+                        className="rounded-full border border-gray-200 px-3 py-1.5 text-[11px] font-bold text-gray-700"
                       >
                         Entrar
                       </button>
                     )}
                   </div>
                 </div>
-                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-medium text-gray-600 sm:mt-1.5 sm:text-sm">
+                <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[10px] font-medium text-gray-600 sm:mt-2.5 sm:text-sm">
                   {storefrontTheme.show_reviews && (
                     <span className="inline-flex items-center gap-1">
                       <Star size={13} className="fill-yellow-400 text-yellow-400 sm:h-[15px] sm:w-[15px]" />
