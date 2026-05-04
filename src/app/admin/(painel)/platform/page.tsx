@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useRouter } from "next/navigation";
-import { ExternalLink, Loader2, Search, Store, UserRound } from "lucide-react";
+import { Edit3, ExternalLink, Loader2, Save, Search, Store, Trash2, UserRound, X } from "lucide-react";
 import { isPlatformAdminEmail } from "@/lib/platform-admin";
+import { useToast } from "@/components/ui/toast-provider";
 
 type RestaurantRow = {
   id: string;
@@ -36,41 +37,51 @@ export default function PlatformPage() {
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [restaurants, setRestaurants] = useState<RestaurantRow[]>([]);
+  const [editingId, setEditingId] = useState("");
+  const [savingId, setSavingId] = useState("");
+  const [deletingId, setDeletingId] = useState("");
+  const [form, setForm] = useState({
+    name: "",
+    slug: "",
+    phone: "",
+    primary_color: "",
+  });
+  const { showToast } = useToast();
 
   useEffect(() => {
-    const loadRestaurants = async () => {
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-
-        if (!user) {
-          router.replace("/admin/login");
-          return;
-        }
-
-        if (!isPlatformAdminEmail(user.email)) {
-          router.replace("/admin");
-          return;
-        }
-
-        const { data, error } = await supabase
-          .from("restaurants")
-          .select("id, name, slug, phone, user_id, created_at, primary_color")
-          .order("created_at", { ascending: false });
-
-        if (error) throw error;
-        setRestaurants((data || []) as RestaurantRow[]);
-      } catch (err) {
-        console.error(err);
-        setError(err instanceof Error ? err.message : "Nao foi possivel carregar as lojas.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadRestaurants();
   }, [router, supabase]);
+
+  const loadRestaurants = async () => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        router.replace("/admin/login");
+        return;
+      }
+
+      if (!isPlatformAdminEmail(user.email)) {
+        router.replace("/admin");
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("restaurants")
+        .select("id, name, slug, phone, user_id, created_at, primary_color")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setRestaurants((data || []) as RestaurantRow[]);
+    } catch (err) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : "Nao foi possivel carregar as lojas.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredRestaurants = useMemo(() => {
     const term = query.trim().toLowerCase();
@@ -83,6 +94,100 @@ export default function PlatformPage() {
         .includes(term),
     );
   }, [query, restaurants]);
+
+  const startEditing = (restaurant: RestaurantRow) => {
+    setEditingId(restaurant.id);
+    setForm({
+      name: restaurant.name,
+      slug: restaurant.slug,
+      phone: restaurant.phone || "",
+      primary_color: restaurant.primary_color || "#f97316",
+    });
+  };
+
+  const cancelEditing = () => {
+    setEditingId("");
+    setForm({
+      name: "",
+      slug: "",
+      phone: "",
+      primary_color: "",
+    });
+  };
+
+  const saveRestaurant = async (restaurantId: string) => {
+    setSavingId(restaurantId);
+    try {
+      const response = await fetch(`/api/platform/restaurants/${restaurantId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(form),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Nao foi possivel atualizar a loja.");
+      }
+
+      showToast({
+        title: "Loja atualizada",
+        description: "As alteracoes foram salvas com sucesso.",
+        tone: "success",
+      });
+
+      cancelEditing();
+      await loadRestaurants();
+    } catch (err) {
+      showToast({
+        title: "Falha ao salvar",
+        description: err instanceof Error ? err.message : "Nao foi possivel atualizar a loja.",
+        tone: "error",
+      });
+    } finally {
+      setSavingId("");
+    }
+  };
+
+  const deleteRestaurant = async (restaurant: RestaurantRow) => {
+    const confirmed = window.confirm(
+      `Deseja realmente apagar a loja "${restaurant.name}"? Essa acao remove tambem os dados vinculados.`,
+    );
+
+    if (!confirmed) return;
+
+    setDeletingId(restaurant.id);
+    try {
+      const response = await fetch(`/api/platform/restaurants/${restaurant.id}`, {
+        method: "DELETE",
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Nao foi possivel apagar a loja.");
+      }
+
+      showToast({
+        title: "Loja apagada",
+        description: "O cadastro foi removido da plataforma.",
+        tone: "success",
+      });
+
+      if (editingId === restaurant.id) cancelEditing();
+      await loadRestaurants();
+    } catch (err) {
+      showToast({
+        title: "Falha ao apagar",
+        description: err instanceof Error ? err.message : "Nao foi possivel apagar a loja.",
+        tone: "error",
+      });
+    } finally {
+      setDeletingId("");
+    }
+  };
 
   if (loading) {
     return (
@@ -161,13 +266,49 @@ export default function PlatformPage() {
                   <div className="flex flex-wrap items-center gap-3">
                     <span
                       className="flex h-10 w-10 items-center justify-center rounded-xl text-sm font-black text-white"
-                      style={{ backgroundColor: restaurant.primary_color || "#f97316" }}
+                      style={{ backgroundColor: editingId === restaurant.id ? form.primary_color || "#f97316" : restaurant.primary_color || "#f97316" }}
                     >
-                      {restaurant.name.charAt(0)}
+                      {(editingId === restaurant.id ? form.name : restaurant.name).charAt(0)}
                     </span>
                     <div className="min-w-0">
-                      <p className="truncate font-bold text-gray-950">{restaurant.name}</p>
-                      <p className="text-sm text-gray-500">/{restaurant.slug}</p>
+                      {editingId === restaurant.id ? (
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <input
+                            value={form.name}
+                            onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+                            className="rounded-xl border border-[var(--line)] px-3 py-2 text-sm outline-none"
+                            placeholder="Nome da loja"
+                          />
+                          <input
+                            value={form.slug}
+                            onChange={(event) =>
+                              setForm((current) => ({
+                                ...current,
+                                slug: event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""),
+                              }))
+                            }
+                            className="rounded-xl border border-[var(--line)] px-3 py-2 text-sm outline-none"
+                            placeholder="slug-da-loja"
+                          />
+                          <input
+                            value={form.phone}
+                            onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
+                            className="rounded-xl border border-[var(--line)] px-3 py-2 text-sm outline-none"
+                            placeholder="Telefone"
+                          />
+                          <input
+                            value={form.primary_color}
+                            onChange={(event) => setForm((current) => ({ ...current, primary_color: event.target.value }))}
+                            className="rounded-xl border border-[var(--line)] px-3 py-2 text-sm outline-none"
+                            placeholder="#f97316"
+                          />
+                        </div>
+                      ) : (
+                        <>
+                          <p className="truncate font-bold text-gray-950">{restaurant.name}</p>
+                          <p className="text-sm text-gray-500">/{restaurant.slug}</p>
+                        </>
+                      )}
                     </div>
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-gray-500">
@@ -180,15 +321,55 @@ export default function PlatformPage() {
                   </div>
                 </div>
 
-                <a
-                  href={`/${restaurant.slug}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[var(--line)] bg-[#faf5ef] px-4 py-3 text-sm font-bold text-gray-700"
-                >
-                  Ver vitrine
-                  <ExternalLink size={15} />
-                </a>
+                <div className="flex flex-wrap items-center gap-2">
+                  <a
+                    href={`/${restaurant.slug}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[var(--line)] bg-[#faf5ef] px-4 py-3 text-sm font-bold text-gray-700"
+                  >
+                    Ver vitrine
+                    <ExternalLink size={15} />
+                  </a>
+
+                  {editingId === restaurant.id ? (
+                    <>
+                      <button
+                        onClick={() => saveRestaurant(restaurant.id)}
+                        disabled={savingId === restaurant.id}
+                        className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#171311] px-4 py-3 text-sm font-bold text-white disabled:opacity-60"
+                      >
+                        {savingId === restaurant.id ? <Loader2 className="animate-spin" size={15} /> : <Save size={15} />}
+                        Salvar
+                      </button>
+                      <button
+                        onClick={cancelEditing}
+                        className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-600"
+                      >
+                        <X size={15} />
+                        Cancelar
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => startEditing(restaurant)}
+                        className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700"
+                      >
+                        <Edit3 size={15} />
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => deleteRestaurant(restaurant)}
+                        disabled={deletingId === restaurant.id}
+                        className="inline-flex items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700 disabled:opacity-60"
+                      >
+                        {deletingId === restaurant.id ? <Loader2 className="animate-spin" size={15} /> : <Trash2 size={15} />}
+                        Apagar
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             ))
           )}

@@ -1,5 +1,5 @@
 export function getPlatformAdminEmails() {
-  return (process.env.NEXT_PUBLIC_PLATFORM_ADMIN_EMAILS || "")
+  return (process.env.PLATFORM_ADMIN_EMAILS || process.env.NEXT_PUBLIC_PLATFORM_ADMIN_EMAILS || "")
     .split(",")
     .map((item) => item.trim().toLowerCase())
     .filter(Boolean);
