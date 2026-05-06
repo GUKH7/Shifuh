@@ -294,6 +294,138 @@ export interface Database {
           updated_at?: string;
         };
       };
+      ifood_integrations: {
+        Row: {
+          id: string;
+          restaurant_id: string;
+          merchant_id: string | null;
+          merchant_name: string | null;
+          catalog_id: string | null;
+          status: string;
+          auth_type: string;
+          sync_mode: string;
+          catalog_sync_enabled: boolean;
+          order_sync_enabled: boolean;
+          import_images: boolean;
+          notes: string | null;
+          connected_at: string | null;
+          last_catalog_import_at: string | null;
+          last_catalog_export_at: string | null;
+          last_order_sync_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          restaurant_id: string;
+          merchant_id?: string | null;
+          merchant_name?: string | null;
+          catalog_id?: string | null;
+          status?: string;
+          auth_type?: string;
+          sync_mode?: string;
+          catalog_sync_enabled?: boolean;
+          order_sync_enabled?: boolean;
+          import_images?: boolean;
+          notes?: string | null;
+          connected_at?: string | null;
+          last_catalog_import_at?: string | null;
+          last_catalog_export_at?: string | null;
+          last_order_sync_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          restaurant_id?: string;
+          merchant_id?: string | null;
+          merchant_name?: string | null;
+          catalog_id?: string | null;
+          status?: string;
+          auth_type?: string;
+          sync_mode?: string;
+          catalog_sync_enabled?: boolean;
+          order_sync_enabled?: boolean;
+          import_images?: boolean;
+          notes?: string | null;
+          connected_at?: string | null;
+          last_catalog_import_at?: string | null;
+          last_catalog_export_at?: string | null;
+          last_order_sync_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      ifood_category_links: {
+        Row: {
+          id: string;
+          restaurant_id: string;
+          category_id: string;
+          ifood_category_id: string;
+          ifood_catalog_id: string | null;
+          source: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          restaurant_id: string;
+          category_id: string;
+          ifood_category_id: string;
+          ifood_catalog_id?: string | null;
+          source?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          restaurant_id?: string;
+          category_id?: string;
+          ifood_category_id?: string;
+          ifood_catalog_id?: string | null;
+          source?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      ifood_product_links: {
+        Row: {
+          id: string;
+          restaurant_id: string;
+          product_id: string;
+          ifood_item_id: string;
+          ifood_category_id: string | null;
+          ifood_catalog_id: string | null;
+          source: string;
+          last_synced_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          restaurant_id: string;
+          product_id: string;
+          ifood_item_id: string;
+          ifood_category_id?: string | null;
+          ifood_catalog_id?: string | null;
+          source?: string;
+          last_synced_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          restaurant_id?: string;
+          product_id?: string;
+          ifood_item_id?: string;
+          ifood_category_id?: string | null;
+          ifood_catalog_id?: string | null;
+          source?: string;
+          last_synced_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
     };
   };
 }

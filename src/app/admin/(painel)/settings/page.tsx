@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useRouter } from "next/navigation";
 import {
+  ArrowDownUp,
   CircleHelp,
   CheckCircle,
   Clock,
@@ -55,6 +56,23 @@ interface StorefrontTheme {
   promo_text: string;
 }
 
+interface IfoodIntegrationState {
+  merchantId: string;
+  merchantName: string;
+  catalogId: string;
+  authType: "centralized";
+  syncMode: "ifood_to_gestor" | "gestor_to_ifood" | "bidirectional";
+  status: "disconnected" | "configuring" | "homologation" | "connected";
+  catalogSyncEnabled: boolean;
+  orderSyncEnabled: boolean;
+  importImages: boolean;
+  notes: string;
+  connectedAt: string | null;
+  lastCatalogImportAt: string | null;
+  lastCatalogExportAt: string | null;
+  lastOrderSyncAt: string | null;
+}
+
 const DEFAULT_STOREFRONT_THEME: StorefrontTheme = {
   preset: "sunset",
   hero_style: "banner",
@@ -67,6 +85,23 @@ const DEFAULT_STOREFRONT_THEME: StorefrontTheme = {
   category_style: "underline",
   highlight_badge: "Mais pedido",
   promo_text: "Promo do dia",
+};
+
+const DEFAULT_IFOOD_INTEGRATION: IfoodIntegrationState = {
+  merchantId: "",
+  merchantName: "",
+  catalogId: "",
+  authType: "centralized",
+  syncMode: "ifood_to_gestor",
+  status: "disconnected",
+  catalogSyncEnabled: true,
+  orderSyncEnabled: false,
+  importImages: true,
+  notes: "",
+  connectedAt: null,
+  lastCatalogImportAt: null,
+  lastCatalogExportAt: null,
+  lastOrderSyncAt: null,
 };
 
 const DAYS_OF_WEEK = [
@@ -158,6 +193,8 @@ export default function SettingsPage() {
   const [printerFontSize, setPrinterFontSize] = useState(12);
   const [printerFontWeight, setPrinterFontWeight] = useState(700);
   const [printerAutoPrint, setPrinterAutoPrint] = useState(false);
+  const [ifoodIntegration, setIfoodIntegration] =
+    useState<IfoodIntegrationState>(DEFAULT_IFOOD_INTEGRATION);
   const [wppStatus, setWppStatus] = useState<string>("iniciando");
   const [wppQrCode, setWppQrCode] = useState<string>("");
   const [isRestarting, setIsRestarting] = useState(false);
@@ -226,6 +263,33 @@ export default function SettingsPage() {
         setPrinterFontSize(data.printer_font_size || 12);
         setPrinterFontWeight(data.printer_font_weight || 700);
         setPrinterAutoPrint(Boolean(data.printer_auto_print));
+
+        const { data: ifoodData } = await supabase
+          .from("ifood_integrations")
+          .select("*")
+          .eq("restaurant_id", data.id)
+          .maybeSingle();
+
+        if (ifoodData) {
+          setIfoodIntegration({
+            merchantId: ifoodData.merchant_id || "",
+            merchantName: ifoodData.merchant_name || "",
+            catalogId: ifoodData.catalog_id || "",
+            authType: "centralized",
+            syncMode: (ifoodData.sync_mode as IfoodIntegrationState["syncMode"]) || "ifood_to_gestor",
+            status: (ifoodData.status as IfoodIntegrationState["status"]) || "disconnected",
+            catalogSyncEnabled: Boolean(ifoodData.catalog_sync_enabled),
+            orderSyncEnabled: Boolean(ifoodData.order_sync_enabled),
+            importImages: Boolean(ifoodData.import_images),
+            notes: ifoodData.notes || "",
+            connectedAt: ifoodData.connected_at,
+            lastCatalogImportAt: ifoodData.last_catalog_import_at,
+            lastCatalogExportAt: ifoodData.last_catalog_export_at,
+            lastOrderSyncAt: ifoodData.last_order_sync_at,
+          });
+        } else {
+          setIfoodIntegration(DEFAULT_IFOOD_INTEGRATION);
+        }
       }
     } catch (error) {
       console.error(error);
@@ -362,11 +426,46 @@ export default function SettingsPage() {
       })
       .eq("id", restaurantId);
 
-    if (error) {
-      console.error("Erro ao salvar configurações:", error);
+    let ifoodError: { message?: string } | null = null;
+
+    if (!error && restaurantId) {
+      const shouldStampConnectedAt =
+        ifoodIntegration.status === "connected" && !ifoodIntegration.connectedAt;
+
+      const { error: integrationError } = await supabase
+        .from("ifood_integrations")
+        .upsert(
+          {
+            restaurant_id: restaurantId,
+            merchant_id: ifoodIntegration.merchantId || null,
+            merchant_name: ifoodIntegration.merchantName || null,
+            catalog_id: ifoodIntegration.catalogId || null,
+            auth_type: ifoodIntegration.authType,
+            sync_mode: ifoodIntegration.syncMode,
+            status: ifoodIntegration.status,
+            catalog_sync_enabled: ifoodIntegration.catalogSyncEnabled,
+            order_sync_enabled: ifoodIntegration.orderSyncEnabled,
+            import_images: ifoodIntegration.importImages,
+            notes: ifoodIntegration.notes || null,
+            connected_at: shouldStampConnectedAt
+              ? new Date().toISOString()
+              : ifoodIntegration.status === "disconnected"
+                ? null
+                : ifoodIntegration.connectedAt,
+          },
+          { onConflict: "restaurant_id" },
+        );
+
+      ifoodError = integrationError;
+    }
+
+    if (error || ifoodError) {
+      const currentError = error || ifoodError;
+      console.error("Erro ao salvar configurações:", currentError);
       const missingStorefrontColumn =
-        error.message?.includes("storefront_") || error.code === "42703";
-      const missingPrintColumn = error.message?.includes("printer_auto_print");
+        currentError?.message?.includes("storefront_") || (error as any)?.code === "42703";
+      const missingPrintColumn = currentError?.message?.includes("printer_auto_print");
+      const missingIfoodTable = currentError?.message?.includes("ifood_integrations");
 
       if (missingPrintColumn) {
         showToast({
@@ -380,10 +479,16 @@ export default function SettingsPage() {
           description: "A migration 003_storefront_customization.sql ainda precisa ser aplicada.",
           tone: "error",
         });
+      } else if (missingIfoodTable) {
+        showToast({
+          title: "Migration pendente no Supabase",
+          description: "A migration 011_ifood_integration_foundation.sql ainda precisa ser aplicada.",
+          tone: "error",
+        });
       } else {
         showToast({
           title: "Não foi possível salvar",
-          description: error.message,
+          description: currentError?.message,
           tone: "error",
         });
       }
@@ -448,6 +553,21 @@ export default function SettingsPage() {
     value: StorefrontTheme[K],
   ) => {
     setStorefrontTheme((current) => ({ ...current, [field]: value }));
+  };
+
+  const updateIfoodIntegration = <K extends keyof IfoodIntegrationState>(
+    field: K,
+    value: IfoodIntegrationState[K],
+  ) => {
+    setIfoodIntegration((current) => ({ ...current, [field]: value }));
+  };
+
+  const formatSyncDate = (value: string | null) => {
+    if (!value) return "Ainda não sincronizado";
+    return new Intl.DateTimeFormat("pt-BR", {
+      dateStyle: "short",
+      timeStyle: "short",
+    }).format(new Date(value));
   };
 
   if (loading) {
@@ -571,6 +691,187 @@ export default function SettingsPage() {
                 {banners.length === 0 && <p className="text-center text-sm text-gray-400">Nenhum banner enviado.</p>}
               </div>
             </div>
+          </div>
+        </section>
+
+        <section className="surface-card rounded-[28px] p-6">
+          <div className="flex items-center gap-3">
+            <div className="rounded-2xl bg-[var(--brand-soft)] p-3 text-[var(--brand)]">
+              <ArrowDownUp size={20} />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-gray-950">Integração iFood</h2>
+              <p className="text-sm text-gray-500">
+                Prepare a conexão da loja para importar cardápio e receber pedidos do marketplace.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            <label className="space-y-2">
+              <span className="text-sm font-bold text-gray-700">ID do merchant no iFood</span>
+              <input
+                value={ifoodIntegration.merchantId}
+                onChange={(e) => updateIfoodIntegration("merchantId", e.target.value)}
+                placeholder="Ex.: 820af392-002c-47b1-bfae-d7ef31743c99"
+                className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+              />
+            </label>
+
+            <label className="space-y-2">
+              <span className="text-sm font-bold text-gray-700">Nome da loja no iFood</span>
+              <input
+                value={ifoodIntegration.merchantName}
+                onChange={(e) => updateIfoodIntegration("merchantName", e.target.value)}
+                placeholder="Ex.: Restaurante Villa Costa"
+                className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+              />
+            </label>
+
+            <label className="space-y-2">
+              <span className="text-sm font-bold text-gray-700">ID do catálogo</span>
+              <input
+                value={ifoodIntegration.catalogId}
+                onChange={(e) => updateIfoodIntegration("catalogId", e.target.value)}
+                placeholder="Ex.: catálogo principal do delivery"
+                className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+              />
+            </label>
+
+            <label className="space-y-2">
+              <span className="text-sm font-bold text-gray-700">Status da integração</span>
+              <select
+                value={ifoodIntegration.status}
+                onChange={(e) =>
+                  updateIfoodIntegration(
+                    "status",
+                    e.target.value as IfoodIntegrationState["status"],
+                  )
+                }
+                className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+              >
+                <option value="disconnected">Desconectada</option>
+                <option value="configuring">Em configuração</option>
+                <option value="homologation">Em homologação</option>
+                <option value="connected">Conectada</option>
+              </select>
+            </label>
+
+            <label className="space-y-2 md:col-span-2">
+              <span className="flex items-center gap-2 text-sm font-bold text-gray-700">
+                Estratégia de sincronização
+                <FieldHint label="Define se o cardápio nasce do iFood, do Gestor ou se ambos trocam alterações futuramente." />
+              </span>
+              <select
+                value={ifoodIntegration.syncMode}
+                onChange={(e) =>
+                  updateIfoodIntegration(
+                    "syncMode",
+                    e.target.value as IfoodIntegrationState["syncMode"],
+                  )
+                }
+                className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+              >
+                <option value="ifood_to_gestor">Importar do iFood para o Gestor</option>
+                <option value="gestor_to_ifood">Editar no Gestor e publicar no iFood</option>
+                <option value="bidirectional">Sincronização bidirecional</option>
+              </select>
+            </label>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <label className="flex items-center justify-between rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
+              <span className="text-sm font-bold text-gray-700">Sincronizar catálogo</span>
+              <input
+                type="checkbox"
+                checked={ifoodIntegration.catalogSyncEnabled}
+                onChange={(e) => updateIfoodIntegration("catalogSyncEnabled", e.target.checked)}
+                className="h-4 w-4 accent-[var(--brand)]"
+              />
+            </label>
+            <label className="flex items-center justify-between rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
+              <span className="text-sm font-bold text-gray-700">Receber pedidos</span>
+              <input
+                type="checkbox"
+                checked={ifoodIntegration.orderSyncEnabled}
+                onChange={(e) => updateIfoodIntegration("orderSyncEnabled", e.target.checked)}
+                className="h-4 w-4 accent-[var(--brand)]"
+              />
+            </label>
+            <label className="flex items-center justify-between rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
+              <span className="text-sm font-bold text-gray-700">Importar imagens</span>
+              <input
+                type="checkbox"
+                checked={ifoodIntegration.importImages}
+                onChange={(e) => updateIfoodIntegration("importImages", e.target.checked)}
+                className="h-4 w-4 accent-[var(--brand)]"
+              />
+            </label>
+          </div>
+
+          <label className="mt-5 block space-y-2">
+            <span className="text-sm font-bold text-gray-700">Observações da integração</span>
+            <textarea
+              value={ifoodIntegration.notes}
+              onChange={(e) => updateIfoodIntegration("notes", e.target.value)}
+              rows={3}
+              placeholder="Ex.: loja aguardando homologação do app no iFood, catálogo de delivery principal, integração centralizada."
+              className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+            />
+          </label>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-2xl border border-[var(--line)] bg-white px-4 py-4">
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-gray-400">Conexão</p>
+              <p className="mt-2 font-black text-gray-950">
+                {ifoodIntegration.status === "connected"
+                  ? "Ativa"
+                  : ifoodIntegration.status === "homologation"
+                    ? "Homologação"
+                    : ifoodIntegration.status === "configuring"
+                      ? "Em preparo"
+                      : "Não conectada"}
+              </p>
+              <p className="mt-1 text-sm text-gray-500">
+                {ifoodIntegration.connectedAt
+                  ? `Desde ${formatSyncDate(ifoodIntegration.connectedAt)}`
+                  : "Sem autenticação concluída ainda"}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-[var(--line)] bg-white px-4 py-4">
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-gray-400">Importação</p>
+              <p className="mt-2 font-black text-gray-950">{formatSyncDate(ifoodIntegration.lastCatalogImportAt)}</p>
+              <p className="mt-1 text-sm text-gray-500">Última leitura do catálogo iFood</p>
+            </div>
+            <div className="rounded-2xl border border-[var(--line)] bg-white px-4 py-4">
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-gray-400">Exportação</p>
+              <p className="mt-2 font-black text-gray-950">{formatSyncDate(ifoodIntegration.lastCatalogExportAt)}</p>
+              <p className="mt-1 text-sm text-gray-500">Último envio do Gestor para o iFood</p>
+            </div>
+            <div className="rounded-2xl border border-[var(--line)] bg-white px-4 py-4">
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-gray-400">Pedidos</p>
+              <p className="mt-2 font-black text-gray-950">{formatSyncDate(ifoodIntegration.lastOrderSyncAt)}</p>
+              <p className="mt-1 text-sm text-gray-500">Último evento confirmado no painel</p>
+            </div>
+          </div>
+
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+            <button
+              type="button"
+              disabled
+              className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-400"
+              title="Próxima etapa: importar categorias, produtos, imagens e complementos do iFood."
+            >
+              Importar catálogo do iFood
+            </button>
+            <button
+              type="button"
+              disabled
+              className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-400"
+              title="Próxima etapa: publicar atualizações de produtos, preços e status no iFood."
+            >
+              Enviar cardápio para o iFood
+            </button>
           </div>
         </section>
 
