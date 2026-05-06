@@ -193,6 +193,7 @@ export default function SettingsPage() {
   const [printerFontSize, setPrinterFontSize] = useState(12);
   const [printerFontWeight, setPrinterFontWeight] = useState(700);
   const [printerAutoPrint, setPrinterAutoPrint] = useState(false);
+  const [isImportingIfoodCatalog, setIsImportingIfoodCatalog] = useState(false);
   const [ifoodIntegration, setIfoodIntegration] =
     useState<IfoodIntegrationState>(DEFAULT_IFOOD_INTEGRATION);
   const [wppStatus, setWppStatus] = useState<string>("iniciando");
@@ -570,6 +571,46 @@ export default function SettingsPage() {
     }).format(new Date(value));
   };
 
+  const handleImportIfoodCatalog = async () => {
+    if (!restaurantId) return;
+
+    setIsImportingIfoodCatalog(true);
+    try {
+      const response = await fetch("/api/integrations/ifood/catalog/import", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ restaurantId }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Não foi possível importar o catálogo do iFood.");
+      }
+
+      showToast({
+        title: "Catálogo importado",
+        description: `${result.summary.createdCategories + result.summary.updatedCategories} categorias e ${result.summary.createdProducts + result.summary.updatedProducts} produtos foram processados.`,
+        tone: "success",
+      });
+
+      fetchSettings();
+    } catch (error) {
+      showToast({
+        title: "Falha ao importar catálogo",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Não foi possível puxar o catálogo do iFood agora.",
+        tone: "error",
+      });
+    } finally {
+      setIsImportingIfoodCatalog(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center text-sm font-semibold text-gray-500">
@@ -858,11 +899,19 @@ export default function SettingsPage() {
           <div className="mt-5 flex flex-col gap-3 sm:flex-row">
             <button
               type="button"
-              disabled
-              className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-400"
-              title="Próxima etapa: importar categorias, produtos, imagens e complementos do iFood."
+              onClick={handleImportIfoodCatalog}
+              disabled={isImportingIfoodCatalog || !ifoodIntegration.merchantId}
+              className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700 disabled:cursor-not-allowed disabled:text-gray-400"
+              title={
+                ifoodIntegration.merchantId
+                  ? "Importa categorias e itens vendáveis do catálogo iFood para o Gestor."
+                  : "Informe o ID do merchant do iFood para liberar a importação."
+              }
             >
-              Importar catálogo do iFood
+              <span className="inline-flex items-center gap-2">
+                {isImportingIfoodCatalog && <Loader2 size={16} className="animate-spin" />}
+                Importar catálogo do iFood
+              </span>
             </button>
             <button
               type="button"
