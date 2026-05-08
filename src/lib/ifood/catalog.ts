@@ -111,10 +111,15 @@ async function requestIfoodAccessToken() {
   return data.accessToken;
 }
 
-async function getIfoodAccessToken() {
+export async function getIfoodAccessToken() {
   const token = getCachedIfoodToken();
   if (token) return token;
   return requestIfoodAccessToken();
+}
+
+export async function validateIfoodCredentials() {
+  const token = await getIfoodAccessToken();
+  return { ok: true, tokenPreview: `${token.slice(0, 12)}...` };
 }
 
 async function ifoodRequest<T>(path: string, init?: RequestInit): Promise<T> {

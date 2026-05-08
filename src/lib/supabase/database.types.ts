@@ -174,28 +174,33 @@ export interface Database {
           updated_at?: string;
         };
       };
-      orders: {
-        Row: {
-          id: string;
-          restaurant_id: string;
-          user_id: string | null;
-          customer_name: string;
-          customer_phone: string;
-          address: Json | null;
-          subtotal: number;
-          delivery_fee: number;
-          discount: number;
-          total: number;
-          status: string;
-          payment_method: string;
-          change_for: string | null;
-          coupon_code: string | null;
-          display_number: number | null;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
+        orders: {
+          Row: {
+            id: string;
+            restaurant_id: string;
+            user_id: string | null;
+            customer_name: string;
+            customer_phone: string;
+            address: Json | null;
+            subtotal: number;
+            delivery_fee: number;
+            discount: number;
+            total: number;
+            status: string;
+            payment_method: string;
+            change_for: string | null;
+            coupon_code: string | null;
+            display_number: number | null;
+            external_source: string | null;
+            external_order_id: string | null;
+            external_display_id: string | null;
+            is_test: boolean;
+            external_payload: Json | null;
+            created_at: string;
+            updated_at: string;
+          };
+          Insert: {
+            id?: string;
           restaurant_id: string;
           user_id?: string | null;
           customer_name: string;
@@ -206,15 +211,20 @@ export interface Database {
           discount?: number;
           total: number;
           status?: string;
-          payment_method?: string;
-          change_for?: string | null;
-          coupon_code?: string | null;
-          display_number?: number | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
+            payment_method?: string;
+            change_for?: string | null;
+            coupon_code?: string | null;
+            display_number?: number | null;
+            external_source?: string | null;
+            external_order_id?: string | null;
+            external_display_id?: string | null;
+            is_test?: boolean;
+            external_payload?: Json | null;
+            created_at?: string;
+            updated_at?: string;
+          };
+          Update: {
+            id?: string;
           restaurant_id?: string;
           user_id?: string | null;
           customer_name?: string;
@@ -225,14 +235,19 @@ export interface Database {
           discount?: number;
           total?: number;
           status?: string;
-          payment_method?: string;
-          change_for?: string | null;
-          coupon_code?: string | null;
-          display_number?: number | null;
-          created_at?: string;
-          updated_at?: string;
+            payment_method?: string;
+            change_for?: string | null;
+            coupon_code?: string | null;
+            display_number?: number | null;
+            external_source?: string | null;
+            external_order_id?: string | null;
+            external_display_id?: string | null;
+            is_test?: boolean;
+            external_payload?: Json | null;
+            created_at?: string;
+            updated_at?: string;
+          };
         };
-      };
       order_items: {
         Row: {
           id: string;
@@ -422,6 +437,100 @@ export interface Database {
           ifood_catalog_id?: string | null;
           source?: string;
           last_synced_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      ifood_order_events: {
+        Row: {
+          id: string;
+          restaurant_id: string;
+          local_order_id: string | null;
+          ifood_event_id: string;
+          ifood_order_id: string;
+          merchant_id: string;
+          event_code: string;
+          event_full_code: string | null;
+          event_group: string | null;
+          event_created_at: string | null;
+          acknowledged_at: string | null;
+          processed_at: string | null;
+          raw_payload: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          restaurant_id: string;
+          local_order_id?: string | null;
+          ifood_event_id: string;
+          ifood_order_id: string;
+          merchant_id: string;
+          event_code: string;
+          event_full_code?: string | null;
+          event_group?: string | null;
+          event_created_at?: string | null;
+          acknowledged_at?: string | null;
+          processed_at?: string | null;
+          raw_payload?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          restaurant_id?: string;
+          local_order_id?: string | null;
+          ifood_event_id?: string;
+          ifood_order_id?: string;
+          merchant_id?: string;
+          event_code?: string;
+          event_full_code?: string | null;
+          event_group?: string | null;
+          event_created_at?: string | null;
+          acknowledged_at?: string | null;
+          processed_at?: string | null;
+          raw_payload?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      ifood_sync_runs: {
+        Row: {
+          id: string;
+          restaurant_id: string;
+          sync_type: string;
+          status: string;
+          events_received: number;
+          events_processed: number;
+          events_acknowledged: number;
+          summary: string | null;
+          payload: Json | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          restaurant_id: string;
+          sync_type: string;
+          status?: string;
+          events_received?: number;
+          events_processed?: number;
+          events_acknowledged?: number;
+          summary?: string | null;
+          payload?: Json | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          restaurant_id?: string;
+          sync_type?: string;
+          status?: string;
+          events_received?: number;
+          events_processed?: number;
+          events_acknowledged?: number;
+          summary?: string | null;
+          payload?: Json | null;
           created_at?: string;
           updated_at?: string;
         };

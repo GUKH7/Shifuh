@@ -73,6 +73,17 @@ interface IfoodIntegrationState {
   lastOrderSyncAt: string | null;
 }
 
+interface IfoodConnectionCheckState {
+  status: "idle" | "checking" | "success" | "error";
+  summary: string;
+  details: string[];
+  checkedAt: string | null;
+  merchantFound: boolean;
+  catalogResolved: boolean;
+  catalogsCount: number | null;
+  resolvedCatalogId: string | null;
+}
+
 const DEFAULT_STOREFRONT_THEME: StorefrontTheme = {
   preset: "sunset",
   hero_style: "banner",
@@ -102,6 +113,17 @@ const DEFAULT_IFOOD_INTEGRATION: IfoodIntegrationState = {
   lastCatalogImportAt: null,
   lastCatalogExportAt: null,
   lastOrderSyncAt: null,
+};
+
+const DEFAULT_IFOOD_CONNECTION_CHECK: IfoodConnectionCheckState = {
+  status: "idle",
+  summary: "",
+  details: [],
+  checkedAt: null,
+  merchantFound: false,
+  catalogResolved: false,
+  catalogsCount: null,
+  resolvedCatalogId: null,
 };
 
 const DAYS_OF_WEEK = [
@@ -194,8 +216,13 @@ export default function SettingsPage() {
   const [printerFontWeight, setPrinterFontWeight] = useState(700);
   const [printerAutoPrint, setPrinterAutoPrint] = useState(false);
   const [isImportingIfoodCatalog, setIsImportingIfoodCatalog] = useState(false);
+  const [isCheckingIfoodConnection, setIsCheckingIfoodConnection] = useState(false);
+  const [isSyncingIfoodOrders, setIsSyncingIfoodOrders] = useState(false);
   const [ifoodIntegration, setIfoodIntegration] =
     useState<IfoodIntegrationState>(DEFAULT_IFOOD_INTEGRATION);
+  const [ifoodConnectionCheck, setIfoodConnectionCheck] = useState<IfoodConnectionCheckState>(
+    DEFAULT_IFOOD_CONNECTION_CHECK,
+  );
   const [wppStatus, setWppStatus] = useState<string>("iniciando");
   const [wppQrCode, setWppQrCode] = useState<string>("");
   const [isRestarting, setIsRestarting] = useState(false);
@@ -611,6 +638,131 @@ export default function SettingsPage() {
     }
   };
 
+  const handleSyncIfoodOrders = async () => {
+    if (!restaurantId) return;
+
+    setIsSyncingIfoodOrders(true);
+    try {
+      const response = await fetch("/api/integrations/ifood/orders/sync", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ restaurantId }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Não foi possível sincronizar os pedidos do iFood.");
+      }
+
+      showToast({
+        title: "Pedidos iFood sincronizados",
+        description:
+          result.summary.eventsReceived > 0
+            ? `${result.summary.eventsProcessed} evento(s) processado(s) e ${result.summary.eventsAcknowledged} ACK enviado(s).`
+            : "Nenhum evento novo foi encontrado na loja de teste.",
+        tone: "success",
+      });
+
+      fetchSettings();
+    } catch (error) {
+      showToast({
+        title: "Falha ao sincronizar pedidos",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Não foi possível consultar os eventos do iFood agora.",
+        tone: "error",
+      });
+    } finally {
+      setIsSyncingIfoodOrders(false);
+    }
+  };
+
+  const handleCheckIfoodConnection = async () => {
+    if (!restaurantId) return;
+
+    setIsCheckingIfoodConnection(true);
+    setIfoodConnectionCheck((current) => ({
+      ...current,
+      status: "checking",
+      summary: "",
+      details: [],
+    }));
+
+    try {
+      const response = await fetch("/api/integrations/ifood/connection", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          restaurantId,
+          merchantId: ifoodIntegration.merchantId,
+          catalogId: ifoodIntegration.catalogId,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Não foi possível validar a conexão com o iFood.");
+      }
+
+      setIfoodConnectionCheck({
+        status: "success",
+        summary: result.summary || "Conexão validada com sucesso.",
+        details: Array.isArray(result.details) ? result.details : [],
+        checkedAt: result.checkedAt || new Date().toISOString(),
+        merchantFound: Boolean(result.merchantFound),
+        catalogResolved: Boolean(result.catalogResolved),
+        catalogsCount:
+          typeof result.catalogsCount === "number" ? result.catalogsCount : null,
+        resolvedCatalogId: result.resolvedCatalogId || null,
+      });
+
+      if (result.resolvedCatalogId && !ifoodIntegration.catalogId) {
+        updateIfoodIntegration("catalogId", result.resolvedCatalogId);
+      }
+
+      showToast({
+        title: "Conexão iFood validada",
+        description: result.summary || "As credenciais e a loja responderam corretamente.",
+        tone: "success",
+      });
+    } catch (error) {
+      const description =
+        error instanceof Error
+          ? error.message
+          : "Não foi possível validar a conexão com o iFood.";
+
+      setIfoodConnectionCheck({
+        status: "error",
+        summary: description,
+        details: [
+          "Confira se IFOOD_CLIENT_ID e IFOOD_CLIENT_SECRET estão configurados na Vercel.",
+          "Confirme se o app do iFood já tem os escopos liberados para a Merchant API.",
+          "Verifique se o ID do merchant pertence à loja conectada no app do iFood.",
+        ],
+        checkedAt: new Date().toISOString(),
+        merchantFound: false,
+        catalogResolved: false,
+        catalogsCount: null,
+        resolvedCatalogId: null,
+      });
+
+      showToast({
+        title: "Falha ao validar iFood",
+        description,
+        tone: "error",
+      });
+    } finally {
+      setIsCheckingIfoodConnection(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center text-sm font-semibold text-gray-500">
@@ -746,6 +898,19 @@ export default function SettingsPage() {
                 Prepare a conexão da loja para importar cardápio e receber pedidos do marketplace.
               </p>
             </div>
+          </div>
+
+          <div className="mt-5 rounded-[24px] border border-[var(--line)] bg-[#fcfaf7] p-4">
+            <p className="text-sm font-bold text-gray-800">Como funciona a autenticação agora</p>
+            <p className="mt-1 text-sm leading-6 text-gray-500">
+              O Gestor usa OAuth centralizado do iFood no servidor. Para esta seção funcionar,
+              a Vercel precisa ter <span className="font-bold text-gray-700">IFOOD_CLIENT_ID</span>
+              {" "}e <span className="font-bold text-gray-700">IFOOD_CLIENT_SECRET</span>.
+            </p>
+            <p className="mt-2 text-sm leading-6 text-gray-500">
+              Para ambiente de testes, o fluxo mais simples é consumir eventos por polling e gerar
+              pedidos de teste no portal do iFood.
+            </p>
           </div>
 
           <div className="mt-6 grid gap-4 md:grid-cols-2">
@@ -896,7 +1061,97 @@ export default function SettingsPage() {
             </div>
           </div>
 
+          <div
+            className={`mt-5 rounded-[24px] border px-4 py-4 ${
+              ifoodConnectionCheck.status === "error"
+                ? "border-red-200 bg-red-50"
+                : ifoodConnectionCheck.status === "success"
+                  ? "border-emerald-200 bg-emerald-50"
+                  : "border-[var(--line)] bg-white"
+            }`}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-bold text-gray-900">Diagnóstico da conexão</p>
+                <p className="mt-1 text-sm text-gray-500">
+                  {ifoodConnectionCheck.status === "idle"
+                    ? "Teste a conexão para descobrir rapidamente se o problema está nas credenciais, no merchant ou no catálogo."
+                    : ifoodConnectionCheck.summary}
+                </p>
+              </div>
+              {ifoodConnectionCheck.checkedAt && (
+                <span className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">
+                  Última checagem: {formatSyncDate(ifoodConnectionCheck.checkedAt)}
+                </span>
+              )}
+            </div>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl border border-white/70 bg-white/80 px-4 py-3">
+                <p className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">Credenciais</p>
+                <p className="mt-2 text-sm font-black text-gray-950">
+                  {ifoodConnectionCheck.status === "success"
+                    ? "OAuth validado"
+                    : ifoodConnectionCheck.status === "error"
+                      ? "Revisar"
+                      : "Pendente"}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-white/70 bg-white/80 px-4 py-3">
+                <p className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">Merchant</p>
+                <p className="mt-2 text-sm font-black text-gray-950">
+                  {ifoodConnectionCheck.merchantFound ? "Localizado" : "Não validado"}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-white/70 bg-white/80 px-4 py-3">
+                <p className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">Catálogo</p>
+                <p className="mt-2 text-sm font-black text-gray-950">
+                  {ifoodConnectionCheck.catalogResolved
+                    ? ifoodConnectionCheck.resolvedCatalogId || "Resolvido"
+                    : "Aguardando"}
+                </p>
+              </div>
+            </div>
+
+            {ifoodConnectionCheck.details.length > 0 && (
+              <div className="mt-4 space-y-2">
+                {ifoodConnectionCheck.details.map((detail, index) => (
+                  <div key={`${detail}-${index}`} className="rounded-2xl border border-white/70 bg-white/80 px-4 py-3 text-sm text-gray-600">
+                    {detail}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+            <button
+              type="button"
+              onClick={handleCheckIfoodConnection}
+              disabled={isCheckingIfoodConnection}
+              className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700 disabled:cursor-not-allowed disabled:text-gray-400"
+            >
+              <span className="inline-flex items-center gap-2">
+                {isCheckingIfoodConnection && <Loader2 size={16} className="animate-spin" />}
+                Testar conexão iFood
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={handleSyncIfoodOrders}
+              disabled={isSyncingIfoodOrders || !ifoodIntegration.merchantId}
+              className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700 disabled:cursor-not-allowed disabled:text-gray-400"
+              title={
+                ifoodIntegration.merchantId
+                  ? "Faz um polling manual dos eventos da loja e cria/atualiza os pedidos no Gestor."
+                  : "Informe o ID do merchant para liberar a sincronização de pedidos."
+              }
+            >
+              <span className="inline-flex items-center gap-2">
+                {isSyncingIfoodOrders && <Loader2 size={16} className="animate-spin" />}
+                Sincronizar pedidos de teste
+              </span>
+            </button>
             <button
               type="button"
               onClick={handleImportIfoodCatalog}
