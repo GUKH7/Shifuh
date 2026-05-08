@@ -84,13 +84,28 @@ export async function POST(request: Request) {
       details.push("A loja foi localizada, mas nenhum catálogo disponível pôde ser resolvido.");
     }
 
-    await admin
+    const { error: upsertError } = await admin
       .from("ifood_integrations")
-      .update({
-        merchant_id: merchantId,
-        catalog_id: resolvedCatalogId,
-      })
-      .eq("restaurant_id", restaurantId);
+      .upsert(
+        {
+          restaurant_id: restaurantId,
+          merchant_id: merchantId,
+          catalog_id: resolvedCatalogId,
+          auth_type: "centralized",
+          sync_mode: "ifood_to_gestor",
+          status: "configuring",
+          catalog_sync_enabled: true,
+          order_sync_enabled: false,
+          import_images: true,
+        },
+        { onConflict: "restaurant_id" },
+      );
+
+    if (upsertError) {
+      throw new Error(
+        upsertError.message || "Não foi possível salvar os dados validados da integração iFood.",
+      );
+    }
 
     return NextResponse.json({
       ok: true,
