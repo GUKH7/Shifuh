@@ -83,7 +83,9 @@ export default function AdminSidebar({ isCollapsed, toggleSidebar }: AdminSideba
       </button>
 
       <div
-        className={`flex h-[87px] items-center border-b border-[var(--line)] px-6 ${isCollapsed ? "justify-center px-2" : ""}`}
+        className={`flex h-[87px] items-center border-b border-[var(--line)] px-6 ${
+          isCollapsed ? "justify-center px-2" : ""
+        }`}
       >
         <div className={`flex items-center gap-3 ${isCollapsed ? "justify-center" : ""}`}>
           <div className="brand-gradient flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-white shadow-sm">
@@ -95,6 +97,7 @@ export default function AdminSidebar({ isCollapsed, toggleSidebar }: AdminSideba
               <p className="text-xs text-gray-500">Portal da loja</p>
             </div>
           )}
+        </div>
       </div>
 
       <div className={`px-4 py-6 ${isCollapsed ? "px-2" : ""}`}>
