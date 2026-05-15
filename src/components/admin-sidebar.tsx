@@ -83,8 +83,8 @@ export default function AdminSidebar({ isCollapsed, toggleSidebar }: AdminSideba
       </button>
 
       <div
-        className={`flex h-[87px] items-center border-b border-[var(--line)] px-6 ${
-          isCollapsed ? "justify-center px-2" : ""
+        className={`flex h-[96px] items-center px-6 ${
+          isCollapsed ? "justify-center px-2 pt-2" : "pt-3"
         }`}
       >
         <div className={`flex items-center gap-3 ${isCollapsed ? "justify-center" : ""}`}>

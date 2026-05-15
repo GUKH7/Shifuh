@@ -109,8 +109,8 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
     <div className="min-h-screen bg-[#fbf7f2] text-gray-950">
       <AdminSidebar isCollapsed={isCollapsed} toggleSidebar={toggleSidebar} />
       <div className={`transition-all duration-300 ${isCollapsed ? "ml-20" : "ml-64"}`}>
-        <header className="sticky top-0 z-40 border-b border-[var(--line)] bg-[#fbf7f2]/95 backdrop-blur">
-          <div className="flex h-[87px] items-center justify-between px-8">
+        <header className="sticky top-0 z-40 bg-[#fbf7f2]/95 backdrop-blur">
+          <div className="flex h-[96px] items-center justify-between px-8 pt-3">
             <div className="relative w-full max-w-xl">
               <div className="flex items-center gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
                 <Search size={18} className="text-gray-400" />
