@@ -838,7 +838,7 @@ export default function SettingsPage() {
         </button>
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+      <div className="grid gap-5">
         <CollapsibleSection
           icon={<Store size={20} />}
           title="Dados da loja"
