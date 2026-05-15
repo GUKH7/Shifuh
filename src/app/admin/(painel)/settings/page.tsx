@@ -44,14 +44,15 @@ interface WorkHour {
 }
 
 interface StorefrontTheme {
-  preset: "sunset" | "forest" | "berry" | "midnight";
   hero_style: "banner" | "split" | "spotlight";
   catalog_layout: "grid" | "list";
   card_style: "soft" | "outline" | "elevated";
+  contrast_color: string;
   show_logo: boolean;
   show_reviews: boolean;
   show_banners: boolean;
-  show_badges: boolean;
+  show_featured_badge: boolean;
+  show_promo_badge: boolean;
   category_style: "underline" | "pill";
   highlight_badge: string;
   promo_text: string;
@@ -86,14 +87,15 @@ interface IfoodConnectionCheckState {
 }
 
 const DEFAULT_STOREFRONT_THEME: StorefrontTheme = {
-  preset: "sunset",
   hero_style: "banner",
   catalog_layout: "grid",
   card_style: "soft",
+  contrast_color: "#1f2937",
   show_logo: true,
   show_reviews: true,
   show_banners: true,
-  show_badges: true,
+  show_featured_badge: true,
+  show_promo_badge: true,
   category_style: "underline",
   highlight_badge: "Mais pedido",
   promo_text: "Promo do dia",
@@ -163,6 +165,19 @@ function normalizeWorkHours(rawValue: unknown): WorkHour[] {
       close_time: match?.close_time || "23:00",
     };
   });
+}
+
+function hexToRgba(hex: string, opacity: number) {
+  const normalized = hex.replace("#", "");
+  const full = normalized.length === 3 ? normalized.split("").map((char) => `${char}${char}`).join("") : normalized;
+
+  if (full.length !== 6) return `rgba(17, 24, 39, ${opacity})`;
+
+  const red = Number.parseInt(full.slice(0, 2), 16);
+  const green = Number.parseInt(full.slice(2, 4), 16);
+  const blue = Number.parseInt(full.slice(4, 6), 16);
+
+  return `rgba(${red}, ${green}, ${blue}, ${opacity})`;
 }
 
 const createImage = (url: string): Promise<HTMLImageElement> =>
@@ -882,178 +897,227 @@ export default function SettingsPage() {
           title="Aparência da loja"
           description="Logo, banners, visual da vitrine e preview em um só lugar."
         >
-          <div className="mt-6 grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="mt-6 grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
             <div className="space-y-5">
-            <div className="flex items-center gap-4">
-              <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-[24px] border border-dashed border-[var(--line)] bg-white">
-                {logoUrl ? <img src={logoUrl} className="h-full w-full object-cover" /> : <ImageIcon className="text-gray-300" />}
-              </div>
-              <div className="space-y-3">
-                <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700">
-                  <UploadCloud size={16} />
-                  Trocar logo
-                  <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={uploading} />
-                </label>
-                <div className="flex items-center gap-3">
-                  <input type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="h-11 w-11 rounded-xl border border-[var(--line)] bg-white p-1" />
-                  <span className="text-sm font-medium text-gray-500">{primaryColor}</span>
+              <div className="rounded-[24px] border border-[var(--line)] bg-[#fcfaf7] p-5">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-gray-400">Identidade visual</p>
+                <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-center">
+                  <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-[24px] border border-dashed border-[var(--line)] bg-white">
+                    {logoUrl ? <img src={logoUrl} className="h-full w-full object-cover" /> : <ImageIcon className="text-gray-300" />}
+                  </div>
+                  <div className="flex-1 space-y-3">
+                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700">
+                      <UploadCloud size={16} />
+                      Trocar logo
+                      <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={uploading} />
+                    </label>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <label className="rounded-2xl border border-[var(--line)] bg-white p-3">
+                        <span className="mb-2 inline-flex items-center gap-2 text-sm font-bold text-gray-700">
+                          Cor principal
+                          <FieldHint label="Essa cor aparece como destaque da sua marca e conversa com o restante da vitrine." />
+                        </span>
+                        <div className="flex items-center gap-3">
+                          <input type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="h-11 w-11 rounded-xl border border-[var(--line)] bg-white p-1" />
+                          <span className="text-sm font-medium text-gray-500">{primaryColor}</span>
+                        </div>
+                      </label>
+                      <label className="rounded-2xl border border-[var(--line)] bg-white p-3">
+                        <span className="mb-2 inline-flex items-center gap-2 text-sm font-bold text-gray-700">
+                          Cor de contraste
+                          <FieldHint label="Usada para destacar selos, chips e criar contraste com a cor principal." />
+                        </span>
+                        <div className="flex items-center gap-3">
+                          <input type="color" value={storefrontTheme.contrast_color} onChange={(e) => updateStorefrontTheme("contrast_color", e.target.value)} className="h-11 w-11 rounded-xl border border-[var(--line)] bg-white p-1" />
+                          <span className="text-sm font-medium text-gray-500">{storefrontTheme.contrast_color}</span>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <label className="space-y-2">
-              <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
-                Paleta visual da vitrine
-                <FieldHint label="Escolhe a atmosfera geral da página, junto da logo e da cor principal." />
-              </span>
-              <select
-                value={storefrontTheme.preset}
-                onChange={(e) => updateStorefrontTheme("preset", e.target.value as StorefrontTheme["preset"])}
-                className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
-              >
-                <option value="sunset">Quente e vibrante</option>
-                <option value="forest">Natural</option>
-                <option value="berry">Marcante</option>
-                <option value="midnight">Escuro sofisticado</option>
-              </select>
-            </label>
-
-            <div className="rounded-[24px] border border-[var(--line)] bg-[#fcfaf7] p-4">
-              <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--line)] bg-white px-4 py-6 text-center">
-                <Plus className="mb-2 text-gray-400" size={18} />
-                <span className="text-sm font-bold text-gray-700">Adicionar banner</span>
-                <span className="mt-1 text-xs text-gray-400">Suba imagens para destacar promoções. Você poderá recortar antes de salvar.</span>
-                <input type="file" accept="image/*" className="hidden" onChange={handleBannerUpload} disabled={uploading} />
-              </label>
-              <div className="mt-4 space-y-2">
-                {banners.map((banner, index) => (
-                  <div key={index} className="flex items-center justify-between rounded-2xl border border-[var(--line)] bg-white p-2.5">
-                    <div className="flex items-center gap-3">
-                      <img src={banner} className="h-10 w-16 rounded-xl object-cover" />
-                      <span className="text-sm font-medium text-gray-600">Banner {index + 1}</span>
-                    </div>
-                    <button onClick={() => setBanners(banners.filter((_, i) => i !== index))} className="rounded-xl p-2 text-gray-400 hover:bg-[#fff0e8] hover:text-[var(--brand)]">
-                      <Trash2 size={16} />
-                    </button>
+              <div className="rounded-[24px] border border-[var(--line)] bg-[#fcfaf7] p-5">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-gray-400">Banners e mensagem principal</p>
+                <div className="mt-4 space-y-4">
+                  <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--line)] bg-white px-4 py-6 text-center">
+                    <Plus className="mb-2 text-gray-400" size={18} />
+                    <span className="text-sm font-bold text-gray-700">Adicionar banner</span>
+                    <span className="mt-1 text-xs text-gray-400">Suba imagens para destacar promoções. Você poderá recortar antes de salvar.</span>
+                    <input type="file" accept="image/*" className="hidden" onChange={handleBannerUpload} disabled={uploading} />
+                  </label>
+                  <div className="space-y-2">
+                    {banners.map((banner, index) => (
+                      <div key={index} className="flex items-center justify-between rounded-2xl border border-[var(--line)] bg-white p-2.5">
+                        <div className="flex items-center gap-3">
+                          <img src={banner} className="h-10 w-16 rounded-xl object-cover" />
+                          <span className="text-sm font-medium text-gray-600">Banner {index + 1}</span>
+                        </div>
+                        <button onClick={() => setBanners(banners.filter((_, i) => i !== index))} className="rounded-xl p-2 text-gray-400 hover:bg-[#fff0e8] hover:text-[var(--brand)]">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))}
+                    {banners.length === 0 && <p className="text-center text-sm text-gray-400">Nenhum banner enviado.</p>}
                   </div>
-                ))}
-                {banners.length === 0 && <p className="text-center text-sm text-gray-400">Nenhum banner enviado.</p>}
-              </div>
-            </div>
-              <div className="grid gap-4">
-                <input
-                  value={storefrontHeadline}
-                  onChange={(e) => setStorefrontHeadline(e.target.value)}
-                  placeholder="Título comercial da vitrine"
-                  className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
-                />
-                <textarea
-                  value={storefrontSubheadline}
-                  onChange={(e) => setStorefrontSubheadline(e.target.value)}
-                  rows={3}
-                  placeholder="Texto curto para destacar proposta, promoção ou estilo da loja"
-                  className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
-                />
+                  <div className="grid gap-4">
+                    <input
+                      value={storefrontHeadline}
+                      onChange={(e) => setStorefrontHeadline(e.target.value)}
+                      placeholder="Título comercial da vitrine"
+                      className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+                    />
+                    <textarea
+                      value={storefrontSubheadline}
+                      onChange={(e) => setStorefrontSubheadline(e.target.value)}
+                      rows={3}
+                      placeholder="Texto curto para destacar proposta, promoção ou estilo da loja"
+                      className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+                    />
+                  </div>
+                </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <label className="space-y-2">
-                  <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
-                    Estilo do topo
-                    <FieldHint label="Escolhe como a capa aparece antes do cardápio: mais direta, lateral ou promocional." />
-                  </span>
-                  <select
-                    value={storefrontTheme.hero_style}
-                    onChange={(e) => updateStorefrontTheme("hero_style", e.target.value as StorefrontTheme["hero_style"])}
-                    className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
-                  >
-                    <option value="banner">Capa clássica</option>
-                    <option value="split">Capa com destaque lateral</option>
-                    <option value="spotlight">Capa promocional</option>
-                  </select>
-                </label>
+              <div className="rounded-[24px] border border-[var(--line)] bg-[#fcfaf7] p-5">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-gray-400">Layout da vitrine</p>
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <label className="space-y-2">
+                    <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
+                      Estilo do topo
+                      <FieldHint label="Escolhe como a capa aparece antes do cardápio: mais direta, lateral ou promocional." />
+                    </span>
+                    <select
+                      value={storefrontTheme.hero_style}
+                      onChange={(e) => updateStorefrontTheme("hero_style", e.target.value as StorefrontTheme["hero_style"])}
+                      className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+                    >
+                      <option value="banner">Capa clássica</option>
+                      <option value="split">Capa com destaque lateral</option>
+                      <option value="spotlight">Capa promocional</option>
+                    </select>
+                  </label>
 
-                <label className="space-y-2">
-                  <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
-                    Exibição dos produtos
-                    <FieldHint label="Escolhe se o cardápio fica em lista mais clássica ou em blocos destacados." />
-                  </span>
-                  <select
-                    value={storefrontTheme.catalog_layout}
-                    onChange={(e) => updateStorefrontTheme("catalog_layout", e.target.value as StorefrontTheme["catalog_layout"])}
-                    className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
-                  >
-                    <option value="grid">Blocos</option>
-                    <option value="list">Lista</option>
-                  </select>
-                </label>
+                  <label className="space-y-2">
+                    <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
+                      Exibição dos produtos
+                      <FieldHint label="Escolhe se o cardápio fica em lista mais clássica ou em blocos destacados." />
+                    </span>
+                    <select
+                      value={storefrontTheme.catalog_layout}
+                      onChange={(e) => updateStorefrontTheme("catalog_layout", e.target.value as StorefrontTheme["catalog_layout"])}
+                      className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+                    >
+                      <option value="grid">Blocos</option>
+                      <option value="list">Lista</option>
+                    </select>
+                  </label>
 
-                <label className="space-y-2">
-                  <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
-                    Aparência dos produtos
-                    <FieldHint label="Ajusta o relevo dos cards dos produtos para deixar a leitura mais leve ou mais destacada." />
-                  </span>
-                  <select
-                    value={storefrontTheme.card_style}
-                    onChange={(e) => updateStorefrontTheme("card_style", e.target.value as StorefrontTheme["card_style"])}
-                    className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
-                  >
-                    <option value="soft">Suave</option>
-                    <option value="outline">Com contorno</option>
-                    <option value="elevated">Com profundidade</option>
-                  </select>
-                </label>
+                  <label className="space-y-2">
+                    <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
+                      Aparência dos produtos
+                      <FieldHint label="Ajusta o relevo dos cards dos produtos para deixar a leitura mais leve ou mais destacada." />
+                    </span>
+                    <select
+                      value={storefrontTheme.card_style}
+                      onChange={(e) => updateStorefrontTheme("card_style", e.target.value as StorefrontTheme["card_style"])}
+                      className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+                    >
+                      <option value="soft">Suave</option>
+                      <option value="outline">Com contorno</option>
+                      <option value="elevated">Com profundidade</option>
+                    </select>
+                  </label>
 
-                <label className="space-y-2">
-                  <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
-                    Menu de categorias
-                    <FieldHint label="Escolhe se as categorias aparecem como abas ou botões arredondados." />
-                  </span>
-                  <select
-                    value={storefrontTheme.category_style}
-                    onChange={(e) => updateStorefrontTheme("category_style", e.target.value as StorefrontTheme["category_style"])}
-                    className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
-                  >
-                    <option value="underline">Abas com linha</option>
-                    <option value="pill">Botões arredondados</option>
-                  </select>
-                </label>
+                  <label className="space-y-2">
+                    <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
+                      Menu de categorias
+                      <FieldHint label="Escolhe se as categorias aparecem como abas ou botões arredondados." />
+                    </span>
+                    <select
+                      value={storefrontTheme.category_style}
+                      onChange={(e) => updateStorefrontTheme("category_style", e.target.value as StorefrontTheme["category_style"])}
+                      className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+                    >
+                      <option value="underline">Abas com linha</option>
+                      <option value="pill">Botões arredondados</option>
+                    </select>
+                  </label>
+                </div>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <label className="flex items-center justify-between rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
-                  <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
-                    Mostrar logo no topo
-                    <FieldHint label="Exibe o logo da loja sobre a capa da vitrine." />
-                  </span>
-                  <input type="checkbox" checked={storefrontTheme.show_logo} onChange={(e) => updateStorefrontTheme("show_logo", e.target.checked)} className="h-4 w-4 accent-[var(--brand)]" />
-                </label>
-                <label className="flex items-center justify-between rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
-                  <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
-                    Mostrar nota da loja
-                    <FieldHint label="Exibe a nota média da loja ao lado do nome." />
-                  </span>
-                  <input type="checkbox" checked={storefrontTheme.show_reviews} onChange={(e) => updateStorefrontTheme("show_reviews", e.target.checked)} className="h-4 w-4 accent-[var(--brand)]" />
-                </label>
-                <label className="flex items-center justify-between rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
-                  <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
-                    Usar imagens de capa
-                    <FieldHint label="Mostra banners ou foto principal na capa da vitrine." />
-                  </span>
-                  <input type="checkbox" checked={storefrontTheme.show_banners} onChange={(e) => updateStorefrontTheme("show_banners", e.target.checked)} className="h-4 w-4 accent-[var(--brand)]" />
-                </label>
-                <label className="flex items-center justify-between rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
-                  <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
-                    Mostrar destaques comerciais
-                    <FieldHint label="Exibe selos e blocos como mais pedido, entrega e promo do dia." />
-                  </span>
-                  <input type="checkbox" checked={storefrontTheme.show_badges} onChange={(e) => updateStorefrontTheme("show_badges", e.target.checked)} className="h-4 w-4 accent-[var(--brand)]" />
-                </label>
-              </div>
+              <div className="rounded-[24px] border border-[var(--line)] bg-[#fcfaf7] p-5">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-gray-400">O que aparece na vitrine</p>
+                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  <label className="flex items-center justify-between rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
+                    <span className="inline-flex items-center gap-2 text-sm font-bold text-gray-700">
+                      Mostrar logo no topo
+                      <FieldHint label="Exibe o logo da loja sobre a capa da vitrine." />
+                    </span>
+                    <input type="checkbox" checked={storefrontTheme.show_logo} onChange={(e) => updateStorefrontTheme("show_logo", e.target.checked)} className="h-4 w-4 accent-[var(--brand)]" />
+                  </label>
+                  <label className="flex items-center justify-between rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
+                    <span className="inline-flex items-center gap-2 text-sm font-bold text-gray-700">
+                      Mostrar nota da loja
+                      <FieldHint label="Exibe a nota média da loja ao lado do nome." />
+                    </span>
+                    <input type="checkbox" checked={storefrontTheme.show_reviews} onChange={(e) => updateStorefrontTheme("show_reviews", e.target.checked)} className="h-4 w-4 accent-[var(--brand)]" />
+                  </label>
+                  <label className="flex items-center justify-between rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
+                    <span className="inline-flex items-center gap-2 text-sm font-bold text-gray-700">
+                      Usar imagens de capa
+                      <FieldHint label="Mostra banners ou foto principal na capa da vitrine." />
+                    </span>
+                    <input type="checkbox" checked={storefrontTheme.show_banners} onChange={(e) => updateStorefrontTheme("show_banners", e.target.checked)} className="h-4 w-4 accent-[var(--brand)]" />
+                  </label>
+                </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <input value={storefrontTheme.highlight_badge} onChange={(e) => updateStorefrontTheme("highlight_badge", e.target.value)} placeholder="Selo comercial: Ex. Mais pedido" className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]" />
-                <input value={storefrontTheme.promo_text} onChange={(e) => updateStorefrontTheme("promo_text", e.target.value)} placeholder="Faixa promocional: Ex. Promo do dia" className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]" />
+                <div className="mt-5 grid gap-4 md:grid-cols-2">
+                  <div className="rounded-2xl border border-[var(--line)] bg-white p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-bold text-gray-800">Mais pedido</p>
+                        <p className="mt-1 text-xs text-gray-500">Mostra um selo de destaque perto das informações da loja.</p>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={storefrontTheme.show_featured_badge}
+                        onChange={(e) => updateStorefrontTheme("show_featured_badge", e.target.checked)}
+                        className="h-4 w-4 accent-[var(--brand)]"
+                      />
+                    </div>
+                    {storefrontTheme.show_featured_badge && (
+                      <input
+                        value={storefrontTheme.highlight_badge}
+                        onChange={(e) => updateStorefrontTheme("highlight_badge", e.target.value)}
+                        placeholder="Texto do selo: Ex. Mais pedido"
+                        className="mt-4 w-full rounded-2xl border border-[var(--line)] bg-[#fcfaf7] px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+                      />
+                    )}
+                  </div>
+
+                  <div className="rounded-2xl border border-[var(--line)] bg-white p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-bold text-gray-800">Promo do dia</p>
+                        <p className="mt-1 text-xs text-gray-500">Exibe uma faixa promocional no topo da vitrine.</p>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={storefrontTheme.show_promo_badge}
+                        onChange={(e) => updateStorefrontTheme("show_promo_badge", e.target.checked)}
+                        className="h-4 w-4 accent-[var(--brand)]"
+                      />
+                    </div>
+                    {storefrontTheme.show_promo_badge && (
+                      <input
+                        value={storefrontTheme.promo_text}
+                        onChange={(e) => updateStorefrontTheme("promo_text", e.target.value)}
+                        placeholder="Texto promocional: Ex. Promo do dia"
+                        className="mt-4 w-full rounded-2xl border border-[var(--line)] bg-[#fcfaf7] px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+                      />
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1062,22 +1126,21 @@ export default function SettingsPage() {
               <div
                 className="mt-4 overflow-hidden rounded-[24px] border border-[var(--line)]"
                 style={{
-                  background:
-                    storefrontTheme.preset === "forest"
-                      ? "linear-gradient(135deg, #153b2e, #274d3c)"
-                      : storefrontTheme.preset === "berry"
-                        ? "linear-gradient(135deg, #5c1736, #9b2959)"
-                        : storefrontTheme.preset === "midnight"
-                          ? "linear-gradient(135deg, #12151d, #283246)"
-                          : "linear-gradient(135deg, #ff8b45, #f3b38c)",
+                  background: `linear-gradient(135deg, ${primaryColor} 0%, ${storefrontTheme.contrast_color} 100%)`,
                 }}
               >
                 <div className="bg-black/15 px-4 pb-4 pt-4 text-white">
                   <div className={`rounded-[22px] border border-white/15 bg-white/12 p-4 backdrop-blur-md ${storefrontTheme.hero_style === "split" ? "ml-auto max-w-[82%]" : "max-w-xl"}`}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        {storefrontTheme.show_badges && storefrontTheme.promo_text && (
-                          <span className="mb-2 inline-flex rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-gray-900">
+                        {storefrontTheme.show_promo_badge && storefrontTheme.promo_text && (
+                          <span
+                            className="mb-2 inline-flex rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em]"
+                            style={{
+                              backgroundColor: "rgba(255,255,255,0.92)",
+                              color: storefrontTheme.contrast_color,
+                            }}
+                          >
                             {storefrontTheme.promo_text || "Promo do dia"}
                           </span>
                         )}
@@ -1105,11 +1168,31 @@ export default function SettingsPage() {
                         {storefrontTheme.show_reviews && <span>5,0</span>}
                         <span>30-45 min</span>
                         <span className="text-emerald-700">Aberto</span>
+                        {storefrontTheme.show_featured_badge && storefrontTheme.highlight_badge && (
+                          <span
+                            className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.08em]"
+                            style={{
+                              backgroundColor: hexToRgba(storefrontTheme.contrast_color, 0.14),
+                              color: storefrontTheme.contrast_color,
+                            }}
+                          >
+                            {storefrontTheme.highlight_badge}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
                   <div className="mb-3 flex gap-2 overflow-hidden">
-                    <span className={`text-xs font-bold ${storefrontTheme.category_style === "pill" ? "rounded-full bg-[#fff2e8] px-3 py-2" : "border-b-2 border-[var(--brand)] px-1 pb-2"}`}>Espetos</span>
+                    <span
+                      className={`text-xs font-bold ${storefrontTheme.category_style === "pill" ? "rounded-full px-3 py-2" : "border-b-2 px-1 pb-2"}`}
+                      style={
+                        storefrontTheme.category_style === "pill"
+                          ? { backgroundColor: hexToRgba(primaryColor, 0.14), color: primaryColor }
+                          : { borderColor: primaryColor, color: primaryColor }
+                      }
+                    >
+                      Espetos
+                    </span>
                     <span className={`text-xs font-bold text-gray-500 ${storefrontTheme.category_style === "pill" ? "rounded-full border border-gray-200 bg-white px-3 py-2" : "px-1 pb-2"}`}>Combos</span>
                   </div>
                   <div className={`grid gap-3 ${storefrontTheme.catalog_layout === "grid" ? "md:grid-cols-2" : "grid-cols-1"}`}>
