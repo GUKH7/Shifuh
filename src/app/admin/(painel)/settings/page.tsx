@@ -145,6 +145,26 @@ const DEFAULT_SCHEDULE: WorkHour[] = DAYS_OF_WEEK.map((day) => ({
   close_time: "23:00",
 }));
 
+function normalizeWorkHours(rawValue: unknown): WorkHour[] {
+  const incoming = Array.isArray(rawValue) ? rawValue : [];
+
+  return DAYS_OF_WEEK.map((day) => {
+    const match = incoming.find((item) => {
+      if (!item || typeof item !== "object") return false;
+      const candidate = item as Partial<WorkHour>;
+      return Number(candidate.day_id) === day.id;
+    }) as Partial<WorkHour> | undefined;
+
+    return {
+      day_id: day.id,
+      day_label: match?.day_label || day.label,
+      is_open: typeof match?.is_open === "boolean" ? match.is_open : true,
+      open_time: match?.open_time || "18:00",
+      close_time: match?.close_time || "23:00",
+    };
+  });
+}
+
 const createImage = (url: string): Promise<HTMLImageElement> =>
   new Promise((resolve, reject) => {
     const image = new Image();
@@ -331,7 +351,7 @@ export default function SettingsPage() {
         });
         if (data.delivery_tiers) setTiers(data.delivery_tiers);
         else setTiers([{ distance: 1, time: 20, price: 0 }]);
-        if (data.work_hours) setSchedule(data.work_hours);
+        setSchedule(normalizeWorkHours(data.work_hours));
         setPrinterWidth(data.printer_width || 80);
         setPrinterFontSize(data.printer_font_size || 12);
         setPrinterFontWeight(data.printer_font_weight || 700);
@@ -448,6 +468,7 @@ export default function SettingsPage() {
   const handleSave = async () => {
     setSaving(true);
     const sortedTiers = [...tiers].sort((a, b) => a.distance - b.distance);
+    const normalizedSchedule = normalizeWorkHours(schedule);
     let latitude: number | null = restaurantLatitude;
     let longitude: number | null = restaurantLongitude;
 
@@ -476,7 +497,7 @@ export default function SettingsPage() {
         name,
         phone,
         delivery_tiers: sortedTiers,
-        work_hours: schedule,
+        work_hours: normalizedSchedule,
         address_zip: address.zip,
         address_street: address.street,
         address_number: address.number,
@@ -573,6 +594,7 @@ export default function SettingsPage() {
       });
       setRestaurantLatitude(latitude);
       setRestaurantLongitude(longitude);
+      setSchedule(normalizedSchedule);
       fetchSettings();
     }
     setSaving(false);
@@ -838,7 +860,7 @@ export default function SettingsPage() {
         </button>
       </div>
 
-      <div className="grid gap-5">
+      <div className="flex flex-col gap-5">
         <CollapsibleSection
           icon={<Store size={20} />}
           title="Dados da loja"
@@ -859,7 +881,6 @@ export default function SettingsPage() {
           icon={<Palette size={20} />}
           title="Aparência da loja"
           description="Logo, banners, visual da vitrine e preview em um só lugar."
-          className="xl:col-span-2"
         >
           <div className="mt-6 grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
             <div className="space-y-5">
