@@ -1,15 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { usePathname, useRouter } from "next/navigation";
-import AdminSidebar from "@/components/admin-sidebar";
 import { Bell, HelpCircle, Loader2, Search } from "lucide-react";
+import AdminSidebar from "@/components/admin-sidebar";
 import { getRestaurantByUserId } from "@/lib/supabase/restaurant";
+
+const ADMIN_SEARCH_ITEMS = [
+  { label: "Início", href: "/admin", keywords: ["inicio", "dashboard", "resumo", "painel"] },
+  { label: "Pedidos", href: "/admin/orders", keywords: ["pedido", "pedidos", "entregas", "fila"] },
+  { label: "Histórico", href: "/admin/history", keywords: ["historico", "vendas", "concluidos"] },
+  { label: "Cardápios", href: "/admin/menu", keywords: ["cardapio", "menu", "produtos", "categorias"] },
+  { label: "Clientes", href: "/admin/clients", keywords: ["clientes", "crm", "contatos"] },
+  { label: "Cupons", href: "/admin/coupons", keywords: ["cupons", "descontos"] },
+  { label: "Avaliações", href: "/admin/reviews", keywords: ["reviews", "avaliacoes", "notas"] },
+  { label: "Configurações", href: "/admin/settings", keywords: ["configuracoes", "ajustes", "loja"] },
+];
 
 export default function AdminPanelLayout({ children }: { children: React.ReactNode }) {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [isGuardLoading, setIsGuardLoading] = useState(true);
+  const [panelSearch, setPanelSearch] = useState("");
   const router = useRouter();
   const pathname = usePathname();
   const supabase = createBrowserClient(
@@ -39,7 +51,6 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
         }
 
         const { restaurant } = await getRestaurantByUserId(supabase, user.id);
-
         const isSetupPage = pathname === "/admin/setup";
 
         if (!restaurant && !isSetupPage) {
@@ -71,6 +82,21 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
     });
   };
 
+  const searchResults = useMemo(() => {
+    const normalizedTerm = panelSearch.trim().toLowerCase();
+    if (!normalizedTerm) return [];
+
+    return ADMIN_SEARCH_ITEMS.filter((item) => {
+      const haystack = [item.label, ...item.keywords].join(" ").toLowerCase();
+      return haystack.includes(normalizedTerm);
+    }).slice(0, 6);
+  }, [panelSearch]);
+
+  const handleGoToSearchResult = (href: string) => {
+    setPanelSearch("");
+    router.push(href);
+  };
+
   if (isGuardLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#fbf7f2]">
@@ -85,14 +111,47 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
       <div className={`transition-all duration-300 ${isCollapsed ? "ml-20" : "ml-64"}`}>
         <header className="sticky top-0 z-40 border-b border-[var(--line)] bg-[#fbf7f2]/95 backdrop-blur">
           <div className="flex items-center justify-between px-8 py-5">
-            <div className="flex w-full max-w-xl items-center gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
-              <Search size={18} className="text-gray-400" />
-              <input
-                readOnly
-                value="Pesquisar no painel"
-                className="w-full bg-transparent text-sm text-gray-500 outline-none"
-              />
+            <div className="relative w-full max-w-xl">
+              <div className="flex items-center gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
+                <Search size={18} className="text-gray-400" />
+                <input
+                  value={panelSearch}
+                  onChange={(event) => setPanelSearch(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && searchResults[0]) {
+                      event.preventDefault();
+                      handleGoToSearchResult(searchResults[0].href);
+                    }
+                  }}
+                  placeholder="Pesquisar no painel"
+                  className="w-full bg-transparent text-sm text-gray-700 outline-none placeholder:text-gray-500"
+                />
+              </div>
+
+              {panelSearch.trim().length > 0 && (
+                <div className="absolute left-0 right-0 top-[calc(100%+10px)] overflow-hidden rounded-2xl border border-[var(--line)] bg-white shadow-[0_18px_40px_rgba(17,16,15,0.08)]">
+                  {searchResults.length > 0 ? (
+                    <div className="py-2">
+                      {searchResults.map((item) => (
+                        <button
+                          key={item.href}
+                          onClick={() => handleGoToSearchResult(item.href)}
+                          className="flex w-full items-center justify-between px-4 py-3 text-left text-sm text-gray-700 transition-colors hover:bg-[#fbf7f2]"
+                        >
+                          <span className="font-semibold">{item.label}</span>
+                          <span className="text-xs text-gray-400">Abrir</span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="px-4 py-6 text-center text-sm text-gray-500">
+                      Nenhum resultado encontrado no painel.
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
+
             <div className="ml-6 flex items-center gap-3">
               <button className="surface-card rounded-xl p-3 text-gray-500">
                 <HelpCircle size={18} />

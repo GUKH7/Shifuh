@@ -12,12 +12,12 @@ import {
   LayoutDashboard,
   LogOut,
   Percent,
-  Star,
   Settings,
   ShoppingBag,
+  Star,
   Store,
-  UtensilsCrossed,
   Users,
+  UtensilsCrossed,
 } from "lucide-react";
 import { getCurrentRestaurant } from "@/lib/supabase/restaurant";
 import { isPlatformAdminEmail } from "@/lib/platform-admin";
@@ -29,7 +29,7 @@ const MENU_ITEMS = [
   { name: "Cardápios", href: "/admin/menu", icon: UtensilsCrossed },
   { name: "Clientes", href: "/admin/clients", icon: Users },
   { name: "Cupons", href: "/admin/coupons", icon: Percent },
-  { name: "Reviews", href: "/admin/reviews", icon: Star },
+  { name: "Avaliações", href: "/admin/reviews", icon: Star },
   { name: "Configurações", href: "/admin/settings", icon: Settings },
 ];
 
@@ -71,7 +71,7 @@ export default function AdminSidebar({ isCollapsed, toggleSidebar }: AdminSideba
 
   return (
     <aside
-      className={`fixed left-0 top-0 z-50 flex h-screen flex-col border-r border-[var(--line)] bg-white transition-all duration-300 ${
+      className={`fixed left-0 top-0 z-50 flex h-screen flex-col overflow-hidden border-r border-[var(--line)] bg-white transition-all duration-300 ${
         isCollapsed ? "w-20" : "w-64"
       }`}
     >
@@ -97,10 +97,15 @@ export default function AdminSidebar({ isCollapsed, toggleSidebar }: AdminSideba
       </div>
 
       <div className={`px-4 py-6 ${isCollapsed ? "px-2" : ""}`}>
-          {!isCollapsed && <p className="mb-3 px-3 text-xs font-bold uppercase tracking-[0.18em] text-gray-400">Operação</p>}
+        {!isCollapsed && (
+          <p className="mb-3 px-3 text-xs font-bold uppercase tracking-[0.18em] text-gray-400">
+            Operação
+          </p>
+        )}
         <nav className="space-y-1.5">
           {MENU_ITEMS.map((item) => {
             const isActive = pathname === item.href;
+
             return (
               <Link
                 key={item.href}
@@ -114,11 +119,15 @@ export default function AdminSidebar({ isCollapsed, toggleSidebar }: AdminSideba
                     : "text-gray-600 hover:bg-[#faf5ef] hover:text-gray-950"
                 }`}
               >
-                <item.icon size={19} className={isActive ? "text-[var(--brand)]" : "text-gray-400"} />
+                <item.icon
+                  size={19}
+                  className={isActive ? "text-[var(--brand)]" : "text-gray-400"}
+                />
                 {!isCollapsed && <span>{item.name}</span>}
               </Link>
             );
           })}
+
           {canAccessPlatform && (
             <Link
               href="/admin/platform"
@@ -131,7 +140,10 @@ export default function AdminSidebar({ isCollapsed, toggleSidebar }: AdminSideba
                   : "text-gray-600 hover:bg-[#faf5ef] hover:text-gray-950"
               }`}
             >
-              <Store size={19} className={pathname === "/admin/platform" ? "text-[var(--brand)]" : "text-gray-400"} />
+              <Store
+                size={19}
+                className={pathname === "/admin/platform" ? "text-[var(--brand)]" : "text-gray-400"}
+              />
               {!isCollapsed && <span>Lojas cadastradas</span>}
             </Link>
           )}
@@ -167,11 +179,11 @@ export default function AdminSidebar({ isCollapsed, toggleSidebar }: AdminSideba
         <button
           onClick={handleLogout}
           title={isCollapsed ? "Sair" : undefined}
-          className={`flex w-full items-center rounded-2xl text-sm font-semibold text-gray-500 transition-all hover:bg-[#faf5ef] hover:text-gray-950 ${
+          className={`group flex w-full items-center rounded-2xl text-sm font-semibold text-gray-500 transition-all hover:bg-[#faf5ef] hover:text-red-600 ${
             isCollapsed ? "justify-center px-3 py-3" : "gap-3 px-4 py-3"
           }`}
         >
-          <LogOut size={19} className="text-gray-400" />
+          <LogOut size={19} className="text-gray-400 transition-colors group-hover:text-red-600" />
           {!isCollapsed && <span>Sair</span>}
         </button>
       </div>

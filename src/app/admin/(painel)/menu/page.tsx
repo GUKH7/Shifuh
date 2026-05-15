@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useRouter } from "next/navigation";
 import {
   AlertCircle,
+  ArrowDownAZ,
+  ArrowUpAZ,
   ChevronDown,
   ChevronUp,
   Edit3,
@@ -21,12 +23,17 @@ import ProductModal from "@/components/product-modal";
 import { getCurrentRestaurant } from "@/lib/supabase/restaurant";
 import { useToast } from "@/components/ui/toast-provider";
 
+type SortKey = "name" | "price";
+type SortDirection = "asc" | "desc";
+
 export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [restaurant, setRestaurant] = useState<any>(null);
   const [categories, setCategories] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [sortBy, setSortBy] = useState<SortKey>("name");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
@@ -244,6 +251,56 @@ export default function AdminDashboard() {
   const formatPrice = (value: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
+  const filteredCategories = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+
+    return categories
+      .map((category) => {
+        const categoryProducts = products.filter((product) => {
+          if (product.category_id !== category.id) return false;
+
+          if (!term) return true;
+
+          const haystack = [product.name, product.description, category.name]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+
+          return haystack.includes(term);
+        });
+
+        const sortedProducts = [...categoryProducts].sort((a, b) => {
+          if (sortBy === "price") {
+            return sortDirection === "asc" ? a.price - b.price : b.price - a.price;
+          }
+
+          return sortDirection === "asc"
+            ? a.name.localeCompare(b.name, "pt-BR")
+            : b.name.localeCompare(a.name, "pt-BR");
+        });
+
+        return {
+          ...category,
+          categoryProducts: sortedProducts,
+        };
+      })
+      .filter((category) => !searchTerm || category.categoryProducts.length > 0);
+  }, [categories, products, searchTerm, sortBy, sortDirection]);
+
+  const previewItems = useMemo(() => {
+    return filteredCategories.flatMap((category) =>
+      category.categoryProducts.slice(0, 2).map((product: any) => ({
+        ...product,
+        categoryName: category.name,
+      })),
+    );
+  }, [filteredCategories]);
+
+  const totalVisibleProducts = filteredCategories.reduce(
+    (sum, category) => sum + category.categoryProducts.length,
+    0,
+  );
+
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center text-sm font-semibold text-gray-500">
@@ -264,7 +321,7 @@ export default function AdminDashboard() {
           <div className="mt-3 text-sm font-medium text-gray-500">
             {isSavingCategory
               ? "Salvando ordem das categorias..."
-              : `${categories.length} categorias na loja`}
+              : `${categories.length} categorias e ${products.length} produtos na loja`}
           </div>
         </div>
 
@@ -273,7 +330,7 @@ export default function AdminDashboard() {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
             <input
               type="text"
-              placeholder="Buscar item..."
+              placeholder="Buscar item ou categoria"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full rounded-2xl border border-[var(--line)] bg-white py-3 pl-11 pr-4 text-sm outline-none transition-colors focus:border-[var(--brand)]"
@@ -302,174 +359,300 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <div className="space-y-5">
-        {categories.map((category, index) => {
-          const categoryProducts = products.filter(
-            (product) =>
-              product.category_id === category.id &&
-              product.name.toLowerCase().includes(searchTerm.toLowerCase()),
-          );
-
-          if (searchTerm && categoryProducts.length === 0) return null;
-
-          const isExpanded = expandedCategories[category.id];
-          const isEditing = editingCategoryId === category.id;
-
-          return (
-            <div
-              key={category.id}
-              draggable={!isEditing}
-              onDragStart={() => handleDragStart(index)}
-              onDragOver={(e) => handleDragOver(e, index)}
-              onDragEnd={handleDragEnd}
-              className={`surface-card overflow-hidden rounded-[26px] ${
-                draggedCategoryIndex === index ? "opacity-50" : ""
-              }`}
-            >
-              <div className="flex items-center justify-between gap-4 border-b border-[var(--line)] bg-white px-5 py-4">
-                <div className="flex min-w-0 flex-1 items-center gap-3">
-                  <button className="rounded-xl bg-[#fbf7f2] p-2 text-gray-400">
-                    <GripVertical size={18} />
-                  </button>
-
-                  {isEditing ? (
-                    <div className="flex items-center gap-2">
-                      <input
-                        autoFocus
-                        value={editingName}
-                        onChange={(e) => setEditingName(e.target.value)}
-                        className="rounded-xl border border-[var(--brand)] px-3 py-2 text-sm font-bold outline-none"
-                      />
-                      <button
-                        onClick={() => saveCategoryName(category.id)}
-                        className="rounded-xl bg-emerald-100 p-2 text-emerald-700"
-                      >
-                        <Save size={15} />
-                      </button>
-                      <button
-                        onClick={() => setEditingCategoryId(null)}
-                        className="rounded-xl bg-gray-100 p-2 text-gray-600"
-                      >
-                        <X size={15} />
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => toggleCategory(category.id)}
-                      className="flex min-w-0 items-center gap-3 text-left"
-                    >
-                      <div>
-                        <p className="text-lg font-black text-gray-950">{category.name}</p>
-                        <p className="text-xs font-medium text-gray-400">
-                          {categoryProducts.length} itens
-                        </p>
-                      </div>
-                    </button>
-                  )}
-                </div>
-
-                {!isEditing && (
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => startEditingCat(category)}
-                      className="rounded-xl p-2 text-gray-400 hover:bg-[#fbf7f2] hover:text-[var(--brand)]"
-                    >
-                      <Edit3 size={16} />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteCategory(category.id)}
-                      className="rounded-xl p-2 text-gray-400 hover:bg-[#fff0e8] hover:text-[var(--brand)]"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                    <button
-                      onClick={() => toggleCategory(category.id)}
-                      className="rounded-xl p-2 text-gray-400 hover:bg-[#fbf7f2]"
-                    >
-                      {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                    </button>
-                  </div>
-                )}
+      <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+        <div className="space-y-5">
+          <div className="surface-card rounded-[26px] p-5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-gray-400">
+                  Organização do cardápio
+                </p>
+                <h2 className="mt-1 text-xl font-black text-gray-950">
+                  Ordene e visualize como os itens vão aparecer.
+                </h2>
               </div>
 
-              {isExpanded && (
-                <div className="divide-y divide-[var(--line)] bg-[#fffdfa]">
-                  {categoryProducts.length > 0 ? (
-                    categoryProducts.map((product) => (
-                      <div key={product.id} className="group flex items-center gap-4 px-5 py-4">
-                        <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-2xl border border-[var(--line)] bg-[#fbf7f2]">
-                          {product.image_url ? (
-                            <img
-                              src={product.image_url}
-                              alt={product.name}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-gray-300">
-                              FOTO
-                            </div>
-                          )}
-                          {!product.is_active && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-white/75">
-                              <Power size={16} className="text-gray-500" />
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <p className="truncate font-bold text-gray-950">{product.name}</p>
-                            {!product.is_active && (
-                              <span className="rounded-full bg-[#fff0e8] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--brand)]">
-                                Pausado
-                              </span>
-                            )}
-                          </div>
-                          <p className="mt-1 truncate text-sm text-gray-500">
-                            {product.description}
-                          </p>
-                          <p className="mt-2 text-sm font-black text-gray-950">
-                            {formatPrice(product.price)}
-                          </p>
-                        </div>
-
-                        <div className="flex items-center gap-2 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100">
-                          <button
-                            onClick={() => handleEditProduct(product)}
-                            className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-xs font-bold text-gray-600"
-                          >
-                            Editar
-                          </button>
-                          <button
-                            onClick={() => toggleProductStatus(product)}
-                            className={`rounded-xl p-2 ${
-                              product.is_active
-                                ? "bg-[#fbf7f2] text-gray-500"
-                                : "bg-[#fff0e8] text-[var(--brand)]"
-                            }`}
-                            title={product.is_active ? "Pausar vendas" : "Ativar vendas"}
-                          >
-                            <Power size={16} />
-                          </button>
-                        </div>
-                      </div>
-                    ))
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => {
+                    setSortBy("name");
+                    setSortDirection((current) =>
+                      sortBy === "name" && current === "asc" ? "desc" : "asc",
+                    );
+                  }}
+                  className={`inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-bold ${
+                    sortBy === "name"
+                      ? "bg-[var(--brand-soft)] text-[var(--brand)]"
+                      : "border border-[var(--line)] bg-white text-gray-600"
+                  }`}
+                >
+                  {sortDirection === "asc" && sortBy === "name" ? (
+                    <ArrowDownAZ size={16} />
                   ) : (
-                    <div className="px-5 py-10 text-center">
-                      <p className="text-sm font-medium text-gray-500">Categoria vazia</p>
-                      <button
-                        onClick={handleOpenNewProduct}
-                        className="mt-3 rounded-xl bg-[var(--brand-soft)] px-4 py-2 text-xs font-bold text-[var(--brand)]"
-                      >
-                        Adicionar produto
-                      </button>
-                    </div>
+                    <ArrowUpAZ size={16} />
                   )}
+                  Ordem alfabética
+                </button>
+                <button
+                  onClick={() => {
+                    setSortBy("price");
+                    setSortDirection((current) =>
+                      sortBy === "price" && current === "asc" ? "desc" : "asc",
+                    );
+                  }}
+                  className={`inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-bold ${
+                    sortBy === "price"
+                      ? "bg-[var(--brand-soft)] text-[var(--brand)]"
+                      : "border border-[var(--line)] bg-white text-gray-600"
+                  }`}
+                >
+                  {sortDirection === "asc" && sortBy === "price" ? (
+                    <ChevronDown size={16} />
+                  ) : (
+                    <ChevronUp size={16} />
+                  )}
+                  Valor
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-5">
+            {filteredCategories.length === 0 ? (
+              <div className="surface-card flex min-h-[420px] flex-col items-center justify-center rounded-[26px] px-6 text-center">
+                <p className="text-lg font-black text-gray-950">Nada encontrado</p>
+                <p className="mt-2 max-w-md text-sm leading-6 text-gray-500">
+                  Não encontramos itens ou categorias com esse termo. Tente outra busca ou limpe o campo.
+                </p>
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm("")}
+                    className="mt-4 rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700"
+                  >
+                    Limpar busca
+                  </button>
+                )}
+              </div>
+            ) : (
+              filteredCategories.map((category, index) => {
+                const isExpanded = expandedCategories[category.id];
+                const isEditing = editingCategoryId === category.id;
+
+                return (
+                  <div
+                    key={category.id}
+                    draggable={!isEditing}
+                    onDragStart={() => handleDragStart(index)}
+                    onDragOver={(e) => handleDragOver(e, index)}
+                    onDragEnd={handleDragEnd}
+                    className={`surface-card overflow-hidden rounded-[26px] ${
+                      draggedCategoryIndex === index ? "opacity-50" : ""
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-4 border-b border-[var(--line)] bg-white px-5 py-4">
+                      <div className="flex min-w-0 flex-1 items-center gap-3">
+                        <button className="rounded-xl bg-[#fbf7f2] p-2 text-gray-400">
+                          <GripVertical size={18} />
+                        </button>
+
+                        {isEditing ? (
+                          <div className="flex items-center gap-2">
+                            <input
+                              autoFocus
+                              value={editingName}
+                              onChange={(e) => setEditingName(e.target.value)}
+                              className="rounded-xl border border-[var(--brand)] px-3 py-2 text-sm font-bold outline-none"
+                            />
+                            <button
+                              onClick={() => saveCategoryName(category.id)}
+                              className="rounded-xl bg-emerald-100 p-2 text-emerald-700"
+                            >
+                              <Save size={15} />
+                            </button>
+                            <button
+                              onClick={() => setEditingCategoryId(null)}
+                              className="rounded-xl bg-gray-100 p-2 text-gray-600"
+                            >
+                              <X size={15} />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => toggleCategory(category.id)}
+                            className="flex min-w-0 items-center gap-3 text-left"
+                          >
+                            <div>
+                              <p className="text-lg font-black text-gray-950">{category.name}</p>
+                              <p className="text-xs font-medium text-gray-400">
+                                {category.categoryProducts.length} itens
+                              </p>
+                            </div>
+                          </button>
+                        )}
+                      </div>
+
+                      {!isEditing && (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => startEditingCat(category)}
+                            className="rounded-xl p-2 text-gray-400 hover:bg-[#fbf7f2] hover:text-[var(--brand)]"
+                          >
+                            <Edit3 size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCategory(category.id)}
+                            className="rounded-xl p-2 text-gray-400 hover:bg-[#fff0e8] hover:text-[var(--brand)]"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                          <button
+                            onClick={() => toggleCategory(category.id)}
+                            className="rounded-xl p-2 text-gray-400 hover:bg-[#fbf7f2]"
+                          >
+                            {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {isExpanded && (
+                      <div className="divide-y divide-[var(--line)] bg-[#fffdfa]">
+                        {category.categoryProducts.length > 0 ? (
+                          category.categoryProducts.map((product: any) => (
+                            <div key={product.id} className="group flex items-center gap-4 px-5 py-4">
+                              <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-2xl border border-[var(--line)] bg-[#fbf7f2]">
+                                {product.image_url ? (
+                                  <img
+                                    src={product.image_url}
+                                    alt={product.name}
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-gray-300">
+                                    FOTO
+                                  </div>
+                                )}
+                                {!product.is_active && (
+                                  <div className="absolute inset-0 flex items-center justify-center bg-white/75">
+                                    <Power size={16} className="text-gray-500" />
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                  <p className="truncate font-bold text-gray-950">{product.name}</p>
+                                  {!product.is_active && (
+                                    <span className="rounded-full bg-[#fff0e8] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--brand)]">
+                                      Pausado
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="mt-1 truncate text-sm text-gray-500">
+                                  {product.description}
+                                </p>
+                                <p className="mt-2 text-sm font-black text-gray-950">
+                                  {formatPrice(product.price)}
+                                </p>
+                              </div>
+
+                              <div className="flex items-center gap-2 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100">
+                                <button
+                                  onClick={() => handleEditProduct(product)}
+                                  className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-xs font-bold text-gray-600"
+                                >
+                                  Editar
+                                </button>
+                                <button
+                                  onClick={() => toggleProductStatus(product)}
+                                  className={`rounded-xl p-2 ${
+                                    product.is_active
+                                      ? "bg-[#fbf7f2] text-gray-500"
+                                      : "bg-[#fff0e8] text-[var(--brand)]"
+                                  }`}
+                                  title={product.is_active ? "Pausar vendas" : "Ativar vendas"}
+                                >
+                                  <Power size={16} />
+                                </button>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="px-5 py-10 text-center">
+                            <p className="text-sm font-medium text-gray-500">Categoria vazia</p>
+                            <button
+                              onClick={handleOpenNewProduct}
+                              className="mt-3 rounded-xl bg-[var(--brand-soft)] px-4 py-2 text-xs font-bold text-[var(--brand)]"
+                            >
+                              Adicionar produto
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        <aside className="surface-card sticky top-28 h-fit rounded-[26px] p-5">
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-gray-400">
+            Pré-visualização
+          </p>
+          <h2 className="mt-2 text-xl font-black text-gray-950">Como o cardápio está ficando</h2>
+          <p className="mt-1 text-sm leading-6 text-gray-500">
+            Uma leitura rápida da vitrine com base nas categorias e produtos visíveis agora.
+          </p>
+
+          <div className="mt-5 overflow-hidden rounded-[28px] border border-[var(--line)] bg-[#fffdfa] shadow-[0_16px_36px_rgba(17,16,15,0.08)]">
+            <div className="bg-[#171311] px-4 py-5 text-white">
+              <p className="text-lg font-black">{restaurant?.name || "Sua loja"}</p>
+              <p className="mt-1 text-sm text-white/70">{categories.length} categorias ativas</p>
+            </div>
+            <div className="space-y-4 p-4">
+              <div className="flex flex-wrap gap-2">
+                {filteredCategories.slice(0, 3).map((category) => (
+                  <span
+                    key={category.id}
+                    className="rounded-full bg-[#fff0e8] px-3 py-1.5 text-xs font-bold text-[var(--brand)]"
+                  >
+                    {category.name}
+                  </span>
+                ))}
+              </div>
+
+              {previewItems.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-[var(--line)] px-4 py-10 text-center text-sm text-gray-500">
+                  Nenhum item visível para pré-visualizar.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {previewItems.slice(0, 4).map((item) => (
+                    <div key={item.id} className="rounded-2xl border border-[var(--line)] bg-white p-4">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-gray-400">
+                        {item.categoryName}
+                      </p>
+                      <p className="mt-2 font-bold text-gray-950">{item.name}</p>
+                      <p className="mt-1 line-clamp-2 text-sm text-gray-500">
+                        {item.description || "Sem descrição cadastrada."}
+                      </p>
+                      <p className="mt-3 text-sm font-black text-gray-950">
+                        {formatPrice(item.price)}
+                      </p>
+                    </div>
+                  ))}
                 </div>
               )}
+
+              <div className="rounded-2xl bg-[#fcfaf7] px-4 py-3 text-sm text-gray-600">
+                <span className="font-bold text-gray-950">{totalVisibleProducts}</span> produto(s)
+                visíveis neste filtro.
+              </div>
             </div>
-          );
-        })}
+          </div>
+        </aside>
       </div>
 
       <ProductModal
@@ -483,7 +666,7 @@ export default function AdminDashboard() {
 
       {isCategoryModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-[28px] border border-[var(--line)] bg-[#fffdfa] shadow-[0_30px_80px_rgba(17,16,15,0.18)]">
+          <div className="w-full max-w-md overflow-hidden rounded-[28px] border border-[var(--line)] bg-[#fffdfa] shadow-[0_30px_80px_rgba(17,16,15,0.18)]">
             <div className="flex items-start justify-between gap-4 border-b border-[var(--line)] bg-white px-6 py-5">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-gray-400">
@@ -499,7 +682,7 @@ export default function AdminDashboard() {
               </div>
               <button
                 onClick={() => setIsCategoryModalOpen(false)}
-                className="rounded-xl bg-[#fbf7f2] p-2 text-gray-500"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#fbf7f2] text-gray-500 transition-colors hover:bg-[#f1ebe3] hover:text-gray-700"
               >
                 <X size={18} />
               </button>

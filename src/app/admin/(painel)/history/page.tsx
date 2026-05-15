@@ -4,9 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useRouter } from "next/navigation";
 import {
-  Copy,
   ChevronLeft,
   ChevronRight,
+  Copy,
   Download,
   History,
   MessageCircle,
@@ -92,7 +92,7 @@ function getStatusLabel(status: HistoryOrder["status"]) {
     case "delivering":
       return "Em rota";
     case "done":
-    return "Concluído";
+      return "Concluído";
     case "canceled":
       return "Cancelado";
     default:
@@ -115,8 +115,8 @@ function getStatusClasses(status: HistoryOrder["status"]) {
   }
 }
 
-function exportCsv(rows: HistoryOrder[]) {
-  const header = ["Data", "Hora", "Pedido", "Cliente", "Telefone", "Situacao", "Pagamento", "Subtotal", "Entrega", "Desconto", "Total"];
+function exportExcel(rows: HistoryOrder[]) {
+  const header = ["Data", "Hora", "Pedido", "Cliente", "Telefone", "Situação", "Pagamento", "Subtotal", "Entrega", "Desconto", "Total"];
   const lines = rows.map((order) => [
     formatDate(order.created_at),
     formatHour(order.created_at),
@@ -131,15 +131,17 @@ function exportCsv(rows: HistoryOrder[]) {
     Number(order.total || 0).toFixed(2),
   ]);
 
-  const csv = [header, ...lines]
-    .map((line) => line.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(","))
+  const worksheet = [header, ...lines]
+    .map((line) => line.map((value) => String(value)).join("\t"))
     .join("\n");
 
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const blob = new Blob([`\uFEFF${worksheet}`], {
+    type: "application/vnd.ms-excel;charset=utf-8;",
+  });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = "historico-pedidos.csv";
+  anchor.download = "historico-pedidos.xls";
   anchor.click();
   URL.revokeObjectURL(url);
 }
@@ -275,6 +277,7 @@ export default function HistoryPage() {
     const totalSales = visibleOrders
       .filter((order) => order.status !== "canceled")
       .reduce((sum, order) => sum + Number(order.total || 0), 0);
+
     return {
       count: visibleOrders.length,
       value: totalSales,
@@ -290,7 +293,7 @@ export default function HistoryPage() {
       await navigator.clipboard.writeText(orderId);
       showToast({
         title: "Pedido copiado",
-      description: "O identificador completo foi copiado para a área de transferência.",
+        description: "O identificador completo foi copiado para a área de transferência.",
         tone: "success",
       });
     } catch (error) {
@@ -327,7 +330,7 @@ export default function HistoryPage() {
           </div>
         </div>
         <button
-          onClick={() => exportCsv(visibleOrders)}
+          onClick={() => exportExcel(visibleOrders)}
           className="inline-flex items-center gap-2 rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700"
         >
           <Download size={16} />
@@ -382,13 +385,13 @@ export default function HistoryPage() {
 
         <div className="mt-8 overflow-hidden rounded-[24px] border border-[var(--line)] bg-white">
           <div className="grid grid-cols-[88px_1.1fr_1fr_0.9fr_0.9fr_140px_132px] gap-4 border-b border-[var(--line)] px-6 py-4 text-xs font-bold uppercase tracking-[0.16em] text-gray-400">
-            <span>Horário</span>
+            <span className="whitespace-nowrap">Horário</span>
             <span>Pedido</span>
             <span>Cliente</span>
-            <span>Situação</span>
-            <span>Valor da venda</span>
-            <span className="text-right">Líquido</span>
-            <span className="text-right">Ações</span>
+            <span className="whitespace-nowrap">Situação</span>
+            <span className="whitespace-nowrap">Valor da venda</span>
+            <span className="whitespace-nowrap text-right">Líquido</span>
+            <span className="whitespace-nowrap text-right">Ações</span>
           </div>
 
           <div className="border-b border-[var(--line)] bg-[#fcfaf7] px-6 py-4 text-sm text-gray-500">
@@ -398,7 +401,7 @@ export default function HistoryPage() {
 
           <div className="divide-y divide-[var(--line)]">
             {paginatedOrders.length === 0 ? (
-              <div className="px-6 py-16 text-center text-sm text-gray-500">
+              <div className="flex min-h-[340px] items-center justify-center px-6 py-16 text-center text-sm text-gray-500">
                 Nenhum pedido encontrado para este filtro.
               </div>
             ) : (
@@ -429,11 +432,15 @@ export default function HistoryPage() {
                         <p className="mt-1 text-xs text-gray-400">{order.customer_phone}</p>
                       </div>
                       <div>
-                        <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${getStatusClasses(order.status)}`}>
+                        <span
+                          className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${getStatusClasses(order.status)}`}
+                        >
                           {getStatusLabel(order.status)}
                         </span>
                       </div>
-                      <div className="font-semibold text-gray-950">{formatMoney(Number(order.total || 0))}</div>
+                      <div className="font-semibold text-gray-950">
+                        {formatMoney(Number(order.total || 0))}
+                      </div>
                       <div className="text-right font-semibold text-gray-700">
                         {formatMoney(Number(order.total || 0) - Number(order.discount || 0))}
                       </div>
@@ -479,7 +486,7 @@ export default function HistoryPage() {
                   disabled={page === totalPages}
                   className="inline-flex items-center gap-2 rounded-xl border border-[var(--line)] bg-white px-3 py-2 font-semibold disabled:opacity-50"
                 >
-                  Proxima
+                  Próxima
                   <ChevronRight size={16} />
                 </button>
               </div>

@@ -27,6 +27,10 @@ body {
   font-family: inherit;
 }
 
+textarea {
+  resize: none;
+}
+
 @keyframes toast-enter {
   from {
     opacity: 0;

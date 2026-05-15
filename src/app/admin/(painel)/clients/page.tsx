@@ -49,15 +49,17 @@ function exportClients(rows: Client[]) {
     client.address,
   ]);
 
-  const csv = [header, ...lines]
-    .map((line) => line.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(","))
+  const worksheet = [header, ...lines]
+    .map((line) => line.map((value) => String(value)).join("\t"))
     .join("\n");
 
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const blob = new Blob([`\uFEFF${worksheet}`], {
+    type: "application/vnd.ms-excel;charset=utf-8;",
+  });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = "clientes.csv";
+  anchor.download = "clientes.xls";
   anchor.click();
   URL.revokeObjectURL(url);
 }
@@ -136,7 +138,7 @@ export default function ClientsPage() {
 
         const current = grouped.get(phone);
         const address = order.address
-        ? `${order.address.street || "Rua não informada"}, ${order.address.number || "S/N"} - ${order.address.neighborhood || "Sem bairro"}`
+          ? `${order.address.street || "Rua não informada"}, ${order.address.number || "S/N"} - ${order.address.neighborhood || "Sem bairro"}`
           : "Retirada";
 
         if (!current) {
@@ -184,6 +186,7 @@ export default function ClientsPage() {
   const summary = useMemo(() => {
     const totalRevenue = clients.reduce((sum, client) => sum + client.totalSpent, 0);
     const totalOrders = clients.reduce((sum, client) => sum + client.orderCount, 0);
+
     return {
       totalRevenue,
       totalOrders,
@@ -259,13 +262,13 @@ export default function ClientsPage() {
             <span>Contato</span>
             <span>Pedidos</span>
             <span>Total gasto</span>
-            <span>Última compra</span>
-            <span className="text-right">Ação</span>
+            <span className="whitespace-nowrap">Última compra</span>
+            <span className="whitespace-nowrap text-right">Ação</span>
           </div>
 
           <div className="divide-y divide-[var(--line)]">
             {paginatedClients.length === 0 ? (
-              <div className="px-6 py-16 text-center text-sm text-gray-500">
+              <div className="flex min-h-[320px] items-center justify-center px-6 py-16 text-center text-sm text-gray-500">
                 Nenhum cliente encontrado.
               </div>
             ) : (

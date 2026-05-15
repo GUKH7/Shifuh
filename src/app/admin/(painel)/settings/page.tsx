@@ -846,7 +846,7 @@ export default function SettingsPage() {
             </div>
 
             <label className="space-y-2">
-              <span className="flex items-center gap-2 text-sm font-bold text-gray-700">
+              <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
                 Paleta visual da vitrine
                 <FieldHint label="Escolhe a atmosfera geral da página, junto da logo e da cor principal." />
               </span>
@@ -1245,7 +1245,7 @@ export default function SettingsPage() {
 
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="space-y-2">
-                  <span className="flex items-center gap-2 text-sm font-bold text-gray-700">
+                  <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
                     Estilo do topo
                     <FieldHint label="Escolhe como a capa aparece antes do cardápio: mais direta, lateral ou promocional." />
                   </span>
@@ -1261,7 +1261,7 @@ export default function SettingsPage() {
                 </label>
 
                 <label className="space-y-2">
-                  <span className="flex items-center gap-2 text-sm font-bold text-gray-700">
+                  <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
                     Exibição dos produtos
                     <FieldHint label="Escolhe se o cardápio fica em lista mais clássica ou em blocos destacados." />
                   </span>
@@ -1276,7 +1276,7 @@ export default function SettingsPage() {
                 </label>
 
                 <label className="space-y-2">
-                  <span className="flex items-center gap-2 text-sm font-bold text-gray-700">
+                  <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
                     Aparência dos produtos
                     <FieldHint label="Ajusta o relevo dos cards dos produtos para deixar a leitura mais leve ou mais destacada." />
                   </span>
@@ -1292,7 +1292,7 @@ export default function SettingsPage() {
                 </label>
 
                 <label className="space-y-2">
-                  <span className="flex items-center gap-2 text-sm font-bold text-gray-700">
+                  <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
                     Menu de categorias
                     <FieldHint label="Escolhe se as categorias aparecem como abas ou botões arredondados." />
                   </span>
@@ -1309,7 +1309,7 @@ export default function SettingsPage() {
 
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <label className="flex items-center justify-between rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
-                  <span className="flex items-center gap-2 text-sm font-bold text-gray-700">
+                  <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
                     Mostrar logo no topo
                     <FieldHint label="Exibe o logo da loja sobre a capa da vitrine." />
                   </span>
@@ -1321,7 +1321,7 @@ export default function SettingsPage() {
                   />
                 </label>
                 <label className="flex items-center justify-between rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
-                  <span className="flex items-center gap-2 text-sm font-bold text-gray-700">
+                  <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
                     Mostrar nota da loja
                     <FieldHint label="Exibe a nota média da loja ao lado do nome." />
                   </span>
@@ -1333,7 +1333,7 @@ export default function SettingsPage() {
                   />
                 </label>
                 <label className="flex items-center justify-between rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
-                  <span className="flex items-center gap-2 text-sm font-bold text-gray-700">
+                  <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
                     Usar imagens de capa
                     <FieldHint label="Mostra banners ou foto principal na capa da vitrine." />
                   </span>
@@ -1345,7 +1345,7 @@ export default function SettingsPage() {
                   />
                 </label>
                 <label className="flex items-center justify-between rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
-                  <span className="flex items-center gap-2 text-sm font-bold text-gray-700">
+                  <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
                     Mostrar destaques comerciais
                     <FieldHint label="Exibe selos e blocos como mais pedido, entrega e promo do dia." />
                   </span>

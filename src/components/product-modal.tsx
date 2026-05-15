@@ -41,10 +41,24 @@ async function getCroppedImg(imageSrc: string, pixelCrop: any): Promise<Blob | n
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
+
   canvas.width = pixelCrop.width;
   canvas.height = pixelCrop.height;
-  ctx.drawImage(image, pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height, 0, 0, pixelCrop.width, pixelCrop.height);
-  return new Promise((resolve) => canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.9));
+  ctx.drawImage(
+    image,
+    pixelCrop.x,
+    pixelCrop.y,
+    pixelCrop.width,
+    pixelCrop.height,
+    0,
+    0,
+    pixelCrop.width,
+    pixelCrop.height,
+  );
+
+  return new Promise((resolve) =>
+    canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.9),
+  );
 }
 
 export default function ProductModal({
@@ -152,7 +166,12 @@ export default function ProductModal({
     setAddonGroups(newGroups);
   };
 
-  const updateOption = (groupIndex: number, optionIndex: number, field: "name" | "price", value: string) => {
+  const updateOption = (
+    groupIndex: number,
+    optionIndex: number,
+    field: "name" | "price",
+    value: string,
+  ) => {
     const newGroups = [...addonGroups];
     const option = newGroups[groupIndex].options[optionIndex];
     if (field === "price") option.price = parseFloat(value) || 0;
@@ -189,7 +208,9 @@ export default function ProductModal({
 
       if (croppedImageBlob) {
         const fileName = `${Date.now()}-prod.jpg`;
-        const { error: upErr } = await supabase.storage.from("menu-images").upload(fileName, croppedImageBlob);
+        const { error: upErr } = await supabase.storage
+          .from("menu-images")
+          .upload(fileName, croppedImageBlob);
         if (upErr) throw upErr;
         const { data } = supabase.storage.from("menu-images").getPublicUrl(fileName);
         finalUrl = data.publicUrl;
@@ -214,7 +235,10 @@ export default function ProductModal({
 
       let error;
       if (productToEdit) {
-        const { error: updateErr } = await supabase.from("products").update(payload).eq("id", productToEdit.id);
+        const { error: updateErr } = await supabase
+          .from("products")
+          .update(payload)
+          .eq("id", productToEdit.id);
         error = updateErr;
       } else {
         const { error: insertErr } = await supabase.from("products").insert(payload);
@@ -245,10 +269,21 @@ export default function ProductModal({
           </button>
         </div>
         <div className="relative flex-1 bg-gray-800">
-          <Cropper image={imageSrc || ""} crop={crop} zoom={zoom} aspect={4 / 3} onCropChange={setCrop} onZoomChange={setZoom} onCropComplete={(_, pixels) => setCroppedAreaPixels(pixels)} />
+          <Cropper
+            image={imageSrc || ""}
+            crop={crop}
+            zoom={zoom}
+            aspect={4 / 3}
+            onCropChange={setCrop}
+            onZoomChange={setZoom}
+            onCropComplete={(_, pixels) => setCroppedAreaPixels(pixels)}
+          />
         </div>
         <div className="bg-white p-4">
-          <button onClick={showCroppedImage} className="brand-gradient w-full rounded-2xl py-3 font-bold text-white">
+          <button
+            onClick={showCroppedImage}
+            className="brand-gradient w-full rounded-2xl py-3 font-bold text-white"
+          >
             Confirmar recorte
           </button>
         </div>
@@ -261,10 +296,17 @@ export default function ProductModal({
       <div className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-[28px] border border-[var(--line)] bg-[#fffdfa] shadow-[0_30px_80px_rgba(17,16,15,0.18)]">
         <div className="flex items-center justify-between border-b border-[var(--line)] bg-white px-6 py-5">
           <div>
-            <h2 className="text-xl font-black text-gray-950">{productToEdit ? "Editar produto" : "Novo produto"}</h2>
-            <p className="mt-1 text-sm text-gray-500">Preencha os dados principais e configure complementos.</p>
+            <h2 className="text-xl font-black text-gray-950">
+              {productToEdit ? "Editar produto" : "Novo produto"}
+            </h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Preencha os dados principais e configure complementos.
+            </p>
           </div>
-          <button onClick={onClose} className="rounded-xl bg-[#fbf7f2] p-2 text-gray-500">
+          <button
+            onClick={onClose}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#fbf7f2] text-gray-500 transition-colors hover:bg-[#f1ebe3] hover:text-gray-700"
+          >
             <X size={20} />
           </button>
         </div>
@@ -272,7 +314,12 @@ export default function ProductModal({
         <form onSubmit={handleSubmit} className="flex-1 space-y-6 overflow-y-auto p-6">
           <div className="grid gap-6 md:grid-cols-[140px_1fr]">
             <div className="group relative flex h-[140px] w-full items-center justify-center overflow-hidden rounded-[24px] border-2 border-dashed border-[var(--line)] bg-white">
-              <input type="file" accept="image/*" onChange={handleFileChange} className="absolute inset-0 z-10 cursor-pointer opacity-0" />
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="absolute inset-0 z-10 cursor-pointer opacity-0"
+              />
               {croppedImageBlob ? (
                 <img src={URL.createObjectURL(croppedImageBlob)} className="h-full w-full object-cover" />
               ) : imageUrl ? (
@@ -299,7 +346,7 @@ export default function ProductModal({
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3.5 text-sm outline-none focus:border-[var(--brand)]"
+                className="w-full resize-none rounded-2xl border border-[var(--line)] bg-white px-4 py-3.5 text-sm outline-none focus:border-[var(--brand)]"
                 rows={3}
                 placeholder="Descrição curta do item"
               />
@@ -311,7 +358,7 @@ export default function ProductModal({
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
                   className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3.5 text-sm font-bold outline-none focus:border-[var(--brand)]"
-                placeholder="Preço"
+                  placeholder="Preço"
                 />
                 <select
                   required
@@ -336,9 +383,15 @@ export default function ProductModal({
                   <Scissors size={16} className="text-[var(--brand)]" />
                   Complementos
                 </h3>
-                <p className="mt-1 text-sm text-gray-500">Crie grupos para adicionais, tamanhos ou observacoes de preparo.</p>
+                <p className="mt-1 text-sm text-gray-500">
+                  Crie grupos para adicionais, tamanhos ou observações de preparo.
+                </p>
               </div>
-              <button type="button" onClick={addGroup} className="rounded-2xl border border-[var(--line)] bg-white px-4 py-2 text-xs font-bold text-gray-700">
+              <button
+                type="button"
+                onClick={addGroup}
+                className="rounded-2xl border border-[var(--line)] bg-white px-4 py-2 text-xs font-bold text-gray-700"
+              >
                 <span className="inline-flex items-center gap-2">
                   <Plus size={14} />
                   Novo grupo
@@ -354,7 +407,10 @@ export default function ProductModal({
 
             <div className="space-y-4">
               {addonGroups.map((group, groupIndex) => (
-                <div key={group.id || groupIndex} className="overflow-hidden rounded-2xl border border-[var(--line)] bg-white">
+                <div
+                  key={group.id || groupIndex}
+                  className="overflow-hidden rounded-2xl border border-[var(--line)] bg-white"
+                >
                   <div className="flex flex-wrap items-center gap-3 border-b border-[var(--line)] bg-[#fbf7f2] px-4 py-3">
                     <GripVertical size={18} className="text-gray-400" />
                     <input
@@ -364,20 +420,31 @@ export default function ProductModal({
                       className="min-w-[220px] flex-1 rounded-xl border border-transparent bg-white px-3 py-2 text-sm font-bold outline-none focus:border-[var(--brand)]"
                     />
                     <label className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-xs font-bold text-gray-700">
-                      <input type="checkbox" checked={group.required} onChange={(e) => updateGroup(groupIndex, "required", e.target.checked)} className="h-4 w-4 accent-[var(--brand)]" />
-                      Obrigatorio
+                      <input
+                        type="checkbox"
+                        checked={group.required}
+                        onChange={(e) => updateGroup(groupIndex, "required", e.target.checked)}
+                        className="h-4 w-4 accent-[var(--brand)]"
+                      />
+                      Obrigatório
                     </label>
                     <div className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-xs font-bold text-gray-700">
-                      <span>Max</span>
+                      <span>Máx.</span>
                       <input
                         type="number"
                         value={group.max_options || ""}
-                        onChange={(e) => updateGroup(groupIndex, "max_options", parseInt(e.target.value))}
+                        onChange={(e) =>
+                          updateGroup(groupIndex, "max_options", parseInt(e.target.value))
+                        }
                         className="w-12 bg-transparent text-center outline-none"
                         placeholder="0"
                       />
                     </div>
-                    <button type="button" onClick={() => removeGroup(groupIndex)} className="rounded-xl p-2 text-gray-400 hover:bg-[#fff0e8] hover:text-[var(--brand)]">
+                    <button
+                      type="button"
+                      onClick={() => removeGroup(groupIndex)}
+                      className="rounded-xl p-2 text-gray-400 hover:bg-[#fff0e8] hover:text-[var(--brand)]"
+                    >
                       <Trash2 size={15} />
                     </button>
                   </div>
@@ -386,7 +453,7 @@ export default function ProductModal({
                     {group.options.map((option, optionIndex) => (
                       <div key={optionIndex} className="grid gap-3 md:grid-cols-[1fr_120px_auto]">
                         <input
-                          placeholder="Nome da opcao"
+                          placeholder="Nome da opção"
                           value={option.name}
                           onChange={(e) => updateOption(groupIndex, optionIndex, "name", e.target.value)}
                           className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm outline-none focus:border-[var(--brand)]"
@@ -395,19 +462,29 @@ export default function ProductModal({
                           type="number"
                           placeholder="0.00"
                           value={option.price}
-                          onChange={(e) => updateOption(groupIndex, optionIndex, "price", e.target.value)}
+                          onChange={(e) =>
+                            updateOption(groupIndex, optionIndex, "price", e.target.value)
+                          }
                           className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm outline-none focus:border-[var(--brand)]"
                         />
-                        <button type="button" onClick={() => removeOptionFromGroup(groupIndex, optionIndex)} className="rounded-xl p-2 text-gray-400 hover:bg-[#fff0e8] hover:text-[var(--brand)]">
+                        <button
+                          type="button"
+                          onClick={() => removeOptionFromGroup(groupIndex, optionIndex)}
+                          className="rounded-xl p-2 text-gray-400 hover:bg-[#fff0e8] hover:text-[var(--brand)]"
+                        >
                           <X size={16} />
                         </button>
                       </div>
                     ))}
 
-                    <button type="button" onClick={() => addOptionToGroup(groupIndex)} className="rounded-xl bg-[var(--brand-soft)] px-4 py-2 text-xs font-bold text-[var(--brand)]">
+                    <button
+                      type="button"
+                      onClick={() => addOptionToGroup(groupIndex)}
+                      className="rounded-xl bg-[var(--brand-soft)] px-4 py-2 text-xs font-bold text-[var(--brand)]"
+                    >
                       <span className="inline-flex items-center gap-1.5">
                         <Plus size={13} />
-                        Adicionar opcao
+                        Adicionar opção
                       </span>
                     </button>
                   </div>
@@ -418,10 +495,17 @@ export default function ProductModal({
         </form>
 
         <div className="flex justify-end gap-3 border-t border-[var(--line)] bg-white px-6 py-5">
-          <button onClick={onClose} className="rounded-2xl border border-[var(--line)] bg-white px-5 py-3 text-sm font-bold text-gray-600">
+          <button
+            onClick={onClose}
+            className="rounded-2xl border border-[var(--line)] bg-white px-5 py-3 text-sm font-bold text-gray-600"
+          >
             Cancelar
           </button>
-          <button onClick={handleSubmit} disabled={isLoading} className="brand-gradient rounded-2xl px-6 py-3 text-sm font-bold text-white disabled:opacity-60">
+          <button
+            onClick={handleSubmit}
+            disabled={isLoading}
+            className="brand-gradient rounded-2xl px-6 py-3 text-sm font-bold text-white disabled:opacity-60"
+          >
             {isLoading ? (
               <span className="inline-flex items-center gap-2">
                 <Loader2 className="animate-spin" size={16} />
