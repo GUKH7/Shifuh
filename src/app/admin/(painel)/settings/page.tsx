@@ -7,6 +7,7 @@ import {
   ArrowDownUp,
   CircleHelp,
   CheckCircle,
+  ChevronDown,
   Clock,
   Image as ImageIcon,
   Loader2,
@@ -177,6 +178,50 @@ function FieldHint({ label }: { label: string }) {
     >
       <CircleHelp size={12} />
     </span>
+  );
+}
+
+function CollapsibleSection({
+  icon,
+  title,
+  description,
+  children,
+  className = "",
+  defaultOpen = true,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  children: React.ReactNode;
+  className?: string;
+  defaultOpen?: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  return (
+    <section className={`surface-card rounded-[28px] p-6 ${className}`}>
+      <button
+        type="button"
+        onClick={() => setIsOpen((current) => !current)}
+        className="flex w-full items-center justify-between gap-4 text-left"
+      >
+        <div className="flex items-center gap-3">
+          <div className="rounded-2xl bg-[var(--brand-soft)] p-3 text-[var(--brand)]">{icon}</div>
+          <div>
+            <h2 className="text-xl font-black text-gray-950">{title}</h2>
+            <p className="text-sm text-gray-500">{description}</p>
+          </div>
+        </div>
+        <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-[var(--line)] bg-white text-gray-500">
+          <ChevronDown
+            size={18}
+            className={`transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+          />
+        </span>
+      </button>
+
+      {isOpen && children}
+    </section>
   );
 }
 
@@ -794,17 +839,11 @@ export default function SettingsPage() {
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-        <section className="surface-card rounded-[28px] p-6">
-          <div className="flex items-center gap-3">
-            <div className="rounded-2xl bg-[var(--brand-soft)] p-3 text-[var(--brand)]">
-              <Store size={20} />
-            </div>
-            <div>
-              <h2 className="text-xl font-black text-gray-950">Dados da loja</h2>
-              <p className="text-sm text-gray-500">Nome, WhatsApp e endereço da operação.</p>
-            </div>
-          </div>
-
+        <CollapsibleSection
+          icon={<Store size={20} />}
+          title="Dados da loja"
+          description="Nome, WhatsApp e endereço da operação."
+        >
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome da loja" className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]" />
             <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="WhatsApp" className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]" />
@@ -814,20 +853,16 @@ export default function SettingsPage() {
             <input value={address.number} onChange={(e) => setAddress({ ...address, number: e.target.value })} placeholder="Número" className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]" />
             <input value={address.neighborhood} onChange={(e) => setAddress({ ...address, neighborhood: e.target.value })} placeholder="Bairro" className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]" />
           </div>
-        </section>
+        </CollapsibleSection>
 
-        <section className="surface-card rounded-[28px] p-6">
-          <div className="flex items-center gap-3">
-            <div className="rounded-2xl bg-[var(--brand-soft)] p-3 text-[var(--brand)]">
-              <Palette size={20} />
-            </div>
-            <div>
-              <h2 className="text-xl font-black text-gray-950">Identidade visual</h2>
-              <p className="text-sm text-gray-500">Logo, cor principal e banners.</p>
-            </div>
-          </div>
-
-          <div className="mt-6 space-y-5">
+        <CollapsibleSection
+          icon={<Palette size={20} />}
+          title="Aparência da loja"
+          description="Logo, banners, visual da vitrine e preview em um só lugar."
+          className="xl:col-span-2"
+        >
+          <div className="mt-6 grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+            <div className="space-y-5">
             <div className="flex items-center gap-4">
               <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-[24px] border border-dashed border-[var(--line)] bg-white">
                 {logoUrl ? <img src={logoUrl} className="h-full w-full object-cover" /> : <ImageIcon className="text-gray-300" />}
@@ -884,22 +919,204 @@ export default function SettingsPage() {
                 {banners.length === 0 && <p className="text-center text-sm text-gray-400">Nenhum banner enviado.</p>}
               </div>
             </div>
-          </div>
-        </section>
+              <div className="grid gap-4">
+                <input
+                  value={storefrontHeadline}
+                  onChange={(e) => setStorefrontHeadline(e.target.value)}
+                  placeholder="Título comercial da vitrine"
+                  className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+                />
+                <textarea
+                  value={storefrontSubheadline}
+                  onChange={(e) => setStorefrontSubheadline(e.target.value)}
+                  rows={3}
+                  placeholder="Texto curto para destacar proposta, promoção ou estilo da loja"
+                  className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+                />
+              </div>
 
-        <section className="surface-card rounded-[28px] p-6">
-          <div className="flex items-center gap-3">
-            <div className="rounded-2xl bg-[var(--brand-soft)] p-3 text-[var(--brand)]">
-              <ArrowDownUp size={20} />
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="space-y-2">
+                  <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
+                    Estilo do topo
+                    <FieldHint label="Escolhe como a capa aparece antes do cardápio: mais direta, lateral ou promocional." />
+                  </span>
+                  <select
+                    value={storefrontTheme.hero_style}
+                    onChange={(e) => updateStorefrontTheme("hero_style", e.target.value as StorefrontTheme["hero_style"])}
+                    className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+                  >
+                    <option value="banner">Capa clássica</option>
+                    <option value="split">Capa com destaque lateral</option>
+                    <option value="spotlight">Capa promocional</option>
+                  </select>
+                </label>
+
+                <label className="space-y-2">
+                  <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
+                    Exibição dos produtos
+                    <FieldHint label="Escolhe se o cardápio fica em lista mais clássica ou em blocos destacados." />
+                  </span>
+                  <select
+                    value={storefrontTheme.catalog_layout}
+                    onChange={(e) => updateStorefrontTheme("catalog_layout", e.target.value as StorefrontTheme["catalog_layout"])}
+                    className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+                  >
+                    <option value="grid">Blocos</option>
+                    <option value="list">Lista</option>
+                  </select>
+                </label>
+
+                <label className="space-y-2">
+                  <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
+                    Aparência dos produtos
+                    <FieldHint label="Ajusta o relevo dos cards dos produtos para deixar a leitura mais leve ou mais destacada." />
+                  </span>
+                  <select
+                    value={storefrontTheme.card_style}
+                    onChange={(e) => updateStorefrontTheme("card_style", e.target.value as StorefrontTheme["card_style"])}
+                    className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+                  >
+                    <option value="soft">Suave</option>
+                    <option value="outline">Com contorno</option>
+                    <option value="elevated">Com profundidade</option>
+                  </select>
+                </label>
+
+                <label className="space-y-2">
+                  <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
+                    Menu de categorias
+                    <FieldHint label="Escolhe se as categorias aparecem como abas ou botões arredondados." />
+                  </span>
+                  <select
+                    value={storefrontTheme.category_style}
+                    onChange={(e) => updateStorefrontTheme("category_style", e.target.value as StorefrontTheme["category_style"])}
+                    className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+                  >
+                    <option value="underline">Abas com linha</option>
+                    <option value="pill">Botões arredondados</option>
+                  </select>
+                </label>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <label className="flex items-center justify-between rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
+                  <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
+                    Mostrar logo no topo
+                    <FieldHint label="Exibe o logo da loja sobre a capa da vitrine." />
+                  </span>
+                  <input type="checkbox" checked={storefrontTheme.show_logo} onChange={(e) => updateStorefrontTheme("show_logo", e.target.checked)} className="h-4 w-4 accent-[var(--brand)]" />
+                </label>
+                <label className="flex items-center justify-between rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
+                  <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
+                    Mostrar nota da loja
+                    <FieldHint label="Exibe a nota média da loja ao lado do nome." />
+                  </span>
+                  <input type="checkbox" checked={storefrontTheme.show_reviews} onChange={(e) => updateStorefrontTheme("show_reviews", e.target.checked)} className="h-4 w-4 accent-[var(--brand)]" />
+                </label>
+                <label className="flex items-center justify-between rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
+                  <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
+                    Usar imagens de capa
+                    <FieldHint label="Mostra banners ou foto principal na capa da vitrine." />
+                  </span>
+                  <input type="checkbox" checked={storefrontTheme.show_banners} onChange={(e) => updateStorefrontTheme("show_banners", e.target.checked)} className="h-4 w-4 accent-[var(--brand)]" />
+                </label>
+                <label className="flex items-center justify-between rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
+                  <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
+                    Mostrar destaques comerciais
+                    <FieldHint label="Exibe selos e blocos como mais pedido, entrega e promo do dia." />
+                  </span>
+                  <input type="checkbox" checked={storefrontTheme.show_badges} onChange={(e) => updateStorefrontTheme("show_badges", e.target.checked)} className="h-4 w-4 accent-[var(--brand)]" />
+                </label>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <input value={storefrontTheme.highlight_badge} onChange={(e) => updateStorefrontTheme("highlight_badge", e.target.value)} placeholder="Selo comercial: Ex. Mais pedido" className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]" />
+                <input value={storefrontTheme.promo_text} onChange={(e) => updateStorefrontTheme("promo_text", e.target.value)} placeholder="Faixa promocional: Ex. Promo do dia" className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]" />
+              </div>
             </div>
-            <div>
-              <h2 className="text-xl font-black text-gray-950">Integração iFood</h2>
-              <p className="text-sm text-gray-500">
-                Conecte sua loja, teste a integração e puxe catálogo e pedidos sem complicação.
-              </p>
+
+            <div className="rounded-[28px] border border-[var(--line)] bg-[#fcfaf7] p-5">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-gray-400">Preview da vitrine</p>
+              <div
+                className="mt-4 overflow-hidden rounded-[24px] border border-[var(--line)]"
+                style={{
+                  background:
+                    storefrontTheme.preset === "forest"
+                      ? "linear-gradient(135deg, #153b2e, #274d3c)"
+                      : storefrontTheme.preset === "berry"
+                        ? "linear-gradient(135deg, #5c1736, #9b2959)"
+                        : storefrontTheme.preset === "midnight"
+                          ? "linear-gradient(135deg, #12151d, #283246)"
+                          : "linear-gradient(135deg, #ff8b45, #f3b38c)",
+                }}
+              >
+                <div className="bg-black/15 px-4 pb-4 pt-4 text-white">
+                  <div className={`rounded-[22px] border border-white/15 bg-white/12 p-4 backdrop-blur-md ${storefrontTheme.hero_style === "split" ? "ml-auto max-w-[82%]" : "max-w-xl"}`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        {storefrontTheme.show_badges && storefrontTheme.promo_text && (
+                          <span className="mb-2 inline-flex rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-gray-900">
+                            {storefrontTheme.promo_text || "Promo do dia"}
+                          </span>
+                        )}
+                        <h3 className="text-xl font-black leading-tight">
+                          {storefrontHeadline || name || "Sua loja no WhatsApp com cara profissional"}
+                        </h3>
+                        <p className="mt-2 text-sm leading-6 text-white/80">
+                          {storefrontSubheadline || "A capa da vitrine ajuda a destacar sua marca, sua promoção e sua proposta de valor."}
+                        </p>
+                      </div>
+                      <button className="rounded-full border border-white/20 bg-white/90 px-3 py-1.5 text-[11px] font-bold text-gray-800">Minha conta</button>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-[#fffdfa] p-4">
+                  <div className="-mt-4 mb-3 flex items-end gap-3">
+                    {storefrontTheme.show_logo && (
+                      <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-[18px] border-[3px] border-white bg-white shadow-[0_10px_24px_rgba(17,16,15,0.12)]">
+                        {logoUrl ? <img src={logoUrl} className="h-full w-full object-cover" /> : <div className="h-full w-full" style={{ backgroundColor: primaryColor }} />}
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1 pb-1">
+                      <p className="truncate text-base font-black text-gray-950">{name || "Sua loja"}</p>
+                      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-medium text-gray-500">
+                        {storefrontTheme.show_reviews && <span>5,0</span>}
+                        <span>30-45 min</span>
+                        <span className="text-emerald-700">Aberto</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mb-3 flex gap-2 overflow-hidden">
+                    <span className={`text-xs font-bold ${storefrontTheme.category_style === "pill" ? "rounded-full bg-[#fff2e8] px-3 py-2" : "border-b-2 border-[var(--brand)] px-1 pb-2"}`}>Espetos</span>
+                    <span className={`text-xs font-bold text-gray-500 ${storefrontTheme.category_style === "pill" ? "rounded-full border border-gray-200 bg-white px-3 py-2" : "px-1 pb-2"}`}>Combos</span>
+                  </div>
+                  <div className={`grid gap-3 ${storefrontTheme.catalog_layout === "grid" ? "md:grid-cols-2" : "grid-cols-1"}`}>
+                    <div className={`rounded-2xl bg-white p-4 ${storefrontTheme.card_style === "outline" ? "border-2 border-gray-200" : storefrontTheme.card_style === "elevated" ? "shadow-[0_18px_32px_rgba(17,16,15,0.12)]" : "shadow-sm"}`}>
+                      <div className={`${storefrontTheme.catalog_layout === "grid" ? "h-24" : "h-14"} rounded-xl bg-[#f3ede5]`} />
+                      <p className="mt-3 font-bold text-gray-900">Espeto especial da casa</p>
+                      <p className="mt-1 text-sm text-gray-500">Com farofa, molho verde e acompanhamentos.</p>
+                      <p className="mt-3 text-sm font-black text-gray-950">R$ 18,90</p>
+                    </div>
+                    <div className={`rounded-2xl bg-white p-4 ${storefrontTheme.card_style === "outline" ? "border-2 border-gray-200" : storefrontTheme.card_style === "elevated" ? "shadow-[0_18px_32px_rgba(17,16,15,0.12)]" : "shadow-sm"}`}>
+                      <div className={`${storefrontTheme.catalog_layout === "grid" ? "h-24" : "h-14"} rounded-xl bg-[#f3ede5]`} />
+                      <p className="mt-3 font-bold text-gray-900">Combo promocional</p>
+                      <p className="mt-1 text-sm text-gray-500">Pedido rápido para destacar conversão e ticket médio.</p>
+                      <p className="mt-3 text-sm font-black text-gray-950">R$ 29,90</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
+        </CollapsibleSection>
 
+        <CollapsibleSection
+          icon={<ArrowDownUp size={20} />}
+          title="Integração iFood"
+          description="Conecte sua loja, teste a integração e puxe catálogo e pedidos sem complicação."
+          defaultOpen={false}
+        >
           <div className="mt-6 rounded-[24px] border border-[var(--line)] bg-[#fcfaf7] p-5">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0 flex-1">
@@ -1210,266 +1427,15 @@ export default function SettingsPage() {
               Enviar cardápio para o iFood
             </button>
           </div>
-        </section>
+        </CollapsibleSection>
 
-        <section className="surface-card rounded-[28px] p-6 xl:col-span-2">
-          <div className="flex items-center gap-3">
-            <div className="rounded-2xl bg-[var(--brand-soft)] p-3 text-[var(--brand)]">
-              <Palette size={20} />
-            </div>
-            <div>
-              <h2 className="text-xl font-black text-gray-950">Página de venda</h2>
-              <p className="text-sm text-gray-500">
-                Personalize a cara da vitrine pública de cada restaurante.
-              </p>
-            </div>
-          </div>
 
-          <div className="mt-6 grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
-            <div className="space-y-4">
-              <div className="grid gap-4">
-                <input
-                  value={storefrontHeadline}
-                  onChange={(e) => setStorefrontHeadline(e.target.value)}
-                  placeholder="Título comercial da vitrine"
-                  className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
-                />
-                <textarea
-                  value={storefrontSubheadline}
-                  onChange={(e) => setStorefrontSubheadline(e.target.value)}
-                  rows={3}
-                  placeholder="Texto curto para destacar proposta, promoção ou estilo da loja"
-                  className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
-                />
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <label className="space-y-2">
-                  <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
-                    Estilo do topo
-                    <FieldHint label="Escolhe como a capa aparece antes do cardápio: mais direta, lateral ou promocional." />
-                  </span>
-                  <select
-                    value={storefrontTheme.hero_style}
-                    onChange={(e) => updateStorefrontTheme("hero_style", e.target.value as StorefrontTheme["hero_style"])}
-                    className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
-                  >
-                    <option value="banner">Capa clássica</option>
-                    <option value="split">Capa com destaque lateral</option>
-                    <option value="spotlight">Capa promocional</option>
-                  </select>
-                </label>
-
-                <label className="space-y-2">
-                  <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
-                    Exibição dos produtos
-                    <FieldHint label="Escolhe se o cardápio fica em lista mais clássica ou em blocos destacados." />
-                  </span>
-                  <select
-                    value={storefrontTheme.catalog_layout}
-                    onChange={(e) => updateStorefrontTheme("catalog_layout", e.target.value as StorefrontTheme["catalog_layout"])}
-                    className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
-                  >
-                    <option value="grid">Blocos</option>
-                    <option value="list">Lista</option>
-                  </select>
-                </label>
-
-                <label className="space-y-2">
-                  <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
-                    Aparência dos produtos
-                    <FieldHint label="Ajusta o relevo dos cards dos produtos para deixar a leitura mais leve ou mais destacada." />
-                  </span>
-                  <select
-                    value={storefrontTheme.card_style}
-                    onChange={(e) => updateStorefrontTheme("card_style", e.target.value as StorefrontTheme["card_style"])}
-                    className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
-                  >
-                    <option value="soft">Suave</option>
-                    <option value="outline">Com contorno</option>
-                    <option value="elevated">Com profundidade</option>
-                  </select>
-                </label>
-
-                <label className="space-y-2">
-                  <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
-                    Menu de categorias
-                    <FieldHint label="Escolhe se as categorias aparecem como abas ou botões arredondados." />
-                  </span>
-                  <select
-                    value={storefrontTheme.category_style}
-                    onChange={(e) => updateStorefrontTheme("category_style", e.target.value as StorefrontTheme["category_style"])}
-                    className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
-                  >
-                    <option value="underline">Abas com linha</option>
-                    <option value="pill">Botões arredondados</option>
-                  </select>
-                </label>
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <label className="flex items-center justify-between rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
-                  <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
-                    Mostrar logo no topo
-                    <FieldHint label="Exibe o logo da loja sobre a capa da vitrine." />
-                  </span>
-                  <input
-                    type="checkbox"
-                    checked={storefrontTheme.show_logo}
-                    onChange={(e) => updateStorefrontTheme("show_logo", e.target.checked)}
-                    className="h-4 w-4 accent-[var(--brand)]"
-                  />
-                </label>
-                <label className="flex items-center justify-between rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
-                  <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
-                    Mostrar nota da loja
-                    <FieldHint label="Exibe a nota média da loja ao lado do nome." />
-                  </span>
-                  <input
-                    type="checkbox"
-                    checked={storefrontTheme.show_reviews}
-                    onChange={(e) => updateStorefrontTheme("show_reviews", e.target.checked)}
-                    className="h-4 w-4 accent-[var(--brand)]"
-                  />
-                </label>
-                <label className="flex items-center justify-between rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
-                  <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
-                    Usar imagens de capa
-                    <FieldHint label="Mostra banners ou foto principal na capa da vitrine." />
-                  </span>
-                  <input
-                    type="checkbox"
-                    checked={storefrontTheme.show_banners}
-                    onChange={(e) => updateStorefrontTheme("show_banners", e.target.checked)}
-                    className="h-4 w-4 accent-[var(--brand)]"
-                  />
-                </label>
-                <label className="flex items-center justify-between rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
-                  <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
-                    Mostrar destaques comerciais
-                    <FieldHint label="Exibe selos e blocos como mais pedido, entrega e promo do dia." />
-                  </span>
-                  <input
-                    type="checkbox"
-                    checked={storefrontTheme.show_badges}
-                    onChange={(e) => updateStorefrontTheme("show_badges", e.target.checked)}
-                    className="h-4 w-4 accent-[var(--brand)]"
-                  />
-                </label>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <input
-                  value={storefrontTheme.highlight_badge}
-                  onChange={(e) => updateStorefrontTheme("highlight_badge", e.target.value)}
-                  placeholder="Selo comercial: Ex. Mais pedido"
-                  className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
-                />
-                <input
-                  value={storefrontTheme.promo_text}
-                  onChange={(e) => updateStorefrontTheme("promo_text", e.target.value)}
-                  placeholder="Faixa promocional: Ex. Promo do dia"
-                  className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
-                />
-              </div>
-            </div>
-
-            <div className="rounded-[28px] border border-[var(--line)] bg-[#fcfaf7] p-5">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-gray-400">
-                Preview da vitrine
-              </p>
-              <div
-                className="mt-4 overflow-hidden rounded-[24px] border border-[var(--line)]"
-                style={{
-                  background:
-                    storefrontTheme.preset === "forest"
-                      ? "linear-gradient(135deg, #153b2e, #274d3c)"
-                      : storefrontTheme.preset === "berry"
-                        ? "linear-gradient(135deg, #5c1736, #9b2959)"
-                        : storefrontTheme.preset === "midnight"
-                          ? "linear-gradient(135deg, #12151d, #283246)"
-                          : "linear-gradient(135deg, #ff8b45, #f3b38c)",
-                }}
-              >
-                <div className="bg-black/15 px-4 pb-4 pt-4 text-white">
-                  <div className={`rounded-[22px] border border-white/15 bg-white/12 p-4 backdrop-blur-md ${
-                    storefrontTheme.hero_style === "split" ? "ml-auto max-w-[82%]" : "max-w-xl"
-                  }`}>
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        {storefrontTheme.show_badges && storefrontTheme.promo_text && (
-                          <span className="mb-2 inline-flex rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-gray-900">
-                            {storefrontTheme.promo_text || "Promo do dia"}
-                          </span>
-                        )}
-                        <h3 className="text-xl font-black leading-tight">
-                          {storefrontHeadline || name || "Sua loja no WhatsApp com cara profissional"}
-                        </h3>
-                        <p className="mt-2 text-sm leading-6 text-white/80">
-                          {storefrontSubheadline || "A capa da vitrine ajuda a destacar sua marca, sua promoção e sua proposta de valor."}
-                        </p>
-                      </div>
-                      <button className="rounded-full border border-white/20 bg-white/90 px-3 py-1.5 text-[11px] font-bold text-gray-800">
-                        Minha conta
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                <div className="bg-[#fffdfa] p-4">
-                  <div className="-mt-4 mb-3 flex items-end gap-3">
-                    {storefrontTheme.show_logo && (
-                      <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-[18px] border-[3px] border-white bg-white shadow-[0_10px_24px_rgba(17,16,15,0.12)]">
-                        {logoUrl ? <img src={logoUrl} className="h-full w-full object-cover" /> : <div className="h-full w-full" style={{ backgroundColor: primaryColor }} />}
-                      </div>
-                    )}
-                    <div className="min-w-0 flex-1 pb-1">
-                      <p className="truncate text-base font-black text-gray-950">{name || "Sua loja"}</p>
-                      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-medium text-gray-500">
-                        {storefrontTheme.show_reviews && <span>5,0</span>}
-                        <span>30-45 min</span>
-                        <span className="text-emerald-700">Aberto</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mb-3 flex gap-2 overflow-hidden">
-                    <span className={`text-xs font-bold ${storefrontTheme.category_style === "pill" ? "rounded-full bg-[#fff2e8] px-3 py-2" : "border-b-2 border-[var(--brand)] px-1 pb-2"}`}>
-                      Espetos
-                    </span>
-                    <span className={`text-xs font-bold text-gray-500 ${storefrontTheme.category_style === "pill" ? "rounded-full bg-white px-3 py-2 border border-gray-200" : "px-1 pb-2"}`}>
-                      Combos
-                    </span>
-                  </div>
-                  <div className={`grid gap-3 ${storefrontTheme.catalog_layout === "grid" ? "md:grid-cols-2" : "grid-cols-1"}`}>
-                    <div className={`rounded-2xl bg-white p-4 ${storefrontTheme.card_style === "outline" ? "border-2 border-gray-200" : storefrontTheme.card_style === "elevated" ? "shadow-[0_18px_32px_rgba(17,16,15,0.12)]" : "shadow-sm"}`}>
-                      <div className={`${storefrontTheme.catalog_layout === "grid" ? "h-24" : "h-14"} rounded-xl bg-[#f3ede5]`} />
-                      <p className="mt-3 font-bold text-gray-900">Espeto especial da casa</p>
-                      <p className="mt-1 text-sm text-gray-500">Com farofa, molho verde e acompanhamentos.</p>
-                      <p className="mt-3 text-sm font-black text-gray-950">R$ 18,90</p>
-                    </div>
-                    <div className={`rounded-2xl bg-white p-4 ${storefrontTheme.card_style === "outline" ? "border-2 border-gray-200" : storefrontTheme.card_style === "elevated" ? "shadow-[0_18px_32px_rgba(17,16,15,0.12)]" : "shadow-sm"}`}>
-                      <div className={`${storefrontTheme.catalog_layout === "grid" ? "h-24" : "h-14"} rounded-xl bg-[#f3ede5]`} />
-                      <p className="mt-3 font-bold text-gray-900">Combo promocional</p>
-                      <p className="mt-1 text-sm text-gray-500">Pedido rápido para destacar conversão e ticket médio.</p>
-                      <p className="mt-3 text-sm font-black text-gray-950">R$ 29,90</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="surface-card rounded-[28px] p-6">
-          <div className="flex items-center gap-3">
-            <div className="rounded-2xl bg-[var(--brand-soft)] p-3 text-[var(--brand)]">
-              <MapPin size={20} />
-            </div>
-            <div>
-              <h2 className="text-xl font-black text-gray-950">Taxas de entrega</h2>
-              <p className="text-sm text-gray-500">Defina preço e tempo por distância.</p>
-            </div>
-          </div>
-
+        <CollapsibleSection
+          icon={<MapPin size={20} />}
+          title="Taxas de entrega"
+          description="Defina preço e tempo por distância."
+          defaultOpen={false}
+        >
           <div className="mt-6 space-y-3">
             {tiers.map((tier, index) => (
               <div key={index} className="grid items-end gap-3 rounded-2xl border border-[var(--line)] bg-white p-4 md:grid-cols-[1fr_1fr_1fr_auto]">
@@ -1538,19 +1504,14 @@ export default function SettingsPage() {
               </span>
             </button>
           </div>
-        </section>
+        </CollapsibleSection>
 
-        <section className="surface-card rounded-[28px] p-6">
-          <div className="flex items-center gap-3">
-            <div className="rounded-2xl bg-[var(--brand-soft)] p-3 text-[var(--brand)]">
-              <Clock size={20} />
-            </div>
-            <div>
-              <h2 className="text-xl font-black text-gray-950">Horários de funcionamento</h2>
-              <p className="text-sm text-gray-500">Marque os dias e ajuste a janela de atendimento.</p>
-            </div>
-          </div>
-
+        <CollapsibleSection
+          icon={<Clock size={20} />}
+          title="Horários de funcionamento"
+          description="Marque os dias e ajuste a janela de atendimento."
+          defaultOpen={false}
+        >
           <div className="mt-6 space-y-3">
             {schedule.map((item, index) => (
               <div key={item.day_id} className="flex flex-col gap-3 rounded-2xl border border-[var(--line)] bg-white p-4 md:flex-row md:items-center md:justify-between">
@@ -1568,19 +1529,14 @@ export default function SettingsPage() {
               </div>
             ))}
           </div>
-        </section>
+        </CollapsibleSection>
 
-        <section className="surface-card rounded-[28px] p-6">
-          <div className="flex items-center gap-3">
-            <div className="rounded-2xl bg-[var(--brand-soft)] p-3 text-[var(--brand)]">
-              <Smartphone size={20} />
-            </div>
-            <div>
-              <h2 className="text-xl font-black text-gray-950">Impressão térmica</h2>
-              <p className="text-sm text-gray-500">Ajuste largura, tamanho e espessura da fonte do cupom.</p>
-            </div>
-          </div>
-
+        <CollapsibleSection
+          icon={<Smartphone size={20} />}
+          title="Impressão térmica"
+          description="Ajuste largura, tamanho e espessura da fonte do cupom."
+          defaultOpen={false}
+        >
           <div className="mt-6 grid gap-4 md:grid-cols-3">
             <label className="space-y-2">
               <span className="text-sm font-bold text-gray-700">Largura do papel</span>
@@ -1643,19 +1599,14 @@ export default function SettingsPage() {
               <p className="mt-2">Total ....................... R$ 35,90</p>
             </div>
           </div>
-        </section>
+        </CollapsibleSection>
 
-        <section className="surface-card rounded-[28px] p-6">
-          <div className="flex items-center gap-3">
-            <div className="rounded-2xl bg-[var(--brand-soft)] p-3 text-[var(--brand)]">
-              <Smartphone size={20} />
-            </div>
-            <div>
-              <h2 className="text-xl font-black text-gray-950">Conexão WhatsApp</h2>
-              <p className="text-sm text-gray-500">Acompanhe o status do robô e recarregue o QR code quando precisar.</p>
-            </div>
-          </div>
-
+        <CollapsibleSection
+          icon={<Smartphone size={20} />}
+          title="Conexão WhatsApp"
+          description="Acompanhe o status do robô e recarregue o QR code quando precisar."
+          defaultOpen={false}
+        >
           <div className="mt-6 grid gap-5 lg:grid-cols-[1fr_220px]">
             <div className="rounded-[24px] border border-[var(--line)] bg-[#fcfaf7] p-4">
               <div className="flex flex-wrap items-center gap-2">
@@ -1692,7 +1643,7 @@ export default function SettingsPage() {
               )}
             </div>
           </div>
-        </section>
+        </CollapsibleSection>
       </div>
 
       {cropSource && cropTarget && (
