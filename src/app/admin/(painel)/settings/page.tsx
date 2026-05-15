@@ -895,233 +895,266 @@ export default function SettingsPage() {
             <div>
               <h2 className="text-xl font-black text-gray-950">Integração iFood</h2>
               <p className="text-sm text-gray-500">
-                Prepare a conexão da loja para importar cardápio e receber pedidos do marketplace.
+                Conecte sua loja, teste a integração e puxe catálogo e pedidos sem complicação.
               </p>
             </div>
           </div>
 
-          <div className="mt-5 rounded-[24px] border border-[var(--line)] bg-[#fcfaf7] p-4">
-            <p className="text-sm font-bold text-gray-800">Como funciona a autenticação agora</p>
-            <p className="mt-1 text-sm leading-6 text-gray-500">
-              O Gestor usa OAuth centralizado do iFood no servidor. Para esta seção funcionar,
-              a Vercel precisa ter <span className="font-bold text-gray-700">IFOOD_CLIENT_ID</span>
-              {" "}e <span className="font-bold text-gray-700">IFOOD_CLIENT_SECRET</span>.
-            </p>
-            <p className="mt-2 text-sm leading-6 text-gray-500">
-              Para ambiente de testes, o fluxo mais simples é consumir eventos por polling e gerar
-              pedidos de teste no portal do iFood.
-            </p>
-          </div>
-
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
-            <label className="space-y-2">
-              <span className="text-sm font-bold text-gray-700">ID do merchant no iFood</span>
-              <input
-                value={ifoodIntegration.merchantId}
-                onChange={(e) => updateIfoodIntegration("merchantId", e.target.value)}
-                placeholder="Ex.: 820af392-002c-47b1-bfae-d7ef31743c99"
-                className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
-              />
-            </label>
-
-            <label className="space-y-2">
-              <span className="text-sm font-bold text-gray-700">Nome da loja no iFood</span>
-              <input
-                value={ifoodIntegration.merchantName}
-                onChange={(e) => updateIfoodIntegration("merchantName", e.target.value)}
-                placeholder="Ex.: Restaurante Villa Costa"
-                className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
-              />
-            </label>
-
-            <label className="space-y-2">
-              <span className="text-sm font-bold text-gray-700">ID do catálogo</span>
-              <input
-                value={ifoodIntegration.catalogId}
-                onChange={(e) => updateIfoodIntegration("catalogId", e.target.value)}
-                placeholder="Ex.: catálogo principal do delivery"
-                className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
-              />
-            </label>
-
-            <label className="space-y-2">
-              <span className="text-sm font-bold text-gray-700">Status da integração</span>
-              <select
-                value={ifoodIntegration.status}
-                onChange={(e) =>
-                  updateIfoodIntegration(
-                    "status",
-                    e.target.value as IfoodIntegrationState["status"],
-                  )
-                }
-                className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
-              >
-                <option value="disconnected">Desconectada</option>
-                <option value="configuring">Em configuração</option>
-                <option value="homologation">Em homologação</option>
-                <option value="connected">Conectada</option>
-              </select>
-            </label>
-
-            <label className="space-y-2 md:col-span-2">
-              <span className="flex items-center gap-2 text-sm font-bold text-gray-700">
-                Estratégia de sincronização
-                <FieldHint label="Define se o cardápio nasce do iFood, do Gestor ou se ambos trocam alterações futuramente." />
-              </span>
-              <select
-                value={ifoodIntegration.syncMode}
-                onChange={(e) =>
-                  updateIfoodIntegration(
-                    "syncMode",
-                    e.target.value as IfoodIntegrationState["syncMode"],
-                  )
-                }
-                className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
-              >
-                <option value="ifood_to_gestor">Importar do iFood para o Gestor</option>
-                <option value="gestor_to_ifood">Editar no Gestor e publicar no iFood</option>
-                <option value="bidirectional">Sincronização bidirecional</option>
-              </select>
-            </label>
-          </div>
-
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            <label className="flex items-center justify-between rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
-              <span className="text-sm font-bold text-gray-700">Sincronizar catálogo</span>
-              <input
-                type="checkbox"
-                checked={ifoodIntegration.catalogSyncEnabled}
-                onChange={(e) => updateIfoodIntegration("catalogSyncEnabled", e.target.checked)}
-                className="h-4 w-4 accent-[var(--brand)]"
-              />
-            </label>
-            <label className="flex items-center justify-between rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
-              <span className="text-sm font-bold text-gray-700">Receber pedidos</span>
-              <input
-                type="checkbox"
-                checked={ifoodIntegration.orderSyncEnabled}
-                onChange={(e) => updateIfoodIntegration("orderSyncEnabled", e.target.checked)}
-                className="h-4 w-4 accent-[var(--brand)]"
-              />
-            </label>
-            <label className="flex items-center justify-between rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
-              <span className="text-sm font-bold text-gray-700">Importar imagens</span>
-              <input
-                type="checkbox"
-                checked={ifoodIntegration.importImages}
-                onChange={(e) => updateIfoodIntegration("importImages", e.target.checked)}
-                className="h-4 w-4 accent-[var(--brand)]"
-              />
-            </label>
-          </div>
-
-          <label className="mt-5 block space-y-2">
-            <span className="text-sm font-bold text-gray-700">Observações da integração</span>
-            <textarea
-              value={ifoodIntegration.notes}
-              onChange={(e) => updateIfoodIntegration("notes", e.target.value)}
-              rows={3}
-              placeholder="Ex.: loja aguardando homologação do app no iFood, catálogo de delivery principal, integração centralizada."
-              className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
-            />
-          </label>
-
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-2xl border border-[var(--line)] bg-white px-4 py-4">
-              <p className="text-xs font-bold uppercase tracking-[0.14em] text-gray-400">Conexão</p>
-              <p className="mt-2 font-black text-gray-950">
-                {ifoodIntegration.status === "connected"
-                  ? "Ativa"
-                  : ifoodIntegration.status === "homologation"
-                    ? "Homologação"
-                    : ifoodIntegration.status === "configuring"
-                      ? "Em preparo"
-                      : "Não conectada"}
-              </p>
-              <p className="mt-1 text-sm text-gray-500">
-                {ifoodIntegration.connectedAt
-                  ? `Desde ${formatSyncDate(ifoodIntegration.connectedAt)}`
-                  : "Sem autenticação concluída ainda"}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-[var(--line)] bg-white px-4 py-4">
-              <p className="text-xs font-bold uppercase tracking-[0.14em] text-gray-400">Importação</p>
-              <p className="mt-2 font-black text-gray-950">{formatSyncDate(ifoodIntegration.lastCatalogImportAt)}</p>
-              <p className="mt-1 text-sm text-gray-500">Última leitura do catálogo iFood</p>
-            </div>
-            <div className="rounded-2xl border border-[var(--line)] bg-white px-4 py-4">
-              <p className="text-xs font-bold uppercase tracking-[0.14em] text-gray-400">Exportação</p>
-              <p className="mt-2 font-black text-gray-950">{formatSyncDate(ifoodIntegration.lastCatalogExportAt)}</p>
-              <p className="mt-1 text-sm text-gray-500">Último envio do Gestor para o iFood</p>
-            </div>
-            <div className="rounded-2xl border border-[var(--line)] bg-white px-4 py-4">
-              <p className="text-xs font-bold uppercase tracking-[0.14em] text-gray-400">Pedidos</p>
-              <p className="mt-2 font-black text-gray-950">{formatSyncDate(ifoodIntegration.lastOrderSyncAt)}</p>
-              <p className="mt-1 text-sm text-gray-500">Último evento confirmado no painel</p>
-            </div>
-          </div>
-
-          <div
-            className={`mt-5 rounded-[24px] border px-4 py-4 ${
-              ifoodConnectionCheck.status === "error"
-                ? "border-red-200 bg-red-50"
-                : ifoodConnectionCheck.status === "success"
-                  ? "border-emerald-200 bg-emerald-50"
-                  : "border-[var(--line)] bg-white"
-            }`}
-          >
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-bold text-gray-900">Diagnóstico da conexão</p>
-                <p className="mt-1 text-sm text-gray-500">
+          <div className="mt-6 rounded-[24px] border border-[var(--line)] bg-[#fcfaf7] p-5">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-gray-400">
+                  Situação atual
+                </p>
+                <p className="mt-2 text-lg font-black text-gray-950">
+                  {ifoodConnectionCheck.status === "success"
+                    ? "Loja pronta para testar"
+                    : ifoodConnectionCheck.status === "error"
+                      ? "Revisar conexão"
+                      : ifoodIntegration.status === "connected"
+                        ? "Integração conectada"
+                        : ifoodIntegration.status === "homologation"
+                          ? "Aguardando homologação"
+                          : ifoodIntegration.status === "configuring"
+                            ? "Configuração em andamento"
+                            : "Conecte sua loja ao iFood"}
+                </p>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
                   {ifoodConnectionCheck.status === "idle"
-                    ? "Teste a conexão para descobrir rapidamente se o problema está nas credenciais, no merchant ou no catálogo."
+                    ? "Informe o código da loja no iFood, teste a conexão e depois importe o catálogo ou sincronize pedidos de teste."
                     : ifoodConnectionCheck.summary}
                 </p>
               </div>
-              {ifoodConnectionCheck.checkedAt && (
-                <span className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">
-                  Última checagem: {formatSyncDate(ifoodConnectionCheck.checkedAt)}
+              <div className="grid min-w-[220px] gap-3 sm:grid-cols-3 lg:grid-cols-1">
+                <div className="rounded-2xl border border-white/70 bg-white px-4 py-3">
+                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">Conexão</p>
+                  <p className="mt-2 text-sm font-black text-gray-950">
+                    {ifoodConnectionCheck.status === "success"
+                      ? "Validada"
+                      : ifoodConnectionCheck.status === "error"
+                        ? "Com erro"
+                        : ifoodIntegration.status === "homologation"
+                          ? "Homologação"
+                          : ifoodIntegration.status === "configuring"
+                            ? "Em preparo"
+                            : "Pendente"}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-white/70 bg-white px-4 py-3">
+                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">Catálogo</p>
+                  <p className="mt-2 text-sm font-black text-gray-950">
+                    {ifoodIntegration.lastCatalogImportAt ? "Importado" : "Ainda não puxado"}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-white/70 bg-white px-4 py-3">
+                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">Pedidos</p>
+                  <p className="mt-2 text-sm font-black text-gray-950">
+                    {ifoodIntegration.lastOrderSyncAt ? "Sincronizado" : "Ainda não testado"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-4 md:grid-cols-[1.1fr_0.9fr]">
+              <label className="space-y-2">
+                <span className="text-sm font-bold text-gray-700">Código da loja no iFood</span>
+                <input
+                  value={ifoodIntegration.merchantId}
+                  onChange={(e) => updateIfoodIntegration("merchantId", e.target.value)}
+                  placeholder="Cole aqui o Merchant ID ou Merchant UUID"
+                  className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+                />
+                <p className="text-xs text-gray-400">
+                  Você encontra esse código na área de testes do portal do iFood.
+                </p>
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-sm font-bold text-gray-700">Nome da loja no iFood</span>
+                <input
+                  value={ifoodIntegration.merchantName}
+                  onChange={(e) => updateIfoodIntegration("merchantName", e.target.value)}
+                  placeholder="Ex.: Loja teste do iFood"
+                  className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+                />
+                <p className="text-xs text-gray-400">
+                  Campo opcional, usado só para facilitar a identificação da loja.
+                </p>
+              </label>
+            </div>
+
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={handleCheckIfoodConnection}
+                disabled={isCheckingIfoodConnection}
+                className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700 disabled:cursor-not-allowed disabled:text-gray-400"
+              >
+                <span className="inline-flex items-center gap-2">
+                  {isCheckingIfoodConnection && <Loader2 size={16} className="animate-spin" />}
+                  Testar conexão
                 </span>
+              </button>
+              <button
+                type="button"
+                onClick={handleImportIfoodCatalog}
+                disabled={isImportingIfoodCatalog || !ifoodIntegration.merchantId}
+                className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700 disabled:cursor-not-allowed disabled:text-gray-400"
+              >
+                <span className="inline-flex items-center gap-2">
+                  {isImportingIfoodCatalog && <Loader2 size={16} className="animate-spin" />}
+                  Importar catálogo do iFood
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={handleSyncIfoodOrders}
+                disabled={isSyncingIfoodOrders || !ifoodIntegration.merchantId}
+                className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700 disabled:cursor-not-allowed disabled:text-gray-400"
+              >
+                <span className="inline-flex items-center gap-2">
+                  {isSyncingIfoodOrders && <Loader2 size={16} className="animate-spin" />}
+                  Sincronizar pedidos de teste
+                </span>
+              </button>
+            </div>
+
+            <div
+              className={`mt-5 rounded-[22px] border px-4 py-4 ${
+                ifoodConnectionCheck.status === "error"
+                  ? "border-red-200 bg-red-50"
+                  : ifoodConnectionCheck.status === "success"
+                    ? "border-emerald-200 bg-emerald-50"
+                    : "border-[var(--line)] bg-white"
+              }`}
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-bold text-gray-900">Diagnóstico rápido</p>
+                  <p className="mt-1 text-sm text-gray-500">
+                    {ifoodConnectionCheck.status === "idle"
+                      ? "Quando você testar a conexão, o sistema mostra aqui se a autenticação, a loja e o catálogo responderam corretamente."
+                      : ifoodConnectionCheck.summary}
+                  </p>
+                </div>
+                {ifoodConnectionCheck.checkedAt && (
+                  <span className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">
+                    Última checagem: {formatSyncDate(ifoodConnectionCheck.checkedAt)}
+                  </span>
+                )}
+              </div>
+
+              {(ifoodConnectionCheck.merchantFound || ifoodConnectionCheck.catalogResolved) && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <span className="rounded-full bg-white px-3 py-2 text-xs font-bold text-gray-700">
+                    Credenciais: {ifoodConnectionCheck.status === "success" ? "ok" : "pendente"}
+                  </span>
+                  <span className="rounded-full bg-white px-3 py-2 text-xs font-bold text-gray-700">
+                    Loja: {ifoodConnectionCheck.merchantFound ? "localizada" : "não validada"}
+                  </span>
+                  <span className="rounded-full bg-white px-3 py-2 text-xs font-bold text-gray-700">
+                    Catálogo: {ifoodConnectionCheck.catalogResolved ? "pronto" : "aguardando"}
+                  </span>
+                </div>
               )}
             </div>
 
-            <div className="mt-4 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl border border-white/70 bg-white/80 px-4 py-3">
-                <p className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">Credenciais</p>
-                <p className="mt-2 text-sm font-black text-gray-950">
-                  {ifoodConnectionCheck.status === "success"
-                    ? "OAuth validado"
-                    : ifoodConnectionCheck.status === "error"
-                      ? "Revisar"
-                      : "Pendente"}
-                </p>
-              </div>
-              <div className="rounded-2xl border border-white/70 bg-white/80 px-4 py-3">
-                <p className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">Merchant</p>
-                <p className="mt-2 text-sm font-black text-gray-950">
-                  {ifoodConnectionCheck.merchantFound ? "Localizado" : "Não validado"}
-                </p>
-              </div>
-              <div className="rounded-2xl border border-white/70 bg-white/80 px-4 py-3">
-                <p className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">Catálogo</p>
-                <p className="mt-2 text-sm font-black text-gray-950">
-                  {ifoodConnectionCheck.catalogResolved
-                    ? ifoodConnectionCheck.resolvedCatalogId || "Resolvido"
-                    : "Aguardando"}
-                </p>
-              </div>
-            </div>
+            <details className="mt-5 rounded-[22px] border border-[var(--line)] bg-white">
+              <summary className="cursor-pointer list-none px-4 py-4 text-sm font-bold text-gray-700">
+                Configurações avançadas da integração
+              </summary>
+              <div className="border-t border-[var(--line)] px-4 py-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="space-y-2">
+                    <span className="text-sm font-bold text-gray-700">ID do catálogo</span>
+                    <input
+                      value={ifoodIntegration.catalogId}
+                      onChange={(e) => updateIfoodIntegration("catalogId", e.target.value)}
+                      placeholder="Catálogo principal do delivery"
+                      className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+                    />
+                  </label>
 
-            {ifoodConnectionCheck.details.length > 0 && (
-              <div className="mt-4 space-y-2">
-                {ifoodConnectionCheck.details.map((detail, index) => (
-                  <div key={`${detail}-${index}`} className="rounded-2xl border border-white/70 bg-white/80 px-4 py-3 text-sm text-gray-600">
-                    {detail}
-                  </div>
-                ))}
+                  <label className="space-y-2">
+                    <span className="text-sm font-bold text-gray-700">Etapa da integração</span>
+                    <select
+                      value={ifoodIntegration.status}
+                      onChange={(e) =>
+                        updateIfoodIntegration(
+                          "status",
+                          e.target.value as IfoodIntegrationState["status"],
+                        )
+                      }
+                      className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+                    >
+                      <option value="disconnected">Desconectada</option>
+                      <option value="configuring">Em configuração</option>
+                      <option value="homologation">Em homologação</option>
+                      <option value="connected">Conectada</option>
+                    </select>
+                  </label>
+
+                  <label className="space-y-2 md:col-span-2">
+                    <span className="text-sm font-bold text-gray-700">Estratégia de sincronização</span>
+                    <select
+                      value={ifoodIntegration.syncMode}
+                      onChange={(e) =>
+                        updateIfoodIntegration(
+                          "syncMode",
+                          e.target.value as IfoodIntegrationState["syncMode"],
+                        )
+                      }
+                      className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+                    >
+                      <option value="ifood_to_gestor">Importar do iFood para o Gestor</option>
+                      <option value="gestor_to_ifood">Editar no Gestor e publicar no iFood</option>
+                      <option value="bidirectional">Sincronização bidirecional</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                  <label className="flex items-center justify-between rounded-2xl border border-[var(--line)] bg-[#fcfaf7] px-4 py-3">
+                    <span className="text-sm font-bold text-gray-700">Sincronizar catálogo</span>
+                    <input
+                      type="checkbox"
+                      checked={ifoodIntegration.catalogSyncEnabled}
+                      onChange={(e) => updateIfoodIntegration("catalogSyncEnabled", e.target.checked)}
+                      className="h-4 w-4 accent-[var(--brand)]"
+                    />
+                  </label>
+                  <label className="flex items-center justify-between rounded-2xl border border-[var(--line)] bg-[#fcfaf7] px-4 py-3">
+                    <span className="text-sm font-bold text-gray-700">Receber pedidos</span>
+                    <input
+                      type="checkbox"
+                      checked={ifoodIntegration.orderSyncEnabled}
+                      onChange={(e) => updateIfoodIntegration("orderSyncEnabled", e.target.checked)}
+                      className="h-4 w-4 accent-[var(--brand)]"
+                    />
+                  </label>
+                  <label className="flex items-center justify-between rounded-2xl border border-[var(--line)] bg-[#fcfaf7] px-4 py-3">
+                    <span className="text-sm font-bold text-gray-700">Importar imagens</span>
+                    <input
+                      type="checkbox"
+                      checked={ifoodIntegration.importImages}
+                      onChange={(e) => updateIfoodIntegration("importImages", e.target.checked)}
+                      className="h-4 w-4 accent-[var(--brand)]"
+                    />
+                  </label>
+                </div>
+
+                <label className="mt-4 block space-y-2">
+                  <span className="text-sm font-bold text-gray-700">Observações</span>
+                  <textarea
+                    value={ifoodIntegration.notes}
+                    onChange={(e) => updateIfoodIntegration("notes", e.target.value)}
+                    rows={3}
+                    placeholder="Anote aqui detalhes da homologação, da loja teste ou do catálogo usado."
+                    className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+                  />
+                </label>
               </div>
-            )}
+            </details>
           </div>
 
           <div className="mt-5 flex flex-col gap-3 sm:flex-row">
@@ -1138,22 +1171,6 @@ export default function SettingsPage() {
             </button>
             <button
               type="button"
-              onClick={handleSyncIfoodOrders}
-              disabled={isSyncingIfoodOrders || !ifoodIntegration.merchantId}
-              className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700 disabled:cursor-not-allowed disabled:text-gray-400"
-              title={
-                ifoodIntegration.merchantId
-                  ? "Faz um polling manual dos eventos da loja e cria/atualiza os pedidos no Gestor."
-                  : "Informe o ID do merchant para liberar a sincronização de pedidos."
-              }
-            >
-              <span className="inline-flex items-center gap-2">
-                {isSyncingIfoodOrders && <Loader2 size={16} className="animate-spin" />}
-                Sincronizar pedidos de teste
-              </span>
-            </button>
-            <button
-              type="button"
               onClick={handleImportIfoodCatalog}
               disabled={isImportingIfoodCatalog || !ifoodIntegration.merchantId}
               className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700 disabled:cursor-not-allowed disabled:text-gray-400"
@@ -1166,6 +1183,22 @@ export default function SettingsPage() {
               <span className="inline-flex items-center gap-2">
                 {isImportingIfoodCatalog && <Loader2 size={16} className="animate-spin" />}
                 Importar catálogo do iFood
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={handleSyncIfoodOrders}
+              disabled={isSyncingIfoodOrders || !ifoodIntegration.merchantId}
+              className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700 disabled:cursor-not-allowed disabled:text-gray-400"
+              title={
+                ifoodIntegration.merchantId
+                  ? "Faz um polling manual dos eventos da loja e cria/atualiza os pedidos no Gestor."
+                  : "Informe o ID do merchant para liberar a sincronização de pedidos."
+              }
+            >
+              <span className="inline-flex items-center gap-2">
+                {isSyncingIfoodOrders && <Loader2 size={16} className="animate-spin" />}
+                Sincronizar pedidos de teste
               </span>
             </button>
             <button

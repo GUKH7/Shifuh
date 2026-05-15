@@ -3,6 +3,18 @@ import { getIfoodAccessToken } from "@/lib/ifood/catalog";
 const IFOOD_MERCHANT_API_BASE_URL =
   process.env.IFOOD_MERCHANT_API_BASE_URL || "https://merchant-api.ifood.com.br";
 
+export class IfoodApiError extends Error {
+  status: number;
+  responseBody: string;
+
+  constructor(status: number, responseBody: string) {
+    super(`iFood API ${status}: ${responseBody || "request failed"}`);
+    this.name = "IfoodApiError";
+    this.status = status;
+    this.responseBody = responseBody;
+  }
+}
+
 export type IfoodOrderEvent = {
   id: string;
   code: string;
@@ -36,24 +48,41 @@ async function ifoodOrderRequest<T>(
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`iFood API ${response.status}: ${text || "request failed"}`);
+    throw new IfoodApiError(response.status, text || "request failed");
   }
 
   return response.json() as Promise<T>;
 }
 
 export async function pollIfoodOrderEvents(merchantId: string) {
-  const data = await ifoodOrderRequest<IfoodOrderEvent[]>(
-    "/events/v1.0/events:polling?categories=FOOD&groups=ORDER_STATUS",
-    {
-      method: "GET",
-      headers: {
-        "x-polling-merchants": merchantId,
-      },
-    },
-  );
+  const attempts = [
+    "/events/v1.0/events:polling",
+    "/events/v1.0/events:polling?categories=FOOD",
+    "/events/v1.0/events:polling?groups=ORDER_STATUS",
+  ];
 
-  return Array.isArray(data) ? data : [];
+  let lastError: unknown = null;
+
+  for (const path of attempts) {
+    try {
+      const data = await ifoodOrderRequest<IfoodOrderEvent[]>(path, {
+        method: "GET",
+        headers: {
+          "x-polling-merchants": merchantId,
+        },
+      });
+
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      lastError = error;
+
+      if (!(error instanceof IfoodApiError) || error.status !== 400) {
+        throw error;
+      }
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("Falha ao consultar eventos do iFood.");
 }
 
 export async function acknowledgeIfoodOrderEvents(eventIds: string[]) {

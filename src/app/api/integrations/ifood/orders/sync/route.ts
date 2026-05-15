@@ -3,6 +3,7 @@ import { createAdminClient, createClient } from "@/lib/supabase/server";
 import {
   acknowledgeIfoodOrderEvents,
   getIfoodOrderDetails,
+  IfoodApiError,
   mapIfoodEventCodeToStatus,
   pollIfoodOrderEvents,
   type IfoodOrderEvent,
@@ -420,6 +421,18 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("Erro ao sincronizar pedidos do iFood:", error);
+
+    if (error instanceof IfoodApiError && error.status === 400) {
+      return NextResponse.json(
+        {
+          error:
+            "O iFood rejeitou o polling de pedidos com Bad Request. Isso normalmente acontece quando o app ainda não tem liberação efetiva para Order/Events, quando a loja de teste não está pronta para esse módulo, ou quando o merchant usado não é aceito nesse endpoint.",
+          details: error.responseBody,
+        },
+        { status: 400 },
+      );
+    }
+
     return NextResponse.json(
       {
         error:
