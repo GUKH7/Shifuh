@@ -56,6 +56,10 @@ function formatDate(date: string) {
   return new Date(date).toLocaleDateString("pt-BR");
 }
 
+function formatInputDate(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
 function getDayLabel(date: string) {
   const target = new Date(date);
   const now = new Date();
@@ -181,6 +185,8 @@ export default function HistoryPage() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all");
   const [period, setPeriod] = useState<PeriodKey>("30d");
+  const [customStartDate, setCustomStartDate] = useState("");
+  const [customEndDate, setCustomEndDate] = useState("");
   const [page, setPage] = useState(1);
   const { showToast } = useToast();
 
@@ -223,6 +229,13 @@ export default function HistoryPage() {
 
     return orders.filter((order) => {
       const matchesPeriod = isWithinPeriod(order.created_at, period);
+      const matchesCustomPeriod =
+        period !== "custom"
+          ? true
+          : isWithinPeriod(order.created_at, period, {
+              start: customStartDate,
+              end: customEndDate,
+            });
       const matchesFilter =
         filter === "all"
           ? true
@@ -237,9 +250,9 @@ export default function HistoryPage() {
             order.customer_name.toLowerCase().includes(term) ||
             order.customer_phone.toLowerCase().includes(term);
 
-      return matchesPeriod && matchesFilter && matchesSearch;
+      return (period === "custom" ? matchesCustomPeriod : matchesPeriod) && matchesFilter && matchesSearch;
     });
-  }, [filter, orders, period, query]);
+  }, [customEndDate, customStartDate, filter, orders, period, query]);
 
   const totalPages = Math.max(1, Math.ceil(visibleOrders.length / PAGE_SIZE));
   const paginatedOrders = visibleOrders.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -286,7 +299,7 @@ export default function HistoryPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [query, filter, period]);
+  }, [customEndDate, customStartDate, query, filter, period]);
 
   const handleCopyOrder = async (orderId: string) => {
     try {
@@ -371,7 +384,17 @@ export default function HistoryPage() {
           {PERIOD_OPTIONS.map((item) => (
             <button
               key={item.id}
-              onClick={() => setPeriod(item.id)}
+              onClick={() => {
+                setPeriod(item.id);
+
+                if (item.id === "custom" && (!customStartDate || !customEndDate)) {
+                  const end = new Date();
+                  const start = new Date();
+                  start.setDate(end.getDate() - 29);
+                  setCustomStartDate(formatInputDate(start));
+                  setCustomEndDate(formatInputDate(end));
+                }
+              }}
               className={`rounded-full px-4 py-2 text-sm font-bold transition-colors ${
                 period === item.id
                   ? "bg-[var(--brand-soft)] text-[var(--brand)]"
@@ -382,6 +405,30 @@ export default function HistoryPage() {
             </button>
           ))}
         </div>
+
+        {period === "custom" && (
+          <div className="mt-4 grid gap-3 rounded-2xl border border-[var(--line)] bg-[#fcfaf7] p-4 md:grid-cols-2">
+            <label className="flex flex-col gap-2 text-sm font-semibold text-gray-700">
+              Data inicial
+              <input
+                type="date"
+                value={customStartDate}
+                onChange={(event) => setCustomStartDate(event.target.value)}
+                className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm font-medium text-gray-700 outline-none"
+              />
+            </label>
+            <label className="flex flex-col gap-2 text-sm font-semibold text-gray-700">
+              Data final
+              <input
+                type="date"
+                value={customEndDate}
+                onChange={(event) => setCustomEndDate(event.target.value)}
+                min={customStartDate || undefined}
+                className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm font-medium text-gray-700 outline-none"
+              />
+            </label>
+          </div>
+        )}
 
         <div className="mt-8 overflow-hidden rounded-[24px] border border-[var(--line)] bg-white">
           <div className="grid grid-cols-[88px_1.1fr_1fr_0.9fr_0.9fr_140px_132px] gap-4 border-b border-[var(--line)] px-6 py-4 text-xs font-bold uppercase tracking-[0.16em] text-gray-400">
