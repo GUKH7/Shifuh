@@ -77,9 +77,7 @@ export default function AdminSidebar({ isCollapsed, toggleSidebar }: AdminSideba
     >
       <button
         onClick={toggleSidebar}
-        className={`absolute top-8 z-50 flex h-9 w-9 items-center justify-center rounded-full border border-[var(--line)] bg-white text-gray-500 shadow-sm transition-colors hover:bg-[var(--brand-soft)] hover:text-[var(--brand)] ${
-          isCollapsed ? "right-2" : "right-3"
-        }`}
+        className="absolute -right-[18px] top-[86px] z-50 flex h-9 w-9 items-center justify-center rounded-full border border-[var(--line)] bg-white text-gray-500 shadow-sm transition-colors hover:bg-[var(--brand-soft)] hover:text-[var(--brand)]"
       >
         {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
       </button>
