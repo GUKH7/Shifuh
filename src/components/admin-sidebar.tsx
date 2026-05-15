@@ -71,7 +71,7 @@ export default function AdminSidebar({ isCollapsed, toggleSidebar }: AdminSideba
 
   return (
     <aside
-      className={`fixed left-0 top-0 z-50 flex h-screen flex-col overflow-hidden border-r border-[var(--line)] bg-white transition-all duration-300 ${
+      className={`fixed left-0 top-0 z-50 flex h-screen flex-col overflow-visible border-r border-[var(--line)] bg-white transition-all duration-300 ${
         isCollapsed ? "w-20" : "w-64"
       }`}
     >
