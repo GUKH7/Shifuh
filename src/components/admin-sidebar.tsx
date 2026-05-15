@@ -77,7 +77,7 @@ export default function AdminSidebar({ isCollapsed, toggleSidebar }: AdminSideba
     >
       <button
         onClick={toggleSidebar}
-        className="absolute -right-3 top-8 z-50 rounded-full border border-[var(--line)] bg-white p-1 text-gray-500 shadow-sm transition-colors hover:bg-[var(--brand-soft)] hover:text-[var(--brand)]"
+        className="absolute -right-4 top-8 z-50 flex h-9 w-9 items-center justify-center rounded-full border border-[var(--line)] bg-white text-gray-500 shadow-sm transition-colors hover:bg-[var(--brand-soft)] hover:text-[var(--brand)]"
       >
         {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
       </button>
@@ -101,11 +101,6 @@ export default function AdminSidebar({ isCollapsed, toggleSidebar }: AdminSideba
       </div>
 
       <div className={`px-4 py-6 ${isCollapsed ? "px-2" : ""}`}>
-        {!isCollapsed && (
-          <p className="mb-3 px-3 text-xs font-bold uppercase tracking-[0.18em] text-gray-400">
-            Operação
-          </p>
-        )}
         <nav className="space-y-1.5">
           {MENU_ITEMS.map((item) => {
             const isActive = pathname === item.href;
