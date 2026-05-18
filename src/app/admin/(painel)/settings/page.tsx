@@ -911,6 +911,11 @@ export default function SettingsPage() {
                       Trocar logo
                       <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={uploading} />
                     </label>
+                    <div className="rounded-2xl border border-dashed border-[var(--line)] bg-white px-4 py-3 text-sm text-gray-500">
+                      <p className="font-bold text-gray-700">Logo recomendado</p>
+                      <p className="mt-1">Formato `PNG` ou `JPG`, proporção quadrada `1:1`.</p>
+                      <p className="mt-1">Tamanho ideal: `512x512 px` ou maior.</p>
+                    </div>
                     <div className="grid gap-3 md:grid-cols-2">
                       <label className="rounded-2xl border border-[var(--line)] bg-white p-3">
                         <span className="mb-2 inline-flex items-center gap-2 text-sm font-bold text-gray-700">
@@ -946,6 +951,11 @@ export default function SettingsPage() {
                     <span className="mt-1 text-xs text-gray-400">Suba imagens para destacar promoções. Você poderá recortar antes de salvar.</span>
                     <input type="file" accept="image/*" className="hidden" onChange={handleBannerUpload} disabled={uploading} />
                   </label>
+                  <div className="rounded-2xl border border-dashed border-[var(--line)] bg-white px-4 py-3 text-sm text-gray-500">
+                    <p className="font-bold text-gray-700">Banner recomendado</p>
+                    <p className="mt-1">Formato `PNG` ou `JPG`, proporção horizontal `3:1`.</p>
+                    <p className="mt-1">Tamanho ideal: `1500x500 px` ou maior.</p>
+                  </div>
                   <div className="space-y-2">
                     {banners.map((banner, index) => (
                       <div key={index} className="flex items-center justify-between rounded-2xl border border-[var(--line)] bg-white p-2.5">
@@ -975,73 +985,6 @@ export default function SettingsPage() {
                       className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
                     />
                   </div>
-                </div>
-              </div>
-
-              <div className="rounded-[24px] border border-[var(--line)] bg-[#fcfaf7] p-5">
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-gray-400">Layout da vitrine</p>
-                <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  <label className="space-y-2">
-                    <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
-                      Estilo do topo
-                      <FieldHint label="Escolhe como a capa aparece antes do cardápio: mais direta, lateral ou promocional." />
-                    </span>
-                    <select
-                      value={storefrontTheme.hero_style}
-                      onChange={(e) => updateStorefrontTheme("hero_style", e.target.value as StorefrontTheme["hero_style"])}
-                      className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
-                    >
-                      <option value="banner">Capa clássica</option>
-                      <option value="split">Capa com destaque lateral</option>
-                      <option value="spotlight">Capa promocional</option>
-                    </select>
-                  </label>
-
-                  <label className="space-y-2">
-                    <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
-                      Exibição dos produtos
-                      <FieldHint label="Escolhe se o cardápio fica em lista mais clássica ou em blocos destacados." />
-                    </span>
-                    <select
-                      value={storefrontTheme.catalog_layout}
-                      onChange={(e) => updateStorefrontTheme("catalog_layout", e.target.value as StorefrontTheme["catalog_layout"])}
-                      className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
-                    >
-                      <option value="grid">Blocos</option>
-                      <option value="list">Lista</option>
-                    </select>
-                  </label>
-
-                  <label className="space-y-2">
-                    <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
-                      Aparência dos produtos
-                      <FieldHint label="Ajusta o relevo dos cards dos produtos para deixar a leitura mais leve ou mais destacada." />
-                    </span>
-                    <select
-                      value={storefrontTheme.card_style}
-                      onChange={(e) => updateStorefrontTheme("card_style", e.target.value as StorefrontTheme["card_style"])}
-                      className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
-                    >
-                      <option value="soft">Suave</option>
-                      <option value="outline">Com contorno</option>
-                      <option value="elevated">Com profundidade</option>
-                    </select>
-                  </label>
-
-                  <label className="space-y-2">
-                    <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm font-bold text-gray-700">
-                      Menu de categorias
-                      <FieldHint label="Escolhe se as categorias aparecem como abas ou botões arredondados." />
-                    </span>
-                    <select
-                      value={storefrontTheme.category_style}
-                      onChange={(e) => updateStorefrontTheme("category_style", e.target.value as StorefrontTheme["category_style"])}
-                      className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
-                    >
-                      <option value="underline">Abas com linha</option>
-                      <option value="pill">Botões arredondados</option>
-                    </select>
-                  </label>
                 </div>
               </div>
 
