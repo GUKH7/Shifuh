@@ -86,91 +86,33 @@ interface OrderResponse {
 }
 
 interface StorefrontTheme {
-  preset: "sunset" | "forest" | "berry" | "midnight";
   hero_style: "banner" | "split" | "spotlight";
   catalog_layout: "grid" | "list";
   card_style: "soft" | "outline" | "elevated";
+  contrast_color: string;
   show_logo: boolean;
   show_reviews: boolean;
   show_banners: boolean;
-  show_badges: boolean;
+  show_featured_badge: boolean;
+  show_promo_badge: boolean;
   category_style: "underline" | "pill";
   highlight_badge: string;
   promo_text: string;
 }
 
 const DEFAULT_STOREFRONT_THEME: StorefrontTheme = {
-  preset: "sunset",
   hero_style: "banner",
   catalog_layout: "grid",
   card_style: "soft",
+  contrast_color: "#1f2937",
   show_logo: true,
   show_reviews: true,
   show_banners: true,
-  show_badges: true,
+  show_featured_badge: true,
+  show_promo_badge: true,
   category_style: "underline",
   highlight_badge: "Mais pedido",
   promo_text: "Promo do dia",
-};
-
-const THEME_PRESETS: Record<
-  StorefrontTheme["preset"],
-  {
-    pageBg: string;
-    heroBg: string;
-    heroPanel: string;
-    heroText: string;
-    heroMuted: string;
-    badgeBg: string;
-    badgeText: string;
-    chipBg: string;
-    cardBg: string;
-  }
-> = {
-  sunset: {
-    pageBg: "#f6f1ea",
-    heroBg: "linear-gradient(135deg, #ff8b45 0%, #f2b38b 100%)",
-    heroPanel: "#faf5ef",
-    heroText: "text-white",
-    heroMuted: "text-white/80",
-    badgeBg: "bg-white/92",
-    badgeText: "text-gray-800",
-    chipBg: "bg-[#fff2e8]",
-    cardBg: "bg-white",
-  },
-  forest: {
-    pageBg: "#eef4ef",
-    heroBg: "linear-gradient(135deg, #13392c 0%, #2f5d46 100%)",
-    heroPanel: "#eff7f1",
-    heroText: "text-white",
-    heroMuted: "text-white/80",
-    badgeBg: "bg-white/92",
-    badgeText: "text-emerald-950",
-    chipBg: "bg-[#edf7f1]",
-    cardBg: "bg-white",
-  },
-  berry: {
-    pageBg: "#f8f1f4",
-    heroBg: "linear-gradient(135deg, #611939 0%, #a32f5d 100%)",
-    heroPanel: "#fcf2f6",
-    heroText: "text-white",
-    heroMuted: "text-white/80",
-    badgeBg: "bg-white/92",
-    badgeText: "text-rose-950",
-    chipBg: "bg-[#fff0f5]",
-    cardBg: "bg-white",
-  },
-  midnight: {
-    pageBg: "#eef1f6",
-    heroBg: "linear-gradient(135deg, #11151c 0%, #293347 100%)",
-    heroPanel: "#f2f4f8",
-    heroText: "text-white",
-    heroMuted: "text-white/75",
-    badgeBg: "bg-white/92",
-    badgeText: "text-slate-900",
-    chipBg: "bg-[#eef3ff]",
-    cardBg: "bg-white",
-  },
 };
 
 const EMPTY_ADDRESS = {
@@ -182,6 +124,19 @@ const EMPTY_ADDRESS = {
   state: "SP",
   complement: "",
 };
+
+function hexToRgba(hex: string, opacity: number) {
+  const normalized = hex.replace("#", "");
+  const full = normalized.length === 3 ? normalized.split("").map((char) => `${char}${char}`).join("") : normalized;
+
+  if (full.length !== 6) return `rgba(17, 24, 39, ${opacity})`;
+
+  const red = Number.parseInt(full.slice(0, 2), 16);
+  const green = Number.parseInt(full.slice(2, 4), 16);
+  const blue = Number.parseInt(full.slice(4, 6), 16);
+
+  return `rgba(${red}, ${green}, ${blue}, ${opacity})`;
+}
 
 export default function StorePage({ params }: { params: { slug: string } }) {
   const pathname = usePathname();
@@ -688,7 +643,9 @@ export default function StorePage({ params }: { params: { slug: string } }) {
     setLastOrderSummary(null);
   };
 
-  const themePalette = THEME_PRESETS[storefrontTheme.preset] || THEME_PRESETS.sunset;
+  const contrastColor = storefrontTheme.contrast_color || "#1f2937";
+  const pageBackground = hexToRgba(primaryColor || "#ff5a1f", 0.07);
+  const heroBackground = `linear-gradient(135deg, ${primaryColor || "#ff5a1f"} 0%, ${contrastColor} 100%)`;
   const heroTitle =
     storefrontHeadline || restaurant?.name || "Sua vitrine digital com pedidos no WhatsApp";
   const heroSubtitle =
@@ -729,7 +686,7 @@ export default function StorePage({ params }: { params: { slug: string } }) {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: themePalette.pageBg }}>
+      <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: pageBackground }}>
         <Loader2 className="animate-spin text-[var(--brand)]" size={28} />
       </div>
     );
@@ -777,7 +734,7 @@ export default function StorePage({ params }: { params: { slug: string } }) {
   }
 
   return (
-    <div className="min-h-screen pb-28 text-gray-950" style={{ backgroundColor: themePalette.pageBg }}>
+    <div className="min-h-screen pb-28 text-gray-950" style={{ backgroundColor: pageBackground }}>
       <section className="bg-white">
         <div className="mx-auto w-full max-w-5xl px-0 pb-3 sm:px-4 sm:pb-5">
           <div className="relative overflow-hidden rounded-b-[18px] sm:rounded-[28px]">
@@ -796,14 +753,17 @@ export default function StorePage({ params }: { params: { slug: string } }) {
             ) : usesHeroBanner && restaurant.image_url ? (
               <img src={restaurant.image_url} alt={restaurant.name} className="h-full w-full object-cover" />
             ) : (
-              <div className="h-full w-full" style={{ background: themePalette.heroBg }} />
+              <div className="h-full w-full" style={{ background: heroBackground }} />
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
             <div className={`absolute inset-x-0 bottom-0 p-4 sm:p-7 ${
               storefrontTheme.hero_style === "split" ? "text-right" : ""
             }`}>
-              {storefrontTheme.show_badges && storefrontTheme.promo_text && (
-                <span className="mb-3 inline-flex rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-gray-900 sm:mb-4 sm:px-3 sm:text-xs">
+              {storefrontTheme.show_promo_badge && storefrontTheme.promo_text && (
+                <span
+                  className="mb-3 inline-flex rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] sm:mb-4 sm:px-3 sm:text-xs"
+                  style={{ backgroundColor: "rgba(255,255,255,0.92)", color: contrastColor }}
+                >
                   {storefrontTheme.promo_text}
                 </span>
               )}
@@ -882,6 +842,17 @@ export default function StorePage({ params }: { params: { slug: string } }) {
                     <span className="h-2 w-2 rounded-full bg-emerald-500" />
                     Aberto
                   </span>
+                  {storefrontTheme.show_featured_badge && storefrontTheme.highlight_badge && (
+                    <span
+                      className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.08em]"
+                      style={{
+                        backgroundColor: hexToRgba(contrastColor, 0.14),
+                        color: contrastColor,
+                      }}
+                    >
+                      {storefrontTheme.highlight_badge}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -928,8 +899,8 @@ export default function StorePage({ params }: { params: { slug: string } }) {
                 style={
                   activeCategory === category.id
                     ? storefrontTheme.category_style === "pill"
-                      ? { backgroundColor: `${primaryColor}18`, color: primaryColor }
-                      : { borderColor: primaryColor }
+                      ? { backgroundColor: hexToRgba(primaryColor || "#ff5a1f", 0.14), color: primaryColor }
+                      : { borderColor: primaryColor, color: primaryColor }
                     : undefined
                 }
               >
