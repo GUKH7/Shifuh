@@ -222,7 +222,7 @@ function CollapsibleSection({
   description,
   children,
   className = "",
-  defaultOpen = true,
+  defaultOpen = false,
 }: {
   icon: React.ReactNode;
   title: string;
