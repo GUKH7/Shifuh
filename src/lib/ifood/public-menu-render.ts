@@ -143,8 +143,25 @@ export async function scrapeIfoodPublicMenu(sourceUrl: string) {
     );
     await page.setViewport({ width: 1440, height: 1800, deviceScaleFactor: 1 });
     await page.goto(sourceUrl, { waitUntil: "networkidle2", timeout: 45000 });
-    await page.waitForSelector(
-      ".restaurant-menu-group__title, .product-card__description",
+    await page.waitForFunction(
+      () => {
+        const state = (window as any).__NEXT_REDUX_STORE__?.getState?.();
+        const stateMenu = state?.restaurant?.menu;
+
+        if (Array.isArray(stateMenu) && stateMenu.length > 0) {
+          return true;
+        }
+
+        return Boolean(
+          document.querySelector(
+            [
+              ".restaurant-menu-group__title",
+              ".dish-card__description",
+              ".product-card__description",
+            ].join(", "),
+          ),
+        );
+      },
       { timeout: 20000 },
     );
 
