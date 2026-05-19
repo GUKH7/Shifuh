@@ -210,6 +210,28 @@ export async function scrapeIfoodPublicMenu(sourceUrl: string) {
       }
     }
 
+    await page.waitForFunction(
+      () => {
+        const state = (window as any).__NEXT_REDUX_STORE__?.getState?.();
+        const stateMenu = state?.restaurant?.menu;
+
+        if (Array.isArray(stateMenu) && stateMenu.length > 0) {
+          return true;
+        }
+
+        return Boolean(
+          document.querySelector(
+            [
+              ".restaurant-menu-group__title",
+              ".dish-card__description",
+              ".product-card__description",
+            ].join(", "),
+          ),
+        );
+      },
+      { timeout: 25000 },
+    ).catch(() => null);
+
     const stateMenu = await page.evaluate(() => {
       const state = (window as any).__NEXT_REDUX_STORE__?.getState?.();
       return state?.restaurant?.menu ?? [];
