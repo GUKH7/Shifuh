@@ -8,6 +8,12 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  experimental: {
+    serverComponentsExternalPackages: [
+      "@sparticuz/chromium",
+      "puppeteer-core",
+    ],
+  },
   images: {
     remotePatterns: [
       {

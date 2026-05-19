@@ -123,12 +123,17 @@ export async function scrapeIfoodPublicMenu(sourceUrl: string) {
   const chromium = (await import("@sparticuz/chromium")).default;
   const puppeteer = await import("puppeteer-core");
   const executablePath = await resolveExecutablePath(chromium);
+  const isLocalWindows = process.platform === "win32";
+  const launchArgs = isLocalWindows
+    ? ["--no-sandbox", "--disable-setuid-sandbox"]
+    : puppeteer.defaultArgs({ args: chromium.args, headless: "shell" });
+  const headlessMode = isLocalWindows ? true : ("shell" as const);
 
   const browser = await puppeteer.launch({
-    args: chromium.args,
+    args: launchArgs,
     defaultViewport: chromium.defaultViewport,
     executablePath,
-    headless: chromium.headless,
+    headless: headlessMode,
   });
 
   try {
