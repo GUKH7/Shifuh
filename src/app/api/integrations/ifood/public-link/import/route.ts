@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { fetchIfoodPublicStoreData } from "@/lib/ifood/public-page";
+import { scrapeIfoodPublicMenu } from "@/lib/ifood/public-menu-render";
+
+export const runtime = "nodejs";
+export const maxDuration = 60;
 
 type ImportFromPublicLinkPayload = {
   restaurantId?: string;
@@ -77,6 +81,13 @@ export async function POST(request: Request) {
 
     const admin = createAdminClient();
     const imported = await fetchIfoodPublicStoreData(publicUrl);
+    const importedMenuSections =
+      imported.menuSections.length > 0
+        ? imported.menuSections
+        : await scrapeIfoodPublicMenu(publicUrl).catch((error) => {
+            console.error("Fallback headless do iFood falhou:", error);
+            return [];
+          });
 
     const restaurantUpdate = buildRestaurantUpdate(ownedRestaurant, imported);
 
@@ -105,7 +116,7 @@ export async function POST(request: Request) {
     let createdProducts = 0;
     let updatedProducts = 0;
 
-    if (imported.menuSections.length > 0) {
+    if (importedMenuSections.length > 0) {
       const { data: existingCategoryLinks } = await admin
         .from("ifood_category_links")
         .select("category_id, ifood_category_id")
@@ -125,7 +136,7 @@ export async function POST(request: Request) {
 
       const categoryIdByImportedCategory = new Map<string, string>();
 
-      for (const [index, section] of imported.menuSections.entries()) {
+      for (const [index, section] of importedMenuSections.entries()) {
         const linkedCategoryId = categoryLinkMap.get(section.id);
         const categoryPayload = {
           restaurant_id: restaurantId,
@@ -161,7 +172,7 @@ export async function POST(request: Request) {
         }
       }
 
-      for (const section of imported.menuSections) {
+      for (const section of importedMenuSections) {
         const localCategoryId = categoryIdByImportedCategory.get(section.id);
         if (!localCategoryId) continue;
 
@@ -223,7 +234,7 @@ export async function POST(request: Request) {
       summary: {
         merchantUuid: imported.merchantUuid,
         storeName: imported.name,
-        menuFound: imported.menuSections.length > 0,
+        menuFound: importedMenuSections.length > 0,
         categoriesProcessed: createdCategories + updatedCategories,
         productsProcessed: createdProducts + updatedProducts,
         createdCategories,
@@ -232,9 +243,9 @@ export async function POST(request: Request) {
         updatedProducts,
       },
       details:
-        imported.menuSections.length > 0
+        importedMenuSections.length > 0
           ? [
-              "Os dados básicos da loja e o cardápio público foram importados.",
+              "Os dados básicos da loja e o cardápio visível foram importados.",
               "Você pode revisar as categorias e os produtos no Gestor antes de publicar.",
             ]
           : [
