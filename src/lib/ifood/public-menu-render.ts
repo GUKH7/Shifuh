@@ -134,6 +134,10 @@ function parseCatalogApiResponse(payloadText: string): ScrapedMenuSection[] {
   }
 }
 
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export async function scrapeIfoodPublicMenu(sourceUrl: string) {
   const chromium = (await import("@sparticuz/chromium")).default;
   const puppeteer = await import("puppeteer-core");
@@ -153,23 +157,53 @@ export async function scrapeIfoodPublicMenu(sourceUrl: string) {
 
   try {
     const page = await browser.newPage();
+    const cdp = await page.target().createCDPSession();
+    await cdp.send("Network.enable");
+
+    let resolveCatalogPayload: (payload: string | null) => void = () => {};
+    const catalogPayloadPromise = new Promise<string | null>((resolve) => {
+      resolveCatalogPayload = resolve;
+    });
+    let catalogPayloadSettled = false;
+
+    cdp.on("Network.responseReceived", async (event) => {
+      if (catalogPayloadSettled) return;
+
+      if (
+        event.response.status !== 200 ||
+        !event.response.url.includes("/site-api/v1/merchants/restaurant/") ||
+        !event.response.url.includes("/catalog")
+      ) {
+        return;
+      }
+
+      for (let attempt = 0; attempt < 6; attempt += 1) {
+        try {
+          const body = await cdp.send("Network.getResponseBody", {
+            requestId: event.requestId,
+          });
+          catalogPayloadSettled = true;
+          resolveCatalogPayload(
+            body.base64Encoded ? Buffer.from(body.body, "base64").toString("utf-8") : body.body,
+          );
+          return;
+        } catch {
+          await delay(250);
+        }
+      }
+    });
+
     await page.setUserAgent(
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
     );
     await page.setViewport({ width: 1440, height: 1800, deviceScaleFactor: 1 });
-    const catalogResponsePromise = page.waitForResponse(
-      (response) =>
-        response.status() === 200 &&
-        response.url().includes("/site-api/v1/merchants/restaurant/") &&
-        response.url().includes("/catalog"),
-      { timeout: 25000 },
-    ).catch(() => null);
-
     await page.goto(sourceUrl, { waitUntil: "networkidle2", timeout: 45000 });
+    const catalogPayload = await Promise.race<string | null>([
+      catalogPayloadPromise,
+      delay(12000).then(() => null),
+    ]);
 
-    const catalogResponse = await catalogResponsePromise;
-    if (catalogResponse) {
-      const catalogPayload = await catalogResponse.text();
+    if (catalogPayload) {
       const parsedCatalogMenu = parseCatalogApiResponse(catalogPayload);
       if (parsedCatalogMenu.length > 0) {
         return parsedCatalogMenu;
