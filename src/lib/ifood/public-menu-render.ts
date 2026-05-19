@@ -119,6 +119,21 @@ function normalizeStateMenu(menu: unknown): ScrapedMenuSection[] {
     .filter(Boolean) as ScrapedMenuSection[];
 }
 
+function parseCatalogApiResponse(payloadText: string): ScrapedMenuSection[] {
+  try {
+    const parsed = JSON.parse(payloadText) as Record<string, any>;
+    const menu =
+      parsed?.data?.menu ??
+      parsed?.menu ??
+      parsed?.data?.data?.menu ??
+      [];
+
+    return normalizeStateMenu(menu);
+  } catch {
+    return [];
+  }
+}
+
 export async function scrapeIfoodPublicMenu(sourceUrl: string) {
   const chromium = (await import("@sparticuz/chromium")).default;
   const puppeteer = await import("puppeteer-core");
@@ -142,28 +157,24 @@ export async function scrapeIfoodPublicMenu(sourceUrl: string) {
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
     );
     await page.setViewport({ width: 1440, height: 1800, deviceScaleFactor: 1 });
+    const catalogResponsePromise = page.waitForResponse(
+      (response) =>
+        response.status() === 200 &&
+        response.url().includes("/site-api/v1/merchants/restaurant/") &&
+        response.url().includes("/catalog"),
+      { timeout: 25000 },
+    ).catch(() => null);
+
     await page.goto(sourceUrl, { waitUntil: "networkidle2", timeout: 45000 });
-    await page.waitForFunction(
-      () => {
-        const state = (window as any).__NEXT_REDUX_STORE__?.getState?.();
-        const stateMenu = state?.restaurant?.menu;
 
-        if (Array.isArray(stateMenu) && stateMenu.length > 0) {
-          return true;
-        }
-
-        return Boolean(
-          document.querySelector(
-            [
-              ".restaurant-menu-group__title",
-              ".dish-card__description",
-              ".product-card__description",
-            ].join(", "),
-          ),
-        );
-      },
-      { timeout: 20000 },
-    );
+    const catalogResponse = await catalogResponsePromise;
+    if (catalogResponse) {
+      const catalogPayload = await catalogResponse.text();
+      const parsedCatalogMenu = parseCatalogApiResponse(catalogPayload);
+      if (parsedCatalogMenu.length > 0) {
+        return parsedCatalogMenu;
+      }
+    }
 
     const stateMenu = await page.evaluate(() => {
       const state = (window as any).__NEXT_REDUX_STORE__?.getState?.();
