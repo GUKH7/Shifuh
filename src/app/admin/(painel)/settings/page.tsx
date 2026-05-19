@@ -298,11 +298,13 @@ export default function SettingsPage() {
   const [isImportingIfoodCatalog, setIsImportingIfoodCatalog] = useState(false);
   const [isCheckingIfoodConnection, setIsCheckingIfoodConnection] = useState(false);
   const [isSyncingIfoodOrders, setIsSyncingIfoodOrders] = useState(false);
+  const [isImportingIfoodLink, setIsImportingIfoodLink] = useState(false);
   const [ifoodIntegration, setIfoodIntegration] =
     useState<IfoodIntegrationState>(DEFAULT_IFOOD_INTEGRATION);
   const [ifoodConnectionCheck, setIfoodConnectionCheck] = useState<IfoodConnectionCheckState>(
     DEFAULT_IFOOD_CONNECTION_CHECK,
   );
+  const [ifoodPublicUrl, setIfoodPublicUrl] = useState("");
   const [wppStatus, setWppStatus] = useState<string>("iniciando");
   const [wppQrCode, setWppQrCode] = useState<string>("");
   const [isRestarting, setIsRestarting] = useState(false);
@@ -717,6 +719,63 @@ export default function SettingsPage() {
       });
     } finally {
       setIsImportingIfoodCatalog(false);
+    }
+  };
+
+  const handleImportIfoodPublicLink = async () => {
+    if (!restaurantId) return;
+
+    setIsImportingIfoodLink(true);
+    try {
+      const response = await fetch("/api/integrations/ifood/public-link/import", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          restaurantId,
+          publicUrl: ifoodPublicUrl,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result.error || "Não foi possível copiar o cardápio do link público do iFood.",
+        );
+      }
+
+      if (result.summary?.merchantUuid) {
+        updateIfoodIntegration("merchantId", result.summary.merchantUuid);
+      }
+
+      if (result.summary?.storeName && !ifoodIntegration.merchantName) {
+        updateIfoodIntegration("merchantName", result.summary.storeName);
+      }
+
+      showToast({
+        title: result.summary?.menuFound
+          ? "Cardápio copiado pelo link"
+          : "Loja importada pelo link",
+        description: result.summary?.menuFound
+          ? `${result.summary.categoriesProcessed} categorias e ${result.summary.productsProcessed} produtos foram processados.`
+          : "Os dados públicos da loja foram trazidos. O cardápio completo não veio exposto nessa carga pública do iFood.",
+        tone: "success",
+      });
+
+      fetchSettings();
+    } catch (error) {
+      showToast({
+        title: "Falha ao importar pelo link",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Não foi possível importar esse link público do iFood agora.",
+        tone: "error",
+      });
+    } finally {
+      setIsImportingIfoodLink(false);
     }
   };
 
@@ -1245,6 +1304,36 @@ export default function SettingsPage() {
                   Campo opcional, usado só para facilitar a identificação da loja.
                 </p>
               </label>
+            </div>
+
+            <div className="mt-4 rounded-[22px] border border-dashed border-[var(--line)] bg-[#fcfaf7] p-4">
+              <div className="flex flex-col gap-4 md:flex-row md:items-end">
+                <label className="flex-1 space-y-2">
+                  <span className="text-sm font-bold text-gray-700">Link público do iFood</span>
+                  <input
+                    value={ifoodPublicUrl}
+                    onChange={(e) => setIfoodPublicUrl(e.target.value)}
+                    placeholder="Cole aqui o link público da loja no iFood"
+                    className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+                  />
+                  <p className="text-xs text-gray-400">
+                    O Gestor usa esse link para copiar os dados públicos da loja e tentar importar
+                    o cardápio sem depender da integração oficial.
+                  </p>
+                </label>
+
+                <button
+                  type="button"
+                  onClick={handleImportIfoodPublicLink}
+                  disabled={isImportingIfoodLink || !ifoodPublicUrl.trim()}
+                  className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700 disabled:cursor-not-allowed disabled:text-gray-400"
+                >
+                  <span className="inline-flex items-center gap-2">
+                    {isImportingIfoodLink && <Loader2 size={16} className="animate-spin" />}
+                    Copiar cardápio pelo link
+                  </span>
+                </button>
+              </div>
             </div>
 
             <div className="mt-5 flex flex-col gap-3 sm:flex-row">
