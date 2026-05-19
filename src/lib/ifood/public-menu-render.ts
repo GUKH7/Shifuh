@@ -13,6 +13,11 @@ type ScrapedMenuSection = {
 function parseMoneyFromText(value: string | null | undefined) {
   if (!value) return 0;
 
+  const directNumber = Number(value);
+  if (Number.isFinite(directNumber)) {
+    return Math.round(directNumber * 100) / 100;
+  }
+
   const match = value.replace(/\s+/g, " ").match(/R\$\s*([\d.,]+)/i);
   if (!match) return 0;
 
@@ -56,6 +61,64 @@ async function resolveExecutablePath(chromium: typeof import("@sparticuz/chromiu
   throw new Error("Nenhum executável do navegador foi encontrado para raspar o cardápio público do iFood.");
 }
 
+function normalizeStateMenu(menu: unknown): ScrapedMenuSection[] {
+  if (!Array.isArray(menu)) return [];
+
+  return menu
+    .map((section, sectionIndex) => {
+      if (!section || typeof section !== "object") return null;
+
+      const record = section as Record<string, any>;
+      const title = String(record.name || `Categoria ${sectionIndex + 1}`).trim();
+      const rawItems = Array.isArray(record.itens)
+        ? record.itens
+        : Array.isArray(record.items)
+          ? record.items
+          : [];
+
+      const items = rawItems
+        .map((item) => {
+          if (!item || typeof item !== "object") return null;
+
+          const itemRecord = item as Record<string, any>;
+          const name = String(itemRecord.description || itemRecord.name || "").trim();
+          if (!name) return null;
+
+          const logoUrl =
+            typeof itemRecord.logoUrl === "string" && itemRecord.logoUrl.trim().length > 0
+              ? itemRecord.logoUrl.startsWith("http")
+                ? itemRecord.logoUrl
+                : `https://static.ifood-static.com.br/image/upload/t_high/pratos/${itemRecord.logoUrl}`
+              : null;
+
+          return {
+            id:
+              String(itemRecord.id || itemRecord.code || "").trim() ||
+              `${title}-${name}`.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+            name,
+            description:
+              typeof itemRecord.details === "string" && itemRecord.details.trim().length > 0
+                ? itemRecord.details.trim()
+                : null,
+            price: parseMoneyFromText(String(itemRecord.unitPrice ?? itemRecord.price ?? "")),
+            imageUrl: logoUrl,
+          };
+        })
+        .filter(Boolean) as ScrapedMenuSection[number]["items"];
+
+      if (items.length === 0) return null;
+
+      return {
+        id:
+          String(record.code || record.id || "").trim() ||
+          `${title}-${sectionIndex + 1}`.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+        name: title,
+        items,
+      };
+    })
+    .filter(Boolean) as ScrapedMenuSection[];
+}
+
 export async function scrapeIfoodPublicMenu(sourceUrl: string) {
   const chromium = (await import("@sparticuz/chromium")).default;
   const puppeteer = await import("puppeteer-core");
@@ -79,6 +142,16 @@ export async function scrapeIfoodPublicMenu(sourceUrl: string) {
       ".restaurant-menu-group__title, .product-card__description",
       { timeout: 20000 },
     );
+
+    const stateMenu = await page.evaluate(() => {
+      const state = (window as any).__NEXT_REDUX_STORE__?.getState?.();
+      return state?.restaurant?.menu ?? [];
+    });
+
+    const normalizedStateMenu = normalizeStateMenu(stateMenu);
+    if (normalizedStateMenu.length > 0) {
+      return normalizedStateMenu;
+    }
 
     const menuSections = await page.evaluate(() => {
       const normalize = (value: string | null | undefined) => {

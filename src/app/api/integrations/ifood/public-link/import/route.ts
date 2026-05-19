@@ -81,13 +81,20 @@ export async function POST(request: Request) {
 
     const admin = createAdminClient();
     const imported = await fetchIfoodPublicStoreData(publicUrl);
-    const importedMenuSections =
-      imported.menuSections.length > 0
-        ? imported.menuSections
-        : await scrapeIfoodPublicMenu(publicUrl).catch((error) => {
-            console.error("Fallback headless do iFood falhou:", error);
-            return [];
-          });
+    let importedMenuSections = imported.menuSections;
+    let fallbackErrorMessage: string | null = null;
+
+    if (importedMenuSections.length === 0) {
+      try {
+        importedMenuSections = await scrapeIfoodPublicMenu(publicUrl);
+      } catch (error) {
+        fallbackErrorMessage =
+          error instanceof Error
+            ? error.message
+            : "O fallback do cardápio público do iFood falhou.";
+        console.error("Fallback headless do iFood falhou:", error);
+      }
+    }
 
     const restaurantUpdate = buildRestaurantUpdate(ownedRestaurant, imported);
 
@@ -227,6 +234,15 @@ export async function POST(request: Request) {
           }
         }
       }
+    }
+
+    if (importedMenuSections.length === 0 && fallbackErrorMessage) {
+      return NextResponse.json(
+        {
+          error: `A loja foi lida, mas o cardápio público não pôde ser copiado agora. ${fallbackErrorMessage}`,
+        },
+        { status: 502 },
+      );
     }
 
     return NextResponse.json({
