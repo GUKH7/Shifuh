@@ -126,7 +126,7 @@ export async function scrapeIfoodPublicMenu(sourceUrl: string) {
   const isLocalWindows = process.platform === "win32";
   const launchArgs = isLocalWindows
     ? ["--no-sandbox", "--disable-setuid-sandbox"]
-    : puppeteer.defaultArgs({ args: chromium.args, headless: "shell" });
+    : await puppeteer.defaultArgs({ args: chromium.args, headless: "shell" });
   const headlessMode = isLocalWindows ? true : ("shell" as const);
 
   const browser = await puppeteer.launch({
