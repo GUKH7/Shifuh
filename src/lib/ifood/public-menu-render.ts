@@ -22,12 +22,44 @@ function parseMoneyFromText(value: string | null | undefined) {
   return Number.isFinite(parsed) ? Math.round(parsed * 100) / 100 : 0;
 }
 
+async function resolveExecutablePath(chromium: typeof import("@sparticuz/chromium").default) {
+  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+    return process.env.PUPPETEER_EXECUTABLE_PATH;
+  }
+
+  try {
+    const chromiumPath = await chromium.executablePath();
+    if (chromiumPath) {
+      return chromiumPath;
+    }
+  } catch {
+    // Fallbacks locais ficam abaixo.
+  }
+
+  const localCandidates = [
+    "C:/Program Files/Google/Chrome/Application/chrome.exe",
+    "C:/Program Files (x86)/Google/Chrome/Application/chrome.exe",
+  ];
+
+  for (const candidate of localCandidates) {
+    if (typeof Bun !== "undefined") continue;
+
+    const fs = await import("node:fs/promises");
+    try {
+      await fs.access(candidate);
+      return candidate;
+    } catch {
+      // Tenta o próximo caminho.
+    }
+  }
+
+  throw new Error("Nenhum executável do navegador foi encontrado para raspar o cardápio público do iFood.");
+}
+
 export async function scrapeIfoodPublicMenu(sourceUrl: string) {
   const chromium = (await import("@sparticuz/chromium")).default;
   const puppeteer = await import("puppeteer-core");
-
-  const executablePath =
-    process.env.PUPPETEER_EXECUTABLE_PATH || (await chromium.executablePath());
+  const executablePath = await resolveExecutablePath(chromium);
 
   const browser = await puppeteer.launch({
     args: chromium.args,
@@ -74,32 +106,48 @@ export async function scrapeIfoodPublicMenu(sourceUrl: string) {
             `Categoria ${sectionIndex + 1}`;
 
           const cards = Array.from(
-            section.querySelectorAll<HTMLElement>(".product-card-content"),
+            section.querySelectorAll<HTMLElement>(
+              [
+                "a.dish-card",
+                "[data-test-id='dish-card-test-id']",
+                ".product-card-content",
+              ].join(", "),
+            ),
           );
 
           const items = cards
             .map((card, itemIndex) => {
               const name = normalize(
-                card.querySelector<HTMLElement>(".product-card__description")?.textContent,
+                card.querySelector<HTMLElement>(
+                  ".dish-card__description, .product-card__description",
+                )?.textContent,
               );
 
               if (!name) return null;
 
               const details = normalize(
-                card.querySelector<HTMLElement>(".product-card__details")?.textContent,
+                card.querySelector<HTMLElement>(
+                  ".dish-card__details, .product-card__details",
+                )?.textContent,
               );
 
               const priceText = normalize(
-                card.querySelector<HTMLElement>(".product-card__price")?.textContent,
+                card.querySelector<HTMLElement>(
+                  ".dish-card__price, .product-card__price",
+                )?.textContent,
               );
 
               const imageUrl =
-                card.querySelector<HTMLImageElement>(".product-card-image__content")?.getAttribute(
-                  "src",
-                ) || null;
+                card.querySelector<HTMLImageElement>(
+                  ".dish-card__image, .product-card-image__content, .dish-card__container-image img",
+                )?.getAttribute("src") || null;
+
+              const href = card.getAttribute("href") || "";
+              const urlMatch = href.match(/[?&]prato=([0-9a-f-]+)/i);
+              const itemId = urlMatch?.[1] || `${slugify(title)}-${slugify(name)}-${itemIndex + 1}`;
 
               return {
-                id: `${slugify(title)}-${slugify(name)}-${itemIndex + 1}`,
+                id: itemId,
                 name,
                 description: details,
                 priceText,
