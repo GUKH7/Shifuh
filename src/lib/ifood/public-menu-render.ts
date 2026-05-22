@@ -10,6 +10,14 @@ type ScrapedMenuSection = {
   }>;
 };
 
+type PublicMenuAddressHint = {
+  street: string | null;
+  number: string | null;
+  neighborhood: string | null;
+  city: string | null;
+  state: string | null;
+};
+
 function parseMoneyFromText(value: string | null | undefined) {
   if (!value) return 0;
 
@@ -138,7 +146,117 @@ function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export async function scrapeIfoodPublicMenu(sourceUrl: string) {
+function buildAddressSearchQuery(addressHint?: PublicMenuAddressHint | null) {
+  if (!addressHint) return null;
+
+  const parts = [
+    addressHint.street,
+    addressHint.number,
+    addressHint.neighborhood,
+    addressHint.city,
+    addressHint.state,
+  ]
+    .map((value) => (typeof value === "string" ? value.trim() : ""))
+    .filter(Boolean);
+
+  return parts.length > 0 ? parts.join(", ") : null;
+}
+
+async function tryResolveMenuByAddressFlow(
+  page: import("puppeteer-core").Page,
+  addressHint?: PublicMenuAddressHint | null,
+) {
+  const hintButton = await page.$("[data-test-id='hint-right-button']");
+  const addressQuery = buildAddressSearchQuery(addressHint);
+
+  if (!hintButton || !addressQuery) {
+    return false;
+  }
+
+  await hintButton.evaluate((node) => (node as HTMLElement).click());
+  await delay(1500);
+
+  const searchTrigger =
+    (await page.$(".address-search-input__button")) ||
+    (await page.$(".address-search-input--role-button button")) ||
+    (await page.$(".address-search-input--role-button"));
+
+  if (!searchTrigger) {
+    return false;
+  }
+
+  await searchTrigger.evaluate((node) => (node as HTMLElement).click());
+  await delay(1000);
+
+  await page.waitForFunction(
+    () =>
+      Array.from(document.querySelectorAll("input.address-search-input__field")).some(
+        (input) => !input.hasAttribute("disabled"),
+      ),
+    { timeout: 10000 },
+  );
+
+  const searchField = await page.evaluateHandle(() => {
+    const inputs = Array.from(document.querySelectorAll<HTMLInputElement>("input.address-search-input__field"));
+    return inputs.find((input) => !input.hasAttribute("disabled")) ?? null;
+  });
+
+  const searchFieldElement = searchField.asElement();
+  if (!searchFieldElement) {
+    return false;
+  }
+
+  await searchFieldElement.click({ clickCount: 3 }).catch(() => null);
+  await searchFieldElement.type(addressQuery, { delay: 40 });
+
+  await page.waitForSelector("li[data-test-id^='button-address-'] .btn-address--full-size", {
+    timeout: 15000,
+  });
+
+  const addressOptions = await page.$$("li[data-test-id^='button-address-'] .btn-address--full-size");
+  if (addressOptions.length === 0) {
+    return false;
+  }
+
+  await addressOptions[0].evaluate((node) => (node as HTMLElement).click());
+  await delay(1500);
+
+  const numberFieldSelector = "input.form-input__field";
+  await page.waitForSelector(numberFieldSelector, { timeout: 10000 }).catch(() => null);
+
+  const numberFields = await page.$$(numberFieldSelector);
+  if (numberFields.length > 0 && addressHint?.number?.trim()) {
+    await numberFields[0].click({ clickCount: 3 }).catch(() => null);
+    await numberFields[0].type(addressHint.number.trim(), { delay: 30 }).catch(() => null);
+  }
+
+  const mapConfirmButton = await page.$(".address-maps__submit");
+  if (mapConfirmButton) {
+    await mapConfirmButton.evaluate((node) => (node as HTMLElement).click());
+    await delay(1200);
+  }
+
+  const saveAddressButton = await page.evaluateHandle(() => {
+    return (
+      Array.from(document.querySelectorAll("button")).find((button) =>
+        (button.textContent || "").includes("Salvar endereço"),
+      ) ?? null
+    );
+  });
+
+  const saveAddressElement = saveAddressButton.asElement();
+  if (saveAddressElement) {
+    await saveAddressElement.evaluate((node) => (node as HTMLElement).click()).catch(() => null);
+  }
+
+  await delay(6000);
+  return true;
+}
+
+export async function scrapeIfoodPublicMenu(
+  sourceUrl: string,
+  addressHint?: PublicMenuAddressHint | null,
+) {
   const chromium = (await import("@sparticuz/chromium")).default;
   const puppeteer = await import("puppeteer-core");
   const executablePath = await resolveExecutablePath(chromium);
@@ -198,6 +316,20 @@ export async function scrapeIfoodPublicMenu(sourceUrl: string) {
     );
     await page.setViewport({ width: 1440, height: 1800, deviceScaleFactor: 1 });
     await page.goto(sourceUrl, { waitUntil: "networkidle2", timeout: 45000 });
+
+    const hadAddressPrompt = await page
+      .evaluate(() => {
+        return Boolean(
+          document.querySelector("[data-test-id='hint-right-button']") &&
+            document.body.innerText.includes("Informe seu endereço"),
+        );
+      })
+      .catch(() => false);
+
+    if (hadAddressPrompt) {
+      await tryResolveMenuByAddressFlow(page, addressHint).catch(() => null);
+    }
+
     const catalogPayload = await Promise.race<string | null>([
       catalogPayloadPromise,
       delay(12000).then(() => null),
@@ -327,7 +459,7 @@ export async function scrapeIfoodPublicMenu(sourceUrl: string) {
         .filter((section) => section.items.length > 0);
     });
 
-    return menuSections.map((section: any) => ({
+    const normalizedMenuSections = menuSections.map((section: any) => ({
       id: section.id,
       name: section.name,
       items: (section.items || []).map((item: any) => ({
@@ -338,6 +470,18 @@ export async function scrapeIfoodPublicMenu(sourceUrl: string) {
         imageUrl: item.imageUrl,
       })),
     })) as ScrapedMenuSection[];
+
+    if (normalizedMenuSections.length > 0) {
+      return normalizedMenuSections;
+    }
+
+    if (hadAddressPrompt) {
+      throw new Error(
+        "O iFood exigiu um contexto de endereço e o cardápio não apareceu mesmo após tentar preencher um endereço público da própria loja.",
+      );
+    }
+
+    throw new Error("O cardápio público do iFood não ficou disponível nessa sessão de navegação.");
   } finally {
     await browser.close();
   }

@@ -82,11 +82,18 @@ export async function POST(request: Request) {
     const admin = createAdminClient();
     const imported = await fetchIfoodPublicStoreData(publicUrl);
     let importedMenuSections = imported.menuSections;
-    let fallbackErrorMessage: string | null = null;
+    let fallbackErrorMessage: string | null =
+      "O iFood nÃ£o expÃ´s nenhuma categoria nessa sessÃ£o de importaÃ§Ã£o.";
 
     if (importedMenuSections.length === 0) {
       try {
-        importedMenuSections = await scrapeIfoodPublicMenu(publicUrl);
+        importedMenuSections = await scrapeIfoodPublicMenu(publicUrl, {
+          street: imported.address.street,
+          number: imported.address.number,
+          neighborhood: imported.address.neighborhood,
+          city: imported.address.city,
+          state: imported.address.state,
+        });
       } catch (error) {
         fallbackErrorMessage =
           error instanceof Error
@@ -236,7 +243,7 @@ export async function POST(request: Request) {
       }
     }
 
-    if (importedMenuSections.length === 0 && fallbackErrorMessage) {
+    if (importedMenuSections.length === 0) {
       return NextResponse.json(
         {
           error: `A loja foi lida, mas o cardápio público não pôde ser copiado agora. ${fallbackErrorMessage}`,
