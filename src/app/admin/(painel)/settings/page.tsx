@@ -260,6 +260,22 @@ function CollapsibleSection({
   );
 }
 
+async function readJsonResponse(response: Response) {
+  const payloadText = await response.text();
+
+  if (!payloadText) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(payloadText) as Record<string, any>;
+  } catch {
+    return {
+      error: payloadText,
+    };
+  }
+}
+
 export default function SettingsPage() {
   const router = useRouter();
   const supabase = createBrowserClient(
@@ -738,7 +754,7 @@ export default function SettingsPage() {
         }),
       });
 
-      const result = await response.json();
+      const result = await readJsonResponse(response);
 
       if (!response.ok) {
         throw new Error(

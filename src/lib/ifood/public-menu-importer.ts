@@ -40,7 +40,6 @@ function parseMoneyFromText(value: string | null | undefined) {
 
   const normalized = match[1].replace(/\./g, "").replace(",", ".");
   const parsed = Number(normalized);
-
   return Number.isFinite(parsed) ? Math.round(parsed * 100) / 100 : 0;
 }
 
@@ -55,7 +54,7 @@ async function resolveExecutablePath(chromium: typeof import("@sparticuz/chromiu
       return chromiumPath;
     }
   } catch {
-    // Fallbacks locais ficam abaixo.
+    // falls through to local candidates
   }
 
   const localCandidates = [
@@ -71,11 +70,13 @@ async function resolveExecutablePath(chromium: typeof import("@sparticuz/chromiu
       await fs.access(candidate);
       return candidate;
     } catch {
-      // Tenta o próximo caminho.
+      // keep trying
     }
   }
 
-  throw new Error("Nenhum executável do navegador foi encontrado para raspar o cardápio público do iFood.");
+  throw new Error(
+    "Nenhum executavel do navegador foi encontrado para raspar o cardapio publico do iFood.",
+  );
 }
 
 function normalizeStateMenu(menu: unknown): ScrapedMenuSection[] {
@@ -144,12 +145,7 @@ function parseCatalogApiResponse(payloadText: string): ScrapedMenuSection[] {
 
   try {
     const parsed = JSON.parse(trimmedPayload) as Record<string, any>;
-    const menu =
-      parsed?.data?.menu ??
-      parsed?.menu ??
-      parsed?.data?.data?.menu ??
-      [];
-
+    const menu = parsed?.data?.menu ?? parsed?.menu ?? parsed?.data?.data?.menu ?? [];
     return normalizeStateMenu(menu);
   } catch {
     return [];
@@ -211,7 +207,9 @@ async function tryResolveMenuByAddressFlow(
   );
 
   const searchField = await page.evaluateHandle(() => {
-    const inputs = Array.from(document.querySelectorAll<HTMLInputElement>("input.address-search-input__field"));
+    const inputs = Array.from(
+      document.querySelectorAll<HTMLInputElement>("input.address-search-input__field"),
+    );
     return inputs.find((input) => !input.hasAttribute("disabled")) ?? null;
   });
 
@@ -227,7 +225,9 @@ async function tryResolveMenuByAddressFlow(
     timeout: 15000,
   });
 
-  const addressOptions = await page.$$("li[data-test-id^='button-address-'] .btn-address--full-size");
+  const addressOptions = await page.$$(
+    "li[data-test-id^='button-address-'] .btn-address--full-size",
+  );
   if (addressOptions.length === 0) {
     return false;
   }
@@ -253,7 +253,7 @@ async function tryResolveMenuByAddressFlow(
   const saveAddressButton = await page.evaluateHandle(() => {
     return (
       Array.from(document.querySelectorAll("button")).find((button) =>
-        (button.textContent || "").includes("Salvar endereço"),
+        normalizeComparableText(button.textContent).includes("salvar endereco"),
       ) ?? null
     );
   });
@@ -333,9 +333,10 @@ export async function scrapeIfoodPublicMenu(
 
     const hadAddressPrompt = await page
       .evaluate(() => {
+        const normalizedBodyText = normalizeComparableText(document.body.innerText);
         return Boolean(
           document.querySelector("[data-test-id='hint-right-button']") &&
-            document.body.innerText.includes("Informe seu endereço"),
+            normalizedBodyText.includes("informe seu endereco"),
         );
       })
       .catch(() => false);
@@ -356,27 +357,29 @@ export async function scrapeIfoodPublicMenu(
       }
     }
 
-    await page.waitForFunction(
-      () => {
-        const state = (window as any).__NEXT_REDUX_STORE__?.getState?.();
-        const stateMenu = state?.restaurant?.menu;
+    await page
+      .waitForFunction(
+        () => {
+          const state = (window as any).__NEXT_REDUX_STORE__?.getState?.();
+          const stateMenu = state?.restaurant?.menu;
 
-        if (Array.isArray(stateMenu) && stateMenu.length > 0) {
-          return true;
-        }
+          if (Array.isArray(stateMenu) && stateMenu.length > 0) {
+            return true;
+          }
 
-        return Boolean(
-          document.querySelector(
-            [
-              ".restaurant-menu-group__title",
-              ".dish-card__description",
-              ".product-card__description",
-            ].join(", "),
-          ),
-        );
-      },
-      { timeout: 25000 },
-    ).catch(() => null);
+          return Boolean(
+            document.querySelector(
+              [
+                ".restaurant-menu-group__title",
+                ".dish-card__description",
+                ".product-card__description",
+              ].join(", "),
+            ),
+          );
+        },
+        { timeout: 25000 },
+      )
+      .catch(() => null);
 
     const stateMenu = await page.evaluate(() => {
       const state = (window as any).__NEXT_REDUX_STORE__?.getState?.();
@@ -402,9 +405,7 @@ export async function scrapeIfoodPublicMenu(
           .replace(/[^a-z0-9]+/g, "-")
           .replace(/(^-|-$)/g, "");
 
-      const sections = Array.from(
-        document.querySelectorAll<HTMLElement>(".restaurant-menu-group"),
-      );
+      const sections = Array.from(document.querySelectorAll<HTMLElement>(".restaurant-menu-group"));
 
       return sections
         .map((section, sectionIndex) => {
@@ -415,34 +416,24 @@ export async function scrapeIfoodPublicMenu(
 
           const cards = Array.from(
             section.querySelectorAll<HTMLElement>(
-              [
-                "a.dish-card",
-                "[data-test-id='dish-card-test-id']",
-                ".product-card-content",
-              ].join(", "),
+              ["a.dish-card", "[data-test-id='dish-card-test-id']", ".product-card-content"].join(", "),
             ),
           );
 
           const items = cards
             .map((card, itemIndex) => {
               const name = normalize(
-                card.querySelector<HTMLElement>(
-                  ".dish-card__description, .product-card__description",
-                )?.textContent,
+                card.querySelector<HTMLElement>(".dish-card__description, .product-card__description")?.textContent,
               );
 
               if (!name) return null;
 
               const details = normalize(
-                card.querySelector<HTMLElement>(
-                  ".dish-card__details, .product-card__details",
-                )?.textContent,
+                card.querySelector<HTMLElement>(".dish-card__details, .product-card__details")?.textContent,
               );
 
               const priceText = normalize(
-                card.querySelector<HTMLElement>(
-                  ".dish-card__price, .product-card__price",
-                )?.textContent,
+                card.querySelector<HTMLElement>(".dish-card__price, .product-card__price")?.textContent,
               );
 
               const imageUrl =
@@ -491,11 +482,11 @@ export async function scrapeIfoodPublicMenu(
 
     if (hadAddressPrompt) {
       throw new Error(
-        "O iFood exigiu um contexto de endereço e o cardápio não apareceu mesmo após tentar preencher um endereço público da própria loja.",
+        "O iFood exigiu um contexto de endereco e o cardapio nao apareceu mesmo apos tentar preencher um endereco publico da propria loja.",
       );
     }
 
-    throw new Error("O cardápio público do iFood não ficou disponível nessa sessão de navegação.");
+    throw new Error("O cardapio publico do iFood nao ficou disponivel nessa sessao de navegacao.");
   } finally {
     await browser.close();
   }
