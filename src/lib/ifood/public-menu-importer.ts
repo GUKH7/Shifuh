@@ -1,3 +1,5 @@
+import { extractMerchantUuidFromIfoodUrl } from "@/lib/ifood/public-page";
+
 type ScrapedMenuSection = {
   id: string;
   name: string;
@@ -156,6 +158,34 @@ function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+async function probePublicCatalogEndpoint(merchantUuid: string, sourceUrl: string) {
+  const response = await fetch(
+    `https://www.ifood.com.br/site-api/v1/merchants/restaurant/${merchantUuid}/catalog`,
+    {
+      headers: {
+        "user-agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
+        "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+        accept: "application/json,text/plain,*/*",
+        referer: sourceUrl,
+      },
+      cache: "no-store",
+    },
+  );
+
+  const bodyText = await response.text();
+  const normalizedBody = normalizeComparableText(bodyText);
+
+  return {
+    status: response.status,
+    contentType: response.headers.get("content-type") || "",
+    bodyText,
+    isCloudflareBlock:
+      response.status === 403 &&
+      (normalizedBody.includes("just a moment") || normalizedBody.includes("cloudflare")),
+  };
+}
+
 function buildAddressSearchQuery(addressHint?: PublicMenuAddressHint | null) {
   if (!addressHint) return null;
 
@@ -271,6 +301,7 @@ export async function scrapeIfoodPublicMenu(
   sourceUrl: string,
   addressHint?: PublicMenuAddressHint | null,
 ) {
+  const merchantUuid = extractMerchantUuidFromIfoodUrl(sourceUrl);
   const chromium = (await import("@sparticuz/chromium")).default;
   const puppeteer = await import("puppeteer-core");
   const executablePath = await resolveExecutablePath(chromium);
@@ -484,6 +515,30 @@ export async function scrapeIfoodPublicMenu(
       throw new Error(
         "O iFood exigiu um contexto de endereco e o cardapio nao apareceu mesmo apos tentar preencher um endereco publico da propria loja.",
       );
+    }
+
+    if (merchantUuid) {
+      try {
+        const publicCatalogProbe = await probePublicCatalogEndpoint(merchantUuid, sourceUrl);
+        if (publicCatalogProbe.isCloudflareBlock) {
+          throw new Error(
+            "O iFood bloqueou o acesso automatizado ao catalogo publico por protecao anti-bot (Cloudflare). Nesse ambiente do servidor, o cardapio nao pode ser copiado apenas pelo link.",
+          );
+        }
+
+        if (
+          publicCatalogProbe.status >= 400 &&
+          publicCatalogProbe.contentType.includes("text/html")
+        ) {
+          throw new Error(
+            `O endpoint publico do catalogo respondeu ${publicCatalogProbe.status} com HTML em vez de JSON. O iFood nao liberou o cardapio publico para leitura automatizada nessa sessao.`,
+          );
+        }
+      } catch (probeError) {
+        if (probeError instanceof Error) {
+          throw probeError;
+        }
+      }
     }
 
     throw new Error("O cardapio publico do iFood nao ficou disponivel nessa sessao de navegacao.");
