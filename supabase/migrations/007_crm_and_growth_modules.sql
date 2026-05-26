@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 CREATE TABLE IF NOT EXISTS public.customer_addresses (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL,
-  label TEXT DEFAULT 'Endereco',
+  label TEXT DEFAULT 'Endereço',
   cep TEXT,
   street TEXT NOT NULL,
   number TEXT NOT NULL,

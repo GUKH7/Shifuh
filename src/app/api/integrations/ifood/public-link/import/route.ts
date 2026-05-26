@@ -83,7 +83,7 @@ export async function POST(request: Request) {
     const imported = await fetchIfoodPublicStoreData(publicUrl);
     let importedMenuSections = imported.menuSections;
     let fallbackErrorMessage: string | null =
-      "O iFood nÃ£o expÃ´s nenhuma categoria nessa sessÃ£o de importaÃ§Ã£o.";
+      "O iFood não expôs nenhuma categoria nessa sessão de importação.";
 
     if (importedMenuSections.length === 0) {
       try {

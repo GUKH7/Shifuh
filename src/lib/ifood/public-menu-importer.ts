@@ -12,6 +12,8 @@ type ScrapedMenuSection = {
   }>;
 };
 
+type ScrapedMenuItem = ScrapedMenuSection["items"][number];
+
 type PublicMenuAddressHint = {
   street: string | null;
   number: string | null;
@@ -65,7 +67,7 @@ async function resolveExecutablePath(chromium: typeof import("@sparticuz/chromiu
   ];
 
   for (const candidate of localCandidates) {
-    if (typeof Bun !== "undefined") continue;
+    if ("Bun" in globalThis) continue;
 
     const fs = await import("node:fs/promises");
     try {
@@ -77,7 +79,7 @@ async function resolveExecutablePath(chromium: typeof import("@sparticuz/chromiu
   }
 
   throw new Error(
-    "Nenhum executavel do navegador foi encontrado para raspar o cardapio publico do iFood.",
+    "Nenhum executável do navegador foi encontrado para raspar o cardápio público do iFood.",
   );
 }
 
@@ -124,7 +126,7 @@ function normalizeStateMenu(menu: unknown): ScrapedMenuSection[] {
             imageUrl: logoUrl,
           };
         })
-        .filter(Boolean) as ScrapedMenuSection[number]["items"];
+        .filter(Boolean) as ScrapedMenuItem[];
 
       if (items.length === 0) return null;
 
@@ -248,8 +250,15 @@ async function tryResolveMenuByAddressFlow(
     return false;
   }
 
-  await searchFieldElement.click({ clickCount: 3 }).catch(() => null);
-  await searchFieldElement.type(addressQuery, { delay: 40 });
+  const searchInput = searchFieldElement as unknown as {
+    evaluate: (pageFunction: (node: Element) => void) => Promise<void>;
+    click: () => Promise<void>;
+    type: (text: string, options?: { delay?: number }) => Promise<void>;
+  };
+
+  await searchInput.evaluate((node) => (node as HTMLInputElement).select()).catch(() => null);
+  await searchInput.click().catch(() => null);
+  await searchInput.type(addressQuery, { delay: 40 });
 
   await page.waitForSelector("li[data-test-id^='button-address-'] .btn-address--full-size", {
     timeout: 15000,
@@ -270,7 +279,8 @@ async function tryResolveMenuByAddressFlow(
 
   const numberFields = await page.$$(numberFieldSelector);
   if (numberFields.length > 0 && addressHint?.number?.trim()) {
-    await numberFields[0].click({ clickCount: 3 }).catch(() => null);
+    await numberFields[0].evaluate((node) => (node as HTMLInputElement).select()).catch(() => null);
+    await numberFields[0].click().catch(() => null);
     await numberFields[0].type(addressHint.number.trim(), { delay: 30 }).catch(() => null);
   }
 
@@ -313,7 +323,7 @@ export async function scrapeIfoodPublicMenu(
 
   const browser = await puppeteer.launch({
     args: launchArgs,
-    defaultViewport: chromium.defaultViewport,
+    defaultViewport: null,
     executablePath,
     headless: headlessMode,
   });
@@ -513,7 +523,7 @@ export async function scrapeIfoodPublicMenu(
 
     if (hadAddressPrompt) {
       throw new Error(
-        "O iFood exigiu um contexto de endereco e o cardapio nao apareceu mesmo apos tentar preencher um endereco publico da propria loja.",
+        "O iFood exigiu um contexto de endereço e o cardápio não apareceu mesmo após tentar preencher um endereço público da própria loja.",
       );
     }
 
@@ -522,7 +532,7 @@ export async function scrapeIfoodPublicMenu(
         const publicCatalogProbe = await probePublicCatalogEndpoint(merchantUuid, sourceUrl);
         if (publicCatalogProbe.isCloudflareBlock) {
           throw new Error(
-            "O iFood bloqueou o acesso automatizado ao catalogo publico por protecao anti-bot (Cloudflare). Nesse ambiente do servidor, o cardapio nao pode ser copiado apenas pelo link.",
+            "O iFood bloqueou o acesso automatizado ao catálogo público por proteção anti-bot (Cloudflare). Nesse ambiente do servidor, o cardápio não pode ser copiado apenas pelo link.",
           );
         }
 
@@ -531,7 +541,7 @@ export async function scrapeIfoodPublicMenu(
           publicCatalogProbe.contentType.includes("text/html")
         ) {
           throw new Error(
-            `O endpoint publico do catalogo respondeu ${publicCatalogProbe.status} com HTML em vez de JSON. O iFood nao liberou o cardapio publico para leitura automatizada nessa sessao.`,
+            `O endpoint público do catálogo respondeu ${publicCatalogProbe.status} com HTML em vez de JSON. O iFood não liberou o cardápio público para leitura automatizada nessa sessão.`,
           );
         }
       } catch (probeError) {
@@ -541,7 +551,7 @@ export async function scrapeIfoodPublicMenu(
       }
     }
 
-    throw new Error("O cardapio publico do iFood nao ficou disponivel nessa sessao de navegacao.");
+    throw new Error("O cardápio público do iFood não ficou disponível nessa sessão de navegação.");
   } finally {
     await browser.close();
   }

@@ -309,21 +309,11 @@ export async function POST(request: Request) {
       }
     }
 
-    let clientCoords =
-      body.clientCoords &&
-      Number.isFinite(Number(body.clientCoords.lat)) &&
-      Number.isFinite(Number(body.clientCoords.lon))
-        ? {
-            lat: Number(body.clientCoords.lat),
-            lon: Number(body.clientCoords.lon),
-          }
-        : null;
+    let clientCoords: { lat: number; lon: number } | null = null;
+    const addressQuery = buildAddressQuery(address);
 
-    if (!clientCoords) {
-      const addressQuery = buildAddressQuery(address);
-      if (addressQuery) {
-        clientCoords = await getCoordinates(addressQuery);
-      }
+    if (addressQuery) {
+      clientCoords = await getCoordinates(addressQuery);
     }
 
     if (restaurantCoords && clientCoords) {
@@ -347,24 +337,24 @@ export async function POST(request: Request) {
       }
 
       deliveryFee = roundMoney(fee.price);
-    } else if (body.deliveryPreview?.valid) {
-      deliveryFee = roundMoney(Number(body.deliveryPreview.price) || 0);
-      deliveryTime = Number(body.deliveryPreview.time) || 0;
-      deliveryDistance = Number(body.deliveryPreview.distance) || null;
     }
 
     const total = roundMoney(subtotal + deliveryFee - discount);
     const orderId = crypto.randomUUID();
-    const { data: latestDisplay } = await supabase
-      .from("orders")
-      .select("display_number")
-      .eq("restaurant_id", restaurant.id)
-      .order("display_number", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const { data: reservedDisplayNumber, error: displayNumberError } = await supabase.rpc(
+      "next_order_display_number",
+      { p_restaurant_id: restaurant.id },
+    );
 
-    const displayNumber = String(Math.max(1, Number(latestDisplay?.display_number || 0) + 1))
-      .padStart(4, "0");
+    if (displayNumberError || !reservedDisplayNumber) {
+      console.error("Erro ao reservar número do pedido:", displayNumberError);
+      return NextResponse.json(
+        { error: "Não foi possível gerar o número do pedido." },
+        { status: 400 },
+      );
+    }
+
+    const displayNumber = String(reservedDisplayNumber).padStart(4, "0");
 
     const { error: orderError } = await supabase.from("orders").insert({
       id: orderId,
@@ -380,7 +370,7 @@ export async function POST(request: Request) {
       payment_method: body.paymentMethod || "pix",
       change_for: body.changeFor?.trim() || null,
       coupon_code: appliedCouponCode,
-      display_number: Number(displayNumber),
+      display_number: reservedDisplayNumber,
       address: {
         ...address,
         distance: deliveryDistance,
@@ -440,7 +430,7 @@ export async function POST(request: Request) {
           });
         }
       } catch (profileError) {
-        console.error("Falha ao sincronizar perfil/endereco do cliente:", profileError);
+        console.error("Falha ao sincronizar perfil/endereço do cliente:", profileError);
       }
     }
 

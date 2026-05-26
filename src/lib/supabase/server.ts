@@ -1,7 +1,10 @@
 import { createServerClient } from "@supabase/ssr";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import type { Database } from "./database.types";
+
+type PublicSupabaseClient = SupabaseClient<Database, "public", "public">;
 
 export async function createClient() {
   const cookieStore = await cookies();
@@ -15,12 +18,12 @@ export async function createClient() {
     );
   }
 
-  return createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
+  return createServerClient<Database, "public">(supabaseUrl, supabaseAnonKey, {
     cookies: {
       getAll() {
         return cookieStore.getAll();
       },
-      setAll(cookiesToSet) {
+      setAll(cookiesToSet: Array<{ name: string; value: string; options: any }>) {
         try {
           cookiesToSet.forEach(({ name, value, options }) =>
             cookieStore.set(name, value, options)
@@ -30,7 +33,7 @@ export async function createClient() {
         }
       },
     },
-  });
+  }) as unknown as PublicSupabaseClient;
 }
 
 export function createAdminClient() {
@@ -43,10 +46,10 @@ export function createAdminClient() {
     );
   }
 
-  return createSupabaseClient<Database>(supabaseUrl, serviceRoleKey, {
+  return createSupabaseClient<Database, "public">(supabaseUrl, serviceRoleKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
     },
-  });
+  }) as PublicSupabaseClient;
 }

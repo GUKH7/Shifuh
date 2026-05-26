@@ -106,6 +106,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       categories: {
         Row: {
@@ -132,6 +133,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       products: {
         Row: {
@@ -173,6 +175,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
         orders: {
           Row: {
@@ -247,6 +250,7 @@ export interface Database {
             created_at?: string;
             updated_at?: string;
           };
+          Relationships: [];
         };
       order_items: {
         Row: {
@@ -279,6 +283,7 @@ export interface Database {
           addons?: Json | null;
           created_at?: string;
         };
+        Relationships: [];
       };
       customers: {
         Row: {
@@ -308,6 +313,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       ifood_integrations: {
         Row: {
@@ -370,6 +376,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       ifood_category_links: {
         Row: {
@@ -402,6 +409,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       ifood_product_links: {
         Row: {
@@ -440,6 +448,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       ifood_order_events: {
         Row: {
@@ -493,6 +502,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       ifood_sync_runs: {
         Row: {
@@ -534,7 +544,37 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
+      };
+      order_display_counters: {
+        Row: {
+          restaurant_id: string;
+          next_value: number;
+          updated_at: string;
+        };
+        Insert: {
+          restaurant_id: string;
+          next_value?: number;
+          updated_at?: string;
+        };
+        Update: {
+          restaurant_id?: string;
+          next_value?: number;
+          updated_at?: string;
+        };
+        Relationships: [];
       };
     };
+    Views: {};
+    Functions: {
+      next_order_display_number: {
+        Args: {
+          p_restaurant_id: string;
+        };
+        Returns: number;
+      };
+    };
+    Enums: {};
+    CompositeTypes: {};
   };
 }

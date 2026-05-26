@@ -1,179 +1,38 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { useCallback, useState } from "react";
 import {
   Bike,
   Check,
-  ChevronLeft,
   Clock3,
-  DollarSign,
   Loader2,
-  LogIn,
-  MapPin,
-  Minus,
   Plus,
   Search,
   Send,
   ShoppingBag,
   Star,
-  Ticket,
-  User,
   X,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { calculateDistance, calculateDeliveryFee, getCoordinates } from "@/lib/geo";
 import { useToast } from "@/components/ui/toast-provider";
-
-interface Product {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  image_url: string;
-  category_id: string;
-  is_active: boolean;
-  addons: any[];
-}
-
-interface CartItem {
-  internalId: string;
-  product: Product;
-  quantity: number;
-  selectedAddons: Array<{
-    groupId?: string;
-    name: string;
-    price?: number;
-  }>;
-  totalPrice: number;
-  observation: string;
-}
-
-interface DeliveryInfo {
-  price: number;
-  time: number;
-  distance: number;
-  valid: boolean;
-}
-
-interface OrderResponse {
-  orderId: string;
-  displayNumber?: string;
-  restaurantPhone: string;
-  subtotal: number;
-  deliveryFee: number;
-  deliveryTime: number;
-  deliveryDistance: number | null;
-  discount: number;
-  total: number;
-  paymentMethod: string;
-  address: {
-    cep: string;
-    street: string;
-    number: string;
-    neighborhood: string;
-    city: string;
-    state: string;
-    complement: string;
-  };
-  items: Array<{
-    product_name: string;
-    quantity: number;
-    price: number;
-    observation: string | null;
-    addons: Array<{ groupId?: string; name: string; price: number }>;
-  }>;
-}
-
-interface StorefrontTheme {
-  hero_style: "banner" | "split" | "spotlight";
-  catalog_layout: "grid" | "list";
-  card_style: "soft" | "outline" | "elevated";
-  contrast_color: string;
-  show_logo: boolean;
-  show_reviews: boolean;
-  show_banners: boolean;
-  show_featured_badge: boolean;
-  show_promo_badge: boolean;
-  category_style: "underline" | "pill";
-  highlight_badge: string;
-  promo_text: string;
-}
-
-const DEFAULT_STOREFRONT_THEME: StorefrontTheme = {
-  hero_style: "banner",
-  catalog_layout: "grid",
-  card_style: "soft",
-  contrast_color: "#1f2937",
-  show_logo: true,
-  show_reviews: true,
-  show_banners: true,
-  show_featured_badge: true,
-  show_promo_badge: true,
-  category_style: "underline",
-  highlight_badge: "Mais pedido",
-  promo_text: "Promo do dia",
-};
-
-const EMPTY_ADDRESS = {
-  cep: "",
-  street: "",
-  number: "",
-  neighborhood: "",
-  city: "Sao Paulo",
-  state: "SP",
-  complement: "",
-};
-
-function hexToRgba(hex: string, opacity: number) {
-  const normalized = hex.replace("#", "");
-  const full = normalized.length === 3 ? normalized.split("").map((char) => `${char}${char}`).join("") : normalized;
-
-  if (full.length !== 6) return `rgba(17, 24, 39, ${opacity})`;
-
-  const red = Number.parseInt(full.slice(0, 2), 16);
-  const green = Number.parseInt(full.slice(2, 4), 16);
-  const blue = Number.parseInt(full.slice(4, 6), 16);
-
-  return `rgba(${red}, ${green}, ${blue}, ${opacity})`;
-}
+import { CheckoutDrawer } from "@/features/storefront/CheckoutDrawer";
+import { ProductPicker } from "@/features/storefront/ProductPicker";
+import { EMPTY_ADDRESS } from "@/features/storefront/constants";
+import { formatMoney, hexToRgba } from "@/features/storefront/format";
+import type { CheckoutStep, DeliveryInfo, OrderResponse } from "@/features/storefront/types";
+import { useCart } from "@/features/storefront/use-cart";
+import { useStorefront } from "@/features/storefront/use-storefront";
 
 export default function StorePage({ params }: { params: { slug: string } }) {
   const pathname = usePathname();
   const router = useRouter();
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  );
-
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
+  const { showToast } = useToast();
   const [usingSavedAddress, setUsingSavedAddress] = useState(false);
-
-  const [restaurant, setRestaurant] = useState<any>(null);
-  const [primaryColor, setPrimaryColor] = useState("#ff5a1f");
-  const [banners, setBanners] = useState<string[]>([]);
-  const [currentBanner, setCurrentBanner] = useState(0);
-  const [storefrontHeadline, setStorefrontHeadline] = useState("");
-  const [storefrontSubheadline, setStorefrontSubheadline] = useState("");
-  const [storefrontTheme, setStorefrontTheme] = useState<StorefrontTheme>(DEFAULT_STOREFRONT_THEME);
-
-  const [categories, setCategories] = useState<any[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [deliveryTiers, setDeliveryTiers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [restoCoords, setRestoCoords] = useState<{ lat: number; lon: number } | null>(null);
-
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [activeCategory, setActiveCategory] = useState("");
   const [menuSearch, setMenuSearch] = useState("");
-  const [addonSelections, setAddonSelections] = useState<Record<string, any[]>>({});
-  const [quantity, setQuantity] = useState(1);
-  const [observation, setObservation] = useState("");
-  const [cart, setCart] = useState<CartItem[]>([]);
 
-  const [step, setStep] = useState<"cart" | "address" | "payment" | "success">("cart");
+  const [step, setStep] = useState<CheckoutStep>("cart");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [address, setAddress] = useState(EMPTY_ADDRESS);
@@ -191,126 +50,62 @@ export default function StorePage({ params }: { params: { slug: string } }) {
     type: string;
   } | null>(null);
   const [verifyingCoupon, setVerifyingCoupon] = useState(false);
-  const [lastOrderId, setLastOrderId] = useState("");
   const [lastOrderSummary, setLastOrderSummary] = useState<OrderResponse | null>(null);
-  const { showToast } = useToast();
 
-  useEffect(() => {
-    fetchStoreData();
-    checkUserSession();
-
-    const timer = setInterval(() => {
-      setBanners((prev) => {
-        if (prev.length > 1) {
-          setCurrentBanner((current) => (current + 1) % prev.length);
-        }
-        return prev;
-      });
-    }, 5000);
-
-    const handleScroll = () => {
-      const offsets = categories.map((cat) => ({
-        id: cat.id,
-        offset: document.getElementById(`cat-${cat.id}`)?.offsetTop || 0,
-      }));
-      const current = offsets.findLast((item) => window.scrollY + 240 >= item.offset);
-      if (current) setActiveCategory(current.id);
-    };
-
-    window.addEventListener("scroll", handleScroll);
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-      clearInterval(timer);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  const handleCustomerLoaded = useCallback((profile: { name: string; phone: string }) => {
+    setCustomerName(profile.name);
+    setCustomerPhone(profile.phone);
   }, []);
 
-  const checkUserSession = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) return;
-
-    setCurrentUser(user);
-
-    const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-    if (profile) {
-      setCustomerName(profile.name || "");
-      setCustomerPhone(profile.phone || "");
-    }
-
-    const { data: addresses } = await supabase
-      .from("customer_addresses")
-      .select("*")
-      .eq("user_id", user.id);
-
-    if (addresses && addresses.length > 0) setSavedAddresses(addresses);
-  };
-
-  const fetchStoreData = async () => {
-    const { data: resto } = await supabase
-      .from("restaurants")
-      .select("*")
-      .eq("slug", params.slug)
-      .single();
-
-    if (!resto) {
-      showToast({
-        title: "Loja não encontrada",
-        description: "Confira o link da vitrine e tente novamente.",
-        tone: "error",
-      });
-      return;
-    }
-
-    setRestaurant(resto);
-    if (resto.delivery_tiers) setDeliveryTiers(resto.delivery_tiers);
-    if (resto.primary_color) setPrimaryColor(resto.primary_color);
-    if (resto.banners && resto.banners.length > 0) setBanners(resto.banners);
-    setStorefrontHeadline(resto.storefront_headline || "");
-    setStorefrontSubheadline(resto.storefront_subheadline || "");
-    setStorefrontTheme({
-      ...DEFAULT_STOREFRONT_THEME,
-      ...(resto.storefront_theme || {}),
+  const handleMissingStore = useCallback(() => {
+    showToast({
+      title: "Loja não encontrada",
+      description: "Confira o link da vitrine e tente novamente.",
+      tone: "error",
     });
+  }, [showToast]);
 
-    if (resto.latitude && resto.longitude) {
-      setRestoCoords({
-        lat: Number(resto.latitude),
-        lon: Number(resto.longitude),
-      });
-    } else {
-      let restoQuery = `${resto.name}, Brasil`;
-      if (resto.address_street && resto.address_number) {
-        restoQuery = `${resto.address_street}, ${resto.address_number}, ${resto.address_neighborhood || ""}, ${resto.address_city}, ${resto.address_state}`;
-      }
+  const {
+    supabase,
+    currentUser,
+    savedAddresses,
+    restaurant,
+    primaryColor,
+    banners,
+    currentBanner,
+    storefrontHeadline,
+    storefrontSubheadline,
+    storefrontTheme,
+    categories,
+    products,
+    deliveryTiers,
+    loading,
+    restoCoords,
+    activeCategory,
+    setActiveCategory,
+  } = useStorefront({
+    slug: params.slug,
+    onCustomerLoaded: handleCustomerLoaded,
+    onMissingStore: handleMissingStore,
+  });
 
-      getCoordinates(restoQuery).then((coords) => {
-        if (coords) setRestoCoords(coords);
-      });
-    }
-
-    const { data: cats } = await supabase
-      .from("categories")
-      .select("*")
-      .eq("restaurant_id", resto.id)
-      .order("order");
-
-    if (cats) {
-      setCategories(cats);
-      if (cats.length > 0) setActiveCategory(cats[0].id);
-    }
-
-    const { data: prods } = await supabase
-      .from("products")
-      .select("*")
-      .eq("restaurant_id", resto.id)
-      .eq("is_active", true);
-
-    if (prods) setProducts(prods);
-    setLoading(false);
-  };
+  const {
+    selectedProduct,
+    addonSelections,
+    quantity,
+    observation,
+    cart,
+    cartSubtotal,
+    setQuantity,
+    setObservation,
+    openProduct,
+    closeProduct,
+    toggleAddon,
+    calculateProductTotal,
+    addToCart,
+    removeFromCart,
+    clearCart,
+  } = useCart();
 
   const calculateDeliveryForAddress = async (addressData: typeof EMPTY_ADDRESS) => {
     if (!restoCoords) return;
@@ -397,72 +192,10 @@ export default function StorePage({ params }: { params: { slug: string } }) {
     }
   };
 
-  const openProduct = (product: Product) => {
-    setSelectedProduct(product);
-    setQuantity(1);
-    setObservation("");
-    setAddonSelections({});
-  };
-
-  const toggleAddon = (groupId: string, option: any, group: any) => {
-    setAddonSelections((prev) => {
-      const current = prev[groupId] || [];
-      const exists = current.some((item) => item.name === option.name);
-
-      if (exists) {
-        return { ...prev, [groupId]: current.filter((item) => item.name !== option.name) };
-      }
-
-      if (group.max_options > 0 && current.length >= group.max_options) return prev;
-
-      return { ...prev, [groupId]: [...current, option] };
-    });
-  };
-
-  const calculateProductTotal = () => {
-    if (!selectedProduct) return 0;
-
-    let total = selectedProduct.price;
-    Object.values(addonSelections).forEach((options) =>
-      options.forEach((option) => {
-        total += option.price || 0;
-      }),
-    );
-
-    return total * quantity;
-  };
-
-  const addToCart = () => {
-    if (!selectedProduct) return;
-
-    const selectedAddonEntries = Object.entries(addonSelections).flatMap(([groupId, options]) =>
-      options.map((option) => ({
-        ...option,
-        groupId,
-      })),
-    );
-
-    setCart([
-      ...cart,
-      {
-        internalId: Date.now().toString(),
-        product: selectedProduct,
-        quantity,
-        selectedAddons: selectedAddonEntries,
-        totalPrice: calculateProductTotal(),
-        observation,
-      },
-    ]);
-    setSelectedProduct(null);
-  };
-
-  const removeFromCart = (id: string) => setCart(cart.filter((item) => item.internalId !== id));
-
-  const cartSubtotal = cart.reduce((acc, item) => acc + item.totalPrice, 0);
   const feeValue = deliveryInfo?.valid ? deliveryInfo.price : 0;
   const hasAddressMinimum = Boolean(address.street && address.number && address.neighborhood);
-
   let discountAmount = 0;
+
   if (appliedCoupon) {
     if (appliedCoupon.type === "percent") {
       discountAmount = cartSubtotal * (appliedCoupon.value / 100);
@@ -470,15 +203,10 @@ export default function StorePage({ params }: { params: { slug: string } }) {
       discountAmount = appliedCoupon.value;
     }
   }
+
   if (discountAmount > cartSubtotal) discountAmount = cartSubtotal;
 
   const finalTotal = cartSubtotal + feeValue - discountAmount;
-
-  const formatMoney = (value: number) =>
-    new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(value);
 
   const handleApplyCoupon = async () => {
     if (!couponCode) return;
@@ -601,11 +329,10 @@ export default function StorePage({ params }: { params: { slug: string } }) {
         throw new Error(result.error || "Erro ao finalizar pedido.");
       }
 
-      setLastOrderId(result.orderId);
       setLastOrderSummary(result);
       sendToWhatsApp(result);
       setStep("success");
-      setCart([]);
+      clearCart();
       setAppliedCoupon(null);
     } catch (error: any) {
       showToast({
@@ -916,7 +643,7 @@ export default function StorePage({ params }: { params: { slug: string } }) {
           <div className="space-y-4">
             {menuSearch && (
               <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-700">
-                {visibleProducts.length} resultado(s) para "{menuSearch}"
+                {visibleProducts.length} resultado(s) para &quot;{menuSearch}&quot;
               </div>
             )}
 
@@ -1055,535 +782,69 @@ export default function StorePage({ params }: { params: { slug: string } }) {
         </div>
       )}
 
-      {selectedProduct && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-          <div className="flex h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-[32px] bg-[#fffdfa] sm:h-auto sm:max-h-[88vh] sm:rounded-[32px]">
-            <div className="relative h-72 bg-[#efe7de]">
-              <button
-                onClick={() => setSelectedProduct(null)}
-                className="absolute right-4 top-4 z-10 rounded-full bg-white/92 p-2 text-gray-700 shadow-sm"
-              >
-                <X size={20} />
-              </button>
-              {selectedProduct.image_url && (
-                <img
-                  src={selectedProduct.image_url}
-                  alt={selectedProduct.name}
-                  className="h-full w-full object-cover"
-                />
-              )}
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-6">
-              <h2 className="text-3xl font-black tracking-tight text-gray-950">
-                {selectedProduct.name}
-              </h2>
-              <p className="mt-3 text-sm leading-7 text-[var(--muted)]">
-                {selectedProduct.description}
-              </p>
-
-              {selectedProduct.addons?.map((group: any) => (
-                <div key={group.id} className="mt-8">
-                  <div className="mb-3 flex items-center gap-3">
-                    <h3 className="text-lg font-black text-gray-950">{group.title}</h3>
-                    <span className="rounded-full bg-[#f3ede6] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-gray-500">
-                      {group.required ? "Obrigatório" : "Opcional"}
-                    </span>
-                  </div>
-
-                  <div className="space-y-3">
-                    {group.options.map((option: any, index: number) => (
-                      <label
-                        key={index}
-                        className="flex cursor-pointer items-center justify-between rounded-2xl border bg-white px-4 py-4 transition-colors"
-                        style={
-                          addonSelections[group.id]?.some(
-                            (item) => item.name === option.name,
-                          )
-                            ? {
-                                borderColor: primaryColor,
-                                backgroundColor: `${primaryColor}10`,
-                              }
-                            : { borderColor: "var(--line)" }
-                        }
-                      >
-                        <div>
-                          <p className="font-bold text-gray-900">{option.name}</p>
-                          {option.price > 0 && (
-                            <p className="mt-1 text-sm text-gray-500">
-                              + {formatMoney(option.price)}
-                            </p>
-                          )}
-                        </div>
-                        <input
-                          type="checkbox"
-                          checked={addonSelections[group.id]?.some(
-                            (item) => item.name === option.name,
-                          )}
-                          onChange={() => toggleAddon(group.id, option, group)}
-                          className="h-5 w-5 accent-[var(--brand)]"
-                          style={{ accentColor: primaryColor }}
-                        />
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              ))}
-
-              <div className="mt-8">
-                <label className="mb-2 block text-sm font-black text-gray-950">
-                  Observação
-                </label>
-                <textarea
-                  value={observation}
-                  onChange={(e) => setObservation(e.target.value)}
-                  rows={3}
-                  placeholder="Ex: sem cebola, bem passado, sem molho..."
-                  className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none"
-                />
-              </div>
-            </div>
-
-            <div className="border-t border-[var(--line)] bg-white p-4">
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-4 rounded-2xl border border-[var(--line)] px-4 py-3">
-                  <button
-                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    style={{ color: primaryColor }}
-                  >
-                    <Minus size={18} />
-                  </button>
-                  <span className="text-lg font-black text-gray-950">{quantity}</span>
-                  <button onClick={() => setQuantity(quantity + 1)} style={{ color: primaryColor }}>
-                    <Plus size={18} />
-                  </button>
-                </div>
-
-                <button
-                  onClick={addToCart}
-                  className="flex-1 rounded-2xl px-5 py-4 font-black text-white"
-                  style={{ backgroundColor: primaryColor }}
-                >
-                  <span className="flex items-center justify-between gap-3">
-                    <span>Adicionar</span>
-                    <span>{formatMoney(calculateProductTotal())}</span>
-                  </span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isCartOpen && (
-        <div className="fixed inset-0 z-50 bg-[#f6f1ea]">
-          <div className="mx-auto flex h-full max-w-3xl flex-col">
-            <div className="sticky top-0 z-10 border-b border-[var(--line)] bg-[#faf5ef]/95 px-3 py-3 backdrop-blur sm:px-6 sm:py-4">
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={() => {
-                    if (step === "cart") setIsCartOpen(false);
-                    else if (step === "payment") setStep("address");
-                    else setStep("cart");
-                  }}
-                  className="rounded-full bg-white p-2 text-gray-700"
-                >
-                  <ChevronLeft size={18} />
-                </button>
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-gray-400">
-                    Checkout
-                  </p>
-                  <h2 className="text-lg font-black text-gray-950 sm:text-xl">
-                    {step === "cart"
-                      ? "Sua sacola"
-                      : step === "address"
-                        ? "Entrega"
-                        : "Pagamento"}
-                  </h2>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto px-3 py-4 sm:px-6 sm:py-6">
-              {step === "cart" && (
-                <div className="space-y-4">
-                  {cart.map((item) => (
-                    <div key={item.internalId} className="surface-card rounded-[20px] p-4 sm:rounded-[24px] sm:p-5">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-bold text-gray-400">{item.quantity}x item</p>
-                          <p className="mt-1 text-base font-black text-gray-950 sm:text-lg">
-                            {item.product.name}
-                          </p>
-                          {item.selectedAddons.length > 0 && (
-                            <p className="mt-2 text-sm text-gray-500">
-                              {item.selectedAddons.map((addon) => addon.name).join(", ")}
-                            </p>
-                          )}
-                          {item.observation && (
-                            <p className="mt-1 text-sm text-amber-700">
-                              Obs: {item.observation}
-                            </p>
-                          )}
-                          <p className="mt-2.5 text-base font-black sm:text-lg" style={{ color: primaryColor }}>
-                            {formatMoney(item.totalPrice)}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => removeFromCart(item.internalId)}
-                          className="rounded-xl bg-[#faf5ef] p-2 text-gray-400"
-                        >
-                          <X size={18} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-
-                  <div className="surface-card rounded-[20px] p-4 sm:rounded-[24px] sm:p-5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-bold uppercase tracking-[0.14em] text-gray-400">
-                        Subtotal
-                      </span>
-                      <span className="text-2xl font-black text-gray-950">
-                        {formatMoney(cartSubtotal)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {step === "address" && (
-                <div className="space-y-4">
-                  <div className="surface-card rounded-[20px] p-4 sm:rounded-[24px] sm:p-5">
-                    <h3 className="text-lg font-black text-gray-950">Seus dados</h3>
-                    <div className="mt-4 space-y-3">
-                      <input
-                        value={customerName}
-                        onChange={(e) => setCustomerName(e.target.value)}
-                        placeholder="Nome completo"
-                        className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none"
-                      />
-                      <input
-                        value={customerPhone}
-                        onChange={(e) => setCustomerPhone(e.target.value)}
-                        placeholder="WhatsApp"
-                        className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="surface-card rounded-[24px] p-5">
-                    <div className="flex items-center gap-2">
-                      <MapPin size={18} style={{ color: primaryColor }} />
-                      <h3 className="text-lg font-black text-gray-950">Endereço de entrega</h3>
-                    </div>
-
-                    {savedAddresses.length > 0 && (
-                      <div className="mt-4 space-y-2">
-                        {savedAddresses.map((savedAddr) => {
-                          const isSelected =
-                            usingSavedAddress && address.street === savedAddr.street;
-                          return (
-                            <button
-                              key={savedAddr.id}
-                              onClick={() => selectSavedAddress(savedAddr)}
-                              className="flex w-full items-center justify-between rounded-2xl border bg-white px-3 py-3.5 text-left sm:px-4 sm:py-4"
-                              style={
-                                isSelected
-                                  ? {
-                                      borderColor: primaryColor,
-                                      backgroundColor: `${primaryColor}10`,
-                                    }
-                                  : { borderColor: "var(--line)" }
-                              }
-                            >
-                              <div>
-                                <p className="font-bold text-gray-900">
-                                  {savedAddr.street}, {savedAddr.number}
-                                </p>
-                                <p className="mt-1 text-sm text-gray-500">
-                                  {savedAddr.neighborhood} - {savedAddr.city}
-                                </p>
-                              </div>
-                              {isSelected && (
-                                <Check size={18} style={{ color: primaryColor }} />
-                              )}
-                            </button>
-                          );
-                        })}
-
-                        <button
-                          onClick={() => {
-                            setUsingSavedAddress(false);
-                            setAddress(EMPTY_ADDRESS);
-                            setDeliveryInfo(null);
-                            setClientCoords(null);
-                          }}
-                          className="text-sm font-bold"
-                          style={{ color: primaryColor }}
-                        >
-                          Usar outro endereço
-                        </button>
-                      </div>
-                    )}
-
-                    {(!usingSavedAddress || savedAddresses.length === 0) && (
-                      <div className="mt-4 space-y-3">
-                        <div className="grid gap-2.5 sm:grid-cols-[1fr_64px]">
-                          <input
-                            value={address.cep}
-                            onChange={(e) => setAddress({ ...address, cep: e.target.value })}
-                            onBlur={handleBlurCep}
-                            placeholder="CEP"
-                            className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none"
-                          />
-                          <div className="flex items-center justify-center rounded-2xl border border-[var(--line)] bg-white">
-                            {calculatingFee ? (
-                              <Loader2 className="animate-spin text-[var(--brand)]" size={18} />
-                            ) : (
-                              <Search className="text-gray-400" size={18} />
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="grid gap-2.5 sm:grid-cols-[1fr_140px]">
-                          <input
-                            value={address.street}
-                            onChange={(e) => setAddress({ ...address, street: e.target.value })}
-                            onBlur={() => calculateDeliveryForAddress(address)}
-                            placeholder="Rua"
-                            className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none"
-                          />
-                          <input
-                            value={address.number}
-                            onChange={(e) => setAddress({ ...address, number: e.target.value })}
-                            onBlur={() => calculateDeliveryForAddress(address)}
-                            placeholder="Número"
-                            className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none"
-                          />
-                        </div>
-
-                        <input
-                          value={address.neighborhood}
-                          onChange={(e) =>
-                            setAddress({ ...address, neighborhood: e.target.value })
-                          }
-                          onBlur={() => calculateDeliveryForAddress(address)}
-                          placeholder="Bairro"
-                          className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none"
-                        />
-
-                        <input
-                          value={address.complement}
-                          onChange={(e) =>
-                            setAddress({ ...address, complement: e.target.value })
-                          }
-                          placeholder="Complemento"
-                          className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none"
-                        />
-                      </div>
-                    )}
-
-                    {deliveryInfo && deliveryInfo.valid && (
-                      <div className="mt-4 rounded-[18px] border border-emerald-200 bg-emerald-50 p-3.5 sm:mt-5 sm:rounded-[22px] sm:p-4">
-                        <div className="flex items-center justify-between gap-4">
-                          <div>
-                            <p className="font-black text-emerald-800">Entrega confirmada</p>
-                            <p className="mt-1 text-sm text-emerald-700">
-                              Distância: {deliveryInfo.distance} km
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-lg font-black text-emerald-800">
-                              {deliveryInfo.price === 0
-                                ? "Grátis"
-                                : formatMoney(deliveryInfo.price)}
-                            </p>
-                            <p className="text-sm text-emerald-700">
-                              {deliveryInfo.time} min
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {deliveryInfo && !deliveryInfo.valid && !calculatingFee && (
-                      <div className="mt-4 rounded-[18px] border border-red-200 bg-red-50 p-3.5 sm:mt-5 sm:rounded-[22px] sm:p-4">
-                        <p className="font-black text-red-800">Endereço fora da área de entrega</p>
-                        <p className="mt-1 text-sm leading-6 text-red-700">
-                          A distância calculada foi de {deliveryInfo.distance} km, acima da última faixa configurada pela loja.
-                        </p>
-                      </div>
-                    )}
-
-                    {hasAddressMinimum && !deliveryInfo && !calculatingFee && (
-                      <div className="mt-4 rounded-[18px] border border-amber-200 bg-amber-50 p-3.5 sm:mt-5 sm:rounded-[22px] sm:p-4">
-                        <p className="font-black text-amber-800">Entrega sem cálculo automático</p>
-                        <p className="mt-1 text-sm leading-6 text-amber-700">
-                          Não conseguimos calcular a distância agora. O pedido pode seguir e a loja confirma a taxa no atendimento.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {step === "payment" && (
-                <div className="space-y-4">
-                  <div className="surface-card rounded-[20px] p-4 sm:rounded-[24px] sm:p-5">
-                    <div className="flex items-center gap-2">
-                      <Ticket size={18} className="text-[var(--brand)]" />
-                      <h3 className="text-lg font-black text-gray-950">Cupom</h3>
-                    </div>
-
-                    <div className="mt-4 flex gap-2">
-                      <input
-                        value={couponCode}
-                        onChange={(e) => setCouponCode(e.target.value)}
-                        placeholder="Código"
-                        disabled={!!appliedCoupon}
-                        className="flex-1 rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold uppercase outline-none disabled:bg-[#faf5ef]"
-                      />
-                      {appliedCoupon ? (
-                        <button
-                          onClick={() => {
-                            setAppliedCoupon(null);
-                            setCouponCode("");
-                          }}
-                          className="rounded-2xl bg-red-100 px-4 py-3 text-sm font-bold text-red-600"
-                        >
-                          Remover
-                        </button>
-                      ) : (
-                        <button
-                          onClick={handleApplyCoupon}
-                          disabled={verifyingCoupon}
-                          className="rounded-2xl bg-[#171311] px-4 py-3 text-sm font-bold text-white"
-                        >
-                          {verifyingCoupon ? (
-                            <Loader2 className="animate-spin" size={16} />
-                          ) : (
-                            "Aplicar"
-                          )}
-                        </button>
-                      )}
-                    </div>
-
-                    {appliedCoupon && (
-                      <p className="mt-3 text-sm font-bold text-emerald-600">
-                        Cupom aplicado com sucesso.
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="surface-card rounded-[20px] p-4 sm:rounded-[24px] sm:p-5">
-                    <h3 className="text-lg font-black text-gray-950">Resumo</h3>
-                    <div className="mt-4 space-y-3 text-sm">
-                      <div className="flex justify-between text-gray-600">
-                        <span>Subtotal</span>
-                        <span>{formatMoney(cartSubtotal)}</span>
-                      </div>
-                      <div className="flex justify-between text-gray-600">
-                        <span>Entrega</span>
-                        <span>{formatMoney(feeValue)}</span>
-                      </div>
-                      {discountAmount > 0 && (
-                        <div className="flex justify-between font-bold text-emerald-600">
-                          <span>Desconto</span>
-                          <span>- {formatMoney(discountAmount)}</span>
-                        </div>
-                      )}
-                      <div className="border-t border-[var(--line)] pt-3">
-                        <div className="flex justify-between text-xl font-black text-gray-950">
-                          <span>Total</span>
-                          <span>{formatMoney(finalTotal)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="surface-card rounded-[20px] p-4 sm:rounded-[24px] sm:p-5">
-                    <h3 className="text-lg font-black text-gray-950">Pagamento</h3>
-                    <div className="mt-4 space-y-3">
-                      {[
-                        { value: "pix", label: "PIX" },
-                        { value: "card", label: "Cartao" },
-                        { value: "cash", label: "Dinheiro" },
-                      ].map((method) => (
-                        <label
-                          key={method.value}
-                          className="flex cursor-pointer items-center gap-3 rounded-2xl border bg-white px-4 py-4"
-                          style={
-                            paymentMethod === method.value
-                              ? {
-                                  borderColor: primaryColor,
-                                  backgroundColor: `${primaryColor}10`,
-                                }
-                              : { borderColor: "var(--line)" }
-                          }
-                        >
-                          <input
-                            type="radio"
-                            checked={paymentMethod === method.value}
-                            onChange={() => setPaymentMethod(method.value)}
-                            style={{ accentColor: primaryColor }}
-                          />
-                          <span className="font-bold text-gray-900">{method.label}</span>
-                        </label>
-                      ))}
-
-                      {paymentMethod === "cash" && (
-                        <input
-                          value={changeFor}
-                          onChange={(e) => setChangeFor(e.target.value)}
-                          placeholder="Troco para quanto?"
-                          className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none"
-                        />
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="border-t border-[var(--line)] bg-white px-3 py-3 sm:px-6 sm:py-4">
-              {step === "cart" && (
-                <button
-                  onClick={() => setStep("address")}
-                  className="w-full rounded-2xl px-5 py-3.5 text-sm font-black text-white sm:py-4 sm:text-base"
-                  style={{ backgroundColor: primaryColor }}
-                >
-                  Continuar
-                </button>
-              )}
-
-              {step === "address" && (
-                <button
-                  onClick={() => setStep("payment")}
-                  disabled={!hasAddressMinimum || calculatingFee || deliveryInfo?.valid === false}
-                  className="w-full rounded-2xl px-5 py-3.5 text-sm font-black text-white disabled:opacity-50 sm:py-4 sm:text-base"
-                  style={{ backgroundColor: primaryColor }}
-                >
-                  {calculatingFee ? "Calculando entrega..." : "Ir para pagamento"}
-                </button>
-              )}
-
-              {step === "payment" && (
-                <button
-                  onClick={handlePlaceOrder}
-                  disabled={isSubmitting}
-                  className="w-full rounded-2xl bg-[#25D366] px-5 py-3.5 text-sm font-black text-white disabled:opacity-60 sm:py-4 sm:text-base"
-                >
-                  {isSubmitting
-                    ? "Enviando pedido..."
-                    : `Finalizar pedido (${formatMoney(finalTotal)})`}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <ProductPicker
+        product={selectedProduct}
+        primaryColor={primaryColor}
+        addonSelections={addonSelections}
+        quantity={quantity}
+        observation={observation}
+        onClose={closeProduct}
+        onToggleAddon={toggleAddon}
+        onQuantityChange={setQuantity}
+        onObservationChange={setObservation}
+        onAddToCart={addToCart}
+        calculateProductTotal={calculateProductTotal}
+      />
+      <CheckoutDrawer
+        isOpen={isCartOpen}
+        step={step}
+        primaryColor={primaryColor}
+        cart={cart}
+        cartSubtotal={cartSubtotal}
+        customerName={customerName}
+        customerPhone={customerPhone}
+        savedAddresses={savedAddresses}
+        usingSavedAddress={usingSavedAddress}
+        address={address}
+        calculatingFee={calculatingFee}
+        deliveryInfo={deliveryInfo}
+        hasAddressMinimum={hasAddressMinimum}
+        couponCode={couponCode}
+        appliedCoupon={appliedCoupon}
+        verifyingCoupon={verifyingCoupon}
+        discountAmount={discountAmount}
+        feeValue={feeValue}
+        finalTotal={finalTotal}
+        paymentMethod={paymentMethod}
+        changeFor={changeFor}
+        isSubmitting={isSubmitting}
+        onClose={() => setIsCartOpen(false)}
+        onBackToCart={() => setStep("cart")}
+        onBackToAddress={() => setStep("address")}
+        onStepChange={setStep}
+        onRemoveFromCart={removeFromCart}
+        onCustomerNameChange={setCustomerName}
+        onCustomerPhoneChange={setCustomerPhone}
+        onAddressChange={setAddress}
+        onBlurCep={handleBlurCep}
+        onCalculateDelivery={calculateDeliveryForAddress}
+        onSelectSavedAddress={selectSavedAddress}
+        onUseAnotherAddress={() => {
+          setUsingSavedAddress(false);
+          setAddress(EMPTY_ADDRESS);
+          setDeliveryInfo(null);
+          setClientCoords(null);
+        }}
+        onCouponCodeChange={setCouponCode}
+        onApplyCoupon={handleApplyCoupon}
+        onRemoveCoupon={() => {
+          setAppliedCoupon(null);
+          setCouponCode("");
+        }}
+        onPaymentMethodChange={setPaymentMethod}
+        onChangeForChange={setChangeFor}
+        onPlaceOrder={handlePlaceOrder}
+      />
     </div>
   );
 }

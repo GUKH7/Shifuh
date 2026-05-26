@@ -92,15 +92,17 @@ function pickResource(
 }
 
 function findRestaurantState(nextData: JsonRecord | null) {
-  const state =
-    (nextData?.props as JsonRecord | undefined)?.pageProps &&
-    (((nextData.props as JsonRecord).pageProps as JsonRecord).initialState as JsonRecord | undefined);
+  const props = nextData?.props as JsonRecord | undefined;
+  const pageProps = props?.pageProps as JsonRecord | undefined;
+  const state = pageProps?.initialState as JsonRecord | undefined;
 
   return (state?.restaurant as JsonRecord | undefined) || null;
 }
 
 function parseJsonLdRestaurant(html: string) {
-  const scripts = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)];
+  const scripts = Array.from(
+    html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g),
+  );
 
   for (const script of scripts) {
     const parsed = safeJsonParse<JsonRecord>(script[1]);

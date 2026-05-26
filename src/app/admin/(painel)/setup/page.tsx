@@ -49,7 +49,7 @@ export default function SetupPage() {
       return;
     }
     if (!user?.id) {
-      setError("Sua sessao expirou. Entre novamente para continuar.");
+      setError("Sua sessão expirou. Entre novamente para continuar.");
       return;
     }
 

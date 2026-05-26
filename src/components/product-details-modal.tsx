@@ -28,7 +28,7 @@ interface ProductModalProps {
   productToEdit?: any // Se vier isso, estamos EDITANDO
 }
 
-// --- FUNÃ‡Ã•ES AUXILIARES DE IMAGEM ---
+// --- FUNÇÕES AUXILIARES DE IMAGEM ---
 const createImage = (url: string): Promise<HTMLImageElement> =>
   new Promise((resolve, reject) => {
     const image = new Image()
@@ -75,20 +75,20 @@ export default function ProductModal({ isOpen, onClose, onProductSaved, restaura
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null)
   const [isCropping, setIsCropping] = useState(false)
 
-  // --- CARREGAR DADOS NA EDIÃ‡ÃƒO ---
+  // --- CARREGAR DADOS NA EDIÇÃO ---
   useEffect(() => {
     if (isOpen) {
       if (productToEdit) {
-        // MODO EDIÃ‡ÃƒO
+        // MODO EDIÇÃO
         setName(productToEdit.name)
         setDescription(productToEdit.description || '')
         setPrice(productToEdit.price.toString())
         setCategoryId(productToEdit.category_id)
         setImageUrl(productToEdit.image_url)
         
-        // LÃ³gica inteligente para migrar addons antigos
+        // Lógica inteligente para migrar addons antigos
         if (productToEdit.addons && Array.isArray(productToEdit.addons)) {
-            // Se o primeiro item tiver "title", jÃ¡ Ã© o formato novo
+            // Se o primeiro item tiver "title", já é o formato novo
             if (productToEdit.addons.length > 0 && productToEdit.addons[0].title) {
                 setAddonGroups(productToEdit.addons)
             } else if (productToEdit.addons.length > 0) {
@@ -108,7 +108,7 @@ export default function ProductModal({ isOpen, onClose, onProductSaved, restaura
         }
 
       } else {
-        // MODO CRIAÃ‡ÃƒO (Limpar tudo)
+        // MODO CRIAÇÃO (Limpar tudo)
         setName('')
         setDescription('')
         setPrice('')
@@ -121,7 +121,7 @@ export default function ProductModal({ isOpen, onClose, onProductSaved, restaura
     }
   }, [isOpen, productToEdit, categories])
 
-  // --- LÃ“GICA DE GRUPOS DE ADDONS ---
+  // --- LÓGICA DE GRUPOS DE ADDONS ---
   const addGroup = () => {
       setAddonGroups([...addonGroups, {
           id: crypto.randomUUID(),
@@ -144,7 +144,7 @@ export default function ProductModal({ isOpen, onClose, onProductSaved, restaura
       setAddonGroups(newGroups)
   }
 
-  // --- LÃ“GICA DE OPÃ‡Ã•ES DENTRO DO GRUPO ---
+  // --- LÓGICA DE OPÇÕES DENTRO DO GRUPO ---
   const addOptionToGroup = (groupIndex: number) => {
       const newGroups = [...addonGroups]
       newGroups[groupIndex].options.push({ name: "", price: 0 })
@@ -188,7 +188,7 @@ export default function ProductModal({ isOpen, onClose, onProductSaved, restaura
   // --- SALVAR ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!restaurantId || !categoryId) return alert("Categoria obrigatÃ³ria!")
+    if (!restaurantId || !categoryId) return alert("Categoria obrigatória!")
     setIsLoading(true)
 
     try {
@@ -289,13 +289,13 @@ export default function ProductModal({ isOpen, onClose, onProductSaved, restaura
              </div>
              <div className="flex-1 space-y-3">
                 <input required value={name} onChange={e => setName(e.target.value)} className="w-full border p-2 rounded-lg font-bold" placeholder="Nome do Produto (Ex: X-Bacon)" />
-                <textarea value={description} onChange={e => setDescription(e.target.value)} className="w-full border p-2 rounded-lg text-sm resize-none" rows={2} placeholder="DescriÃ§Ã£o..." />
+                <textarea value={description} onChange={e => setDescription(e.target.value)} className="w-full border p-2 rounded-lg text-sm resize-none" rows={2} placeholder="Descrição..." />
              </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
              <div>
-                <label className="text-xs font-bold text-gray-500 uppercase">PreÃ§o (R$)</label>
+                <label className="text-xs font-bold text-gray-500 uppercase">Preço (R$)</label>
                 <input required type="number" step="0.01" value={price} onChange={e => setPrice(e.target.value)} className="w-full border p-2 rounded-lg" placeholder="0.00" />
              </div>
              <div>
@@ -329,7 +329,7 @@ export default function ProductModal({ isOpen, onClose, onProductSaved, restaura
                           {/* Header do Grupo */}
                           <div className="bg-gray-50 p-3 border-b border-gray-100 flex flex-wrap gap-2 items-center">
                               <input 
-                                  placeholder="TÃ­tulo (Ex: Escolha o Ponto)" 
+                                  placeholder="Título (Ex: Escolha o Ponto)" 
                                   value={group.title} 
                                   onChange={e => updateGroup(gIndex, 'title', e.target.value)}
                                   className="flex-1 bg-transparent border-none font-bold text-sm focus:ring-0 placeholder-gray-400"
@@ -337,7 +337,7 @@ export default function ProductModal({ isOpen, onClose, onProductSaved, restaura
                               <div className="flex items-center gap-2 text-xs">
                                   <label className="flex items-center gap-1 cursor-pointer">
                                       <input type="checkbox" checked={group.required} onChange={e => updateGroup(gIndex, 'required', e.target.checked)} className="rounded text-red-600 focus:ring-red-500"/>
-                                      ObrigatÃ³rio
+                                      Obrigatório
                                   </label>
                                   <div className="w-px h-4 bg-gray-300"></div>
                                   <input 
@@ -346,13 +346,13 @@ export default function ProductModal({ isOpen, onClose, onProductSaved, restaura
                                       value={group.max_options || ''} 
                                       onChange={e => updateGroup(gIndex, 'max_options', parseInt(e.target.value))}
                                       className="w-16 p-1 border rounded text-center"
-                                      title="MÃ¡ximo de opÃ§Ãµes selecionÃ¡veis (0 = ilimitado)"
+                                      title="Máximo de opções selecionáveis (0 = ilimitado)"
                                   />
                                   <button type="button" onClick={() => removeGroup(gIndex)} className="text-gray-400 hover:text-red-600 p-1"><Trash2 size={16}/></button>
                               </div>
                           </div>
 
-                          {/* Lista de OpÃ§Ãµes */}
+                          {/* Lista de Opções */}
                           <div className="p-3 bg-white space-y-2">
                               {group.options.map((option, oIndex) => (
                                   <div key={oIndex} className="flex gap-2 items-center">
@@ -377,7 +377,7 @@ export default function ProductModal({ isOpen, onClose, onProductSaved, restaura
                                   </div>
                               ))}
                               <button type="button" onClick={() => addOptionToGroup(gIndex)} className="text-xs text-blue-600 font-bold hover:underline mt-2 flex items-center gap-1">
-                                  <Plus size={12}/> Adicionar OpÃ§Ã£o
+                                  <Plus size={12}/> Adicionar Opção
                               </button>
                           </div>
                       </div>
@@ -390,7 +390,7 @@ export default function ProductModal({ isOpen, onClose, onProductSaved, restaura
         <div className="p-4 border-t bg-gray-50 flex justify-end gap-3 rounded-b-2xl">
             <button onClick={onClose} className="px-6 py-2 text-gray-600 font-bold hover:bg-gray-200 rounded-lg">Cancelar</button>
             <button onClick={handleSubmit} disabled={isLoading} className="px-6 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 flex items-center gap-2 shadow-lg shadow-red-200">
-                {isLoading ? <Loader2 className="animate-spin" /> : 'Salvar AlteraÃ§Ãµes'}
+                {isLoading ? <Loader2 className="animate-spin" /> : 'Salvar Alterações'}
             </button>
         </div>
 

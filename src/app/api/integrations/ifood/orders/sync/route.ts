@@ -8,6 +8,7 @@ import {
   pollIfoodOrderEvents,
   type IfoodOrderEvent,
 } from "@/lib/ifood/orders";
+import type { Json } from "@/lib/supabase/database.types";
 
 type SyncPayload = {
   restaurantId?: string;
@@ -79,7 +80,11 @@ function buildItemAddons(item: Record<string, unknown>) {
       const entry = option as Record<string, unknown>;
       const name = String(entry.name || entry.description || "").trim();
       const quantity = Number(entry.quantity || 1) || 1;
-      const price = roundMoney(entry.unitPrice || entry.price?.["value"] || entry.price || 0);
+      const priceValue =
+        entry.price && typeof entry.price === "object"
+          ? (entry.price as Record<string, unknown>).value
+          : entry.price;
+      const price = roundMoney(entry.unitPrice || priceValue || entry.price || 0);
 
       if (!name) return null;
 
@@ -118,15 +123,15 @@ function buildOrderItems(details: Record<string, unknown>) {
 }
 
 async function getNextDisplayNumber(admin: ReturnType<typeof createAdminClient>, restaurantId: string) {
-  const { data: latestDisplay } = await admin
-    .from("orders")
-    .select("display_number")
-    .eq("restaurant_id", restaurantId)
-    .order("display_number", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const { data, error } = await admin.rpc("next_order_display_number", {
+    p_restaurant_id: restaurantId,
+  });
 
-  return Math.max(1, Number(latestDisplay?.display_number || 0) + 1);
+  if (error || !data) {
+    throw new Error(error?.message || "Não foi possível gerar o número do pedido iFood.");
+  }
+
+  return data;
 }
 
 async function upsertLocalOrderFromIfood(
@@ -196,7 +201,7 @@ async function upsertLocalOrderFromIfood(
       external_order_id: event.orderId,
       external_display_id: displayNumberText || null,
       is_test: Boolean(details.isTest),
-      external_payload: details,
+      external_payload: details as Json,
     });
 
     if (insertOrderError) {
@@ -238,7 +243,7 @@ async function upsertLocalOrderFromIfood(
         external_order_id: event.orderId,
         external_display_id: displayNumberText || null,
         is_test: Boolean(details.isTest),
-        external_payload: details,
+        external_payload: details as Json,
       })
       .eq("id", localOrderId);
 
@@ -343,7 +348,7 @@ export async function POST(request: Request) {
         event_full_code: event.fullCode || null,
         event_group: String((event.metadata as Record<string, unknown> | undefined)?.group || "ORDER_STATUS"),
         event_created_at: event.createdAt || null,
-        raw_payload: event,
+        raw_payload: event as unknown as Json,
       }));
 
     if (eventsToInsert.length > 0) {

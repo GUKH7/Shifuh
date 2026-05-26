@@ -94,7 +94,7 @@ export default function CheckoutDialog({ open, onOpenChange }: CheckoutDialogPro
             // Ex: "Rua A, Bairro B" vira "Rua A" para a busca
             const streetOnly = address.split(',')[0]; 
             
-            // Busca: "Rua X, Numero, Brazil"
+            // Busca: "Rua X, Número, Brazil"
             const query = `${streetOnly}, ${addressNumber}, Brazil`;
             const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
             const data = await response.json();
