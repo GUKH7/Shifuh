@@ -117,7 +117,7 @@ function resolveAddonSelection(selectedAddons: CheckoutAddon[], productAddons: u
     }
 
     if (!matchedOption) {
-      throw new Error(`Complemento invalido: ${selected.name}`);
+      throw new Error(`Complemento inválido: ${selected.name}`);
     }
 
     const optionPrice = parseNumber(matchedOption.price);
@@ -250,7 +250,7 @@ export async function POST(request: Request) {
         .maybeSingle();
 
       if (couponError || !coupon) {
-        return NextResponse.json({ error: "Cupom invalido." }, { status: 400 });
+        return NextResponse.json({ error: "Cupom inválido." }, { status: 400 });
       }
 
       if (coupon.expires_at && new Date(coupon.expires_at).getTime() < Date.now()) {
@@ -402,7 +402,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            itemsError.message || "Pedido criado sem itens. Revise as permissoes do banco.",
+            itemsError.message || "Pedido criado sem itens. Revise as permissões do banco.",
         },
         { status: 400 },
       );

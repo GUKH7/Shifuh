@@ -276,6 +276,13 @@ async function readJsonResponse(response: Response) {
   }
 }
 
+const WHATSAPP_BOT_API_URL = (process.env.NEXT_PUBLIC_WHATSAPP_BOT_API_URL || "").replace(/\/+$/, "");
+
+function buildWhatsappBotApiUrl(path: string) {
+  if (!WHATSAPP_BOT_API_URL) return null;
+  return `${WHATSAPP_BOT_API_URL}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
 export default function SettingsPage() {
   const router = useRouter();
   const supabase = createBrowserClient(
@@ -338,8 +345,16 @@ export default function SettingsPage() {
 
   useEffect(() => {
     const checkWppStatus = async () => {
+      const statusUrl = buildWhatsappBotApiUrl("/status");
+
+      if (!statusUrl) {
+        setWppStatus("nao_configurado");
+        setWppQrCode("");
+        return;
+      }
+
       try {
-        const res = await fetch("http://64.181.189.107:3001/status");
+        const res = await fetch(statusUrl);
         const data = await res.json();
         setWppStatus(data.status);
         setWppQrCode(data.qrcode);
@@ -634,13 +649,32 @@ export default function SettingsPage() {
   };
 
   const handleRestartWpp = async () => {
+    const restartUrl = buildWhatsappBotApiUrl("/restart");
+
+    if (!restartUrl) {
+      setWppStatus("nao_configurado");
+      setWppQrCode("");
+      showToast({
+        title: "API WhatsApp não configurada",
+        description: "Defina NEXT_PUBLIC_WHATSAPP_BOT_API_URL para monitorar e reiniciar o robô.",
+        tone: "error",
+      });
+      return;
+    }
+
     setIsRestarting(true);
     setWppStatus("iniciando");
     setWppQrCode("");
     try {
-      await fetch("http://64.181.189.107:3001/restart");
+      const response = await fetch(restartUrl);
+      if (!response.ok) throw new Error("Falha ao reiniciar API WhatsApp.");
     } catch (error) {
       console.error(error);
+      showToast({
+        title: "Não foi possível reiniciar",
+        description: "Confira a URL da API WhatsApp e tente novamente.",
+        tone: "error",
+      });
     }
     setTimeout(() => setIsRestarting(false), 3000);
   };
@@ -1766,8 +1800,9 @@ export default function SettingsPage() {
                 {wppStatus === "conectado" && <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">Conectado</span>}
                 {wppStatus === "aguardando_qr" && <span className="rounded-full bg-yellow-100 px-3 py-1 text-xs font-bold text-yellow-700">Aguardando leitura</span>}
                 {wppStatus === "iniciando" && <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700">Iniciando</span>}
+                {wppStatus === "nao_configurado" && <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-600">API não configurada</span>}
                 {(wppStatus === "desconectado" || wppStatus === "erro" || !wppStatus) && <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700">Desconectado</span>}
-                <button onClick={handleRestartWpp} disabled={isRestarting} className="ml-auto rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-xs font-bold text-gray-600 disabled:opacity-60">
+                <button onClick={handleRestartWpp} disabled={isRestarting || !WHATSAPP_BOT_API_URL} className="ml-auto rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-xs font-bold text-gray-600 disabled:opacity-60">
                   <span className="inline-flex items-center gap-1.5">
                     <RefreshCw size={13} className={isRestarting ? "animate-spin" : ""} />
                     Reiniciar
@@ -1775,7 +1810,9 @@ export default function SettingsPage() {
                 </button>
               </div>
               <p className="mt-3 text-sm leading-6 text-gray-500">
-                Use esta área para monitorar a conexão do seu número e renovar o QR Code quando necessário.
+                {WHATSAPP_BOT_API_URL
+                  ? "Use esta área para monitorar a conexão do seu número e renovar o QR Code quando necessário."
+                  : "Configure NEXT_PUBLIC_WHATSAPP_BOT_API_URL para monitorar a conexão do seu número."}
               </p>
             </div>
 
@@ -1786,6 +1823,11 @@ export default function SettingsPage() {
                 <div className="text-center text-emerald-600">
                   <CheckCircle className="mx-auto" size={44} />
                   <p className="mt-2 text-sm font-bold">Pronto para enviar</p>
+                </div>
+              ) : wppStatus === "nao_configurado" ? (
+                <div className="text-center text-gray-400">
+                  <QrCode className="mx-auto" size={44} />
+                  <p className="mt-2 text-sm font-medium">API não configurada</p>
                 </div>
               ) : (
                 <div className="text-center text-gray-400">
