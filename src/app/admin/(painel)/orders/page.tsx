@@ -270,12 +270,21 @@ export default function OrdersPage() {
       prev.map((current) => (current.id === order.id ? { ...current, status: newStatus } : current)),
     );
 
-    const { error } = await supabase.from("orders").update({ status: newStatus }).eq("id", order.id);
+    const response = await fetch(`/api/orders/${order.id}/status`, {
+      method: "PATCH",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        status: newStatus,
+      }),
+    });
+    const result = await response.json().catch(() => ({}));
 
-    if (error) {
+    if (!response.ok) {
       showToast({
         title: "Não foi possível atualizar o pedido",
-        description: error.message,
+        description: result.error || "Tente novamente em instantes.",
         tone: "error",
       });
       fetchOrders();
@@ -284,9 +293,19 @@ export default function OrdersPage() {
 
     showToast({
       title: "Status atualizado",
-      description: `Pedido #${formatDisplayNumber(order)} agora esta como ${getStatusLabel(newStatus).toLowerCase()}.`,
+      description: result.notification?.sent
+        ? `Pedido #${formatDisplayNumber(order)} agora está como ${getStatusLabel(newStatus).toLowerCase()} e o cliente foi avisado.`
+        : `Pedido #${formatDisplayNumber(order)} agora está como ${getStatusLabel(newStatus).toLowerCase()}.`,
       tone: "success",
     });
+
+    if (result.notification && !result.notification.sent && !result.notification.skipped) {
+      showToast({
+        title: "WhatsApp não enviado",
+        description: result.notification.error || "Confira a configuração da API do robô.",
+        tone: "error",
+      });
+    }
 
     if (newStatus === "preparing" && restaurantConfig?.printer_auto_print) {
       setTimeout(() => handlePrint({ ...order, status: newStatus }), 150);
