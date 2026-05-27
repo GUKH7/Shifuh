@@ -11,6 +11,18 @@ type SendWhatsappMessageResult = {
   error?: string;
 };
 
+function normalizeBrazilianWhatsappPhone(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+
+  if (digits.startsWith("55")) return digits;
+
+  if (digits.length === 10 || digits.length === 11) {
+    return `55${digits}`;
+  }
+
+  return digits;
+}
+
 function getWhatsappBotBaseUrl() {
   return (
     process.env.WHATSAPP_BOT_API_URL ||
@@ -52,6 +64,16 @@ export async function sendWhatsappMessage({
     };
   }
 
+  const normalizedPhone = normalizeBrazilianWhatsappPhone(phone);
+
+  if (!normalizedPhone) {
+    return {
+      ok: false,
+      skipped: false,
+      error: "Telefone do cliente inválido para envio via WhatsApp.",
+    };
+  }
+
   const headers: HeadersInit = {
     "content-type": "application/json",
   };
@@ -66,9 +88,9 @@ export async function sendWhatsappMessage({
       method: "POST",
       headers,
       body: JSON.stringify({
-        phone,
-        number: phone,
-        to: phone,
+        phone: normalizedPhone,
+        number: normalizedPhone,
+        to: normalizedPhone,
         message,
         text: message,
         orderId,
