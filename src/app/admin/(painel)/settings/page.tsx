@@ -276,13 +276,6 @@ async function readJsonResponse(response: Response) {
   }
 }
 
-const WHATSAPP_BOT_API_URL = (process.env.NEXT_PUBLIC_WHATSAPP_BOT_API_URL || "").replace(/\/+$/, "");
-
-function buildWhatsappBotApiUrl(path: string) {
-  if (!WHATSAPP_BOT_API_URL) return null;
-  return `${WHATSAPP_BOT_API_URL}${path.startsWith("/") ? path : `/${path}`}`;
-}
-
 export default function SettingsPage() {
   const router = useRouter();
   const supabase = createBrowserClient(
@@ -345,17 +338,20 @@ export default function SettingsPage() {
 
   useEffect(() => {
     const checkWppStatus = async () => {
-      const statusUrl = buildWhatsappBotApiUrl("/status");
-
-      if (!statusUrl) {
-        setWppStatus("nao_configurado");
-        setWppQrCode("");
-        return;
-      }
-
       try {
-        const res = await fetch(statusUrl);
+        const res = await fetch("/api/whatsapp-bot/status", { cache: "no-store" });
         const data = await res.json();
+
+        if (!res.ok) {
+          if (res.status === 503) {
+            setWppStatus("nao_configurado");
+            setWppQrCode("");
+            return;
+          }
+
+          throw new Error(data.error || "Falha ao consultar API WhatsApp.");
+        }
+
         setWppStatus(data.status);
         setWppQrCode(data.qrcode);
       } catch (error) {
@@ -649,30 +645,17 @@ export default function SettingsPage() {
   };
 
   const handleRestartWpp = async () => {
-    const restartUrl = buildWhatsappBotApiUrl("/restart");
-
-    if (!restartUrl) {
-      setWppStatus("nao_configurado");
-      setWppQrCode("");
-      showToast({
-        title: "API WhatsApp não configurada",
-        description: "Defina NEXT_PUBLIC_WHATSAPP_BOT_API_URL para monitorar e reiniciar o robô.",
-        tone: "error",
-      });
-      return;
-    }
-
     setIsRestarting(true);
     setWppStatus("iniciando");
     setWppQrCode("");
     try {
-      const response = await fetch(restartUrl);
+      const response = await fetch("/api/whatsapp-bot/restart", { method: "POST" });
       if (!response.ok) throw new Error("Falha ao reiniciar API WhatsApp.");
     } catch (error) {
       console.error(error);
       showToast({
         title: "Não foi possível reiniciar",
-        description: "Confira a URL da API WhatsApp e tente novamente.",
+        description: "Confira WHATSAPP_BOT_API_URL no ambiente do servidor e tente novamente.",
         tone: "error",
       });
     }
@@ -1802,7 +1785,7 @@ export default function SettingsPage() {
                 {wppStatus === "iniciando" && <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700">Iniciando</span>}
                 {wppStatus === "nao_configurado" && <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-600">API não configurada</span>}
                 {(wppStatus === "desconectado" || wppStatus === "erro" || !wppStatus) && <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700">Desconectado</span>}
-                <button onClick={handleRestartWpp} disabled={isRestarting || !WHATSAPP_BOT_API_URL} className="ml-auto rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-xs font-bold text-gray-600 disabled:opacity-60">
+                <button onClick={handleRestartWpp} disabled={isRestarting || wppStatus === "nao_configurado"} className="ml-auto rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-xs font-bold text-gray-600 disabled:opacity-60">
                   <span className="inline-flex items-center gap-1.5">
                     <RefreshCw size={13} className={isRestarting ? "animate-spin" : ""} />
                     Reiniciar
@@ -1810,9 +1793,9 @@ export default function SettingsPage() {
                 </button>
               </div>
               <p className="mt-3 text-sm leading-6 text-gray-500">
-                {WHATSAPP_BOT_API_URL
+                {wppStatus !== "nao_configurado"
                   ? "Use esta área para monitorar a conexão do seu número e renovar o QR Code quando necessário."
-                  : "Configure NEXT_PUBLIC_WHATSAPP_BOT_API_URL para monitorar a conexão do seu número."}
+                  : "Configure WHATSAPP_BOT_API_URL no ambiente do servidor para monitorar a conexão do seu número."}
               </p>
             </div>
 

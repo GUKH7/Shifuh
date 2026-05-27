@@ -28,6 +28,14 @@ export function isWhatsappBotConfigured() {
   return Boolean(getWhatsappBotBaseUrl());
 }
 
+export function buildWhatsappBotUrl(path: string) {
+  const baseUrl = getWhatsappBotBaseUrl();
+
+  if (!baseUrl) return null;
+
+  return `${baseUrl}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
 export async function sendWhatsappMessage({
   phone,
   message,
