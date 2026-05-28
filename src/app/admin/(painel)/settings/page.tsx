@@ -934,7 +934,7 @@ export default function SettingsPage() {
         body: JSON.stringify({ restaurantId }),
       });
 
-      const result = await response.json();
+      const result = await readJsonResponse(response);
 
       if (!response.ok) {
         throw new Error(result.error || "Não foi possível importar o catálogo do iFood.");
@@ -1031,7 +1031,7 @@ export default function SettingsPage() {
         body: JSON.stringify({ restaurantId }),
       });
 
-      const result = await response.json();
+      const result = await readJsonResponse(response);
 
       if (!response.ok) {
         throw new Error(result.error || "Não foi possível sincronizar os pedidos do iFood.");
@@ -1040,7 +1040,7 @@ export default function SettingsPage() {
       showToast({
         title: "Pedidos iFood sincronizados",
         description:
-          result.summary.eventsReceived > 0
+          Number(result.summary?.eventsReceived || 0) > 0
             ? `${result.summary.eventsProcessed} evento(s) processado(s) e ${result.summary.eventsAcknowledged} ACK enviado(s).`
             : "Nenhum evento novo foi encontrado na loja de teste.",
         tone: "success",
