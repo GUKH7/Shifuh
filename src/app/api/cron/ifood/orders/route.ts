@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { syncIfoodOrdersForRestaurant } from "@/lib/ifood/order-sync";
+import { getIfoodMerchantStatus } from "@/lib/ifood/merchant";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -20,8 +21,7 @@ export async function GET(request: Request) {
   const admin = createAdminClient();
   const { data: integrations, error } = await admin
     .from("ifood_integrations")
-    .select("restaurant_id, merchant_id")
-    .eq("order_sync_enabled", true)
+    .select("restaurant_id, merchant_id, order_sync_enabled")
     .not("merchant_id", "is", null);
 
   if (error) {
@@ -37,16 +37,20 @@ export async function GET(request: Request) {
     if (!integration.restaurant_id || !integration.merchant_id) continue;
 
     try {
-      const summary = await syncIfoodOrdersForRestaurant({
-        restaurantId: integration.restaurant_id,
-        merchantId: integration.merchant_id,
-        source: "cron",
-      });
+      const merchantStatus = await getIfoodMerchantStatus(integration.merchant_id);
+      const orderSummary = integration.order_sync_enabled
+        ? await syncIfoodOrdersForRestaurant({
+            restaurantId: integration.restaurant_id,
+            merchantId: integration.merchant_id,
+            source: "cron",
+          })
+        : null;
 
       results.push({
         restaurantId: integration.restaurant_id,
         ok: true,
-        summary,
+        merchantStatus,
+        orderSummary,
       });
     } catch (syncError) {
       console.error(

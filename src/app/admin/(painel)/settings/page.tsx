@@ -302,6 +302,10 @@ function listFromIfoodPayload(payload: any): any[] {
   return [];
 }
 
+function firstFromIfoodPayload(payload: any): any {
+  return listFromIfoodPayload(payload)[0] || (payload && !Array.isArray(payload) ? payload : null);
+}
+
 function compactJson(payload: any) {
   if (!payload) return "Sem dados.";
   return JSON.stringify(payload, null, 2);
@@ -1692,20 +1696,28 @@ export default function SettingsPage() {
                   <p className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">
                     Disponibilidade
                   </p>
-                  <p className="mt-2 text-sm font-black text-gray-950">
-                    {String(
-                      ifoodMerchantSnapshot?.status?.state ||
-                        ifoodMerchantSnapshot?.status?.status ||
-                        "Não consultada",
-                    )}
-                  </p>
-                  <p className="mt-1 text-xs text-gray-500">
-                    {typeof ifoodMerchantSnapshot?.status?.available === "boolean"
-                      ? ifoodMerchantSnapshot.status.available
-                        ? "available: true"
-                        : "available: false"
-                      : "available pendente"}
-                  </p>
+                  {(() => {
+                    const status = firstFromIfoodPayload(ifoodMerchantSnapshot?.status);
+                    return (
+                      <>
+                        <p className="mt-2 text-sm font-black text-gray-950">
+                          {String(status?.state || status?.status || "Não consultada")}
+                        </p>
+                        <p className="mt-1 text-xs text-gray-500">
+                          {typeof status?.available === "boolean"
+                            ? status.available
+                              ? "available: true"
+                              : "available: false"
+                            : "available pendente"}
+                        </p>
+                        {status?.message?.subtitle && (
+                          <p className="mt-2 text-xs leading-5 text-gray-500">
+                            {status.message.subtitle}
+                          </p>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
                 <div className="rounded-2xl border border-[var(--line)] bg-[#fcfaf7] p-4">
                   <p className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">
