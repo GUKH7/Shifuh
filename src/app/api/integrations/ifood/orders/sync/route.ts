@@ -56,12 +56,13 @@ export async function POST(request: Request) {
       source: "manual",
     });
 
-    if (integration.status === "disconnected") {
-      await admin
-        .from("ifood_integrations")
-        .update({ status: "configuring" })
-        .eq("restaurant_id", restaurantId);
-    }
+    await admin
+      .from("ifood_integrations")
+      .update({
+        order_sync_enabled: true,
+        ...(integration.status === "disconnected" ? { status: "configuring" } : {}),
+      })
+      .eq("restaurant_id", restaurantId);
 
     return NextResponse.json({
       ok: true,

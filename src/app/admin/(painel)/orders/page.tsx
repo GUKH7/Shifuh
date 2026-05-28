@@ -259,6 +259,45 @@ export default function OrdersPage() {
     };
   }, [lastSeenOrderId, restaurantId, showToast, supabase]);
 
+  useEffect(() => {
+    if (!restaurantId) return;
+
+    let isRunning = false;
+    let isCancelled = false;
+
+    const syncIfoodOrders = async () => {
+      if (isRunning) return;
+      isRunning = true;
+
+      try {
+        const response = await fetch("/api/integrations/ifood/orders/sync", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ restaurantId }),
+        });
+
+        if (response.ok && !isCancelled) {
+          await fetchOrders(false);
+        }
+      } catch (error) {
+        console.warn("Falha ao sincronizar pedidos iFood automaticamente:", error);
+      } finally {
+        isRunning = false;
+      }
+    };
+
+    syncIfoodOrders();
+    const intervalId = window.setInterval(syncIfoodOrders, 30000);
+
+    return () => {
+      isCancelled = true;
+      window.clearInterval(intervalId);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restaurantId]);
+
   const fetchOrders = async (showLoading = true) => {
     if (showLoading) setLoading(true);
     try {
