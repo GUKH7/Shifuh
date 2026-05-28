@@ -289,7 +289,7 @@ export default function OrdersPage() {
     };
 
     syncIfoodOrders();
-    const intervalId = window.setInterval(syncIfoodOrders, 30000);
+    const intervalId = window.setInterval(syncIfoodOrders, 10000);
 
     return () => {
       isCancelled = true;
