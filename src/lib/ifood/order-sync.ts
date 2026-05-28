@@ -42,14 +42,20 @@ function getOrderCustomer(details: Record<string, unknown>) {
     (details.customer as Record<string, unknown> | undefined) ||
     (details.orderer as Record<string, unknown> | undefined) ||
     {};
+  const phone =
+    customer.phone && typeof customer.phone === "object"
+      ? (customer.phone as Record<string, unknown>)
+      : null;
 
   const name =
     String(customer.name || customer.fullName || details.customerName || "Cliente iFood").trim();
-  const phone = String(customer.phone || customer.phoneNumber || details.customerPhone || "").trim();
+  const phoneNumber = String(
+    phone?.number || customer.phoneNumber || customer.phone || details.customerPhone || "",
+  ).trim();
 
   return {
     name: name || "Cliente iFood",
-    phone: phone || "Não informado",
+    phone: phoneNumber || "Não informado",
   };
 }
 
@@ -74,8 +80,12 @@ function getOrderAddress(details: Record<string, unknown>) {
 
 function buildItemAddons(item: Record<string, unknown>) {
   const options = Array.isArray(item.options) ? item.options : [];
+  const customizations = options.flatMap((option) => {
+    const entry = option as Record<string, unknown>;
+    return Array.isArray(entry.customization) ? entry.customization : [];
+  });
   const garnishes = Array.isArray(item.garnishItems) ? item.garnishItems : [];
-  const additions = [...options, ...garnishes];
+  const additions = [...options, ...customizations, ...garnishes];
 
   return additions
     .map((option) => {
@@ -118,7 +128,7 @@ function buildOrderItems(details: Record<string, unknown>) {
       product_name: String(item.name || item.description || "Item iFood"),
       quantity,
       price: unitPrice,
-      observation: String(item.observation || item.notes || "").trim() || null,
+      observation: String(item.observations || item.observation || item.notes || "").trim() || null,
       addons: buildItemAddons(item),
     };
   });
@@ -165,7 +175,13 @@ async function upsertLocalOrderFromIfood(
     ["total", "total"],
     ["totals", "total"],
   ]);
-  const discount = Math.max(0, roundMoney(subtotal + deliveryFee - total));
+  const discount =
+    pickAmount(details, [
+      ["total", "benefits"],
+      ["total", "discount"],
+      ["totals", "benefits"],
+      ["totals", "discount"],
+    ]) || Math.max(0, roundMoney(subtotal + deliveryFee - total));
   const paymentMethod = String(
     ((details.payments as Record<string, unknown> | undefined)?.methods as
       | Record<string, unknown>[]

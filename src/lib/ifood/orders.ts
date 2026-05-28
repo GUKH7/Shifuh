@@ -3,6 +3,8 @@ import { getIfoodAccessToken } from "@/lib/ifood/catalog";
 const IFOOD_MERCHANT_API_BASE_URL =
   process.env.IFOOD_MERCHANT_API_BASE_URL || "https://merchant-api.ifood.com.br";
 
+const DEFAULT_POLLING_CATEGORIES = "FOOD";
+
 export class IfoodApiError extends Error {
   status: number;
   responseBody: string;
@@ -55,38 +57,34 @@ async function ifoodOrderRequest<T>(
 }
 
 export async function pollIfoodOrderEvents(merchantId: string) {
-  const attempts = [
-    "/events/v1.0/events:polling",
-    "/events/v1.0/events:polling?categories=FOOD",
-    "/events/v1.0/events:polling?groups=ORDER_STATUS",
-  ];
+  const params = new URLSearchParams();
+  const categories = process.env.IFOOD_POLLING_CATEGORIES?.trim() || DEFAULT_POLLING_CATEGORIES;
+  const groups = process.env.IFOOD_POLLING_GROUPS?.trim();
+  const types = process.env.IFOOD_POLLING_TYPES?.trim();
 
-  let lastError: unknown = null;
-
-  for (const path of attempts) {
-    try {
-      const data = await ifoodOrderRequest<IfoodOrderEvent[]>(path, {
-        method: "GET",
-        headers: {
-          "x-polling-merchants": merchantId,
-        },
-      });
-
-      return Array.isArray(data) ? data : [];
-    } catch (error) {
-      lastError = error;
-
-      if (!(error instanceof IfoodApiError) || error.status !== 400) {
-        throw error;
-      }
-    }
+  if (categories) params.set("categories", categories);
+  if (groups) params.set("groups", groups);
+  if (types) params.set("types", types);
+  if (process.env.IFOOD_POLLING_EXCLUDE_HEARTBEAT === "true") {
+    params.set("excludeHeartbeat", "true");
   }
 
-  throw lastError instanceof Error ? lastError : new Error("Falha ao consultar eventos do iFood.");
+  const query = params.toString();
+  const path = `/events/v1.0/events:polling${query ? `?${query}` : ""}`;
+
+  const data = await ifoodOrderRequest<IfoodOrderEvent[]>(path, {
+    method: "GET",
+    headers: {
+      "x-polling-merchants": merchantId,
+    },
+  });
+
+  return Array.isArray(data) ? data : [];
 }
 
 export async function acknowledgeIfoodOrderEvents(eventIds: string[]) {
   if (eventIds.length === 0) return;
+  const uniqueEventIds = Array.from(new Set(eventIds));
 
   await ifoodOrderRequest(
     "/events/v1.0/events/acknowledgment",
@@ -95,7 +93,7 @@ export async function acknowledgeIfoodOrderEvents(eventIds: string[]) {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(eventIds),
+      body: JSON.stringify(uniqueEventIds.map((id) => ({ id }))),
     },
   );
 }
