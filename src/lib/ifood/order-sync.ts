@@ -37,6 +37,23 @@ function pickAmount(details: Record<string, unknown>, pathCandidates: string[][]
   return 0;
 }
 
+function pickText(details: Record<string, unknown>, pathCandidates: string[][]) {
+  for (const candidate of pathCandidates) {
+    let current: unknown = details;
+    for (const segment of candidate) {
+      if (!current || typeof current !== "object") {
+        current = null;
+        break;
+      }
+      current = (current as Record<string, unknown>)[segment];
+    }
+
+    if (typeof current === "string" && current.trim()) return current.trim();
+  }
+
+  return null;
+}
+
 function getOrderCustomer(details: Record<string, unknown>) {
   const customer =
     (details.customer as Record<string, unknown> | undefined) ||
@@ -62,6 +79,8 @@ function getOrderCustomer(details: Record<string, unknown>) {
 function getOrderAddress(details: Record<string, unknown>) {
   const delivery = (details.delivery as Record<string, unknown> | undefined) || {};
   const address = (delivery.deliveryAddress as Record<string, unknown> | undefined) || {};
+  const takeout = (details.takeout as Record<string, unknown> | undefined) || {};
+  const indoor = (details.indoor as Record<string, unknown> | undefined) || {};
   const coordinates = (address.coordinates as Record<string, unknown> | undefined) || {};
 
   return {
@@ -75,6 +94,10 @@ function getOrderAddress(details: Record<string, unknown>) {
     reference: String(address.reference || ""),
     latitude: Number(coordinates.latitude || 0) || null,
     longitude: Number(coordinates.longitude || 0) || null,
+    orderType: String(details.orderType || delivery.mode || ""),
+    takeoutMode: String(takeout.mode || indoor.mode || ""),
+    indoorTable: String(indoor.table || ""),
+    indoorObservations: String(indoor.observations || ""),
   };
 }
 
@@ -134,6 +157,68 @@ function buildOrderItems(details: Record<string, unknown>) {
   });
 }
 
+function buildPaymentSummary(details: Record<string, unknown>) {
+  const payments = (details.payments as Record<string, unknown> | undefined) || {};
+  const methods = Array.isArray(payments.methods)
+    ? (payments.methods as Record<string, unknown>[])
+    : [];
+  const firstMethod = methods[0] || {};
+  const cash = (firstMethod.cash as Record<string, unknown> | undefined) || {};
+  const card = (firstMethod.card as Record<string, unknown> | undefined) || {};
+
+  return {
+    prepaid: roundMoney(payments.prepaid || 0),
+    pending: roundMoney(payments.pending || 0),
+    methods,
+    firstMethod: String(firstMethod.method || firstMethod.type || "ifood").toLowerCase(),
+    methodType: String(firstMethod.type || ""),
+    methodName: String(firstMethod.method || ""),
+    cardBrand: String(card.brand || ""),
+    changeFor: cash.changeFor ? roundMoney(cash.changeFor) : null,
+  };
+}
+
+function buildBenefitsSummary(details: Record<string, unknown>) {
+  const benefits = (details.benefits as Record<string, unknown> | undefined) || {};
+  const items = Array.isArray(benefits.items) ? benefits.items : [];
+
+  return {
+    items,
+    totalValue: roundMoney((details.total as Record<string, unknown> | undefined)?.benefits || 0),
+  };
+}
+
+function buildScheduleSummary(details: Record<string, unknown>) {
+  const schedule = (details.schedule as Record<string, unknown> | undefined) || {};
+  return {
+    deliveryDateTimeStart: schedule.deliveryDateTimeStart || null,
+    deliveryDateTimeEnd: schedule.deliveryDateTimeEnd || null,
+  };
+}
+
+function buildIfoodOrderMetadata(details: Record<string, unknown>) {
+  const payment = buildPaymentSummary(details);
+  const benefits = buildBenefitsSummary(details);
+  const schedule = buildScheduleSummary(details);
+
+  return {
+    orderId: String(details.id || ""),
+    displayId: String(details.displayId || ""),
+    orderType: String(details.orderType || ""),
+    orderTiming: String(details.orderTiming || ""),
+    salesChannel: String(details.salesChannel || ""),
+    preparationStartDateTime:
+      pickText(details, [["preparationStartDateTime"], ["preparation", "startDateTime"]]) || null,
+    schedule,
+    payment,
+    benefits,
+    customerDocument: pickText(details, [["customer", "documentNumber"], ["customer", "document"]]),
+    observations:
+      pickText(details, [["observations"], ["delivery", "observations"], ["takeout", "observations"]]) ||
+      null,
+  };
+}
+
 async function getNextDisplayNumber(admin: AdminClient, restaurantId: string) {
   const { data, error } = await admin.rpc("next_order_display_number", {
     p_restaurant_id: restaurantId,
@@ -159,6 +244,7 @@ async function upsertLocalOrderFromIfood(
   const customer = getOrderCustomer(details);
   const address = getOrderAddress(details);
   const items = buildOrderItems(details);
+  const metadata = buildIfoodOrderMetadata(details);
   const subtotal = pickAmount(details, [
     ["total", "subTotal"],
     ["total", "subTotalAmount"],
@@ -217,13 +303,17 @@ async function upsertLocalOrderFromIfood(
       total: total || subtotal + deliveryFee - discount,
       status: mappedStatus,
       payment_method: paymentMethod,
+      change_for: metadata.payment.changeFor ? String(metadata.payment.changeFor) : null,
       address,
       display_number: nextDisplayNumber,
       external_source: "ifood",
       external_order_id: event.orderId,
       external_display_id: displayNumberText || null,
       is_test: Boolean(details.isTest),
-      external_payload: details as Json,
+      external_payload: {
+        ...(details as Json as Record<string, unknown>),
+        gestorDelivery: metadata,
+      } as Json,
     });
 
     if (insertOrderError) {
@@ -260,12 +350,16 @@ async function upsertLocalOrderFromIfood(
         total: total || subtotal + deliveryFee - discount,
         status: mappedStatus,
         payment_method: paymentMethod,
+        change_for: metadata.payment.changeFor ? String(metadata.payment.changeFor) : null,
         address,
         external_source: "ifood",
         external_order_id: event.orderId,
         external_display_id: displayNumberText || null,
         is_test: Boolean(details.isTest),
-        external_payload: details as Json,
+        external_payload: {
+          ...(details as Json as Record<string, unknown>),
+          gestorDelivery: metadata,
+        } as Json,
       })
       .eq("id", localOrderId);
 

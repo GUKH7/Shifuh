@@ -29,6 +29,11 @@ interface Order {
   status: "pending" | "preparing" | "delivering" | "done" | "canceled";
   payment_method: string;
   display_number?: number | null;
+  external_source?: string | null;
+  external_order_id?: string | null;
+  external_display_id?: string | null;
+  external_payload?: any;
+  is_test?: boolean;
   created_at: string;
   address: any;
   items: any[];
@@ -115,6 +120,44 @@ function getStatusLabel(status: Order["status"]) {
   }
 }
 
+function getIfoodMeta(order: Order) {
+  return order.external_payload?.gestorDelivery || {};
+}
+
+function isIfoodOrder(order: Order) {
+  return order.external_source === "ifood" && Boolean(order.external_order_id);
+}
+
+function formatDateTime(value?: string | null) {
+  if (!value) return "Não informado";
+  return new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
+function formatIfoodOrderType(order: Order) {
+  const meta = getIfoodMeta(order);
+  const type = String(meta.orderType || "").toUpperCase();
+  if (type === "TAKEOUT") return "Retirada";
+  if (type === "DELIVERY") return "Entrega";
+  return type || "iFood";
+}
+
+function formatIfoodTiming(order: Order) {
+  const meta = getIfoodMeta(order);
+  const timing = String(meta.orderTiming || "").toUpperCase();
+  if (timing === "SCHEDULED") return "Agendado";
+  if (timing === "IMMEDIATE") return "Imediato";
+  return timing || "Timing não informado";
+}
+
+function listIfoodBenefits(order: Order) {
+  const benefits = getIfoodMeta(order).benefits;
+  if (!benefits?.items || !Array.isArray(benefits.items)) return [];
+  return benefits.items;
+}
+
 function OrdersSkeleton() {
   return (
     <div className="mx-auto max-w-6xl animate-pulse">
@@ -158,6 +201,7 @@ export default function OrdersPage() {
   const [restaurantId, setRestaurantId] = useState("");
   const [lastSeenOrderId, setLastSeenOrderId] = useState("");
   const [expandedOrders, setExpandedOrders] = useState<string[]>([]);
+  const [busyIfoodAction, setBusyIfoodAction] = useState("");
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -230,7 +274,7 @@ export default function OrdersPage() {
 
       const { data, error } = await supabase
         .from("orders")
-        .select("id, customer_name, customer_phone, total, subtotal, delivery_fee, discount, status, payment_method, display_number, created_at, address, change_for, order_items (*)")
+        .select("id, customer_name, customer_phone, total, subtotal, delivery_fee, discount, status, payment_method, display_number, external_source, external_order_id, external_display_id, external_payload, is_test, created_at, address, change_for, order_items (*)")
         .eq("restaurant_id", resto.id)
         .in("status", ["pending", "preparing", "delivering", "done"])
         .order("created_at", { ascending: false });
@@ -310,6 +354,81 @@ export default function OrdersPage() {
     if (newStatus === "preparing" && restaurantConfig?.printer_auto_print) {
       setTimeout(() => handlePrint({ ...order, status: newStatus }), 150);
     }
+  };
+
+  const runIfoodAction = async (
+    order: Order,
+    action: "confirm" | "dispatch" | "ready_to_pickup" | "cancellation_reasons" | "request_cancellation",
+    options: Record<string, any> = {},
+  ) => {
+    const busyKey = `${order.id}:${action}`;
+    setBusyIfoodAction(busyKey);
+
+    try {
+      const response = await fetch("/api/integrations/ifood/orders/action", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          orderId: order.id,
+          action,
+          ...options,
+        }),
+      });
+
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(result.error || "Não foi possível executar a ação no iFood.");
+      }
+
+      if (action === "cancellation_reasons") {
+        showToast({
+          title: "Motivos de cancelamento consultados",
+          description: JSON.stringify(result.reasons).slice(0, 220),
+          tone: "success",
+        });
+      } else {
+        showToast({
+          title: "Ação enviada ao iFood",
+          description: `Pedido #${formatDisplayNumber(order)} atualizado no iFood.`,
+          tone: "success",
+        });
+      }
+
+      await fetchOrders(false);
+      return result;
+    } catch (error) {
+      showToast({
+        title: "Falha na ação iFood",
+        description:
+          error instanceof Error ? error.message : "Não foi possível executar a ação no iFood.",
+        tone: "error",
+      });
+      return null;
+    } finally {
+      setBusyIfoodAction("");
+    }
+  };
+
+  const handleRequestIfoodCancellation = async (order: Order) => {
+    const reasonsResult = await runIfoodAction(order, "cancellation_reasons");
+    const reasons = Array.isArray(reasonsResult?.reasons)
+      ? reasonsResult.reasons
+      : Array.isArray(reasonsResult?.reasons?.items)
+        ? reasonsResult.reasons.items
+        : [];
+    const firstReason = reasons[0] || {};
+    const code = String(firstReason.cancellationCode || firstReason.code || "");
+    const description = String(firstReason.description || firstReason.reason || "Cancelamento solicitado pela loja");
+
+    if (!code) return;
+
+    await runIfoodAction(order, "request_cancellation", {
+      cancellationCode: code,
+      reason: description,
+    });
   };
 
   const handlePrint = (order: Order) => {
@@ -552,11 +671,19 @@ export default function OrdersPage() {
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="truncate font-bold text-gray-950">{order.customer_name}</p>
+                          {isIfoodOrder(order) && (
+                            <span className="inline-flex rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-600">
+                              iFood {order.is_test ? "TESTE" : ""}
+                            </span>
+                          )}
                           <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${getStatusClasses(order.status)}`}>
                             {getStatusLabel(order.status)}
                           </span>
                         </div>
-                        <p className="mt-1 text-sm text-gray-500">{order.customer_phone}</p>
+                        <p className="mt-1 text-sm text-gray-500">
+                          {order.customer_phone}
+                          {order.external_display_id ? ` • iFood #${order.external_display_id}` : ""}
+                        </p>
                       </div>
                     </div>
 
@@ -601,6 +728,44 @@ export default function OrdersPage() {
                       </div>
 
                       <div className="space-y-4 rounded-[22px] bg-[#fcfaf7] p-4">
+                        {isIfoodOrder(order) && (
+                          <div className="rounded-2xl border border-red-100 bg-white p-4 text-sm">
+                            <p className="text-xs font-bold uppercase tracking-[0.14em] text-red-400">
+                              Pedido iFood
+                            </p>
+                            <div className="mt-3 grid gap-2 text-gray-600">
+                              <div className="flex items-center justify-between gap-3">
+                                <span>Tipo</span>
+                                <strong className="text-gray-950">{formatIfoodOrderType(order)}</strong>
+                              </div>
+                              <div className="flex items-center justify-between gap-3">
+                                <span>Timing</span>
+                                <strong className="text-gray-950">{formatIfoodTiming(order)}</strong>
+                              </div>
+                              {getIfoodMeta(order).schedule?.deliveryDateTimeStart && (
+                                <div className="rounded-xl bg-[#fcfaf7] p-3">
+                                  <p className="font-bold text-gray-950">Agendamento</p>
+                                  <p className="mt-1 text-xs text-gray-500">
+                                    {formatDateTime(getIfoodMeta(order).schedule.deliveryDateTimeStart)}
+                                    {" até "}
+                                    {formatDateTime(getIfoodMeta(order).schedule.deliveryDateTimeEnd)}
+                                  </p>
+                                </div>
+                              )}
+                              {getIfoodMeta(order).customerDocument && (
+                                <div className="flex items-center justify-between gap-3">
+                                  <span>CPF/CNPJ</span>
+                                  <strong className="text-gray-950">{getIfoodMeta(order).customerDocument}</strong>
+                                </div>
+                              )}
+                              {getIfoodMeta(order).observations && (
+                                <div className="rounded-xl bg-amber-50 p-3 text-amber-800">
+                                  Obs. pedido: {getIfoodMeta(order).observations}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
                         <div className="flex gap-3">
                           <div className="mt-0.5 rounded-xl bg-white p-2 text-gray-500">
                             <MapPin size={16} />
@@ -636,6 +801,37 @@ export default function OrdersPage() {
                             Pagamento: {order.payment_method}
                             {order.change_for ? ` • Troco para ${order.change_for}` : ""}
                           </p>
+                          {isIfoodOrder(order) && (
+                            <div className="mt-2 rounded-xl bg-[#fcfaf7] p-3 text-xs text-gray-500">
+                              <p>
+                                Tipo: {getIfoodMeta(order).payment?.methodType || "não informado"} •{" "}
+                                Método: {getIfoodMeta(order).payment?.methodName || order.payment_method}
+                              </p>
+                              {getIfoodMeta(order).payment?.cardBrand && (
+                                <p>Bandeira: {getIfoodMeta(order).payment.cardBrand}</p>
+                              )}
+                              {getIfoodMeta(order).payment?.changeFor && (
+                                <p>
+                                  Troco para:{" "}
+                                  {formatPrice(Number(getIfoodMeta(order).payment.changeFor))}
+                                </p>
+                              )}
+                              {listIfoodBenefits(order).length > 0 && (
+                                <div className="mt-2">
+                                  <p className="font-bold text-gray-700">Cupons/benefícios</p>
+                                  {listIfoodBenefits(order).map((benefit: any, index: number) => (
+                                    <p key={index}>
+                                      {benefit.target ||
+                                        benefit.description ||
+                                        benefit.sponsorshipValues?.[0]?.name ||
+                                        "Benefício"}
+                                      : {formatPrice(Number(benefit.value || benefit.amount || 0))}
+                                    </p>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -651,29 +847,65 @@ export default function OrdersPage() {
                         {order.status === "pending" && (
                           <>
                             <button
-                              onClick={() => updateStatus(order, "preparing")}
+                              onClick={() =>
+                                isIfoodOrder(order)
+                                  ? runIfoodAction(order, "confirm")
+                                  : updateStatus(order, "preparing")
+                              }
                               className="brand-gradient rounded-2xl px-4 py-3 font-bold text-white"
+                              disabled={busyIfoodAction === `${order.id}:confirm`}
                             >
-                              Aceitar pedido
+                              {busyIfoodAction === `${order.id}:confirm` ? "Enviando..." : "Aceitar pedido"}
                             </button>
                             <button
-                              onClick={() => updateStatus(order, "canceled")}
+                              onClick={() =>
+                                isIfoodOrder(order)
+                                  ? handleRequestIfoodCancellation(order)
+                                  : updateStatus(order, "canceled")
+                              }
                               className="rounded-2xl border border-[var(--line)] px-4 py-3 font-semibold text-gray-500"
+                              disabled={busyIfoodAction.startsWith(`${order.id}:`)}
                             >
-                              Rejeitar
+                              Solicitar cancelamento
                             </button>
                           </>
                         )}
                         {order.status === "preparing" && (
-                          <button
-                            onClick={() => updateStatus(order, "delivering")}
-                            className="rounded-2xl bg-[#2f9cff] px-4 py-3 font-bold text-white"
-                          >
-                            <span className="inline-flex items-center gap-2">
-                              <Bike size={16} />
-                              Despachar pedido
-                            </span>
-                          </button>
+                          <>
+                            {isIfoodOrder(order) && String(getIfoodMeta(order).orderType).toUpperCase() === "TAKEOUT" ? (
+                              <button
+                                onClick={() => runIfoodAction(order, "ready_to_pickup")}
+                                className="rounded-2xl bg-[#2f9cff] px-4 py-3 font-bold text-white"
+                                disabled={busyIfoodAction === `${order.id}:ready_to_pickup`}
+                              >
+                                Pronto para retirada
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() =>
+                                  isIfoodOrder(order)
+                                    ? runIfoodAction(order, "dispatch")
+                                    : updateStatus(order, "delivering")
+                                }
+                                className="rounded-2xl bg-[#2f9cff] px-4 py-3 font-bold text-white"
+                                disabled={busyIfoodAction === `${order.id}:dispatch`}
+                              >
+                                <span className="inline-flex items-center gap-2">
+                                  <Bike size={16} />
+                                  Despachar pedido
+                                </span>
+                              </button>
+                            )}
+                            {isIfoodOrder(order) && (
+                              <button
+                                onClick={() => runIfoodAction(order, "cancellation_reasons")}
+                                className="rounded-2xl border border-[var(--line)] px-4 py-3 font-semibold text-gray-500"
+                                disabled={busyIfoodAction === `${order.id}:cancellation_reasons`}
+                              >
+                                Ver motivos cancelamento
+                              </button>
+                            )}
+                          </>
                         )}
                         {order.status === "delivering" && (
                           <button

@@ -105,6 +105,51 @@ export async function getIfoodOrderDetails(orderId: string) {
   );
 }
 
+export async function confirmIfoodOrder(orderId: string) {
+  return ifoodOrderRequest<null>(`/order/v1.0/orders/${orderId}/confirm`, {
+    method: "POST",
+  });
+}
+
+export async function dispatchIfoodOrder(orderId: string) {
+  return ifoodOrderRequest<null>(`/order/v1.0/orders/${orderId}/dispatch`, {
+    method: "POST",
+  });
+}
+
+export async function readyToPickupIfoodOrder(orderId: string) {
+  return ifoodOrderRequest<null>(`/order/v1.0/orders/${orderId}/readyToPickup`, {
+    method: "POST",
+  });
+}
+
+export async function getIfoodCancellationReasons(orderId: string) {
+  return ifoodOrderRequest<Record<string, unknown>[] | Record<string, unknown>>(
+    `/order/v1.0/orders/${orderId}/cancellationReasons`,
+    { method: "GET" },
+  );
+}
+
+export async function requestIfoodOrderCancellation(
+  orderId: string,
+  cancellationCode: string,
+  reason: string,
+) {
+  return ifoodOrderRequest<Record<string, unknown>>(
+    `/order/v1.0/orders/${orderId}/requestCancellation`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        cancellationCode,
+        reason,
+      }),
+    },
+  );
+}
+
 export function mapIfoodEventCodeToStatus(code: string) {
   switch (code) {
     case "PLC":
