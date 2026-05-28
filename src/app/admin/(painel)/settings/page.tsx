@@ -86,6 +86,15 @@ interface IfoodConnectionCheckState {
   resolvedCatalogId: string | null;
 }
 
+interface IfoodMerchantSnapshot {
+  merchants?: any;
+  details?: any;
+  status?: any;
+  interruptions?: any;
+  openingHours?: any;
+  checkedAt?: string;
+}
+
 const DEFAULT_STOREFRONT_THEME: StorefrontTheme = {
   hero_style: "banner",
   catalog_layout: "grid",
@@ -128,6 +137,13 @@ const DEFAULT_IFOOD_CONNECTION_CHECK: IfoodConnectionCheckState = {
   catalogsCount: null,
   resolvedCatalogId: null,
 };
+
+const IFOOD_HOMOLOGATION_SHIFTS = [
+  { dayOfWeek: "SATURDAY", start: "10:00:00", duration: 540 },
+  { dayOfWeek: "SUNDAY", start: "09:00:00", duration: 180 },
+  { dayOfWeek: "SUNDAY", start: "13:00:00", duration: 180 },
+  { dayOfWeek: "SUNDAY", start: "17:00:00", duration: 360 },
+];
 
 const DAYS_OF_WEEK = [
   { id: 0, label: "Domingo" },
@@ -276,6 +292,21 @@ async function readJsonResponse(response: Response) {
   }
 }
 
+function listFromIfoodPayload(payload: any): any[] {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.items)) return payload.items;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.merchants)) return payload.merchants;
+  if (Array.isArray(payload?.interruptions)) return payload.interruptions;
+  if (Array.isArray(payload?.shifts)) return payload.shifts;
+  return [];
+}
+
+function compactJson(payload: any) {
+  if (!payload) return "Sem dados.";
+  return JSON.stringify(payload, null, 2);
+}
+
 export default function SettingsPage() {
   const router = useRouter();
   const supabase = createBrowserClient(
@@ -315,11 +346,20 @@ export default function SettingsPage() {
   const [isCheckingIfoodConnection, setIsCheckingIfoodConnection] = useState(false);
   const [isSyncingIfoodOrders, setIsSyncingIfoodOrders] = useState(false);
   const [isImportingIfoodLink, setIsImportingIfoodLink] = useState(false);
+  const [isLoadingIfoodMerchant, setIsLoadingIfoodMerchant] = useState(false);
+  const [isCreatingIfoodPause, setIsCreatingIfoodPause] = useState(false);
+  const [isSavingIfoodHours, setIsSavingIfoodHours] = useState(false);
   const [ifoodIntegration, setIfoodIntegration] =
     useState<IfoodIntegrationState>(DEFAULT_IFOOD_INTEGRATION);
   const [ifoodConnectionCheck, setIfoodConnectionCheck] = useState<IfoodConnectionCheckState>(
     DEFAULT_IFOOD_CONNECTION_CHECK,
   );
+  const [ifoodMerchantSnapshot, setIfoodMerchantSnapshot] =
+    useState<IfoodMerchantSnapshot | null>(null);
+  const [ifoodPauseDescription, setIfoodPauseDescription] =
+    useState("Pausa de homologação Gestor Delivery");
+  const [ifoodPauseStart, setIfoodPauseStart] = useState("");
+  const [ifoodPauseEnd, setIfoodPauseEnd] = useState("");
   const [ifoodPublicUrl, setIfoodPublicUrl] = useState("");
   const [wppStatus, setWppStatus] = useState<string>("iniciando");
   const [wppQrCode, setWppQrCode] = useState<string>("");
@@ -334,6 +374,10 @@ export default function SettingsPage() {
 
   useEffect(() => {
     fetchSettings();
+  }, []);
+
+  useEffect(() => {
+    ensureIfoodPauseDefaults();
   }, []);
 
   useEffect(() => {
@@ -713,6 +757,164 @@ export default function SettingsPage() {
       dateStyle: "short",
       timeStyle: "short",
     }).format(new Date(value));
+  };
+
+  const callIfoodMerchantApi = async (payload: Record<string, any>) => {
+    const response = await fetch("/api/integrations/ifood/merchant", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        restaurantId,
+        merchantId: ifoodIntegration.merchantId,
+        ...payload,
+      }),
+    });
+
+    const result = await readJsonResponse(response);
+
+    if (!response.ok) {
+      throw new Error(result.error || "Não foi possível executar a operação Merchant.");
+    }
+
+    return result;
+  };
+
+  const refreshIfoodMerchantSnapshot = async () => {
+    if (!restaurantId) return;
+
+    setIsLoadingIfoodMerchant(true);
+    try {
+      const result = await callIfoodMerchantApi({ action: "overview" });
+      setIfoodMerchantSnapshot({
+        merchants: result.merchants,
+        details: result.details,
+        status: result.status,
+        interruptions: result.interruptions,
+        openingHours: result.openingHours,
+        checkedAt: new Date().toISOString(),
+      });
+
+      showToast({
+        title: "Merchant consultado",
+        description: "Lojas, status, pausas e horários foram atualizados.",
+        tone: "success",
+      });
+    } catch (error) {
+      showToast({
+        title: "Falha ao consultar Merchant",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Não foi possível consultar os dados Merchant no iFood.",
+        tone: "error",
+      });
+    } finally {
+      setIsLoadingIfoodMerchant(false);
+    }
+  };
+
+  const ensureIfoodPauseDefaults = () => {
+    const now = new Date();
+    const start = new Date(now.getTime() + 5 * 60 * 1000);
+    const end = new Date(now.getTime() + 35 * 60 * 1000);
+
+    setIfoodPauseStart(start.toISOString().slice(0, 16));
+    setIfoodPauseEnd(end.toISOString().slice(0, 16));
+  };
+
+  const handleCreateIfoodPause = async () => {
+    if (!restaurantId) return;
+
+    setIsCreatingIfoodPause(true);
+    try {
+      await callIfoodMerchantApi({
+        action: "create_interruption",
+        interruption: {
+          description: ifoodPauseDescription,
+          start: new Date(ifoodPauseStart).toISOString(),
+          end: new Date(ifoodPauseEnd).toISOString(),
+        },
+      });
+
+      showToast({
+        title: "Pausa criada no iFood",
+        description: "A interrupção foi enviada. Pode levar alguns segundos para refletir no portal.",
+        tone: "success",
+      });
+
+      await refreshIfoodMerchantSnapshot();
+    } catch (error) {
+      showToast({
+        title: "Falha ao criar pausa",
+        description:
+          error instanceof Error ? error.message : "Não foi possível criar a pausa no iFood.",
+        tone: "error",
+      });
+    } finally {
+      setIsCreatingIfoodPause(false);
+    }
+  };
+
+  const handleDeleteIfoodPause = async (interruptionId: string) => {
+    if (!restaurantId || !interruptionId) return;
+
+    setIsLoadingIfoodMerchant(true);
+    try {
+      await callIfoodMerchantApi({
+        action: "delete_interruption",
+        interruptionId,
+      });
+
+      showToast({
+        title: "Pausa removida",
+        description: "A interrupção foi removida no iFood.",
+        tone: "success",
+      });
+
+      await refreshIfoodMerchantSnapshot();
+    } catch (error) {
+      showToast({
+        title: "Falha ao remover pausa",
+        description:
+          error instanceof Error ? error.message : "Não foi possível remover a pausa no iFood.",
+        tone: "error",
+      });
+    } finally {
+      setIsLoadingIfoodMerchant(false);
+    }
+  };
+
+  const handleApplyIfoodHomologationHours = async () => {
+    if (!restaurantId) return;
+
+    setIsSavingIfoodHours(true);
+    try {
+      await callIfoodMerchantApi({
+        action: "set_opening_hours",
+        shifts: IFOOD_HOMOLOGATION_SHIFTS,
+      });
+
+      showToast({
+        title: "Horários enviados ao iFood",
+        description: "Sábado e domingo foram configurados conforme o checklist de homologação.",
+        tone: "success",
+      });
+
+      await refreshIfoodMerchantSnapshot();
+    } catch (error) {
+      showToast({
+        title: "Falha ao salvar horários",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Não foi possível atualizar os horários no iFood.",
+        tone: "error",
+      });
+    } finally {
+      setIsSavingIfoodHours(false);
+    }
   };
 
   const handleImportIfoodCatalog = async () => {
@@ -1443,6 +1645,232 @@ export default function SettingsPage() {
                   </span>
                 </div>
               )}
+            </div>
+
+            <div className="mt-5 rounded-[22px] border border-[var(--line)] bg-white p-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <p className="text-sm font-black text-gray-950">Homologação Merchant</p>
+                  <p className="mt-1 text-sm leading-6 text-gray-500">
+                    Consulte lojas, detalhes, disponibilidade, pausas e horários para gravar os
+                    cenários exigidos pelo iFood.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={refreshIfoodMerchantSnapshot}
+                  disabled={isLoadingIfoodMerchant}
+                  className="rounded-2xl border border-[var(--line)] bg-[#fcfaf7] px-4 py-3 text-sm font-bold text-gray-700 disabled:cursor-not-allowed disabled:text-gray-400"
+                >
+                  <span className="inline-flex items-center gap-2">
+                    {isLoadingIfoodMerchant ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <RefreshCw size={16} />
+                    )}
+                    Consultar Merchant
+                  </span>
+                </button>
+              </div>
+
+              {ifoodMerchantSnapshot?.checkedAt && (
+                <p className="mt-3 text-xs font-bold uppercase tracking-[0.12em] text-gray-400">
+                  Última consulta Merchant: {formatSyncDate(ifoodMerchantSnapshot.checkedAt)}
+                </p>
+              )}
+
+              <div className="mt-4 grid gap-3 lg:grid-cols-3">
+                <div className="rounded-2xl border border-[var(--line)] bg-[#fcfaf7] p-4">
+                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">
+                    Lojas vinculadas
+                  </p>
+                  <p className="mt-2 text-2xl font-black text-gray-950">
+                    {listFromIfoodPayload(ifoodMerchantSnapshot?.merchants).length}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-[var(--line)] bg-[#fcfaf7] p-4">
+                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">
+                    Disponibilidade
+                  </p>
+                  <p className="mt-2 text-sm font-black text-gray-950">
+                    {String(
+                      ifoodMerchantSnapshot?.status?.state ||
+                        ifoodMerchantSnapshot?.status?.status ||
+                        "Não consultada",
+                    )}
+                  </p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    {typeof ifoodMerchantSnapshot?.status?.available === "boolean"
+                      ? ifoodMerchantSnapshot.status.available
+                        ? "available: true"
+                        : "available: false"
+                      : "available pendente"}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-[var(--line)] bg-[#fcfaf7] p-4">
+                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">
+                    Pausas ativas/futuras
+                  </p>
+                  <p className="mt-2 text-2xl font-black text-gray-950">
+                    {listFromIfoodPayload(ifoodMerchantSnapshot?.interruptions).length}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-4 xl:grid-cols-2">
+                <div className="rounded-2xl border border-[var(--line)] bg-[#fcfaf7] p-4">
+                  <p className="text-sm font-black text-gray-950">Interrupção na loja</p>
+                  <div className="mt-3 grid gap-3">
+                    <input
+                      value={ifoodPauseDescription}
+                      onChange={(e) => setIfoodPauseDescription(e.target.value)}
+                      className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+                      placeholder="Descrição da pausa"
+                    />
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <label className="space-y-2">
+                        <span className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">
+                          Início
+                        </span>
+                        <input
+                          type="datetime-local"
+                          value={ifoodPauseStart}
+                          onChange={(e) => setIfoodPauseStart(e.target.value)}
+                          className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+                        />
+                      </label>
+                      <label className="space-y-2">
+                        <span className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">
+                          Fim
+                        </span>
+                        <input
+                          type="datetime-local"
+                          value={ifoodPauseEnd}
+                          onChange={(e) => setIfoodPauseEnd(e.target.value)}
+                          className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+                        />
+                      </label>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={handleCreateIfoodPause}
+                        disabled={
+                          isCreatingIfoodPause ||
+                          !ifoodIntegration.merchantId ||
+                          !ifoodPauseDescription ||
+                          !ifoodPauseStart ||
+                          !ifoodPauseEnd
+                        }
+                        className="rounded-2xl bg-[var(--brand)] px-4 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:bg-gray-300"
+                      >
+                        <span className="inline-flex items-center gap-2">
+                          {isCreatingIfoodPause && <Loader2 size={16} className="animate-spin" />}
+                          Criar pausa
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={ensureIfoodPauseDefaults}
+                        className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700"
+                      >
+                        Recalcular janela
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 space-y-2">
+                    {listFromIfoodPayload(ifoodMerchantSnapshot?.interruptions).length === 0 ? (
+                      <p className="rounded-2xl border border-dashed border-[var(--line)] bg-white px-4 py-3 text-sm text-gray-500">
+                        Nenhuma pausa listada ainda.
+                      </p>
+                    ) : (
+                      listFromIfoodPayload(ifoodMerchantSnapshot?.interruptions).map((pause, index) => {
+                        const interruptionId = String(pause.id || pause.interruptionId || "");
+                        return (
+                          <div
+                            key={interruptionId || index}
+                            className="rounded-2xl border border-[var(--line)] bg-white p-3"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-bold text-gray-900">
+                                  {pause.description || pause.reason || `Pausa ${index + 1}`}
+                                </p>
+                                <p className="mt-1 text-xs text-gray-500">
+                                  {String(pause.start || pause.startDate || "")} até{" "}
+                                  {String(pause.end || pause.endDate || "")}
+                                </p>
+                              </div>
+                              {interruptionId && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteIfoodPause(interruptionId)}
+                                  className="rounded-xl p-2 text-gray-400 hover:bg-red-50 hover:text-red-600"
+                                  title="Remover pausa"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-[var(--line)] bg-[#fcfaf7] p-4">
+                  <p className="text-sm font-black text-gray-950">Horário de funcionamento</p>
+                  <p className="mt-1 text-sm leading-6 text-gray-500">
+                    Aplica exatamente o cenário Merchant do suporte: sábado 10:00-19:00 e domingo
+                    09:00-12:00, 13:00-16:00, 17:00-23:00.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleApplyIfoodHomologationHours}
+                    disabled={isSavingIfoodHours || !ifoodIntegration.merchantId}
+                    className="mt-3 rounded-2xl bg-gray-950 px-4 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:bg-gray-300"
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      {isSavingIfoodHours && <Loader2 size={16} className="animate-spin" />}
+                      Aplicar horários de homologação
+                    </span>
+                  </button>
+
+                  <div className="mt-4 rounded-2xl border border-[var(--line)] bg-white p-3">
+                    <p className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">
+                      Turnos retornados pelo iFood
+                    </p>
+                    <div className="mt-3 space-y-2">
+                      {listFromIfoodPayload(ifoodMerchantSnapshot?.openingHours).length === 0 ? (
+                        <p className="text-sm text-gray-500">Nenhum turno consultado ainda.</p>
+                      ) : (
+                        listFromIfoodPayload(ifoodMerchantSnapshot?.openingHours).map(
+                          (shift, index) => (
+                            <div
+                              key={`${shift.dayOfWeek}-${shift.start}-${index}`}
+                              className="rounded-xl bg-[#fcfaf7] px-3 py-2 text-sm text-gray-700"
+                            >
+                              <span className="font-bold">{shift.dayOfWeek}</span>{" "}
+                              {shift.start} por {shift.duration} min
+                            </div>
+                          ),
+                        )
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <details className="mt-4 rounded-2xl border border-[var(--line)] bg-[#fcfaf7]">
+                <summary className="cursor-pointer list-none px-4 py-3 text-sm font-bold text-gray-700">
+                  Dados brutos para conferência da gravação
+                </summary>
+                <pre className="max-h-96 overflow-auto border-t border-[var(--line)] p-4 text-xs leading-5 text-gray-600">
+                  {compactJson(ifoodMerchantSnapshot)}
+                </pre>
+              </details>
             </div>
 
             <details className="mt-5 rounded-[22px] border border-[var(--line)] bg-white">
