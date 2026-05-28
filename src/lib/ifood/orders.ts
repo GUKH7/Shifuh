@@ -53,7 +53,14 @@ async function ifoodOrderRequest<T>(
     throw new IfoodApiError(response.status, text || "request failed");
   }
 
-  return response.json() as Promise<T>;
+  const text = await response.text();
+  if (!text.trim()) return null;
+
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new IfoodApiError(response.status, text);
+  }
 }
 
 export async function pollIfoodOrderEvents(merchantId: string) {
