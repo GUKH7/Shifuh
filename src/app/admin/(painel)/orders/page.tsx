@@ -40,6 +40,11 @@ interface Order {
   change_for?: string;
 }
 
+type IfoodCancellationReason = {
+  code: string;
+  description: string;
+};
+
 const STATUS_FILTERS = [
   { id: "all", label: "Todos" },
   { id: "pending", label: "Pendentes" },
@@ -201,6 +206,36 @@ function listIfoodBenefits(order: Order) {
   return benefits.items;
 }
 
+function normalizeCancellationReasons(response: any): IfoodCancellationReason[] {
+  const source = Array.isArray(response?.reasons)
+    ? response.reasons
+    : Array.isArray(response?.reasons?.items)
+      ? response.reasons.items
+      : Array.isArray(response?.reasons?.cancellationReasons)
+        ? response.reasons.cancellationReasons
+        : [];
+
+  return source
+    .map((reason: any) => {
+      const code = String(
+        reason.cancellationCode ||
+          reason.code ||
+          reason.id ||
+          "",
+      ).trim();
+      const description = String(
+        reason.description ||
+          reason.reason ||
+          reason.name ||
+          reason.message ||
+          code,
+      ).trim();
+
+      return { code, description };
+    })
+    .filter((reason: IfoodCancellationReason) => reason.code && reason.description);
+}
+
 function OrdersSkeleton() {
   return (
     <div className="mx-auto max-w-6xl animate-pulse">
@@ -245,6 +280,10 @@ export default function OrdersPage() {
   const [lastSeenOrderId, setLastSeenOrderId] = useState("");
   const [expandedOrders, setExpandedOrders] = useState<string[]>([]);
   const [busyIfoodAction, setBusyIfoodAction] = useState("");
+  const [cancellationModalOrder, setCancellationModalOrder] = useState<Order | null>(null);
+  const [cancellationReasons, setCancellationReasons] = useState<IfoodCancellationReason[]>([]);
+  const [selectedCancellationCode, setSelectedCancellationCode] = useState("");
+  const [cancellationReasonText, setCancellationReasonText] = useState("");
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -466,13 +505,7 @@ export default function OrdersPage() {
         throw new Error(result.error || "Não foi possível executar a ação no iFood.");
       }
 
-      if (action === "cancellation_reasons") {
-        showToast({
-          title: "Motivos de cancelamento consultados",
-          description: JSON.stringify(result.reasons).slice(0, 220),
-          tone: "success",
-        });
-      } else {
+      if (action !== "cancellation_reasons") {
         showToast({
           title: "Ação enviada ao iFood",
           description: `Pedido #${formatDisplayNumber(order)} atualizado no iFood.`,
@@ -497,21 +530,46 @@ export default function OrdersPage() {
 
   const handleRequestIfoodCancellation = async (order: Order) => {
     const reasonsResult = await runIfoodAction(order, "cancellation_reasons");
-    const reasons = Array.isArray(reasonsResult?.reasons)
-      ? reasonsResult.reasons
-      : Array.isArray(reasonsResult?.reasons?.items)
-        ? reasonsResult.reasons.items
-        : [];
-    const firstReason = reasons[0] || {};
-    const code = String(firstReason.cancellationCode || firstReason.code || "");
-    const description = String(firstReason.description || firstReason.reason || "Cancelamento solicitado pela loja");
+    const reasons = normalizeCancellationReasons(reasonsResult);
+    const firstReason = reasons[0];
 
-    if (!code) return;
+    if (!firstReason) {
+      showToast({
+        title: "Sem motivos disponÃ­veis",
+        description: "O iFood nÃ£o retornou motivos de cancelamento para este pedido.",
+        tone: "error",
+      });
+      return;
+    }
 
-    await runIfoodAction(order, "request_cancellation", {
-      cancellationCode: code,
-      reason: description,
+    setCancellationModalOrder(order);
+    setCancellationReasons(reasons);
+    setSelectedCancellationCode(firstReason.code);
+    setCancellationReasonText(firstReason.description);
+  };
+
+  const handleSelectCancellationReason = (code: string) => {
+    const reason = cancellationReasons.find((item) => item.code === code);
+    setSelectedCancellationCode(code);
+    if (reason) setCancellationReasonText(reason.description);
+  };
+
+  const closeCancellationModal = () => {
+    setCancellationModalOrder(null);
+    setCancellationReasons([]);
+    setSelectedCancellationCode("");
+    setCancellationReasonText("");
+  };
+
+  const submitIfoodCancellation = async () => {
+    if (!cancellationModalOrder || !selectedCancellationCode || !cancellationReasonText.trim()) return;
+
+    const result = await runIfoodAction(cancellationModalOrder, "request_cancellation", {
+      cancellationCode: selectedCancellationCode,
+      reason: cancellationReasonText.trim(),
     });
+
+    if (result) closeCancellationModal();
   };
 
   const handlePrint = (order: Order) => {
@@ -644,7 +702,86 @@ export default function OrdersPage() {
   if (errorMsg) return <div className="p-8 text-center text-red-600">{errorMsg}</div>;
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <>
+      {cancellationModalOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-lg rounded-[24px] bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-[var(--brand)]">
+                  Cancelamento iFood
+                </p>
+                <h2 className="mt-2 text-xl font-black text-gray-950">
+                  Pedido #{formatDisplayNumber(cancellationModalOrder)}
+                </h2>
+                <p className="mt-1 text-sm text-gray-500">
+                  Selecione o motivo retornado pelo iFood e confirme a solicitação.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeCancellationModal}
+                className="rounded-full border border-[var(--line)] px-3 py-1 text-sm font-bold text-gray-500"
+              >
+                Fechar
+              </button>
+            </div>
+
+            <label className="mt-5 block text-sm font-bold text-gray-700" htmlFor="ifood-cancel-reason">
+              Motivo
+            </label>
+            <select
+              id="ifood-cancel-reason"
+              value={selectedCancellationCode}
+              onChange={(event) => handleSelectCancellationReason(event.target.value)}
+              className="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[var(--brand)]"
+            >
+              {cancellationReasons.map((reason) => (
+                <option key={reason.code} value={reason.code}>
+                  {reason.description}
+                </option>
+              ))}
+            </select>
+
+            <label className="mt-4 block text-sm font-bold text-gray-700" htmlFor="ifood-cancel-text">
+              Texto enviado ao iFood
+            </label>
+            <textarea
+              id="ifood-cancel-text"
+              value={cancellationReasonText}
+              onChange={(event) => setCancellationReasonText(event.target.value)}
+              rows={3}
+              className="mt-2 w-full resize-none rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-semibold text-gray-700 outline-none focus:border-[var(--brand)]"
+            />
+
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={closeCancellationModal}
+                className="rounded-2xl border border-[var(--line)] px-5 py-3 font-bold text-gray-500"
+              >
+                Voltar
+              </button>
+              <button
+                type="button"
+                onClick={submitIfoodCancellation}
+                disabled={
+                  !selectedCancellationCode ||
+                  !cancellationReasonText.trim() ||
+                  busyIfoodAction === `${cancellationModalOrder.id}:request_cancellation`
+                }
+                className="rounded-2xl bg-red-600 px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {busyIfoodAction === `${cancellationModalOrder.id}:request_cancellation`
+                  ? "Enviando..."
+                  : "Solicitar cancelamento"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="mx-auto max-w-6xl">
       <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h1 className="text-3xl font-black tracking-tight text-gray-950">Pedidos</h1>
@@ -981,11 +1118,11 @@ export default function OrdersPage() {
                             )}
                             {isIfoodOrder(order) && (
                               <button
-                                onClick={() => runIfoodAction(order, "cancellation_reasons")}
+                                onClick={() => handleRequestIfoodCancellation(order)}
                                 className="rounded-2xl border border-[var(--line)] px-4 py-3 font-semibold text-gray-500"
                                 disabled={busyIfoodAction === `${order.id}:cancellation_reasons`}
                               >
-                                Ver motivos cancelamento
+                                Solicitar cancelamento
                               </button>
                             )}
                           </>
@@ -1015,6 +1152,7 @@ export default function OrdersPage() {
           )}
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
