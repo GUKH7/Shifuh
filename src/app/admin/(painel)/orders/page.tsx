@@ -86,6 +86,49 @@ function formatDisplayNumber(order: Pick<Order, "display_number" | "id">) {
   return order.id.slice(0, 4).toUpperCase();
 }
 
+function playNewOrderChime() {
+  if (typeof window === "undefined") return;
+
+  try {
+    const AudioContextCtor =
+      window.AudioContext ||
+      (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+
+    if (!AudioContextCtor) return;
+
+    const audioContext = new AudioContextCtor();
+    const now = audioContext.currentTime;
+    const notes = [
+      { frequency: 880, start: 0, duration: 0.18 },
+      { frequency: 1174.66, start: 0.16, duration: 0.22 },
+    ];
+
+    notes.forEach((note) => {
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      const startAt = now + note.start;
+      const endAt = startAt + note.duration;
+
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(note.frequency, startAt);
+      gain.gain.setValueAtTime(0.0001, startAt);
+      gain.gain.exponentialRampToValueAtTime(0.12, startAt + 0.025);
+      gain.gain.exponentialRampToValueAtTime(0.0001, endAt);
+
+      oscillator.connect(gain);
+      gain.connect(audioContext.destination);
+      oscillator.start(startAt);
+      oscillator.stop(endAt);
+    });
+
+    window.setTimeout(() => {
+      void audioContext.close();
+    }, 700);
+  } catch {
+    // Some browsers block audio before the first user interaction.
+  }
+}
+
 function getStatusClasses(status: Order["status"]) {
   switch (status) {
     case "pending":
@@ -226,6 +269,7 @@ export default function OrdersPage() {
           if (payload.eventType === "INSERT" && payload.new?.id && payload.new.id !== lastSeenOrderId) {
             setLastSeenOrderId(String(payload.new.id));
             const display = String(payload.new.display_number || 0).padStart(4, "0");
+            playNewOrderChime();
             showToast({
               title: "Novo pedido recebido",
           description: `Pedido #${display === "0000" ? String(payload.new.id).slice(0, 4) : display} entrou na fila da operação.`,
