@@ -51,6 +51,7 @@ const STATUS_FILTERS = [
   { id: "preparing", label: "Em preparo" },
   { id: "delivering", label: "Em rota" },
   { id: "done", label: "Concluídos" },
+  { id: "canceled", label: "Cancelados" },
 ] as const;
 
 function formatPrice(value: number) {
@@ -204,6 +205,25 @@ function listIfoodBenefits(order: Order) {
   const benefits = getIfoodMeta(order).benefits;
   if (!benefits?.items || !Array.isArray(benefits.items)) return [];
   return benefits.items;
+}
+
+function getIfoodCancellation(order: Order) {
+  return getIfoodMeta(order).cancellation || null;
+}
+
+function formatIfoodCancellationStatus(status?: string | null) {
+  switch (String(status || "").toLowerCase()) {
+    case "requested":
+      return "Cancelamento solicitado";
+    case "failed":
+      return "Cancelamento recusado";
+    case "approved":
+      return "Cancelamento aprovado";
+    case "accepted":
+      return "SolicitaÃ§Ã£o aceita";
+    default:
+      return "Evento de cancelamento";
+  }
 }
 
 function normalizeCancellationReasons(response: any): IfoodCancellationReason[] {
@@ -401,7 +421,7 @@ export default function OrdersPage() {
         .from("orders")
         .select("id, customer_name, customer_phone, total, subtotal, delivery_fee, discount, status, payment_method, display_number, external_source, external_order_id, external_display_id, external_payload, is_test, created_at, address, change_for, order_items (*)")
         .eq("restaurant_id", resto.id)
-        .in("status", ["pending", "preparing", "delivering", "done"])
+        .in("status", ["pending", "preparing", "delivering", "done", "canceled"])
         .order("created_at", { ascending: false });
 
       if (error) {
@@ -685,6 +705,7 @@ export default function OrdersPage() {
       preparing: orders.filter((order) => order.status === "preparing").length,
       delivering: orders.filter((order) => order.status === "delivering").length,
       done: orders.filter((order) => order.status === "done").length,
+      canceled: orders.filter((order) => order.status === "canceled").length,
       count: filteredOrders.length,
       revenue: filteredOrders.reduce((sum, order) => sum + Number(order.total || 0), 0),
     };
@@ -797,7 +818,7 @@ export default function OrdersPage() {
         </div>
       </div>
 
-      <section className="grid gap-3 md:grid-cols-5">
+      <section className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
         <div className="surface-card rounded-[20px] p-4">
           <p className="text-sm font-medium text-gray-500">Pendentes</p>
           <p className="mt-2 text-2xl font-black text-gray-950">{summary.pending}</p>
@@ -813,6 +834,10 @@ export default function OrdersPage() {
         <div className="surface-card rounded-[20px] p-4">
               <p className="text-sm font-medium text-gray-500">Concluídos</p>
           <p className="mt-2 text-2xl font-black text-gray-950">{summary.done}</p>
+        </div>
+        <div className="surface-card rounded-[20px] p-4">
+          <p className="text-sm font-medium text-gray-500">Cancelados</p>
+          <p className="mt-2 text-2xl font-black text-red-600">{summary.canceled}</p>
         </div>
         <div className="surface-card rounded-[20px] p-4">
           <div className="flex items-start justify-between gap-3">
@@ -984,6 +1009,23 @@ export default function OrdersPage() {
                               {getIfoodMeta(order).observations && (
                                 <div className="rounded-xl bg-amber-50 p-3 text-amber-800">
                                   Obs. pedido: {getIfoodMeta(order).observations}
+                                </div>
+                              )}
+                              {getIfoodCancellation(order) && (
+                                <div className="rounded-xl border border-red-100 bg-red-50 p-3 text-red-700">
+                                  <p className="font-bold">
+                                    {formatIfoodCancellationStatus(getIfoodCancellation(order).status)}
+                                  </p>
+                                  {getIfoodCancellation(order).reason && (
+                                    <p className="mt-1 text-xs">
+                                      {getIfoodCancellation(order).reason}
+                                    </p>
+                                  )}
+                                  {getIfoodCancellation(order).eventCreatedAt && (
+                                    <p className="mt-1 text-xs text-red-400">
+                                      {formatDateTime(getIfoodCancellation(order).eventCreatedAt)}
+                                    </p>
+                                  )}
                                 </div>
                               )}
                             </div>

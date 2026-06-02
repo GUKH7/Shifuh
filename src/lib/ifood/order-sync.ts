@@ -16,6 +16,8 @@ type SyncIfoodOrdersParams = {
   source: "manual" | "cron";
 };
 
+type LocalOrderStatus = "pending" | "preparing" | "delivering" | "done" | "canceled";
+
 function roundMoney(value: unknown) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? Math.round(parsed * 100) / 100 : 0;
@@ -219,6 +221,55 @@ function buildIfoodOrderMetadata(details: Record<string, unknown>) {
   };
 }
 
+function buildEventMetadata(event: IfoodOrderEvent) {
+  return {
+    id: event.id,
+    code: event.code,
+    fullCode: event.fullCode || event.code,
+    group: String((event.metadata as Record<string, unknown> | undefined)?.group || "ORDER_STATUS"),
+    createdAt: event.createdAt || null,
+    metadata: event.metadata || null,
+  };
+}
+
+function buildCancellationMetadata(event: IfoodOrderEvent) {
+  const code = String(event.code || "").toUpperCase();
+  const fullCode = String(event.fullCode || "").toUpperCase();
+  const metadata = (event.metadata as Record<string, unknown> | undefined) || {};
+  const isRequested = code === "CAR" || fullCode === "CANCELLATION_REQUESTED";
+  const isFailed = code === "CARF" || fullCode === "CANCELLATION_REQUEST_FAILED";
+  const isConsumerRequested = code === "CCR" || fullCode === "CONSUMER_CANCELLATION_REQUESTED";
+  const isConsumerAccepted = code === "CCA" || fullCode === "CONSUMER_CANCELLATION_ACCEPTED";
+  const isConsumerDenied = code === "CCD" || fullCode === "CONSUMER_CANCELLATION_DENIED";
+  const isCanceled = code === "CAN" || fullCode === "CANCELLED";
+
+  if (!isRequested && !isFailed && !isConsumerRequested && !isConsumerAccepted && !isConsumerDenied && !isCanceled) {
+    return null;
+  }
+
+  const reason =
+    metadata.reasonDescription ||
+    metadata.reason ||
+    metadata.details ||
+    metadata.attemptedReason ||
+    null;
+
+  return {
+    status: isCanceled
+      ? "approved"
+      : isFailed || isConsumerDenied
+        ? "failed"
+        : isRequested || isConsumerRequested
+          ? "requested"
+          : "accepted",
+    reason: reason ? String(reason) : null,
+    eventCode: event.code,
+    eventFullCode: event.fullCode || event.code,
+    eventCreatedAt: event.createdAt || null,
+    metadata,
+  };
+}
+
 async function getNextDisplayNumber(admin: AdminClient, restaurantId: string) {
   const { data, error } = await admin.rpc("next_order_display_number", {
     p_restaurant_id: restaurantId,
@@ -278,15 +329,35 @@ async function upsertLocalOrderFromIfood(
       "ifood",
   ).toLowerCase();
   const displayNumberText = String(details.displayId || "").trim();
-  const mappedStatus = mapIfoodEventCodeToStatus(event.code);
+  const mappedStatus =
+    mapIfoodEventCodeToStatus(event.code) ||
+    (event.fullCode ? mapIfoodEventCodeToStatus(event.fullCode) : null);
+  const lastIfoodEvent = buildEventMetadata(event);
+  const cancellation = buildCancellationMetadata(event);
   const existingOrderQuery = await admin
     .from("orders")
-    .select("id, display_number")
+    .select("id, display_number, status, external_payload")
     .eq("restaurant_id", restaurantId)
     .eq("external_order_id", event.orderId)
     .maybeSingle();
 
   let localOrderId = existingOrderQuery.data?.id || null;
+  const existingStatus = (existingOrderQuery.data?.status as LocalOrderStatus | null) || null;
+  const nextStatus: LocalOrderStatus = mappedStatus || existingStatus || "pending";
+  const existingPayload =
+    existingOrderQuery.data?.external_payload && typeof existingOrderQuery.data.external_payload === "object"
+      ? (existingOrderQuery.data.external_payload as Record<string, unknown>)
+      : {};
+  const existingGestorDelivery =
+    existingPayload.gestorDelivery && typeof existingPayload.gestorDelivery === "object"
+      ? (existingPayload.gestorDelivery as Record<string, unknown>)
+      : {};
+  const gestorDelivery = {
+    ...existingGestorDelivery,
+    ...metadata,
+    lastIfoodEvent,
+    ...(cancellation ? { cancellation } : {}),
+  };
 
   if (!localOrderId) {
     const nextDisplayNumber = await getNextDisplayNumber(admin, restaurantId);
@@ -301,7 +372,7 @@ async function upsertLocalOrderFromIfood(
       delivery_fee: deliveryFee,
       discount,
       total: total || subtotal + deliveryFee - discount,
-      status: mappedStatus,
+      status: nextStatus,
       payment_method: paymentMethod,
       change_for: metadata.payment.changeFor ? String(metadata.payment.changeFor) : null,
       address,
@@ -312,7 +383,7 @@ async function upsertLocalOrderFromIfood(
       is_test: Boolean(details.isTest),
       external_payload: {
         ...(details as Json as Record<string, unknown>),
-        gestorDelivery: metadata,
+        gestorDelivery,
       } as Json,
     });
 
@@ -348,7 +419,7 @@ async function upsertLocalOrderFromIfood(
         delivery_fee: deliveryFee,
         discount,
         total: total || subtotal + deliveryFee - discount,
-        status: mappedStatus,
+        status: nextStatus,
         payment_method: paymentMethod,
         change_for: metadata.payment.changeFor ? String(metadata.payment.changeFor) : null,
         address,
@@ -357,8 +428,9 @@ async function upsertLocalOrderFromIfood(
         external_display_id: displayNumberText || null,
         is_test: Boolean(details.isTest),
         external_payload: {
+          ...existingPayload,
           ...(details as Json as Record<string, unknown>),
-          gestorDelivery: metadata,
+          gestorDelivery,
         } as Json,
       })
       .eq("id", localOrderId);
@@ -371,7 +443,7 @@ async function upsertLocalOrderFromIfood(
   return {
     localOrderId,
     displayId: displayNumberText || null,
-    status: mappedStatus,
+    status: nextStatus,
     total: total || subtotal + deliveryFee - discount,
   };
 }

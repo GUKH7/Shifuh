@@ -158,21 +158,29 @@ export async function requestIfoodOrderCancellation(
 }
 
 export function mapIfoodEventCodeToStatus(code: string) {
-  switch (code) {
+  switch (code.toUpperCase()) {
     case "PLC":
+    case "PLACED":
       return "pending";
     case "CFM":
+    case "CONFIRMED":
     case "RTP":
+    case "READY_TO_PICKUP":
     case "SPS":
+    case "SEPARATION_STARTED":
     case "SPE":
+    case "SEPARATION_ENDED":
       return "preparing";
     case "DSP":
+    case "DISPATCHED":
       return "delivering";
     case "CON":
+    case "CONCLUDED":
       return "done";
     case "CAN":
+    case "CANCELLED":
       return "canceled";
     default:
-      return "pending";
+      return null;
   }
 }
