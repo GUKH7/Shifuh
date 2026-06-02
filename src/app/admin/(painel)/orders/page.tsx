@@ -45,6 +45,20 @@ type IfoodCancellationReason = {
   description: string;
 };
 
+type IfoodEventAudit = {
+  id: string;
+  ifood_event_id: string;
+  ifood_order_id: string;
+  event_code: string;
+  event_full_code: string | null;
+  event_group: string | null;
+  event_created_at: string | null;
+  processed_at: string | null;
+  acknowledged_at: string | null;
+  raw_payload: any;
+  created_at: string;
+};
+
 const STATUS_FILTERS = [
   { id: "all", label: "Todos" },
   { id: "pending", label: "Pendentes" },
@@ -307,6 +321,9 @@ export default function OrdersPage() {
   const [cancellationReasons, setCancellationReasons] = useState<IfoodCancellationReason[]>([]);
   const [selectedCancellationCode, setSelectedCancellationCode] = useState("");
   const [cancellationReasonText, setCancellationReasonText] = useState("");
+  const [ifoodEventsByOrder, setIfoodEventsByOrder] = useState<Record<string, IfoodEventAudit[]>>({});
+  const [loadingIfoodEvents, setLoadingIfoodEvents] = useState<Record<string, boolean>>({});
+  const [expandedIfoodEvent, setExpandedIfoodEvent] = useState("");
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -714,12 +731,46 @@ export default function OrdersPage() {
   const getCount = (status: (typeof STATUS_FILTERS)[number]["id"]) =>
     status === "all" ? orders.length : orders.filter((order) => order.status === status).length;
 
-  const toggleExpandedOrder = (orderId: string) => {
+  const loadIfoodEvents = async (order: Order, force = false) => {
+    if (!isIfoodOrder(order)) return;
+    if (!force && ifoodEventsByOrder[order.id]) return;
+
+    setLoadingIfoodEvents((current) => ({ ...current, [order.id]: true }));
+
+    try {
+      const params = new URLSearchParams({ orderId: order.id });
+      const response = await fetch(`/api/integrations/ifood/orders/events?${params.toString()}`);
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(result.error || "NÃ£o foi possÃ­vel carregar os eventos iFood.");
+      }
+
+      setIfoodEventsByOrder((current) => ({
+        ...current,
+        [order.id]: Array.isArray(result.events) ? result.events : [],
+      }));
+    } catch (error) {
+      showToast({
+        title: "Falha ao carregar eventos iFood",
+        description: error instanceof Error ? error.message : "Tente novamente em instantes.",
+        tone: "error",
+      });
+    } finally {
+      setLoadingIfoodEvents((current) => ({ ...current, [order.id]: false }));
+    }
+  };
+
+  const toggleExpandedOrder = (order: Order) => {
     setExpandedOrders((current) =>
-      current.includes(orderId)
-        ? current.filter((item) => item !== orderId)
-        : [...current, orderId],
+      current.includes(order.id)
+        ? current.filter((item) => item !== order.id)
+        : [...current, order.id],
     );
+
+    if (!expandedOrders.includes(order.id)) {
+      void loadIfoodEvents(order);
+    }
   };
 
   if (loading) return <OrdersSkeleton />;
@@ -909,7 +960,7 @@ export default function OrdersPage() {
                   className="overflow-hidden rounded-[24px] border border-[var(--line)] bg-white shadow-[0_1px_2px_rgba(17,16,15,0.04)]"
                 >
                   <button
-                    onClick={() => toggleExpandedOrder(order.id)}
+                    onClick={() => toggleExpandedOrder(order)}
                     className="flex w-full flex-col gap-3 px-5 py-4 text-left transition-colors hover:bg-[#fcfaf7] lg:flex-row lg:items-center lg:justify-between"
                   >
                     <div className="flex min-w-0 items-center gap-3">
@@ -1028,6 +1079,82 @@ export default function OrdersPage() {
                                   )}
                                 </div>
                               )}
+                              <div className="rounded-xl border border-[var(--line)] bg-[#fcfaf7] p-3">
+                                <div className="flex items-center justify-between gap-3">
+                                  <p className="font-bold text-gray-950">Eventos iFood</p>
+                                  <button
+                                    type="button"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      void loadIfoodEvents(order, true);
+                                    }}
+                                    className="rounded-full border border-[var(--line)] bg-white px-3 py-1 text-xs font-bold text-gray-500"
+                                  >
+                                    Atualizar
+                                  </button>
+                                </div>
+                                {loadingIfoodEvents[order.id] ? (
+                                  <p className="mt-3 text-xs text-gray-500">Carregando eventos...</p>
+                                ) : (ifoodEventsByOrder[order.id] || []).length === 0 ? (
+                                  <p className="mt-3 text-xs text-gray-500">
+                                    Nenhum evento registrado para este pedido ainda.
+                                  </p>
+                                ) : (
+                                  <div className="mt-3 space-y-2">
+                                    {(ifoodEventsByOrder[order.id] || []).map((event) => {
+                                      const isRawExpanded = expandedIfoodEvent === event.id;
+
+                                      return (
+                                        <div key={event.id} className="rounded-xl bg-white p-3">
+                                          <div className="flex flex-wrap items-center justify-between gap-2">
+                                            <div>
+                                              <p className="text-sm font-black text-gray-950">
+                                                {event.event_code}
+                                                {event.event_full_code ? ` / ${event.event_full_code}` : ""}
+                                              </p>
+                                              <p className="mt-1 text-xs text-gray-500">
+                                                {event.event_group || "ORDER_STATUS"} •{" "}
+                                                {formatDateTime(event.event_created_at || event.created_at)}
+                                              </p>
+                                            </div>
+                                            <div className="flex flex-wrap gap-1">
+                                              <span className={`rounded-full px-2 py-1 text-[11px] font-bold ${
+                                                event.processed_at
+                                                  ? "bg-emerald-50 text-emerald-700"
+                                                  : "bg-amber-50 text-amber-700"
+                                              }`}>
+                                                {event.processed_at ? "Processado" : "Pendente"}
+                                              </span>
+                                              <span className={`rounded-full px-2 py-1 text-[11px] font-bold ${
+                                                event.acknowledged_at
+                                                  ? "bg-blue-50 text-blue-700"
+                                                  : "bg-gray-100 text-gray-500"
+                                              }`}>
+                                                {event.acknowledged_at ? "ACK enviado" : "Sem ACK"}
+                                              </span>
+                                            </div>
+                                          </div>
+                                          <button
+                                            type="button"
+                                            onClick={(clickEvent) => {
+                                              clickEvent.stopPropagation();
+                                              setExpandedIfoodEvent(isRawExpanded ? "" : event.id);
+                                            }}
+                                            className="mt-2 text-xs font-bold text-[var(--brand)]"
+                                          >
+                                            {isRawExpanded ? "Ocultar payload" : "Ver payload"}
+                                          </button>
+                                          {isRawExpanded && (
+                                            <pre className="mt-2 max-h-48 overflow-auto rounded-xl bg-gray-950 p-3 text-[11px] text-gray-100">
+                                              {JSON.stringify(event.raw_payload, null, 2)}
+                                            </pre>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
                         )}
