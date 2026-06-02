@@ -122,7 +122,7 @@ export async function validateIfoodCredentials() {
   return { ok: true, tokenPreview: `${token.slice(0, 12)}...` };
 }
 
-async function ifoodRequest<T>(path: string, init?: RequestInit): Promise<T> {
+export async function ifoodRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const token = await getIfoodAccessToken();
   const response = await fetch(`${IFOOD_MERCHANT_API_BASE_URL}${path}`, {
     ...init,
@@ -139,7 +139,12 @@ async function ifoodRequest<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error(`iFood API ${response.status}: ${text || "request failed"}`);
   }
 
-  return response.json() as Promise<T>;
+  if (response.status === 204) return null as T;
+
+  const text = await response.text();
+  if (!text.trim()) return null as T;
+
+  return JSON.parse(text) as T;
 }
 
 export async function listIfoodCatalogs(merchantId: string) {

@@ -347,6 +347,8 @@ export default function SettingsPage() {
   const [printerFontWeight, setPrinterFontWeight] = useState(700);
   const [printerAutoPrint, setPrinterAutoPrint] = useState(false);
   const [isImportingIfoodCatalog, setIsImportingIfoodCatalog] = useState(false);
+  const [isPreparingIfoodCatalog, setIsPreparingIfoodCatalog] = useState(false);
+  const [isMutatingIfoodCatalog, setIsMutatingIfoodCatalog] = useState(false);
   const [isCheckingIfoodConnection, setIsCheckingIfoodConnection] = useState(false);
   const [isSyncingIfoodOrders, setIsSyncingIfoodOrders] = useState(false);
   const [isImportingIfoodLink, setIsImportingIfoodLink] = useState(false);
@@ -958,6 +960,53 @@ export default function SettingsPage() {
       });
     } finally {
       setIsImportingIfoodCatalog(false);
+    }
+  };
+
+  const handleManageIfoodCatalog = async (
+    action: "prepare_homologation" | "mutate_homologation",
+  ) => {
+    if (!restaurantId) return;
+
+    const isMutation = action === "mutate_homologation";
+    const setLoading = isMutation ? setIsMutatingIfoodCatalog : setIsPreparingIfoodCatalog;
+    setLoading(true);
+
+    try {
+      const response = await fetch("/api/integrations/ifood/catalog/manage", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ restaurantId, action }),
+      });
+
+      const result = await readJsonResponse(response);
+
+      if (!response.ok) {
+        throw new Error(result.error || "Não foi possível publicar o catálogo no iFood.");
+      }
+
+      showToast({
+        title: isMutation ? "Cenário Catalog alterado" : "Cenário Catalog preparado",
+        description: isMutation
+          ? "Produto alterado e segundo complemento pausado no iFood."
+          : `Categoria ${result.summary?.categoryName || "Teste Homologacao"} e item de teste enviados ao iFood.`,
+        tone: "success",
+      });
+
+      fetchSettings();
+    } catch (error) {
+      showToast({
+        title: "Falha no Catalog iFood",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Não foi possível executar o cenário Catalog agora.",
+        tone: "error",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -2029,11 +2078,27 @@ export default function SettingsPage() {
             </button>
             <button
               type="button"
-              disabled
-              className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-400"
-              title="Próxima etapa: publicar atualizações de produtos, preços e status no iFood."
+              onClick={() => handleManageIfoodCatalog("prepare_homologation")}
+              disabled={isPreparingIfoodCatalog || !ifoodIntegration.merchantId}
+              className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700 disabled:cursor-not-allowed disabled:text-gray-400"
+              title="Cria categoria, produto, grupo e complementos exigidos no cenário de homologação Catalog."
             >
-              Enviar cardápio para o iFood
+              <span className="inline-flex items-center gap-2">
+                {isPreparingIfoodCatalog && <Loader2 size={16} className="animate-spin" />}
+                Preparar Catalog homologação
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleManageIfoodCatalog("mutate_homologation")}
+              disabled={isMutatingIfoodCatalog || !ifoodIntegration.merchantId}
+              className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700 disabled:cursor-not-allowed disabled:text-gray-400"
+              title="Altera o produto de teste e pausa o segundo complemento no iFood."
+            >
+              <span className="inline-flex items-center gap-2">
+                {isMutatingIfoodCatalog && <Loader2 size={16} className="animate-spin" />}
+                Alterar/pausar Catalog
+              </span>
             </button>
           </div>
         </CollapsibleSection>
