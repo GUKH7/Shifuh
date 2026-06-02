@@ -176,6 +176,7 @@ function buildHomologationItemPayload(params: {
   return {
     item: {
       id: HOMOLOGATION_IDS.itemId,
+      productId: HOMOLOGATION_IDS.productId,
       type: "DEFAULT",
       categoryId: params.categoryId,
       status: "AVAILABLE",
