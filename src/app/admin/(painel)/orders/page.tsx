@@ -211,14 +211,17 @@ function normalizeCancellationReasons(response: any): IfoodCancellationReason[] 
     ? response.reasons
     : Array.isArray(response?.reasons?.items)
       ? response.reasons.items
-      : Array.isArray(response?.reasons?.cancellationReasons)
-        ? response.reasons.cancellationReasons
-        : [];
+      : Array.isArray(response?.reasons?.reasons)
+        ? response.reasons.reasons
+        : Array.isArray(response?.reasons?.cancellationReasons)
+          ? response.reasons.cancellationReasons
+          : [];
 
   return source
     .map((reason: any) => {
       const code = String(
         reason.cancellationCode ||
+          reason.cancelCodeId ||
           reason.code ||
           reason.id ||
           "",
