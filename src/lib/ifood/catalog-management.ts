@@ -33,13 +33,13 @@ export type IfoodHomologationCatalogResult = {
 
 const HOMOLOGATION_IDS = {
   categoryName: "Teste Homologacao",
-  itemId: "gestor-homologacao-produto-teste",
-  productId: "gestor-homologacao-produto-teste-prod",
-  optionGroupId: "gestor-homologacao-grupo-complementos",
-  optionOneProductId: "gestor-homologacao-complemento-1-prod",
-  optionTwoProductId: "gestor-homologacao-complemento-2-prod",
-  optionOneId: "gestor-homologacao-complemento-1",
-  optionTwoId: "gestor-homologacao-complemento-2",
+  itemId: "11111111-1111-4111-8111-111111111111",
+  productId: "22222222-2222-4222-8222-222222222222",
+  optionGroupId: "33333333-3333-4333-8333-333333333333",
+  optionOneProductId: "44444444-4444-4444-8444-444444444444",
+  optionTwoProductId: "55555555-5555-4555-8555-555555555555",
+  optionOneId: "66666666-6666-4666-8666-666666666666",
+  optionTwoId: "77777777-7777-4777-8777-777777777777",
 };
 
 export async function resolveIfoodCatalogId(merchantId: string) {
