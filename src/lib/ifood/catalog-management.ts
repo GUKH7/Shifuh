@@ -47,32 +47,67 @@ export async function resolveIfoodCatalogId(merchantId: string) {
   return pickMainCatalog(catalogs)?.catalogId || null;
 }
 
-export async function listIfoodCategoriesV2(merchantId: string, includeItems = false) {
+function isNoRouteError(error: unknown) {
+  return error instanceof Error && /no route matched/i.test(error.message);
+}
+
+export async function listIfoodCategoriesV2(
+  merchantId: string,
+  includeItems = false,
+  catalogId?: string | null,
+) {
   const params = new URLSearchParams();
   if (includeItems) params.set("include_items", "true");
   const query = params.toString();
 
-  return ifoodRequest<IfoodCategory[]>(
-    `/catalog/v2.0/merchants/${merchantId}/categories${query ? `?${query}` : ""}`,
-  );
+  try {
+    return await ifoodRequest<IfoodCategory[]>(
+      `/catalog/v2.0/merchants/${merchantId}/categories${query ? `?${query}` : ""}`,
+    );
+  } catch (error) {
+    if (!catalogId || !isNoRouteError(error)) throw error;
+
+    return ifoodRequest<IfoodCategory[]>(
+      `/catalog/v2.0/merchants/${merchantId}/catalogs/${catalogId}/categories${query ? `?${query}` : ""}`,
+    );
+  }
 }
 
 export async function createIfoodCategory(
   merchantId: string,
   payload: { name: string; status?: string; template?: string },
+  catalogId?: string | null,
 ) {
-  return ifoodRequest<IfoodCategory>(`/catalog/v2.0/merchants/${merchantId}/categories`, {
-    method: "POST",
-    body: JSON.stringify({
-      status: "AVAILABLE",
-      template: "DEFAULT",
-      ...payload,
-    }),
+  const body = JSON.stringify({
+    status: "AVAILABLE",
+    template: "DEFAULT",
+    ...payload,
   });
+
+  try {
+    return await ifoodRequest<IfoodCategory>(`/catalog/v2.0/merchants/${merchantId}/categories`, {
+      method: "POST",
+      body,
+    });
+  } catch (error) {
+    if (!catalogId || !isNoRouteError(error)) throw error;
+
+    return ifoodRequest<IfoodCategory>(
+      `/catalog/v2.0/merchants/${merchantId}/catalogs/${catalogId}/categories`,
+      {
+        method: "POST",
+        body,
+      },
+    );
+  }
 }
 
-export async function findOrCreateIfoodCategory(merchantId: string, name: string) {
-  const categories = await listIfoodCategoriesV2(merchantId, true);
+export async function findOrCreateIfoodCategory(
+  merchantId: string,
+  name: string,
+  catalogId?: string | null,
+) {
+  const categories = await listIfoodCategoriesV2(merchantId, true, catalogId);
   const existing = categories.find((category) => category.name?.trim().toLowerCase() === name.toLowerCase());
   if (existing) return existing;
 
@@ -80,19 +115,35 @@ export async function findOrCreateIfoodCategory(merchantId: string, name: string
     name,
     status: "AVAILABLE",
     template: "DEFAULT",
-  });
+  }, catalogId);
 }
 
 export async function uploadIfoodCatalogImage(merchantId: string, image = SAMPLE_IMAGE) {
-  const response = await ifoodRequest<{ imagePath?: string }>(
-    `/catalog/v2.0/merchants/${merchantId}/image/upload`,
-    {
-      method: "POST",
-      body: JSON.stringify({ image }),
-    },
-  );
+  const body = JSON.stringify({ image });
 
-  return response?.imagePath || null;
+  try {
+    const response = await ifoodRequest<{ imagePath?: string }>(
+      `/catalog/v2.0/merchants/${merchantId}/image/upload`,
+      {
+        method: "POST",
+        body,
+      },
+    );
+
+    return response?.imagePath || null;
+  } catch (error) {
+    if (!isNoRouteError(error)) throw error;
+
+    const response = await ifoodRequest<{ imagePath?: string }>(
+      `/catalog/v2.0/merchants/${merchantId}/image/upload/`,
+      {
+        method: "POST",
+        body,
+      },
+    ).catch(() => null);
+
+    return response?.imagePath || null;
+  }
 }
 
 export async function putIfoodItem(merchantId: string, payload: IfoodCatalogItemPayload) {
@@ -139,7 +190,7 @@ function buildHomologationItemPayload(params: {
           ? "Produto alterado para o cenário de homologação Catalog."
           : "Produto criado pelo Gestor Delivery para homologação Catalog.",
         externalCode: "GESTOR_HOMOLOG_PRODUCT_001",
-        ...(params.imagePath ? { imagePath: params.imagePath } : {}),
+        ...(params.imagePath ? { imagePath: params.imagePath } : { image: SAMPLE_IMAGE }),
         optionGroups: [
           {
             id: HOMOLOGATION_IDS.optionGroupId,
@@ -154,14 +205,14 @@ function buildHomologationItemPayload(params: {
         name: "Complemento Um",
         description: "Primeiro complemento de homologação.",
         externalCode: "GESTOR_HOMOLOG_OPTION_PRODUCT_001",
-        ...(params.imagePath ? { imagePath: params.imagePath } : {}),
+        ...(params.imagePath ? { imagePath: params.imagePath } : { image: SAMPLE_IMAGE }),
       },
       {
         id: HOMOLOGATION_IDS.optionTwoProductId,
         name: optionTwoName,
         description: "Segundo complemento de homologação.",
         externalCode: "GESTOR_HOMOLOG_OPTION_PRODUCT_002",
-        ...(params.imagePath ? { imagePath: params.imagePath } : {}),
+        ...(params.imagePath ? { imagePath: params.imagePath } : { image: SAMPLE_IMAGE }),
       },
     ],
     optionGroups: [
@@ -193,9 +244,9 @@ function buildHomologationItemPayload(params: {
 export async function prepareIfoodCatalogHomologation(
   merchantId: string,
 ): Promise<IfoodHomologationCatalogResult> {
-  const [catalogId, category, imagePath] = await Promise.all([
-    resolveIfoodCatalogId(merchantId),
-    findOrCreateIfoodCategory(merchantId, HOMOLOGATION_IDS.categoryName),
+  const catalogId = await resolveIfoodCatalogId(merchantId);
+  const [category, imagePath] = await Promise.all([
+    findOrCreateIfoodCategory(merchantId, HOMOLOGATION_IDS.categoryName, catalogId),
     uploadIfoodCatalogImage(merchantId),
   ]);
   const itemPayload = buildHomologationItemPayload({
@@ -221,9 +272,9 @@ export async function prepareIfoodCatalogHomologation(
 export async function mutateIfoodCatalogHomologation(
   merchantId: string,
 ): Promise<IfoodHomologationCatalogResult> {
-  const [catalogId, category, imagePath] = await Promise.all([
-    resolveIfoodCatalogId(merchantId),
-    findOrCreateIfoodCategory(merchantId, HOMOLOGATION_IDS.categoryName),
+  const catalogId = await resolveIfoodCatalogId(merchantId);
+  const [category, imagePath] = await Promise.all([
+    findOrCreateIfoodCategory(merchantId, HOMOLOGATION_IDS.categoryName, catalogId),
     uploadIfoodCatalogImage(merchantId),
   ]);
   const itemPayload = buildHomologationItemPayload({
