@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import {
+  DEFAULT_HOMOLOGATION_IDS,
+  type IfoodCatalogHomologationIds,
   mutateIfoodCatalogHomologation,
   prepareIfoodCatalogHomologation,
 } from "@/lib/ifood/catalog-management";
@@ -11,6 +13,59 @@ type CatalogManagePayload = {
   restaurantId?: string;
   action?: CatalogManageAction;
 };
+
+function createHomologationIds(): IfoodCatalogHomologationIds {
+  return {
+    itemId: crypto.randomUUID(),
+    productId: crypto.randomUUID(),
+    optionGroupId: crypto.randomUUID(),
+    optionOneProductId: crypto.randomUUID(),
+    optionTwoProductId: crypto.randomUUID(),
+    optionOneId: crypto.randomUUID(),
+    optionTwoId: crypto.randomUUID(),
+  };
+}
+
+function parseIntegrationNotes(notes?: string | null) {
+  if (!notes?.trim()) return {};
+
+  try {
+    const parsed = JSON.parse(notes);
+    return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {};
+  } catch {
+    return { text: notes };
+  }
+}
+
+function getSavedCatalogIds(notes?: string | null): IfoodCatalogHomologationIds | null {
+  const parsed = parseIntegrationNotes(notes);
+  const ids = parsed.catalogHomologationIds as Partial<IfoodCatalogHomologationIds> | undefined;
+
+  if (
+    ids?.itemId &&
+    ids.productId &&
+    ids.optionGroupId &&
+    ids.optionOneProductId &&
+    ids.optionTwoProductId &&
+    ids.optionOneId &&
+    ids.optionTwoId
+  ) {
+    return ids as IfoodCatalogHomologationIds;
+  }
+
+  return null;
+}
+
+function stringifyIntegrationNotes(
+  notes: string | null | undefined,
+  ids: IfoodCatalogHomologationIds,
+) {
+  return JSON.stringify({
+    ...parseIntegrationNotes(notes),
+    catalogHomologationIds: ids,
+    catalogHomologationUpdatedAt: new Date().toISOString(),
+  });
+}
 
 export async function POST(request: Request) {
   try {
@@ -45,7 +100,7 @@ export async function POST(request: Request) {
     const admin = createAdminClient();
     const { data: integration, error: integrationError } = await admin
       .from("ifood_integrations")
-      .select("merchant_id, status")
+      .select("merchant_id, status, notes")
       .eq("restaurant_id", restaurantId)
       .maybeSingle();
 
@@ -56,11 +111,17 @@ export async function POST(request: Request) {
       );
     }
 
+    const savedIds = getSavedCatalogIds(integration.notes);
+    const ids =
+      action === "prepare_homologation"
+        ? createHomologationIds()
+        : savedIds || DEFAULT_HOMOLOGATION_IDS;
+
     const result =
       action === "mutate_homologation"
-        ? await mutateIfoodCatalogHomologation(integration.merchant_id)
+        ? await mutateIfoodCatalogHomologation(integration.merchant_id, ids)
         : action === "prepare_homologation"
-          ? await prepareIfoodCatalogHomologation(integration.merchant_id)
+          ? await prepareIfoodCatalogHomologation(integration.merchant_id, ids)
           : null;
 
     if (!result) {
@@ -74,6 +135,7 @@ export async function POST(request: Request) {
         catalog_sync_enabled: true,
         status: integration.status === "disconnected" ? "configuring" : integration.status,
         last_catalog_export_at: new Date().toISOString(),
+        notes: stringifyIntegrationNotes(integration.notes, ids),
       })
       .eq("restaurant_id", restaurantId);
 

@@ -31,8 +31,17 @@ export type IfoodHomologationCatalogResult = {
   };
 };
 
-const HOMOLOGATION_IDS = {
-  categoryName: "Teste Homologacao",
+export type IfoodCatalogHomologationIds = {
+  itemId: string;
+  productId: string;
+  optionGroupId: string;
+  optionOneProductId: string;
+  optionTwoProductId: string;
+  optionOneId: string;
+  optionTwoId: string;
+};
+
+export const DEFAULT_HOMOLOGATION_IDS: IfoodCatalogHomologationIds = {
   itemId: "11111111-1111-4111-8111-111111111111",
   productId: "22222222-2222-4222-8222-222222222222",
   optionGroupId: "33333333-3333-4333-8333-333333333333",
@@ -40,6 +49,10 @@ const HOMOLOGATION_IDS = {
   optionTwoProductId: "55555555-5555-4555-8555-555555555555",
   optionOneId: "66666666-6666-4666-8666-666666666666",
   optionTwoId: "77777777-7777-4777-8777-777777777777",
+};
+
+const HOMOLOGATION_CONFIG = {
+  categoryName: "Teste Homologacao",
 };
 
 export async function resolveIfoodCatalogId(merchantId: string) {
@@ -167,16 +180,18 @@ export async function updateIfoodOptionStatus(
 function buildHomologationItemPayload(params: {
   categoryId: string;
   imagePath: string | null;
+  ids: IfoodCatalogHomologationIds;
   variant?: "initial" | "changed";
 }): IfoodCatalogItemPayload {
   const isChanged = params.variant === "changed";
+  const ids = params.ids;
   const itemName = isChanged ? "Produto Teste Alterado" : "Produto Teste";
   const optionTwoName = isChanged ? "Complemento Dois Alterado" : "Complemento Dois";
 
   return {
     item: {
-      id: HOMOLOGATION_IDS.itemId,
-      productId: HOMOLOGATION_IDS.productId,
+      id: ids.itemId,
+      productId: ids.productId,
       type: "DEFAULT",
       categoryId: params.categoryId,
       status: "AVAILABLE",
@@ -185,7 +200,7 @@ function buildHomologationItemPayload(params: {
     },
     products: [
       {
-        id: HOMOLOGATION_IDS.productId,
+        id: ids.productId,
         name: itemName,
         description: isChanged
           ? "Produto alterado para o cenário de homologação Catalog."
@@ -194,7 +209,7 @@ function buildHomologationItemPayload(params: {
         ...(params.imagePath ? { imagePath: params.imagePath } : { image: SAMPLE_IMAGE }),
         optionGroups: [
           {
-            id: HOMOLOGATION_IDS.optionGroupId,
+            id: ids.optionGroupId,
             min: 0,
             max: 2,
             index: 0,
@@ -202,14 +217,14 @@ function buildHomologationItemPayload(params: {
         ],
       },
       {
-        id: HOMOLOGATION_IDS.optionOneProductId,
+        id: ids.optionOneProductId,
         name: "Complemento Um",
         description: "Primeiro complemento de homologação.",
         externalCode: "GESTOR_HOMOLOG_OPTION_PRODUCT_001",
         ...(params.imagePath ? { imagePath: params.imagePath } : { image: SAMPLE_IMAGE }),
       },
       {
-        id: HOMOLOGATION_IDS.optionTwoProductId,
+        id: ids.optionTwoProductId,
         name: optionTwoName,
         description: "Segundo complemento de homologação.",
         externalCode: "GESTOR_HOMOLOG_OPTION_PRODUCT_002",
@@ -218,23 +233,23 @@ function buildHomologationItemPayload(params: {
     ],
     optionGroups: [
       {
-        id: HOMOLOGATION_IDS.optionGroupId,
+        id: ids.optionGroupId,
         name: "Grupo de Complementos Homologacao",
         status: "AVAILABLE",
         optionGroupType: "OFFER_UNIT",
-        optionIds: [HOMOLOGATION_IDS.optionOneId, HOMOLOGATION_IDS.optionTwoId],
+        optionIds: [ids.optionOneId, ids.optionTwoId],
       },
     ],
     options: [
       {
-        id: HOMOLOGATION_IDS.optionOneId,
-        productId: HOMOLOGATION_IDS.optionOneProductId,
+        id: ids.optionOneId,
+        productId: ids.optionOneProductId,
         status: "AVAILABLE",
         price: { value: 4.5 },
       },
       {
-        id: HOMOLOGATION_IDS.optionTwoId,
-        productId: HOMOLOGATION_IDS.optionTwoProductId,
+        id: ids.optionTwoId,
+        productId: ids.optionTwoProductId,
         status: "AVAILABLE",
         price: { value: isChanged ? 7.9 : 6.5 },
       },
@@ -244,15 +259,17 @@ function buildHomologationItemPayload(params: {
 
 export async function prepareIfoodCatalogHomologation(
   merchantId: string,
+  ids: IfoodCatalogHomologationIds = DEFAULT_HOMOLOGATION_IDS,
 ): Promise<IfoodHomologationCatalogResult> {
   const catalogId = await resolveIfoodCatalogId(merchantId);
   const [category, imagePath] = await Promise.all([
-    findOrCreateIfoodCategory(merchantId, HOMOLOGATION_IDS.categoryName, catalogId),
+    findOrCreateIfoodCategory(merchantId, HOMOLOGATION_CONFIG.categoryName, catalogId),
     uploadIfoodCatalogImage(merchantId),
   ]);
   const itemPayload = buildHomologationItemPayload({
     categoryId: category.id,
     imagePath,
+    ids,
     variant: "initial",
   });
   const itemResponse = await putIfoodItem(merchantId, itemPayload);
@@ -260,10 +277,10 @@ export async function prepareIfoodCatalogHomologation(
   return {
     catalogId,
     category,
-    itemId: HOMOLOGATION_IDS.itemId,
-    productId: HOMOLOGATION_IDS.productId,
-    optionGroupId: HOMOLOGATION_IDS.optionGroupId,
-    optionIds: [HOMOLOGATION_IDS.optionOneId, HOMOLOGATION_IDS.optionTwoId],
+    itemId: ids.itemId,
+    productId: ids.productId,
+    optionGroupId: ids.optionGroupId,
+    optionIds: [ids.optionOneId, ids.optionTwoId],
     imagePath,
     itemPayload,
     itemResponse,
@@ -272,31 +289,33 @@ export async function prepareIfoodCatalogHomologation(
 
 export async function mutateIfoodCatalogHomologation(
   merchantId: string,
+  ids: IfoodCatalogHomologationIds = DEFAULT_HOMOLOGATION_IDS,
 ): Promise<IfoodHomologationCatalogResult> {
   const catalogId = await resolveIfoodCatalogId(merchantId);
   const [category, imagePath] = await Promise.all([
-    findOrCreateIfoodCategory(merchantId, HOMOLOGATION_IDS.categoryName, catalogId),
+    findOrCreateIfoodCategory(merchantId, HOMOLOGATION_CONFIG.categoryName, catalogId),
     uploadIfoodCatalogImage(merchantId),
   ]);
   const itemPayload = buildHomologationItemPayload({
     categoryId: category.id,
     imagePath,
+    ids,
     variant: "changed",
   });
   const itemResponse = await putIfoodItem(merchantId, itemPayload);
   const optionStatusResponse = await updateIfoodOptionStatus(
     merchantId,
-    HOMOLOGATION_IDS.optionTwoId,
+    ids.optionTwoId,
     "UNAVAILABLE",
   );
 
   return {
     catalogId,
     category,
-    itemId: HOMOLOGATION_IDS.itemId,
-    productId: HOMOLOGATION_IDS.productId,
-    optionGroupId: HOMOLOGATION_IDS.optionGroupId,
-    optionIds: [HOMOLOGATION_IDS.optionOneId, HOMOLOGATION_IDS.optionTwoId],
+    itemId: ids.itemId,
+    productId: ids.productId,
+    optionGroupId: ids.optionGroupId,
+    optionIds: [ids.optionOneId, ids.optionTwoId],
     imagePath,
     itemPayload,
     itemResponse,
