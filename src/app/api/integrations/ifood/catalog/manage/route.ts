@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import {
-  DEFAULT_HOMOLOGATION_IDS,
   type IfoodCatalogHomologationIds,
   mutateIfoodCatalogHomologation,
   prepareIfoodCatalogHomologation,
@@ -112,10 +111,7 @@ export async function POST(request: Request) {
     }
 
     const savedIds = getSavedCatalogIds(integration.notes);
-    const ids =
-      action === "prepare_homologation"
-        ? createHomologationIds()
-        : savedIds || DEFAULT_HOMOLOGATION_IDS;
+    const ids = savedIds || createHomologationIds();
 
     const result =
       action === "mutate_homologation"
