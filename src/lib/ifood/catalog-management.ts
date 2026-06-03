@@ -185,6 +185,7 @@ function buildHomologationItemPayload(params: {
 }): IfoodCatalogItemPayload {
   const isChanged = params.variant === "changed";
   const ids = params.ids;
+  const externalCodeSuffix = ids.productId.split("-")[0] || ids.productId;
   const itemName = isChanged ? "Produto Teste Alterado" : "Produto Teste";
   const optionTwoName = isChanged ? "Complemento Dois Alterado" : "Complemento Dois";
 
@@ -196,7 +197,7 @@ function buildHomologationItemPayload(params: {
       categoryId: params.categoryId,
       status: "AVAILABLE",
       price: { value: isChanged ? 34.9 : 29.9 },
-      externalCode: "GESTOR_HOMOLOG_ITEM_001",
+      externalCode: `GESTOR_HOMOLOG_ITEM_${externalCodeSuffix}`,
     },
     products: [
       {
@@ -205,7 +206,7 @@ function buildHomologationItemPayload(params: {
         description: isChanged
           ? "Produto alterado para o cenário de homologação Catalog."
           : "Produto criado pelo Gestor Delivery para homologação Catalog.",
-        externalCode: "GESTOR_HOMOLOG_PRODUCT_001",
+        externalCode: `GESTOR_HOMOLOG_PRODUCT_${externalCodeSuffix}`,
         ...(params.imagePath ? { imagePath: params.imagePath } : { image: SAMPLE_IMAGE }),
         optionGroups: [
           {
@@ -220,14 +221,14 @@ function buildHomologationItemPayload(params: {
         id: ids.optionOneProductId,
         name: "Complemento Um",
         description: "Primeiro complemento de homologação.",
-        externalCode: "GESTOR_HOMOLOG_OPTION_PRODUCT_001",
+        externalCode: `GESTOR_HOMOLOG_OPTION_PRODUCT_1_${externalCodeSuffix}`,
         ...(params.imagePath ? { imagePath: params.imagePath } : { image: SAMPLE_IMAGE }),
       },
       {
         id: ids.optionTwoProductId,
         name: optionTwoName,
         description: "Segundo complemento de homologação.",
-        externalCode: "GESTOR_HOMOLOG_OPTION_PRODUCT_002",
+        externalCode: `GESTOR_HOMOLOG_OPTION_PRODUCT_2_${externalCodeSuffix}`,
         ...(params.imagePath ? { imagePath: params.imagePath } : { image: SAMPLE_IMAGE }),
       },
     ],
