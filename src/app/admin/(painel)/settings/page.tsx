@@ -276,6 +276,24 @@ function CollapsibleSection({
   );
 }
 
+function SettingsGroupHeading({
+  eyebrow,
+  title,
+  description,
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="px-1 pt-3">
+      <p className="text-xs font-black uppercase tracking-[0.18em] text-[var(--brand)]">{eyebrow}</p>
+      <h2 className="mt-1 text-lg font-black text-gray-950">{title}</h2>
+      <p className="mt-1 max-w-3xl text-sm leading-6 text-gray-500">{description}</p>
+    </div>
+  );
+}
+
 async function readJsonResponse(response: Response) {
   const payloadText = await response.text();
 
@@ -1223,6 +1241,11 @@ export default function SettingsPage() {
       </div>
 
       <div className="flex flex-col gap-5">
+        <SettingsGroupHeading
+          eyebrow="Loja"
+          title="Loja e vitrine"
+          description="Dados públicos, identidade visual e aparência que o cliente vê antes de fazer o pedido."
+        />
         <CollapsibleSection
           icon={<Store size={20} />}
           title="Dados da loja"
@@ -1505,10 +1528,15 @@ export default function SettingsPage() {
           </div>
         </CollapsibleSection>
 
+        <SettingsGroupHeading
+          eyebrow="Integrações"
+          title="Canais conectados"
+          description="Conexões externas que trabalham em segundo plano para importar catálogo, receber pedidos e manter a operação sincronizada."
+        />
         <CollapsibleSection
           icon={<ArrowDownUp size={20} />}
-          title="Integração iFood"
-          description="Conecte sua loja, teste a integração e puxe catálogo e pedidos sem complicação."
+          title="Canal iFood"
+          description="Receba pedidos e mantenha catálogo e loja sincronizados sem expor detalhes técnicos para a operação."
           defaultOpen={false}
         >
           <div className="mt-6 rounded-[24px] border border-[var(--line)] bg-[#fcfaf7] p-5">
@@ -1700,7 +1728,11 @@ export default function SettingsPage() {
               )}
             </div>
 
-            <div className="mt-5 rounded-[22px] border border-[var(--line)] bg-white p-4">
+            <details className="mt-5 rounded-[22px] border border-[var(--line)] bg-white">
+              <summary className="cursor-pointer list-none px-4 py-4 text-sm font-bold text-gray-700">
+                Ferramentas de homologação Merchant
+              </summary>
+              <div className="border-t border-[var(--line)] p-4">
               <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div>
                   <p className="text-sm font-black text-gray-950">Homologação Merchant</p>
@@ -1932,7 +1964,8 @@ export default function SettingsPage() {
                   {compactJson(ifoodMerchantSnapshot)}
                 </pre>
               </details>
-            </div>
+              </div>
+            </details>
 
             <details className="mt-5 rounded-[22px] border border-[var(--line)] bg-white">
               <summary className="cursor-pointer list-none px-4 py-4 text-sm font-bold text-gray-700">
@@ -2028,82 +2061,50 @@ export default function SettingsPage() {
                     className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
                   />
                 </label>
+
+                <div className="mt-5 rounded-2xl border border-[var(--line)] bg-[#fcfaf7] p-4">
+                  <p className="text-sm font-black text-gray-950">Ações de homologação</p>
+                  <p className="mt-1 text-sm leading-6 text-gray-500">
+                    Use apenas durante testes ou gravações solicitadas pelo iFood.
+                  </p>
+                  <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                    <button
+                      type="button"
+                      onClick={() => handleManageIfoodCatalog("prepare_homologation")}
+                      disabled={isPreparingIfoodCatalog || !ifoodIntegration.merchantId}
+                      className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700 disabled:cursor-not-allowed disabled:text-gray-400"
+                      title="Cria categoria, produto, grupo e complementos exigidos no cenário de homologação Catalog."
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        {isPreparingIfoodCatalog && <Loader2 size={16} className="animate-spin" />}
+                        Preparar Catalog
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleManageIfoodCatalog("mutate_homologation")}
+                      disabled={isMutatingIfoodCatalog || !ifoodIntegration.merchantId}
+                      className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700 disabled:cursor-not-allowed disabled:text-gray-400"
+                      title="Altera o produto de teste e pausa o segundo complemento no iFood."
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        {isMutatingIfoodCatalog && <Loader2 size={16} className="animate-spin" />}
+                        Alterar/pausar Catalog
+                      </span>
+                    </button>
+                  </div>
+                </div>
               </div>
             </details>
-          </div>
-
-          <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-            <button
-              type="button"
-              onClick={handleCheckIfoodConnection}
-              disabled={isCheckingIfoodConnection}
-              className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700 disabled:cursor-not-allowed disabled:text-gray-400"
-            >
-              <span className="inline-flex items-center gap-2">
-                {isCheckingIfoodConnection && <Loader2 size={16} className="animate-spin" />}
-                Testar conexão iFood
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={handleImportIfoodCatalog}
-              disabled={isImportingIfoodCatalog || !ifoodIntegration.merchantId}
-              className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700 disabled:cursor-not-allowed disabled:text-gray-400"
-              title={
-                ifoodIntegration.merchantId
-                  ? "Importa categorias e itens vendáveis do catálogo iFood para o Gestor."
-                  : "Informe o ID do merchant do iFood para liberar a importação."
-              }
-            >
-              <span className="inline-flex items-center gap-2">
-                {isImportingIfoodCatalog && <Loader2 size={16} className="animate-spin" />}
-                Importar catálogo do iFood
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={handleSyncIfoodOrders}
-              disabled={isSyncingIfoodOrders || !ifoodIntegration.merchantId}
-              className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700 disabled:cursor-not-allowed disabled:text-gray-400"
-              title={
-                ifoodIntegration.merchantId
-                  ? "Faz um polling manual dos eventos da loja e cria/atualiza os pedidos no Gestor."
-                  : "Informe o ID do merchant para liberar a sincronização de pedidos."
-              }
-            >
-              <span className="inline-flex items-center gap-2">
-                {isSyncingIfoodOrders && <Loader2 size={16} className="animate-spin" />}
-                Sincronizar pedidos de teste
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleManageIfoodCatalog("prepare_homologation")}
-              disabled={isPreparingIfoodCatalog || !ifoodIntegration.merchantId}
-              className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700 disabled:cursor-not-allowed disabled:text-gray-400"
-              title="Cria categoria, produto, grupo e complementos exigidos no cenário de homologação Catalog."
-            >
-              <span className="inline-flex items-center gap-2">
-                {isPreparingIfoodCatalog && <Loader2 size={16} className="animate-spin" />}
-                Preparar Catalog homologação
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleManageIfoodCatalog("mutate_homologation")}
-              disabled={isMutatingIfoodCatalog || !ifoodIntegration.merchantId}
-              className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700 disabled:cursor-not-allowed disabled:text-gray-400"
-              title="Altera o produto de teste e pausa o segundo complemento no iFood."
-            >
-              <span className="inline-flex items-center gap-2">
-                {isMutatingIfoodCatalog && <Loader2 size={16} className="animate-spin" />}
-                Alterar/pausar Catalog
-              </span>
-            </button>
           </div>
         </CollapsibleSection>
 
 
+        <SettingsGroupHeading
+          eyebrow="Operação"
+          title="Regras de atendimento"
+          description="Entrega, horários e impressão usados no fluxo diário da loja."
+        />
         <CollapsibleSection
           icon={<MapPin size={20} />}
           title="Taxas de entrega"
@@ -2275,10 +2276,15 @@ export default function SettingsPage() {
           </div>
         </CollapsibleSection>
 
+        <SettingsGroupHeading
+          eyebrow="Automação"
+          title="Mensageria"
+          description="Serviços auxiliares usados para avisos automáticos aos clientes."
+        />
         <CollapsibleSection
           icon={<Smartphone size={20} />}
-          title="Conexão WhatsApp"
-          description="Acompanhe o status do robô e recarregue o QR code quando precisar."
+          title="WhatsApp automático"
+          description="Status do envio automático de mensagens. Use somente quando precisar reconectar o número."
           defaultOpen={false}
         >
           <div className="mt-6 grid gap-5 lg:grid-cols-[1fr_220px]">
