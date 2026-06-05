@@ -1594,7 +1594,7 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <div className="mt-5 grid gap-4 md:grid-cols-[1.1fr_0.9fr]">
+            <div className="mt-5 grid gap-4">
               <label className="space-y-2">
                 <span className="text-sm font-bold text-gray-700">Código da loja no iFood</span>
                 <input
@@ -1607,49 +1607,6 @@ export default function SettingsPage() {
                   Você encontra esse código na área de testes do portal do iFood.
                 </p>
               </label>
-
-              <label className="space-y-2">
-                <span className="text-sm font-bold text-gray-700">Nome da loja no iFood</span>
-                <input
-                  value={ifoodIntegration.merchantName}
-                  onChange={(e) => updateIfoodIntegration("merchantName", e.target.value)}
-                  placeholder="Ex.: Loja teste do iFood"
-                  className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
-                />
-                <p className="text-xs text-gray-400">
-                  Campo opcional, usado só para facilitar a identificação da loja.
-                </p>
-              </label>
-            </div>
-
-            <div className="mt-4 rounded-[22px] border border-dashed border-[var(--line)] bg-[#fcfaf7] p-4">
-              <div className="flex flex-col gap-4 md:flex-row md:items-end">
-                <label className="flex-1 space-y-2">
-                  <span className="text-sm font-bold text-gray-700">Link público do iFood</span>
-                  <input
-                    value={ifoodPublicUrl}
-                    onChange={(e) => setIfoodPublicUrl(e.target.value)}
-                    placeholder="Cole aqui o link público da loja no iFood"
-                    className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
-                  />
-                  <p className="text-xs text-gray-400">
-                    O Gestor usa esse link para copiar os dados públicos da loja e tentar importar
-                    o cardápio sem depender da integração oficial.
-                  </p>
-                </label>
-
-                <button
-                  type="button"
-                  onClick={handleImportIfoodPublicLink}
-                  disabled={isImportingIfoodLink || !ifoodPublicUrl.trim()}
-                  className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700 disabled:cursor-not-allowed disabled:text-gray-400"
-                >
-                  <span className="inline-flex items-center gap-2">
-                    {isImportingIfoodLink && <Loader2 size={16} className="animate-spin" />}
-                    Copiar cardápio pelo link
-                  </span>
-                </button>
-              </div>
             </div>
 
             <div className="mt-5 flex flex-col gap-3 sm:flex-row">
@@ -1672,7 +1629,7 @@ export default function SettingsPage() {
               >
                 <span className="inline-flex items-center gap-2">
                   {isImportingIfoodCatalog && <Loader2 size={16} className="animate-spin" />}
-                  Importar catálogo do iFood
+                  Atualizar catálogo
                 </span>
               </button>
               <button
@@ -1683,13 +1640,13 @@ export default function SettingsPage() {
               >
                 <span className="inline-flex items-center gap-2">
                   {isSyncingIfoodOrders && <Loader2 size={16} className="animate-spin" />}
-                  Sincronizar pedidos de teste
+                  Buscar pedidos agora
                 </span>
               </button>
             </div>
 
-            <div
-              className={`mt-5 rounded-[22px] border px-4 py-4 ${
+            <details
+              className={`mt-5 rounded-[22px] border ${
                 ifoodConnectionCheck.status === "error"
                   ? "border-red-200 bg-red-50"
                   : ifoodConnectionCheck.status === "success"
@@ -1697,66 +1654,71 @@ export default function SettingsPage() {
                     : "border-[var(--line)] bg-white"
               }`}
             >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-bold text-gray-900">Diagnóstico rápido</p>
-                  <p className="mt-1 text-sm text-gray-500">
-                    {ifoodConnectionCheck.status === "idle"
-                      ? "Quando você testar a conexão, o sistema mostra aqui se a autenticação, a loja e o catálogo responderam corretamente."
-                      : ifoodConnectionCheck.summary}
-                  </p>
+              <summary className="cursor-pointer list-none px-4 py-4 text-sm font-bold text-gray-700">
+                Diagnóstico da conexão
+              </summary>
+              <div className="border-t border-[var(--line)] px-4 py-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-bold text-gray-900">Diagnóstico rápido</p>
+                    <p className="mt-1 text-sm text-gray-500">
+                      {ifoodConnectionCheck.status === "idle"
+                        ? "Quando você testar a conexão, o sistema mostra aqui se a autenticação, a loja e o catálogo responderam corretamente."
+                        : ifoodConnectionCheck.summary}
+                    </p>
+                  </div>
+                  {ifoodConnectionCheck.checkedAt && (
+                    <span className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">
+                      Última checagem: {formatSyncDate(ifoodConnectionCheck.checkedAt)}
+                    </span>
+                  )}
                 </div>
-                {ifoodConnectionCheck.checkedAt && (
-                  <span className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">
-                    Última checagem: {formatSyncDate(ifoodConnectionCheck.checkedAt)}
-                  </span>
+
+                {(ifoodConnectionCheck.merchantFound || ifoodConnectionCheck.catalogResolved) && (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <span className="rounded-full bg-white px-3 py-2 text-xs font-bold text-gray-700">
+                      Credenciais: {ifoodConnectionCheck.status === "success" ? "ok" : "pendente"}
+                    </span>
+                    <span className="rounded-full bg-white px-3 py-2 text-xs font-bold text-gray-700">
+                      Loja: {ifoodConnectionCheck.merchantFound ? "localizada" : "não validada"}
+                    </span>
+                    <span className="rounded-full bg-white px-3 py-2 text-xs font-bold text-gray-700">
+                      Catálogo: {ifoodConnectionCheck.catalogResolved ? "pronto" : "aguardando"}
+                    </span>
+                  </div>
                 )}
               </div>
-
-              {(ifoodConnectionCheck.merchantFound || ifoodConnectionCheck.catalogResolved) && (
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <span className="rounded-full bg-white px-3 py-2 text-xs font-bold text-gray-700">
-                    Credenciais: {ifoodConnectionCheck.status === "success" ? "ok" : "pendente"}
-                  </span>
-                  <span className="rounded-full bg-white px-3 py-2 text-xs font-bold text-gray-700">
-                    Loja: {ifoodConnectionCheck.merchantFound ? "localizada" : "não validada"}
-                  </span>
-                  <span className="rounded-full bg-white px-3 py-2 text-xs font-bold text-gray-700">
-                    Catálogo: {ifoodConnectionCheck.catalogResolved ? "pronto" : "aguardando"}
-                  </span>
-                </div>
-              )}
-            </div>
+            </details>
 
             <details className="mt-5 rounded-[22px] border border-[var(--line)] bg-white">
               <summary className="cursor-pointer list-none px-4 py-4 text-sm font-bold text-gray-700">
                 Ferramentas de homologação Merchant
               </summary>
               <div className="border-t border-[var(--line)] p-4">
-              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                <div>
-                  <p className="text-sm font-black text-gray-950">Homologação Merchant</p>
-                  <p className="mt-1 text-sm leading-6 text-gray-500">
-                    Consulte lojas, detalhes, disponibilidade, pausas e horários para gravar os
-                    cenários exigidos pelo iFood.
-                  </p>
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <p className="text-sm font-black text-gray-950">Homologação Merchant</p>
+                    <p className="mt-1 text-sm leading-6 text-gray-500">
+                      Consulte lojas, detalhes, disponibilidade, pausas e horários para gravar os
+                      cenários exigidos pelo iFood.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={refreshIfoodMerchantSnapshot}
+                    disabled={isLoadingIfoodMerchant}
+                    className="rounded-2xl border border-[var(--line)] bg-[#fcfaf7] px-4 py-3 text-sm font-bold text-gray-700 disabled:cursor-not-allowed disabled:text-gray-400"
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      {isLoadingIfoodMerchant ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        <RefreshCw size={16} />
+                      )}
+                      Consultar Merchant
+                    </span>
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={refreshIfoodMerchantSnapshot}
-                  disabled={isLoadingIfoodMerchant}
-                  className="rounded-2xl border border-[var(--line)] bg-[#fcfaf7] px-4 py-3 text-sm font-bold text-gray-700 disabled:cursor-not-allowed disabled:text-gray-400"
-                >
-                  <span className="inline-flex items-center gap-2">
-                    {isLoadingIfoodMerchant ? (
-                      <Loader2 size={16} className="animate-spin" />
-                    ) : (
-                      <RefreshCw size={16} />
-                    )}
-                    Consultar Merchant
-                  </span>
-                </button>
-              </div>
 
               {ifoodMerchantSnapshot?.checkedAt && (
                 <p className="mt-3 text-xs font-bold uppercase tracking-[0.12em] text-gray-400">
@@ -1974,6 +1936,16 @@ export default function SettingsPage() {
               <div className="border-t border-[var(--line)] px-4 py-4">
                 <div className="grid gap-4 md:grid-cols-2">
                   <label className="space-y-2">
+                    <span className="text-sm font-bold text-gray-700">Nome da loja no iFood</span>
+                    <input
+                      value={ifoodIntegration.merchantName}
+                      onChange={(e) => updateIfoodIntegration("merchantName", e.target.value)}
+                      placeholder="Ex.: Loja teste do iFood"
+                      className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+                    />
+                  </label>
+
+                  <label className="space-y-2">
                     <span className="text-sm font-bold text-gray-700">ID do catálogo</span>
                     <input
                       value={ifoodIntegration.catalogId}
@@ -2019,6 +1991,35 @@ export default function SettingsPage() {
                       <option value="bidirectional">Sincronização bidirecional</option>
                     </select>
                   </label>
+                </div>
+
+                <div className="mt-4 rounded-[22px] border border-dashed border-[var(--line)] bg-[#fcfaf7] p-4">
+                  <div className="flex flex-col gap-4 md:flex-row md:items-end">
+                    <label className="flex-1 space-y-2">
+                      <span className="text-sm font-bold text-gray-700">Link público do iFood</span>
+                      <input
+                        value={ifoodPublicUrl}
+                        onChange={(e) => setIfoodPublicUrl(e.target.value)}
+                        placeholder="Cole aqui o link público da loja no iFood"
+                        className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]"
+                      />
+                      <p className="text-xs text-gray-400">
+                        Atalho opcional para copiar dados públicos quando a integração oficial ainda não está pronta.
+                      </p>
+                    </label>
+
+                    <button
+                      type="button"
+                      onClick={handleImportIfoodPublicLink}
+                      disabled={isImportingIfoodLink || !ifoodPublicUrl.trim()}
+                      className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700 disabled:cursor-not-allowed disabled:text-gray-400"
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        {isImportingIfoodLink && <Loader2 size={16} className="animate-spin" />}
+                        Copiar cardápio pelo link
+                      </span>
+                    </button>
+                  </div>
                 </div>
 
                 <div className="mt-4 grid gap-3 sm:grid-cols-3">
