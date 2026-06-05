@@ -354,6 +354,7 @@ export default function OrdersPage() {
   const [ifoodEventsByOrder, setIfoodEventsByOrder] = useState<Record<string, IfoodEventAudit[]>>({});
   const [loadingIfoodEvents, setLoadingIfoodEvents] = useState<Record<string, boolean>>({});
   const [expandedIfoodEvent, setExpandedIfoodEvent] = useState("");
+  const [expandedTechnicalOrders, setExpandedTechnicalOrders] = useState<string[]>([]);
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -577,8 +578,8 @@ export default function OrdersPage() {
 
       if (action !== "cancellation_reasons") {
         showToast({
-          title: "Ação enviada ao iFood",
-          description: `Pedido #${formatDisplayNumber(order)} atualizado no iFood.`,
+          title: "Pedido atualizado",
+          description: `Pedido #${formatDisplayNumber(order)} foi atualizado com sucesso.`,
           tone: "success",
         });
       }
@@ -587,9 +588,9 @@ export default function OrdersPage() {
       return result;
     } catch (error) {
       showToast({
-        title: "Falha na ação iFood",
+        title: "Não foi possível atualizar o pedido",
         description:
-          error instanceof Error ? error.message : "Não foi possível executar a ação no iFood.",
+          error instanceof Error ? error.message : "Tente novamente em instantes.",
         tone: "error",
       });
       return null;
@@ -605,8 +606,8 @@ export default function OrdersPage() {
 
     if (!firstReason) {
       showToast({
-        title: "Sem motivos disponÃ­veis",
-        description: "O iFood nÃ£o retornou motivos de cancelamento para este pedido.",
+        title: "Sem motivos disponiveis",
+        description: "Não há motivos de cancelamento disponíveis para este pedido.",
         tone: "error",
       });
       return;
@@ -798,7 +799,16 @@ export default function OrdersPage() {
         : [...current, order.id],
     );
 
-    if (!expandedOrders.includes(order.id)) {
+  };
+
+  const toggleTechnicalDetails = (order: Order) => {
+    setExpandedTechnicalOrders((current) =>
+      current.includes(order.id)
+        ? current.filter((item) => item !== order.id)
+        : [...current, order.id],
+    );
+
+    if (!expandedTechnicalOrders.includes(order.id)) {
       void loadIfoodEvents(order);
     }
   };
@@ -814,7 +824,7 @@ export default function OrdersPage() {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.22em] text-[var(--brand)]">
-                  Cancelamento iFood
+                  Solicitar cancelamento
                 </p>
                 <h2 className="mt-2 text-xl font-black text-gray-950">
                   Pedido #{formatDisplayNumber(cancellationModalOrder)}
@@ -1060,7 +1070,7 @@ export default function OrdersPage() {
                         {isIfoodOrder(order) && (
                           <div className="rounded-2xl border border-red-100 bg-white p-4 text-sm">
                             <p className="text-xs font-bold uppercase tracking-[0.14em] text-red-400">
-                              Pedido iFood
+                              Detalhes do pedido
                             </p>
                             <div className="mt-3 grid gap-2 text-gray-600">
                               <div className="flex items-center justify-between gap-3">
@@ -1087,56 +1097,6 @@ export default function OrdersPage() {
                                   <strong className="text-gray-950">{getIfoodMeta(order).customerDocument}</strong>
                                 </div>
                               )}
-                              <div className="rounded-xl border border-red-50 bg-[#fcfaf7] p-3">
-                                <p className="text-xs font-black uppercase tracking-[0.12em] text-red-400">
-                                  Checklist homologacao
-                                </p>
-                                <div className="mt-3 grid gap-2 text-xs">
-                                  <div className="flex items-center justify-between gap-3">
-                                    <span className="text-gray-500">Order ID</span>
-                                    <strong className="truncate text-right text-gray-950">
-                                      {order.external_order_id}
-                                    </strong>
-                                  </div>
-                                  <div className="flex items-center justify-between gap-3">
-                                    <span className="text-gray-500">Pedido iFood</span>
-                                    <strong className="text-gray-950">
-                                      {order.external_display_id || "Nao informado"}
-                                    </strong>
-                                  </div>
-                                  <div className="flex items-center justify-between gap-3">
-                                    <span className="text-gray-500">Pagamento</span>
-                                    <strong className="text-right text-gray-950">
-                                      {formatIfoodPayment(order)}
-                                    </strong>
-                                  </div>
-                                  {getIfoodMeta(order).payment?.changeFor && (
-                                    <div className="flex items-center justify-between gap-3">
-                                      <span className="text-gray-500">Troco</span>
-                                      <strong className="text-gray-950">
-                                        {formatPrice(Number(getIfoodMeta(order).payment.changeFor))}
-                                      </strong>
-                                    </div>
-                                  )}
-                                  <div className="flex items-center justify-between gap-3">
-                                    <span className="text-gray-500">Documento</span>
-                                    <strong className="text-gray-950">
-                                      {getIfoodMeta(order).customerDocument || "Nao informado"}
-                                    </strong>
-                                  </div>
-                                  {listIfoodBenefits(order).length > 0 && (
-                                    <div className="rounded-lg bg-white p-2">
-                                      <p className="font-bold text-gray-700">Voucher / beneficios</p>
-                                      {listIfoodBenefits(order).map((benefit: any, index: number) => (
-                                        <p key={index} className="mt-1 text-gray-500">
-                                          {getIfoodBenefitLabel(benefit)}:{" "}
-                                          {formatPrice(getIfoodBenefitAmount(benefit))}
-                                        </p>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
                               {getIfoodMeta(order).observations && (
                                 <div className="rounded-xl bg-amber-50 p-3 text-amber-800">
                                   Obs. pedido: {getIfoodMeta(order).observations}
@@ -1159,9 +1119,36 @@ export default function OrdersPage() {
                                   )}
                                 </div>
                               )}
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  toggleTechnicalDetails(order);
+                                }}
+                                className="rounded-xl border border-[var(--line)] bg-[#fcfaf7] px-3 py-2 text-left text-xs font-bold text-gray-500"
+                              >
+                                {expandedTechnicalOrders.includes(order.id)
+                                  ? "Ocultar detalhes tecnicos"
+                                  : "Detalhes tecnicos"}
+                              </button>
+                              {expandedTechnicalOrders.includes(order.id) && (
                               <div className="rounded-xl border border-[var(--line)] bg-[#fcfaf7] p-3">
+                                <div className="mb-3 grid gap-2 rounded-lg bg-white p-3 text-xs">
+                                  <div className="flex items-center justify-between gap-3">
+                                    <span className="text-gray-500">Order ID</span>
+                                    <strong className="truncate text-right text-gray-950">
+                                      {order.external_order_id}
+                                    </strong>
+                                  </div>
+                                  <div className="flex items-center justify-between gap-3">
+                                    <span className="text-gray-500">Pedido externo</span>
+                                    <strong className="text-gray-950">
+                                      {order.external_display_id || "Nao informado"}
+                                    </strong>
+                                  </div>
+                                </div>
                                 <div className="flex items-center justify-between gap-3">
-                                  <p className="font-bold text-gray-950">Eventos iFood</p>
+                                  <p className="font-bold text-gray-950">Eventos da integracao</p>
                                   <button
                                     type="button"
                                     onClick={(event) => {
@@ -1235,6 +1222,7 @@ export default function OrdersPage() {
                                   </div>
                                 )}
                               </div>
+                              )}
                             </div>
                           </div>
                         )}
