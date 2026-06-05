@@ -221,6 +221,36 @@ function listIfoodBenefits(order: Order) {
   return benefits.items;
 }
 
+function getAddonLabel(addon: any) {
+  return addon?.name || addon?.title || addon?.description || "Complemento";
+}
+
+function getIfoodBenefitLabel(benefit: any) {
+  return (
+    benefit?.target ||
+    benefit?.description ||
+    benefit?.sponsorshipValues?.[0]?.name ||
+    benefit?.campaign?.name ||
+    benefit?.code ||
+    "Beneficio"
+  );
+}
+
+function getIfoodBenefitAmount(benefit: any) {
+  return Number(benefit?.value || benefit?.amount || benefit?.sponsorshipValues?.[0]?.value || 0);
+}
+
+function formatIfoodPayment(order: Order) {
+  const payment = getIfoodMeta(order).payment || {};
+  const parts = [
+    payment.methodType || order.payment_method || "nao informado",
+    payment.methodName,
+    payment.cardBrand,
+  ].filter(Boolean);
+
+  return parts.join(" / ");
+}
+
 function getIfoodCancellation(order: Order) {
   return getIfoodMeta(order).cancellation || null;
 }
@@ -635,7 +665,7 @@ export default function OrdersPage() {
           </div>
           ${
             item.addons?.length
-              ? `<div style="margin-top:4px;color:#444;">Adicionais: ${item.addons.map((addon: any) => addon.name).join(", ")}</div>`
+              ? `<div style="margin-top:4px;color:#444;">Adicionais: ${item.addons.map((addon: any) => getAddonLabel(addon)).join(", ")}</div>`
               : ""
           }
           ${
@@ -671,7 +701,7 @@ export default function OrdersPage() {
         <div><strong>Status:</strong> ${getStatusLabel(order.status)}</div>
         <div><strong>Pagamento:</strong> ${order.payment_method}${order.change_for ? ` | Troco para R$ ${order.change_for}` : ""}</div>
         <div class="line"></div>
-        <div><strong>Entrega</strong></div>
+        <div><strong>${formatIfoodOrderType(order) === "Retirada" ? "Retirada" : "Entrega"}</strong></div>
         <div>${addressLineOne}</div>
         ${addressLineTwo ? `<div class="muted">${addressLineTwo}</div>` : ""}
         ${addressZip ? `<div class="muted">${addressZip}</div>` : ""}
@@ -1014,7 +1044,7 @@ export default function OrdersPage() {
                                 <p className="font-semibold text-gray-950">{item.product_name}</p>
                                 {item.addons?.length ? (
                                   <p className="mt-1 text-xs text-gray-500">
-                                    {item.addons.map((addon: any) => addon.name).join(", ")}
+                                    {item.addons.map((addon: any) => getAddonLabel(addon)).join(", ")}
                                   </p>
                                 ) : null}
                                 {item.observation ? (
@@ -1057,6 +1087,56 @@ export default function OrdersPage() {
                                   <strong className="text-gray-950">{getIfoodMeta(order).customerDocument}</strong>
                                 </div>
                               )}
+                              <div className="rounded-xl border border-red-50 bg-[#fcfaf7] p-3">
+                                <p className="text-xs font-black uppercase tracking-[0.12em] text-red-400">
+                                  Checklist homologacao
+                                </p>
+                                <div className="mt-3 grid gap-2 text-xs">
+                                  <div className="flex items-center justify-between gap-3">
+                                    <span className="text-gray-500">Order ID</span>
+                                    <strong className="truncate text-right text-gray-950">
+                                      {order.external_order_id}
+                                    </strong>
+                                  </div>
+                                  <div className="flex items-center justify-between gap-3">
+                                    <span className="text-gray-500">Pedido iFood</span>
+                                    <strong className="text-gray-950">
+                                      {order.external_display_id || "Nao informado"}
+                                    </strong>
+                                  </div>
+                                  <div className="flex items-center justify-between gap-3">
+                                    <span className="text-gray-500">Pagamento</span>
+                                    <strong className="text-right text-gray-950">
+                                      {formatIfoodPayment(order)}
+                                    </strong>
+                                  </div>
+                                  {getIfoodMeta(order).payment?.changeFor && (
+                                    <div className="flex items-center justify-between gap-3">
+                                      <span className="text-gray-500">Troco</span>
+                                      <strong className="text-gray-950">
+                                        {formatPrice(Number(getIfoodMeta(order).payment.changeFor))}
+                                      </strong>
+                                    </div>
+                                  )}
+                                  <div className="flex items-center justify-between gap-3">
+                                    <span className="text-gray-500">Documento</span>
+                                    <strong className="text-gray-950">
+                                      {getIfoodMeta(order).customerDocument || "Nao informado"}
+                                    </strong>
+                                  </div>
+                                  {listIfoodBenefits(order).length > 0 && (
+                                    <div className="rounded-lg bg-white p-2">
+                                      <p className="font-bold text-gray-700">Voucher / beneficios</p>
+                                      {listIfoodBenefits(order).map((benefit: any, index: number) => (
+                                        <p key={index} className="mt-1 text-gray-500">
+                                          {getIfoodBenefitLabel(benefit)}:{" "}
+                                          {formatPrice(getIfoodBenefitAmount(benefit))}
+                                        </p>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
                               {getIfoodMeta(order).observations && (
                                 <div className="rounded-xl bg-amber-50 p-3 text-amber-800">
                                   Obs. pedido: {getIfoodMeta(order).observations}
@@ -1213,11 +1293,8 @@ export default function OrdersPage() {
                                   <p className="font-bold text-gray-700">Cupons/benefícios</p>
                                   {listIfoodBenefits(order).map((benefit: any, index: number) => (
                                     <p key={index}>
-                                      {benefit.target ||
-                                        benefit.description ||
-                                        benefit.sponsorshipValues?.[0]?.name ||
-                                        "Benefício"}
-                                      : {formatPrice(Number(benefit.value || benefit.amount || 0))}
+                                      {getIfoodBenefitLabel(benefit)}
+                                      : {formatPrice(getIfoodBenefitAmount(benefit))}
                                     </p>
                                   ))}
                                 </div>
