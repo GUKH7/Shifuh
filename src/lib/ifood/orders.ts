@@ -4,6 +4,9 @@ const IFOOD_MERCHANT_API_BASE_URL =
   process.env.IFOOD_MERCHANT_API_BASE_URL || "https://merchant-api.ifood.com.br";
 
 const DEFAULT_POLLING_CATEGORIES = "FOOD";
+const DEFAULT_RETRY_ATTEMPTS = 3;
+const DEFAULT_RETRY_BASE_DELAY_MS = 500;
+const DEFAULT_REQUEST_TIMEOUT_MS = 15000;
 
 export class IfoodApiError extends Error {
   status: number;
@@ -32,35 +35,79 @@ export type IfoodOrderEvent = {
 
 async function ifoodOrderRequest<T>(
   path: string,
-  init?: RequestInit & { headers?: Record<string, string> },
+  init?: RequestInit & {
+    headers?: Record<string, string>;
+    retry?: boolean;
+    retryAttempts?: number;
+  },
 ): Promise<T | null> {
   const token = await getIfoodAccessToken();
+  const retry = Boolean(init?.retry);
+  const maxAttempts = retry
+    ? Math.max(1, init?.retryAttempts || DEFAULT_RETRY_ATTEMPTS)
+    : 1;
+  const { retry: _retry, retryAttempts: _retryAttempts, ...requestInit } = init || {};
 
-  const response = await fetch(`${IFOOD_MERCHANT_API_BASE_URL}${path}`, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: "application/json",
-      ...(init?.headers || {}),
-    },
-    cache: "no-store",
-  });
+  let lastTransientBody = "";
 
-  if (response.status === 204) return null;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    let response: Response;
 
-  if (!response.ok) {
+    try {
+      response = await fetch(`${IFOOD_MERCHANT_API_BASE_URL}${path}`, {
+        ...requestInit,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
+          ...(requestInit.headers || {}),
+        },
+        cache: "no-store",
+        signal: AbortSignal.timeout(DEFAULT_REQUEST_TIMEOUT_MS),
+      });
+    } catch (error) {
+      if (attempt < maxAttempts) {
+        await waitForRetry(attempt);
+        continue;
+      }
+
+      throw error;
+    }
+
+    if (shouldRetryStatus(response.status) && attempt < maxAttempts) {
+      lastTransientBody = await response.text().catch(() => "");
+      await waitForRetry(attempt);
+      continue;
+    }
+
+    if (response.status === 204) return null;
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new IfoodApiError(response.status, text || lastTransientBody || "request failed");
+    }
+
     const text = await response.text();
-    throw new IfoodApiError(response.status, text || "request failed");
+    if (!text.trim()) return null;
+
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      throw new IfoodApiError(response.status, text);
+    }
   }
 
-  const text = await response.text();
-  if (!text.trim()) return null;
+  return null;
+}
 
-  try {
-    return JSON.parse(text) as T;
-  } catch {
-    throw new IfoodApiError(response.status, text);
-  }
+function shouldRetryStatus(status: number) {
+  return status === 408 || status === 425 || status === 429 || status >= 500;
+}
+
+function waitForRetry(attempt: number) {
+  const jitter = Math.floor(Math.random() * 150);
+  const delay = DEFAULT_RETRY_BASE_DELAY_MS * 2 ** (attempt - 1) + jitter;
+
+  return new Promise((resolve) => setTimeout(resolve, delay));
 }
 
 export async function pollIfoodOrderEvents(merchantId: string) {
@@ -81,6 +128,7 @@ export async function pollIfoodOrderEvents(merchantId: string) {
 
   const data = await ifoodOrderRequest<IfoodOrderEvent[]>(path, {
     method: "GET",
+    retry: true,
     headers: {
       "x-polling-merchants": merchantId,
     },
@@ -97,6 +145,8 @@ export async function acknowledgeIfoodOrderEvents(eventIds: string[]) {
     "/events/v1.0/events/acknowledgment",
     {
       method: "POST",
+      retry: true,
+      retryAttempts: 4,
       headers: {
         "Content-Type": "application/json",
       },
@@ -108,7 +158,7 @@ export async function acknowledgeIfoodOrderEvents(eventIds: string[]) {
 export async function getIfoodOrderDetails(orderId: string) {
   return ifoodOrderRequest<Record<string, unknown>>(
     `/order/v1.0/orders/${orderId}`,
-    { method: "GET" },
+    { method: "GET", retry: true },
   );
 }
 

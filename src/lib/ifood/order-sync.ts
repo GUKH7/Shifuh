@@ -18,6 +18,12 @@ type SyncIfoodOrdersParams = {
 
 type LocalOrderStatus = "pending" | "preparing" | "delivering" | "done" | "canceled";
 
+type ExistingIfoodEventState = {
+  ifood_event_id: string;
+  processed_at: string | null;
+  acknowledged_at: string | null;
+};
+
 function roundMoney(value: unknown) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? Math.round(parsed * 100) / 100 : 0;
@@ -478,17 +484,19 @@ export async function syncIfoodOrdersForRestaurant({
       String(a.createdAt || "").localeCompare(String(b.createdAt || "")),
     );
 
-    const eventIds = sortedEvents.map((event) => event.id);
+    const eventIds = Array.from(new Set(sortedEvents.map((event) => event.id)));
     const { data: existingEvents } = eventIds.length
       ? await admin
           .from("ifood_order_events")
-          .select("ifood_event_id")
+          .select("ifood_event_id, processed_at, acknowledged_at")
           .eq("restaurant_id", restaurantId)
           .in("ifood_event_id", eventIds)
-      : { data: [] as { ifood_event_id: string }[] };
+      : { data: [] as ExistingIfoodEventState[] };
 
-    const existingEventIds = new Set((existingEvents || []).map((event) => event.ifood_event_id));
-    const newEvents = sortedEvents.filter((event) => !existingEventIds.has(event.id));
+    const existingEventById = new Map(
+      (existingEvents || []).map((event) => [event.ifood_event_id, event]),
+    );
+    const newEvents = sortedEvents.filter((event) => !existingEventById.has(event.id));
 
     const eventsToInsert = newEvents.map((event) => ({
       restaurant_id: restaurantId,
@@ -510,13 +518,25 @@ export async function syncIfoodOrdersForRestaurant({
     }
 
     let processedCount = 0;
+    let failedCount = 0;
     const touchedOrders: string[] = [];
+    const processedEventIds = new Set<string>();
+    const alreadyProcessedEventIds = new Set(
+      sortedEvents
+        .filter((event) => existingEventById.get(event.id)?.processed_at)
+        .map((event) => event.id),
+    );
+    const eventsToProcess = sortedEvents.filter((event) => {
+      const existingEvent = existingEventById.get(event.id);
+      return !existingEvent || !existingEvent.processed_at;
+    });
 
-    for (const event of newEvents) {
+    for (const event of eventsToProcess) {
       try {
         const result = await upsertLocalOrderFromIfood(admin, restaurantId, event);
         processedCount += 1;
         touchedOrders.push(event.orderId);
+        processedEventIds.add(event.id);
 
         await admin
           .from("ifood_order_events")
@@ -527,17 +547,24 @@ export async function syncIfoodOrdersForRestaurant({
           .eq("restaurant_id", restaurantId)
           .eq("ifood_event_id", event.id);
       } catch (eventError) {
+        failedCount += 1;
         console.error(`Erro ao processar evento ${event.id} do iFood:`, eventError);
       }
     }
 
-    if (eventIds.length > 0) {
-      await acknowledgeIfoodOrderEvents(eventIds);
+    const ackEventIds = Array.from(
+      new Set([...processedEventIds, ...alreadyProcessedEventIds]),
+    );
+    let acknowledgedCount = 0;
+
+    if (ackEventIds.length > 0) {
+      await acknowledgeIfoodOrderEvents(ackEventIds);
+      acknowledgedCount = ackEventIds.length;
       await admin
         .from("ifood_order_events")
         .update({ acknowledged_at: new Date().toISOString() })
         .eq("restaurant_id", restaurantId)
-        .in("ifood_event_id", eventIds);
+        .in("ifood_event_id", ackEventIds);
     }
 
     await admin
@@ -549,22 +576,24 @@ export async function syncIfoodOrdersForRestaurant({
 
     const summary =
       sortedEvents.length > 0
-        ? `${processedCount} evento(s) novo(s) processado(s), ${existingEventIds.size} repetido(s) ignorado(s) e ${eventIds.length} ACK enviado(s).`
+        ? `${processedCount} evento(s) processado(s), ${alreadyProcessedEventIds.size} duplicado(s) ja processado(s), ${failedCount} falha(s) pendente(s) e ${acknowledgedCount} ACK enviado(s).`
         : "Nenhum evento novo encontrado no polling do iFood.";
 
     await admin
       .from("ifood_sync_runs")
       .update({
-        status: "success",
+        status: failedCount > 0 ? "partial_success" : "success",
         events_received: sortedEvents.length,
         events_processed: processedCount,
-        events_acknowledged: eventIds.length,
+        events_acknowledged: acknowledgedCount,
         summary,
         payload: {
           merchantId,
           source,
           touchedOrders,
           duplicateEvents: sortedEvents.length - newEvents.length,
+          pendingEvents: failedCount,
+          ackEventIds,
         },
       })
       .eq("id", syncRun.id);
@@ -572,8 +601,9 @@ export async function syncIfoodOrdersForRestaurant({
     return {
       eventsReceived: sortedEvents.length,
       eventsProcessed: processedCount,
-      eventsAcknowledged: eventIds.length,
+      eventsAcknowledged: acknowledgedCount,
       duplicateEvents: sortedEvents.length - newEvents.length,
+      pendingEvents: failedCount,
       touchedOrders: Array.from(new Set(touchedOrders)),
     };
   } catch (error) {
