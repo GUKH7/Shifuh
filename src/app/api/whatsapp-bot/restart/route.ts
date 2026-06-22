@@ -1,12 +1,23 @@
 import { NextResponse } from "next/server";
-import { buildWhatsappBotUrl } from "@/lib/whatsapp-bot";
+import { requireWhatsappBotAccess } from "@/lib/whatsapp-bot-access";
+import {
+  buildWhatsappBotHeaders,
+  buildWhatsappBotUrl,
+  getWhatsappBotRequestSignal,
+} from "@/lib/whatsapp-bot";
 
 export async function POST() {
+  const access = await requireWhatsappBotAccess();
+
+  if (access.response) {
+    return access.response;
+  }
+
   const restartUrl = buildWhatsappBotUrl("/restart");
 
   if (!restartUrl) {
     return NextResponse.json(
-      { error: "WHATSAPP_BOT_API_URL não configurada." },
+      { error: "WHATSAPP_BOT_API_URL nao configurada." },
       { status: 503 },
     );
   }
@@ -15,6 +26,8 @@ export async function POST() {
     const response = await fetch(restartUrl, {
       method: "GET",
       cache: "no-store",
+      headers: buildWhatsappBotHeaders({ accept: "application/json" }),
+      signal: getWhatsappBotRequestSignal(),
     });
     const payloadText = await response.text();
     let payload: Record<string, unknown> = {};
@@ -27,7 +40,7 @@ export async function POST() {
 
     if (!response.ok) {
       return NextResponse.json(
-        { error: payload.error || "Não foi possível reiniciar a API WhatsApp." },
+        { error: payload.error || "Nao foi possivel reiniciar a API WhatsApp." },
         { status: response.status },
       );
     }

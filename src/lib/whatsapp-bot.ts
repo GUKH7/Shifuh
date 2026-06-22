@@ -24,11 +24,7 @@ function normalizeBrazilianWhatsappPhone(phone: string) {
 }
 
 function getWhatsappBotBaseUrl() {
-  return (
-    process.env.WHATSAPP_BOT_API_URL ||
-    process.env.NEXT_PUBLIC_WHATSAPP_BOT_API_URL ||
-    ""
-  ).replace(/\/+$/, "");
+  return (process.env.WHATSAPP_BOT_API_URL || "").replace(/\/+$/, "");
 }
 
 function getWhatsappBotSendPath() {
@@ -48,6 +44,27 @@ export function buildWhatsappBotUrl(path: string) {
   return `${baseUrl}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
+export function buildWhatsappBotHeaders(init?: HeadersInit) {
+  const headers = new Headers(init);
+  const token = process.env.WHATSAPP_BOT_API_TOKEN?.trim();
+
+  if (token) {
+    headers.set("authorization", `Bearer ${token}`);
+  }
+
+  return headers;
+}
+
+export function getWhatsappBotRequestSignal() {
+  const timeoutMs = Number(process.env.WHATSAPP_BOT_TIMEOUT_MS || 10000);
+
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    return undefined;
+  }
+
+  return AbortSignal.timeout(timeoutMs);
+}
+
 export async function sendWhatsappMessage({
   phone,
   message,
@@ -60,7 +77,7 @@ export async function sendWhatsappMessage({
     return {
       ok: false,
       skipped: true,
-      error: "WHATSAPP_BOT_API_URL ou NEXT_PUBLIC_WHATSAPP_BOT_API_URL não configurada.",
+      error: "WHATSAPP_BOT_API_URL nao configurada.",
     };
   }
 
@@ -70,23 +87,15 @@ export async function sendWhatsappMessage({
     return {
       ok: false,
       skipped: false,
-      error: "Telefone do cliente inválido para envio via WhatsApp.",
+      error: "Telefone do cliente invalido para envio via WhatsApp.",
     };
-  }
-
-  const headers: HeadersInit = {
-    "content-type": "application/json",
-  };
-  const token = process.env.WHATSAPP_BOT_API_TOKEN;
-
-  if (token) {
-    headers.authorization = `Bearer ${token}`;
   }
 
   try {
     const response = await fetch(`${baseUrl}${getWhatsappBotSendPath()}`, {
       method: "POST",
-      headers,
+      headers: buildWhatsappBotHeaders({ "content-type": "application/json" }),
+      signal: getWhatsappBotRequestSignal(),
       body: JSON.stringify({
         phone: normalizedPhone,
         number: normalizedPhone,

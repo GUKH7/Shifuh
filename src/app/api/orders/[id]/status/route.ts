@@ -5,9 +5,9 @@ import { createClient } from "@/lib/supabase/server";
 type OrderStatus = "pending" | "preparing" | "delivering" | "done" | "canceled";
 
 type Params = {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 };
 
 const ALLOWED_STATUSES: OrderStatus[] = ["pending", "preparing", "delivering", "done", "canceled"];
@@ -73,7 +73,7 @@ export async function PATCH(request: Request, context: Params) {
       return NextResponse.json({ error: "Status inválido." }, { status: 400 });
     }
 
-    const { id } = context.params;
+    const { id } = await context.params;
     const { data: order, error: orderError } = await supabase
       .from("orders")
       .select("id, restaurant_id, customer_name, customer_phone, status, display_number")

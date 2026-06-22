@@ -8,7 +8,7 @@
     "test": "node --test",
     "ifood:worker": "node scripts/ifood-polling-worker.mjs",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint ."
   },
   "dependencies": {
     "@sparticuz/chromium": "^148.0.0",
@@ -17,20 +17,20 @@
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.94.0",
     "lucide-react": "^0.460.0",
-    "next": "14.2.18",
+    "next": "^16.2.9",
     "puppeteer-core": "^25.0.4",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
     "react-easy-crop": "^5.5.6",
     "recharts": "^3.7.0"
   },
   "devDependencies": {
     "@types/node": "^20",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
     "autoprefixer": "^10.4.20",
-    "eslint": "^8",
-    "eslint-config-next": "14.2.18",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^16.2.9",
     "postcss": "^8",
     "tailwindcss": "^3.4.14",
     "typescript": "^5"
