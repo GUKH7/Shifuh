@@ -40,6 +40,7 @@ function baseState(overrides = {}) {
     orderItems: [],
     customers: [],
     rpcCounter: 0,
+    createOrderError: null,
     distance: 2,
     deliveryFeeResult: null,
     ...overrides,
@@ -157,10 +158,49 @@ function createSupabaseMock() {
       getUser: async () => ({ data: { user: mockState.user } }),
     },
     from: (table) => new QueryBuilder(table),
-    rpc: async (name) => {
-      assert.equal(name, "next_order_display_number");
+    rpc: async (name, args) => {
+      assert.equal(name, "create_order_transaction");
+      if (mockState.createOrderError) {
+        return { data: null, error: mockState.createOrderError };
+      }
+
       mockState.rpcCounter += 1;
-      return { data: mockState.rpcCounter, error: null };
+      const orderId = `order-${mockState.rpcCounter}`;
+      const displayNumber = mockState.rpcCounter;
+
+      mockState.orders.push({
+        id: orderId,
+        restaurant_id: args.p_restaurant_id,
+        user_id: args.p_user_id,
+        customer_name: args.p_customer_name,
+        customer_phone: args.p_customer_phone,
+        address: args.p_address,
+        subtotal: args.p_subtotal,
+        delivery_fee: args.p_delivery_fee,
+        discount: args.p_discount,
+        total: args.p_total,
+        status: args.p_status,
+        payment_method: args.p_payment_method,
+        change_for: args.p_change_for,
+        coupon_code: args.p_coupon_code,
+        display_number: displayNumber,
+      });
+      mockState.orderItems.push(
+        ...args.p_items.map((item) => ({
+          order_id: orderId,
+          ...item,
+        })),
+      );
+      if (args.p_save_customer) {
+        mockState.customers.push({
+          restaurant_id: args.p_restaurant_id,
+          phone: args.p_customer_phone,
+          name: args.p_customer_name,
+          address_json: args.p_address,
+        });
+      }
+
+      return { data: [{ order_id: orderId, display_number: displayNumber }], error: null };
     },
   };
 }
@@ -322,4 +362,19 @@ test("reserva display_number via RPC em pedidos concorrentes", async () => {
     mockState.orders.map((order) => order.display_number),
     [1, 2, 3, 4, 5],
   );
+});
+
+test("nao grava pedido nem itens quando a RPC transacional falha", async () => {
+  mockState = baseState({
+    createOrderError: { message: "falha transacional" },
+  });
+
+  const response = await postOrder(createPayload());
+  const body = await readJson(response);
+
+  assert.equal(response.status, 400);
+  assert.equal(body.error, "falha transacional");
+  assert.equal(mockState.orders.length, 0);
+  assert.equal(mockState.orderItems.length, 0);
+  assert.equal(mockState.customers.length, 0);
 });

@@ -567,6 +567,34 @@ export interface Database {
     };
     Views: {};
     Functions: {
+      create_order_transaction: {
+        Args: {
+          p_restaurant_id: string;
+          p_customer_name: string;
+          p_customer_phone: string;
+          p_address: Json;
+          p_items: Json;
+          p_subtotal: number;
+          p_delivery_fee: number;
+          p_discount: number;
+          p_total: number;
+          p_payment_method?: string;
+          p_change_for?: string | null;
+          p_coupon_code?: string | null;
+          p_user_id?: string | null;
+          p_status?: string;
+          p_external_source?: string | null;
+          p_external_order_id?: string | null;
+          p_external_display_id?: string | null;
+          p_is_test?: boolean;
+          p_external_payload?: Json | null;
+          p_save_customer?: boolean;
+        };
+        Returns: Array<{
+          order_id: string;
+          display_number: number;
+        }>;
+      };
       next_order_display_number: {
         Args: {
           p_restaurant_id: string;

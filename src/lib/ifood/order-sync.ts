@@ -276,17 +276,6 @@ function buildCancellationMetadata(event: IfoodOrderEvent) {
   };
 }
 
-async function getNextDisplayNumber(admin: AdminClient, restaurantId: string) {
-  const { data, error } = await admin.rpc("next_order_display_number", {
-    p_restaurant_id: restaurantId,
-  });
-
-  if (error || !data) {
-    throw new Error(error?.message || "Não foi possível gerar o número do pedido iFood.");
-  }
-
-  return data;
-}
 
 async function upsertLocalOrderFromIfood(
   admin: AdminClient,
@@ -366,55 +355,47 @@ async function upsertLocalOrderFromIfood(
   };
 
   if (!localOrderId) {
-    const nextDisplayNumber = await getNextDisplayNumber(admin, restaurantId);
-    const orderId = crypto.randomUUID();
-
-    const { error: insertOrderError } = await admin.from("orders").insert({
-      id: orderId,
-      restaurant_id: restaurantId,
-      customer_name: customer.name,
-      customer_phone: customer.phone,
-      subtotal,
-      delivery_fee: deliveryFee,
-      discount,
-      total: total || subtotal + deliveryFee - discount,
-      status: nextStatus,
-      payment_method: paymentMethod,
-      change_for: metadata.payment.changeFor ? String(metadata.payment.changeFor) : null,
-      address,
-      display_number: nextDisplayNumber,
-      external_source: "ifood",
-      external_order_id: event.orderId,
-      external_display_id: displayNumberText || null,
-      is_test: Boolean(details.isTest),
-      external_payload: {
-        ...(details as Json as Record<string, unknown>),
-        gestorDelivery,
-      } as Json,
-    });
-
-    if (insertOrderError) {
-      throw new Error(insertOrderError.message || "Não foi possível criar o pedido iFood.");
-    }
-
-    if (items.length > 0) {
-      const { error: insertItemsError } = await admin.from("order_items").insert(
-        items.map((item) => ({
-          order_id: orderId,
+    const { data: createdOrderData, error: createOrderError } = await admin.rpc(
+      "create_order_transaction",
+      {
+        p_restaurant_id: restaurantId,
+        p_customer_name: customer.name,
+        p_customer_phone: customer.phone,
+        p_address: address,
+        p_items: items.map((item) => ({
           product_name: item.product_name,
           quantity: item.quantity,
           price: item.price,
           observation: item.observation,
           addons: item.addons,
         })),
-      );
+        p_subtotal: subtotal,
+        p_delivery_fee: deliveryFee,
+        p_discount: discount,
+        p_total: total || subtotal + deliveryFee - discount,
+        p_payment_method: paymentMethod,
+        p_change_for: metadata.payment.changeFor ? String(metadata.payment.changeFor) : null,
+        p_coupon_code: null,
+        p_user_id: null,
+        p_status: nextStatus,
+        p_external_source: "ifood",
+        p_external_order_id: event.orderId,
+        p_external_display_id: displayNumberText || null,
+        p_is_test: Boolean(details.isTest),
+        p_external_payload: {
+          ...(details as Json as Record<string, unknown>),
+          gestorDelivery,
+        } as Json,
+        p_save_customer: true,
+      },
+    );
+    const createdOrder = Array.isArray(createdOrderData) ? createdOrderData[0] : createdOrderData;
 
-      if (insertItemsError) {
-        throw new Error(insertItemsError.message || "Não foi possível gravar os itens do pedido iFood.");
-      }
+    if (createOrderError || !createdOrder?.order_id) {
+      throw new Error(createOrderError?.message || "Nao foi possivel criar o pedido iFood.");
     }
 
-    localOrderId = orderId;
+    localOrderId = createdOrder.order_id;
   } else {
     const { error: updateOrderError } = await admin
       .from("orders")

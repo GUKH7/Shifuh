@@ -139,6 +139,15 @@ function hasCurrentUser(user: { id: string } | null) {
   return Boolean(user?.id);
 }
 
+type CreatedOrderResult =
+  | { order_id: string; display_number: number }
+  | Array<{ order_id: string; display_number: number }>
+  | null;
+
+function normalizeCreatedOrderResult(data: CreatedOrderResult) {
+  return Array.isArray(data) ? data[0] : data;
+}
+
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as CheckoutPayload;
@@ -340,73 +349,55 @@ export async function POST(request: Request) {
     }
 
     const total = roundMoney(subtotal + deliveryFee - discount);
-    const orderId = crypto.randomUUID();
-    const { data: reservedDisplayNumber, error: displayNumberError } = await supabase.rpc(
-      "next_order_display_number",
-      { p_restaurant_id: restaurant.id },
-    );
-
-    if (displayNumberError || !reservedDisplayNumber) {
-      console.error("Erro ao reservar número do pedido:", displayNumberError);
-      return NextResponse.json(
-        { error: "Não foi possível gerar o número do pedido." },
-        { status: 400 },
-      );
-    }
-
-    const displayNumber = String(reservedDisplayNumber).padStart(4, "0");
-
-    const { error: orderError } = await supabase.from("orders").insert({
-      id: orderId,
-      restaurant_id: restaurant.id,
-      user_id: user?.id || null,
-      customer_name: body.customerName.trim(),
-      customer_phone: body.customerPhone.trim(),
-      subtotal,
-      delivery_fee: deliveryFee,
-      discount,
-      total,
-      status: "pending",
-      payment_method: body.paymentMethod || "pix",
-      change_for: body.changeFor?.trim() || null,
-      coupon_code: appliedCouponCode,
-      display_number: reservedDisplayNumber,
-      address: {
-        ...address,
-        distance: deliveryDistance,
-        delivery_calculated: deliveryCalculated,
-      },
-    });
-
-    if (orderError) {
-      console.error("Erro ao inserir pedido:", orderError);
-      return NextResponse.json(
-    { error: orderError.message || "Não foi possível criar o pedido." },
-        { status: 400 },
-      );
-    }
-
-    const itemsToInsert = normalizedItems.map((item) => ({
-      order_id: orderId,
+    const orderAddress = {
+      ...address,
+      distance: deliveryDistance,
+      delivery_calculated: deliveryCalculated,
+    };
+    const transactionItems = normalizedItems.map((item) => ({
       product_name: item.product_name,
       quantity: item.quantity,
       price: item.price,
       observation: item.observation,
       addons: item.addons,
     }));
+    const { data: createdOrderData, error: createOrderError } = await supabase.rpc(
+      "create_order_transaction",
+      {
+        p_restaurant_id: restaurant.id,
+        p_customer_name: body.customerName.trim(),
+        p_customer_phone: body.customerPhone.trim(),
+        p_address: orderAddress,
+        p_items: transactionItems,
+        p_subtotal: subtotal,
+        p_delivery_fee: deliveryFee,
+        p_discount: discount,
+        p_total: total,
+        p_payment_method: body.paymentMethod || "pix",
+        p_change_for: body.changeFor?.trim() || null,
+        p_coupon_code: appliedCouponCode,
+        p_user_id: user?.id || null,
+        p_status: "pending",
+        p_external_source: null,
+        p_external_order_id: null,
+        p_external_display_id: null,
+        p_is_test: false,
+        p_external_payload: null,
+        p_save_customer: true,
+      },
+    );
+    const createdOrder = normalizeCreatedOrderResult(createdOrderData as CreatedOrderResult);
 
-    const { error: itemsError } = await supabase.from("order_items").insert(itemsToInsert);
-
-    if (itemsError) {
-      console.error("Erro ao inserir itens do pedido:", itemsError);
+    if (createOrderError || !createdOrder) {
+      console.error("Erro ao criar pedido em transacao:", createOrderError);
       return NextResponse.json(
-        {
-          error:
-            itemsError.message || "Pedido criado sem itens. Revise as permissões do banco.",
-        },
+        { error: createOrderError?.message || "Nao foi possivel criar o pedido." },
         { status: 400 },
       );
     }
+
+    const orderId = createdOrder.order_id;
+    const displayNumber = String(createdOrder.display_number).padStart(4, "0");
 
     if (hasCurrentUser(user)) {
       try {
@@ -434,20 +425,6 @@ export async function POST(request: Request) {
       }
     }
 
-    try {
-      const { error: customerError } = await supabase.from("customers").insert({
-        restaurant_id: restaurant.id,
-        phone: body.customerPhone.trim(),
-        name: body.customerName.trim(),
-        address_json: address,
-      });
-
-      if (customerError && customerError.code !== "23505") {
-        console.error("Falha ao registrar cliente na agenda:", customerError);
-      }
-    } catch (customerError) {
-      console.error("Falha inesperada ao registrar cliente:", customerError);
-    }
 
     return NextResponse.json({
       orderId,

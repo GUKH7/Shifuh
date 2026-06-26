@@ -100,9 +100,37 @@ class QueryBuilder {
 function createAdminMock(state) {
   return {
     from: (table) => new QueryBuilder(table, state),
-    rpc: async (name) => {
-      assert.equal(name, "next_order_display_number");
-      return { data: 12, error: null };
+    rpc: async (name, args) => {
+      assert.equal(name, "create_order_transaction");
+      const orderId = `local-${state.insertedOrders.length + 1}`;
+      state.insertedOrders.push({
+        id: orderId,
+        restaurant_id: args.p_restaurant_id,
+        customer_name: args.p_customer_name,
+        customer_phone: args.p_customer_phone,
+        subtotal: args.p_subtotal,
+        delivery_fee: args.p_delivery_fee,
+        discount: args.p_discount,
+        total: args.p_total,
+        status: args.p_status,
+        payment_method: args.p_payment_method,
+        change_for: args.p_change_for,
+        address: args.p_address,
+        display_number: state.insertedOrders.length + 1,
+        external_source: args.p_external_source,
+        external_order_id: args.p_external_order_id,
+        external_display_id: args.p_external_display_id,
+        is_test: args.p_is_test,
+        external_payload: args.p_external_payload,
+      });
+      state.insertedItems.push(
+        ...args.p_items.map((item) => ({
+          order_id: orderId,
+          ...item,
+        })),
+      );
+
+      return { data: [{ order_id: orderId, display_number: state.insertedOrders.length }], error: null };
     },
   };
 }
