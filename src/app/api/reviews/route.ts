@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 
 type ReviewPayload = {
@@ -14,6 +15,16 @@ function round(value: number) {
 
 export async function POST(request: Request) {
   try {
+    const rateLimitResponse = checkRateLimit(request, {
+      keyPrefix: "public:reviews:create",
+      limit: 20,
+      windowMs: 60_000,
+    });
+
+    if (rateLimitResponse) {
+      return rateLimitResponse;
+    }
+
     const body = (await request.json()) as ReviewPayload;
     const rating = Number(body.rating || 0);
 

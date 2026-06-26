@@ -7,6 +7,7 @@ const fs = require("node:fs");
 
 const routePath = path.join(__dirname, "..", "src", "app", "api", "orders", "route.ts");
 let mockState;
+let resetRateLimitForTests = () => {};
 
 function baseState(overrides = {}) {
   return {
@@ -225,6 +226,24 @@ function loadOrdersRoute() {
       return { createClient: async () => createSupabaseMock() };
     }
 
+    if (request === "@/lib/rate-limit") {
+      const rateLimitPath = path.join(__dirname, "..", "src", "lib", "rate-limit.ts");
+      const rateLimitSource = fs.readFileSync(rateLimitPath, "utf8");
+      const rateLimitCompiled = ts.transpileModule(rateLimitSource, {
+        compilerOptions: {
+          esModuleInterop: true,
+          module: ts.ModuleKind.CommonJS,
+          target: ts.ScriptTarget.ES2022,
+        },
+      }).outputText;
+      const rateLimitModule = new Module(rateLimitPath, module.parent);
+      rateLimitModule.filename = rateLimitPath;
+      rateLimitModule.paths = Module._nodeModulePaths(path.dirname(rateLimitPath));
+      rateLimitModule._compile(rateLimitCompiled, rateLimitPath);
+      resetRateLimitForTests = rateLimitModule.exports.resetRateLimitForTests;
+      return rateLimitModule.exports;
+    }
+
     if (request === "@/lib/geo") {
       return {
         getCoordinates: async () => ({ lat: -23.56, lon: -46.64 }),
@@ -255,11 +274,15 @@ function loadOrdersRoute() {
 const { POST } = loadOrdersRoute();
 
 async function postOrder(payload) {
+  return postOrderWithHeaders(payload);
+}
+
+async function postOrderWithHeaders(payload, headers = {}) {
   return POST(
     new Request("http://localhost/api/orders", {
       method: "POST",
       body: JSON.stringify(payload),
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", ...headers },
     }),
   );
 }
@@ -377,4 +400,24 @@ test("nao grava pedido nem itens quando a RPC transacional falha", async () => {
   assert.equal(mockState.orders.length, 0);
   assert.equal(mockState.orderItems.length, 0);
   assert.equal(mockState.customers.length, 0);
+});
+
+test("bloqueia excesso de tentativas na API publica de pedidos", async () => {
+  resetRateLimitForTests();
+  mockState = baseState();
+  const headers = { "x-forwarded-for": "203.0.113.77" };
+
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const response = await postOrderWithHeaders(createPayload(), headers);
+    assert.equal(response.status, 200);
+  }
+
+  const response = await postOrderWithHeaders(createPayload(), headers);
+  const body = await readJson(response);
+
+  assert.equal(response.status, 429);
+  assert.match(body.error, /Muitas tentativas/i);
+  assert.equal(response.headers.get("X-RateLimit-Limit"), "12");
+  assert.equal(response.headers.get("X-RateLimit-Remaining"), "0");
+  assert.ok(response.headers.get("Retry-After"));
 });

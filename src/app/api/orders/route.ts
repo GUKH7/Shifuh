@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { calculateDeliveryFee, calculateDistance, getCoordinates } from "@/lib/geo";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 
 type CheckoutAddress = {
@@ -150,6 +151,16 @@ function normalizeCreatedOrderResult(data: CreatedOrderResult) {
 
 export async function POST(request: Request) {
   try {
+    const rateLimitResponse = checkRateLimit(request, {
+      keyPrefix: "public:orders:create",
+      limit: 12,
+      windowMs: 60_000,
+    });
+
+    if (rateLimitResponse) {
+      return rateLimitResponse;
+    }
+
     const body = (await request.json()) as CheckoutPayload;
     const address = normalizeAddress(body.address);
     const cart = Array.isArray(body.cart) ? body.cart : [];
