@@ -13,7 +13,7 @@ import {
   Star,
   X,
 } from "lucide-react";
-import { usePathname, useRouter } from "next/navigation";
+import { useParams, usePathname, useRouter } from "next/navigation";
 import { calculateDistance, calculateDeliveryFee, getCoordinates } from "@/lib/geo";
 import { useToast } from "@/components/ui/toast-provider";
 import { CheckoutDrawer } from "@/features/storefront/CheckoutDrawer";
@@ -24,9 +24,11 @@ import type { CheckoutStep, DeliveryInfo, OrderResponse } from "@/features/store
 import { useCart } from "@/features/storefront/use-cart";
 import { useStorefront } from "@/features/storefront/use-storefront";
 
-export default function StorePage({ params }: { params: { slug: string } }) {
+export default function StorePage() {
+  const params = useParams<{ slug: string | string[] }>();
   const pathname = usePathname();
   const router = useRouter();
+  const slug = Array.isArray(params.slug) ? params.slug[0] : params.slug;
   const { showToast } = useToast();
   const [usingSavedAddress, setUsingSavedAddress] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -84,7 +86,7 @@ export default function StorePage({ params }: { params: { slug: string } }) {
     activeCategory,
     setActiveCategory,
   } = useStorefront({
-    slug: params.slug,
+    slug,
     onCustomerLoaded: handleCustomerLoaded,
     onMissingStore: handleMissingStore,
   });
