@@ -419,6 +419,34 @@ export default function StorePage({ params }: { params: { slug: string } }) {
     );
   }
 
+  if (!restaurant) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#f6f1ea] px-6 py-12">
+        <div className="surface-card w-full max-w-lg rounded-[28px] p-8 text-center">
+          <div
+            className="mx-auto flex h-16 w-16 items-center justify-center rounded-full text-white"
+            style={{ backgroundColor: primaryColor }}
+          >
+            <ShoppingBag size={30} />
+          </div>
+          <h1 className="mt-6 text-3xl font-black tracking-tight text-gray-950">
+            Loja não encontrada
+          </h1>
+          <p className="mt-3 text-base leading-7 text-[var(--muted)]">
+            Confira se o link da vitrine está correto ou acesse novamente pelo painel.
+          </p>
+          <button
+            onClick={() => router.push("/admin")}
+            className="mt-8 w-full rounded-2xl px-6 py-4 text-sm font-black text-white"
+            style={{ backgroundColor: primaryColor }}
+          >
+            Voltar ao painel
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (step === "success") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#f6f1ea] px-6 py-12">
