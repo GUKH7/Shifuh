@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { calculateDeliveryFee, calculateDistance, getCoordinates } from "@/lib/geo";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient, createClient } from "@/lib/supabase/server";
 
 type CheckoutAddress = {
   cep?: string;
@@ -186,7 +186,8 @@ export async function POST(request: Request) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    const { data: restaurant, error: restaurantError } = await supabase
+    const adminSupabase = createAdminClient();
+    const { data: restaurant, error: restaurantError } = await adminSupabase
       .from("restaurants")
       .select(
         "id, name, phone, whatsapp_number, latitude, longitude, address_street, address_number, address_neighborhood, address_city, address_state, delivery_tiers",

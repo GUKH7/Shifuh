@@ -39,6 +39,8 @@ export interface Database {
           printer_font_weight: number;
           printer_auto_print: boolean;
           banners: Json | null;
+          rating_average: number | null;
+          rating_count: number | null;
           created_at: string;
           updated_at: string;
         };
@@ -71,6 +73,8 @@ export interface Database {
           printer_font_weight?: number;
           printer_auto_print?: boolean;
           banners?: Json | null;
+          rating_average?: number | null;
+          rating_count?: number | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -103,6 +107,8 @@ export interface Database {
           printer_font_weight?: number;
           printer_auto_print?: boolean;
           banners?: Json | null;
+          rating_average?: number | null;
+          rating_count?: number | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -565,7 +571,36 @@ export interface Database {
         Relationships: [];
       };
     };
-    Views: {};
+    Views: {
+      public_restaurants: {
+        Row: {
+          id: string;
+          name: string;
+          slug: string;
+          phone: string | null;
+          logo_url: string | null;
+          image_url: string | null;
+          color_theme: string | null;
+          primary_color: string | null;
+          latitude: number | null;
+          longitude: number | null;
+          storefront_headline: string | null;
+          storefront_subheadline: string | null;
+          storefront_theme: Json | null;
+          address_street: string | null;
+          address_number: string | null;
+          address_neighborhood: string | null;
+          address_city: string | null;
+          address_state: string | null;
+          delivery_tiers: Json | null;
+          work_hours: Json | null;
+          banners: Json | null;
+          rating_average: number | null;
+          rating_count: number | null;
+        };
+        Relationships: [];
+      };
+    };
     Functions: {
       create_order_transaction: {
         Args: {

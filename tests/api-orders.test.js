@@ -223,7 +223,10 @@ function loadOrdersRoute() {
     }
 
     if (request === "@/lib/supabase/server") {
-      return { createClient: async () => createSupabaseMock() };
+      return {
+        createAdminClient: () => createSupabaseMock(),
+        createClient: async () => createSupabaseMock(),
+      };
     }
 
     if (request === "@/lib/rate-limit") {

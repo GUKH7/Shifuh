@@ -73,11 +73,22 @@ export function useStorefront({ slug, onCustomerLoaded, onMissingStore }: UseSto
     };
 
     const fetchStoreData = async () => {
-      const { data: resto } = await supabase
-        .from("restaurants")
+      const publicRestaurantResult = await supabase
+        .from("public_restaurants")
         .select("*")
         .eq("slug", slug)
         .single();
+      let resto = publicRestaurantResult.data;
+
+      if (!resto && publicRestaurantResult.error) {
+        const { data: fallbackRestaurant } = await supabase
+          .from("restaurants")
+          .select("*")
+          .eq("slug", slug)
+          .single();
+
+        resto = fallbackRestaurant;
+      }
 
       if (!mounted) return;
 

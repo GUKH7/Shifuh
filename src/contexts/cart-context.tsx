@@ -55,8 +55,32 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     async function loadRestaurant() {
-      const { data } = await supabase.from('restaurants').select('*').single()
-      if (data) setRestaurant(data)
+      const publicRestaurantResult = await supabase
+        .from('public_restaurants')
+        .select('id, name, latitude, longitude, delivery_tiers')
+        .limit(1)
+        .maybeSingle()
+      let data = publicRestaurantResult.data
+
+      if (!data && publicRestaurantResult.error) {
+        const { data: fallbackRestaurant } = await supabase
+          .from('restaurants')
+          .select('id, name, latitude, longitude, delivery_tiers')
+          .limit(1)
+          .maybeSingle()
+
+        data = fallbackRestaurant
+      }
+
+      if (data) {
+        setRestaurant({
+          id: data.id,
+          name: data.name,
+          address_lat: Number(data.latitude || 0),
+          address_lng: Number(data.longitude || 0),
+          delivery_tiers: Array.isArray(data.delivery_tiers) ? data.delivery_tiers : [],
+        })
+      }
     }
     loadRestaurant()
   }, [])
