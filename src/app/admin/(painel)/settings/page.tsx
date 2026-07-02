@@ -1,13 +1,11 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useRouter } from "next/navigation";
 import {
   ArrowDownUp,
-  CircleHelp,
   CheckCircle,
-  ChevronDown,
   Clock,
   Image as ImageIcon,
   Loader2,
@@ -28,307 +26,31 @@ import Cropper from "react-easy-crop";
 import { getCurrentRestaurant } from "@/lib/supabase/restaurant";
 import { getCoordinates } from "@/lib/geo";
 import { useToast } from "@/components/ui/toast-provider";
-
-interface DeliveryTier {
-  distance: number;
-  time: number;
-  price: number;
-}
-
-interface WorkHour {
-  day_id: number;
-  day_label: string;
-  is_open: boolean;
-  open_time: string;
-  close_time: string;
-}
-
-interface StorefrontTheme {
-  hero_style: "banner" | "split" | "spotlight";
-  catalog_layout: "grid" | "list";
-  card_style: "soft" | "outline" | "elevated";
-  contrast_color: string;
-  show_logo: boolean;
-  show_reviews: boolean;
-  show_banners: boolean;
-  show_featured_badge: boolean;
-  show_promo_badge: boolean;
-  category_style: "underline" | "pill";
-  highlight_badge: string;
-  promo_text: string;
-}
-
-interface IfoodIntegrationState {
-  merchantId: string;
-  merchantName: string;
-  catalogId: string;
-  authType: "centralized";
-  syncMode: "ifood_to_gestor" | "gestor_to_ifood" | "bidirectional";
-  status: "disconnected" | "configuring" | "homologation" | "connected";
-  catalogSyncEnabled: boolean;
-  orderSyncEnabled: boolean;
-  importImages: boolean;
-  notes: string;
-  connectedAt: string | null;
-  lastCatalogImportAt: string | null;
-  lastCatalogExportAt: string | null;
-  lastOrderSyncAt: string | null;
-}
-
-interface IfoodConnectionCheckState {
-  status: "idle" | "checking" | "success" | "error";
-  summary: string;
-  details: string[];
-  checkedAt: string | null;
-  merchantFound: boolean;
-  catalogResolved: boolean;
-  catalogsCount: number | null;
-  resolvedCatalogId: string | null;
-}
-
-interface IfoodMerchantSnapshot {
-  merchants?: any;
-  details?: any;
-  status?: any;
-  interruptions?: any;
-  openingHours?: any;
-  checkedAt?: string;
-}
-
-const DEFAULT_STOREFRONT_THEME: StorefrontTheme = {
-  hero_style: "banner",
-  catalog_layout: "grid",
-  card_style: "soft",
-  contrast_color: "#1f2937",
-  show_logo: true,
-  show_reviews: true,
-  show_banners: true,
-  show_featured_badge: true,
-  show_promo_badge: true,
-  category_style: "underline",
-  highlight_badge: "Mais pedido",
-  promo_text: "Promo do dia",
-};
-
-const DEFAULT_IFOOD_INTEGRATION: IfoodIntegrationState = {
-  merchantId: "",
-  merchantName: "",
-  catalogId: "",
-  authType: "centralized",
-  syncMode: "ifood_to_gestor",
-  status: "disconnected",
-  catalogSyncEnabled: true,
-  orderSyncEnabled: false,
-  importImages: true,
-  notes: "",
-  connectedAt: null,
-  lastCatalogImportAt: null,
-  lastCatalogExportAt: null,
-  lastOrderSyncAt: null,
-};
-
-const DEFAULT_IFOOD_CONNECTION_CHECK: IfoodConnectionCheckState = {
-  status: "idle",
-  summary: "",
-  details: [],
-  checkedAt: null,
-  merchantFound: false,
-  catalogResolved: false,
-  catalogsCount: null,
-  resolvedCatalogId: null,
-};
-
-const IFOOD_HOMOLOGATION_SHIFTS = [
-  { dayOfWeek: "SATURDAY", start: "10:00:00", duration: 540 },
-  { dayOfWeek: "SUNDAY", start: "09:00:00", duration: 180 },
-  { dayOfWeek: "SUNDAY", start: "13:00:00", duration: 180 },
-  { dayOfWeek: "SUNDAY", start: "17:00:00", duration: 360 },
-];
-
-const DAYS_OF_WEEK = [
-  { id: 0, label: "Domingo" },
-  { id: 1, label: "Segunda-feira" },
-  { id: 2, label: "Terca-feira" },
-  { id: 3, label: "Quarta-feira" },
-  { id: 4, label: "Quinta-feira" },
-  { id: 5, label: "Sexta-feira" },
-  { id: 6, label: "Sabado" },
-];
-
-const DEFAULT_SCHEDULE: WorkHour[] = DAYS_OF_WEEK.map((day) => ({
-  day_id: day.id,
-  day_label: day.label,
-  is_open: true,
-  open_time: "18:00",
-  close_time: "23:00",
-}));
-
-function normalizeWorkHours(rawValue: unknown): WorkHour[] {
-  const incoming = Array.isArray(rawValue) ? rawValue : [];
-
-  return DAYS_OF_WEEK.map((day) => {
-    const match = incoming.find((item) => {
-      if (!item || typeof item !== "object") return false;
-      const candidate = item as Partial<WorkHour>;
-      return Number(candidate.day_id) === day.id;
-    }) as Partial<WorkHour> | undefined;
-
-    return {
-      day_id: day.id,
-      day_label: match?.day_label || day.label,
-      is_open: typeof match?.is_open === "boolean" ? match.is_open : true,
-      open_time: match?.open_time || "18:00",
-      close_time: match?.close_time || "23:00",
-    };
-  });
-}
-
-function hexToRgba(hex: string, opacity: number) {
-  const normalized = hex.replace("#", "");
-  const full = normalized.length === 3 ? normalized.split("").map((char) => `${char}${char}`).join("") : normalized;
-
-  if (full.length !== 6) return `rgba(17, 24, 39, ${opacity})`;
-
-  const red = Number.parseInt(full.slice(0, 2), 16);
-  const green = Number.parseInt(full.slice(2, 4), 16);
-  const blue = Number.parseInt(full.slice(4, 6), 16);
-
-  return `rgba(${red}, ${green}, ${blue}, ${opacity})`;
-}
-
-const createImage = (url: string): Promise<HTMLImageElement> =>
-  new Promise((resolve, reject) => {
-    const image = new Image();
-    image.addEventListener("load", () => resolve(image));
-    image.addEventListener("error", (error) => reject(error));
-    image.setAttribute("crossOrigin", "anonymous");
-    image.src = url;
-  });
-
-async function getCroppedImg(imageSrc: string, pixelCrop: { x: number; y: number; width: number; height: number }): Promise<File | null> {
-  const image = await createImage(imageSrc);
-  const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return null;
-  canvas.width = pixelCrop.width;
-  canvas.height = pixelCrop.height;
-  ctx.drawImage(image, pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height, 0, 0, pixelCrop.width, pixelCrop.height);
-  return new Promise((resolve) =>
-    canvas.toBlob((blob) => {
-      if (!blob) return resolve(null);
-      resolve(new File([blob], "cropped-image.jpg", { type: "image/jpeg" }));
-    }, "image/jpeg", 0.92),
-  );
-}
-
-function FieldHint({ label }: { label: string }) {
-  return (
-    <span
-      title={label}
-      className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-[var(--line)] bg-white text-gray-400"
-    >
-      <CircleHelp size={12} />
-    </span>
-  );
-}
-
-function CollapsibleSection({
-  icon,
-  title,
-  description,
-  children,
-  className = "",
-  defaultOpen = false,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-  children: React.ReactNode;
-  className?: string;
-  defaultOpen?: boolean;
-}) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-
-  return (
-    <section className={`surface-card rounded-[28px] p-6 ${className}`}>
-      <button
-        type="button"
-        onClick={() => setIsOpen((current) => !current)}
-        className="flex w-full items-center justify-between gap-4 text-left"
-      >
-        <div className="flex items-center gap-3">
-          <div className="rounded-2xl bg-[var(--brand-soft)] p-3 text-[var(--brand)]">{icon}</div>
-          <div>
-            <h2 className="text-xl font-black text-gray-950">{title}</h2>
-            <p className="text-sm text-gray-500">{description}</p>
-          </div>
-        </div>
-        <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-[var(--line)] bg-white text-gray-500">
-          <ChevronDown
-            size={18}
-            className={`transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
-          />
-        </span>
-      </button>
-
-      {isOpen && children}
-    </section>
-  );
-}
-
-function SettingsGroupHeading({
-  eyebrow,
-  title,
-  description,
-}: {
-  eyebrow: string;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="px-1 pt-3">
-      <p className="text-xs font-black uppercase tracking-[0.18em] text-[var(--brand)]">{eyebrow}</p>
-      <h2 className="mt-1 text-lg font-black text-gray-950">{title}</h2>
-      <p className="mt-1 max-w-3xl text-sm leading-6 text-gray-500">{description}</p>
-    </div>
-  );
-}
-
-async function readJsonResponse(response: Response) {
-  const payloadText = await response.text();
-
-  if (!payloadText) {
-    return {};
-  }
-
-  try {
-    return JSON.parse(payloadText) as Record<string, any>;
-  } catch {
-    return {
-      error: payloadText,
-    };
-  }
-}
-
-function listFromIfoodPayload(payload: any): any[] {
-  if (Array.isArray(payload)) return payload;
-  if (Array.isArray(payload?.items)) return payload.items;
-  if (Array.isArray(payload?.data)) return payload.data;
-  if (Array.isArray(payload?.merchants)) return payload.merchants;
-  if (Array.isArray(payload?.interruptions)) return payload.interruptions;
-  if (Array.isArray(payload?.shifts)) return payload.shifts;
-  return [];
-}
-
-function firstFromIfoodPayload(payload: any): any {
-  return listFromIfoodPayload(payload)[0] || (payload && !Array.isArray(payload) ? payload : null);
-}
-
-function compactJson(payload: any) {
-  if (!payload) return "Sem dados.";
-  return JSON.stringify(payload, null, 2);
-}
-
+import { CollapsibleSection, FieldHint, SettingsGroupHeading } from "./SettingsSections";
+import {
+  DEFAULT_IFOOD_CONNECTION_CHECK,
+  DEFAULT_IFOOD_INTEGRATION,
+  DEFAULT_SCHEDULE,
+  DEFAULT_STOREFRONT_THEME,
+  IFOOD_HOMOLOGATION_SHIFTS,
+} from "./constants";
+import type {
+  DeliveryTier,
+  IfoodConnectionCheckState,
+  IfoodIntegrationState,
+  IfoodMerchantSnapshot,
+  StorefrontTheme,
+  WorkHour,
+} from "./types";
+import {
+  compactJson,
+  firstFromIfoodPayload,
+  getCroppedImg,
+  hexToRgba,
+  listFromIfoodPayload,
+  normalizeWorkHours,
+  readJsonResponse,
+} from "./utils";
 export default function SettingsPage() {
   const router = useRouter();
   const supabase = createBrowserClient(

@@ -17,319 +17,32 @@ import {
 } from "lucide-react";
 import { getCurrentRestaurant } from "@/lib/supabase/restaurant";
 import { useToast } from "@/components/ui/toast-provider";
-
-interface Order {
-  id: string;
-  customer_name: string;
-  customer_phone: string;
-  total: number;
-  subtotal: number;
-  delivery_fee: number;
-  discount: number;
-  status: "pending" | "preparing" | "delivering" | "done" | "canceled";
-  payment_method: string;
-  display_number?: number | null;
-  external_source?: string | null;
-  external_order_id?: string | null;
-  external_display_id?: string | null;
-  external_payload?: any;
-  is_test?: boolean;
-  created_at: string;
-  address: any;
-  items: any[];
-  change_for?: string;
-}
-
-type IfoodCancellationReason = {
-  code: string;
-  description: string;
-};
-
-type IfoodEventAudit = {
-  id: string;
-  ifood_event_id: string;
-  ifood_order_id: string;
-  event_code: string;
-  event_full_code: string | null;
-  event_group: string | null;
-  event_created_at: string | null;
-  processed_at: string | null;
-  acknowledged_at: string | null;
-  raw_payload: any;
-  created_at: string;
-};
-
-const STATUS_FILTERS = [
-  { id: "all", label: "Todos" },
-  { id: "pending", label: "Pendentes" },
-  { id: "preparing", label: "Em preparo" },
-  { id: "delivering", label: "Em rota" },
-  { id: "done", label: "Concluídos" },
-  { id: "canceled", label: "Cancelados" },
-] as const;
-
-function formatPrice(value: number) {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(value);
-}
-
-function formatTime(dateStr: string) {
-  return new Date(dateStr).toLocaleTimeString("pt-BR", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-  });
-}
-
-function isToday(dateStr: string) {
-  const orderDate = new Date(dateStr);
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
-
-  return orderDate >= start && orderDate < end;
-}
-
-function formatDisplayNumber(order: Pick<Order, "display_number" | "id">) {
-  if (order.display_number) {
-    return String(order.display_number).padStart(4, "0");
-  }
-  return order.id.slice(0, 4).toUpperCase();
-}
-
-function playNewOrderChime() {
-  if (typeof window === "undefined") return;
-
-  try {
-    const AudioContextCtor =
-      window.AudioContext ||
-      (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-
-    if (!AudioContextCtor) return;
-
-    const audioContext = new AudioContextCtor();
-    const now = audioContext.currentTime;
-    const notes = [
-      { frequency: 880, start: 0, duration: 0.18 },
-      { frequency: 1174.66, start: 0.16, duration: 0.22 },
-    ];
-
-    notes.forEach((note) => {
-      const oscillator = audioContext.createOscillator();
-      const gain = audioContext.createGain();
-      const startAt = now + note.start;
-      const endAt = startAt + note.duration;
-
-      oscillator.type = "sine";
-      oscillator.frequency.setValueAtTime(note.frequency, startAt);
-      gain.gain.setValueAtTime(0.0001, startAt);
-      gain.gain.exponentialRampToValueAtTime(0.12, startAt + 0.025);
-      gain.gain.exponentialRampToValueAtTime(0.0001, endAt);
-
-      oscillator.connect(gain);
-      gain.connect(audioContext.destination);
-      oscillator.start(startAt);
-      oscillator.stop(endAt);
-    });
-
-    window.setTimeout(() => {
-      void audioContext.close();
-    }, 700);
-  } catch {
-    // Some browsers block audio before the first user interaction.
-  }
-}
-
-function getStatusClasses(status: Order["status"]) {
-  switch (status) {
-    case "pending":
-      return "bg-[#fff4dc] text-[#a56b00]";
-    case "preparing":
-      return "bg-[#fff2ea] text-[var(--brand)]";
-    case "delivering":
-      return "bg-[#eef5ff] text-[#2266d2]";
-    case "done":
-      return "bg-emerald-100 text-emerald-700";
-    case "canceled":
-      return "bg-red-100 text-red-700";
-    default:
-      return "bg-gray-100 text-gray-700";
-  }
-}
-
-function getStatusLabel(status: Order["status"]) {
-  switch (status) {
-    case "pending":
-      return "Confirmado";
-    case "preparing":
-      return "Em preparo";
-    case "delivering":
-      return "Em rota";
-    case "done":
-    return "Concluído";
-    case "canceled":
-      return "Cancelado";
-    default:
-      return status;
-  }
-}
-
-function getIfoodMeta(order: Order) {
-  return order.external_payload?.gestorDelivery || {};
-}
-
-function isIfoodOrder(order: Order) {
-  return order.external_source === "ifood" && Boolean(order.external_order_id);
-}
-
-function formatDateTime(value?: string | null) {
-  if (!value) return "Não informado";
-  return new Intl.DateTimeFormat("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
-
-function formatIfoodOrderType(order: Order) {
-  const meta = getIfoodMeta(order);
-  const type = String(meta.orderType || "").toUpperCase();
-  if (type === "TAKEOUT") return "Retirada";
-  if (type === "DELIVERY") return "Entrega";
-  return type || "iFood";
-}
-
-function formatIfoodTiming(order: Order) {
-  const meta = getIfoodMeta(order);
-  const timing = String(meta.orderTiming || "").toUpperCase();
-  if (timing === "SCHEDULED") return "Agendado";
-  if (timing === "IMMEDIATE") return "Imediato";
-  return timing || "Timing não informado";
-}
-
-function listIfoodBenefits(order: Order) {
-  const benefits = getIfoodMeta(order).benefits;
-  if (!benefits?.items || !Array.isArray(benefits.items)) return [];
-  return benefits.items;
-}
-
-function getAddonLabel(addon: any) {
-  return addon?.name || addon?.title || addon?.description || "Complemento";
-}
-
-function getIfoodBenefitLabel(benefit: any) {
-  return (
-    benefit?.target ||
-    benefit?.description ||
-    benefit?.sponsorshipValues?.[0]?.name ||
-    benefit?.campaign?.name ||
-    benefit?.code ||
-    "Beneficio"
-  );
-}
-
-function getIfoodBenefitAmount(benefit: any) {
-  return Number(benefit?.value || benefit?.amount || benefit?.sponsorshipValues?.[0]?.value || 0);
-}
-
-function formatIfoodPayment(order: Order) {
-  const payment = getIfoodMeta(order).payment || {};
-  const parts = [
-    payment.methodType || order.payment_method || "nao informado",
-    payment.methodName,
-    payment.cardBrand,
-  ].filter(Boolean);
-
-  return parts.join(" / ");
-}
-
-function getIfoodCancellation(order: Order) {
-  return getIfoodMeta(order).cancellation || null;
-}
-
-function formatIfoodCancellationStatus(status?: string | null) {
-  switch (String(status || "").toLowerCase()) {
-    case "requested":
-      return "Cancelamento solicitado";
-    case "failed":
-      return "Cancelamento recusado";
-    case "approved":
-      return "Cancelamento aprovado";
-    case "accepted":
-      return "SolicitaÃ§Ã£o aceita";
-    default:
-      return "Evento de cancelamento";
-  }
-}
-
-function normalizeCancellationReasons(response: any): IfoodCancellationReason[] {
-  const source = Array.isArray(response?.reasons)
-    ? response.reasons
-    : Array.isArray(response?.reasons?.items)
-      ? response.reasons.items
-      : Array.isArray(response?.reasons?.reasons)
-        ? response.reasons.reasons
-        : Array.isArray(response?.reasons?.cancellationReasons)
-          ? response.reasons.cancellationReasons
-          : [];
-
-  return source
-    .map((reason: any) => {
-      const code = String(
-        reason.cancellationCode ||
-          reason.cancelCodeId ||
-          reason.code ||
-          reason.id ||
-          "",
-      ).trim();
-      const description = String(
-        reason.description ||
-          reason.reason ||
-          reason.name ||
-          reason.message ||
-          code,
-      ).trim();
-
-      return { code, description };
-    })
-    .filter((reason: IfoodCancellationReason) => reason.code && reason.description);
-}
-
-function OrdersSkeleton() {
-  return (
-    <div className="mx-auto max-w-6xl animate-pulse">
-      <div className="mb-8 flex items-center justify-between gap-4">
-        <div className="space-y-3">
-          <div className="h-8 w-32 rounded-full bg-white" />
-          <div className="h-4 w-72 rounded-full bg-white" />
-        </div>
-        <div className="h-10 w-28 rounded-full bg-white" />
-      </div>
-      <div className="surface-card rounded-[28px] p-6">
-        <div className="h-12 rounded-2xl bg-white" />
-        <div className="mt-4 flex gap-3">
-          <div className="h-10 w-24 rounded-full bg-white" />
-          <div className="h-10 w-24 rounded-full bg-white" />
-          <div className="h-10 w-24 rounded-full bg-white" />
-        </div>
-        <div className="mt-6 space-y-4">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <div key={index} className="h-24 rounded-[24px] bg-white" />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
+import { OrdersSkeleton } from "./OrdersSkeleton";
+import type { IfoodCancellationReason, IfoodEventAudit, Order } from "./types";
+import {
+  STATUS_FILTERS,
+  formatDate,
+  formatDateTime,
+  formatDisplayNumber,
+  formatIfoodCancellationStatus,
+  formatIfoodOrderType,
+  formatIfoodPayment,
+  formatIfoodTiming,
+  formatPrice,
+  formatTime,
+  getAddonLabel,
+  getIfoodBenefitAmount,
+  getIfoodBenefitLabel,
+  getIfoodCancellation,
+  getIfoodMeta,
+  getStatusClasses,
+  getStatusLabel,
+  isIfoodOrder,
+  isToday,
+  listIfoodBenefits,
+  normalizeCancellationReasons,
+  playNewOrderChime,
+} from "./utils";
 export default function OrdersPage() {
   const router = useRouter();
   const supabase = createBrowserClient(
@@ -382,7 +95,7 @@ export default function OrdersPage() {
             playNewOrderChime();
             showToast({
               title: "Novo pedido recebido",
-          description: `Pedido #${display === "0000" ? String(payload.new.id).slice(0, 4) : display} entrou na fila da operação.`,
+          description: `Pedido #${display === "0000" ? String(payload.new.id).slice(0, 4) : display} entrou na fila da operaÃ§Ã£o.`,
               tone: "success",
             });
           }
@@ -458,7 +171,7 @@ export default function OrdersPage() {
       const { restaurant: resto, user } = await getCurrentRestaurant(supabase);
       if (!user) return router.push("/admin/login");
       if (!resto) {
-        setErrorMsg("Não foi possível localizar a loja.");
+        setErrorMsg("NÃ£o foi possÃ­vel localizar a loja.");
         return;
       }
 
@@ -496,7 +209,7 @@ export default function OrdersPage() {
       }
     } catch (err) {
       console.error(err);
-      setErrorMsg("Erro de conexão.");
+      setErrorMsg("Erro de conexÃ£o.");
     } finally {
       if (showLoading) setLoading(false);
     }
@@ -520,7 +233,7 @@ export default function OrdersPage() {
 
     if (!response.ok) {
       showToast({
-        title: "Não foi possível atualizar o pedido",
+        title: "NÃ£o foi possÃ­vel atualizar o pedido",
         description: result.error || "Tente novamente em instantes.",
         tone: "error",
       });
@@ -531,15 +244,15 @@ export default function OrdersPage() {
     showToast({
       title: "Status atualizado",
       description: result.notification?.sent
-        ? `Pedido #${formatDisplayNumber(order)} agora está como ${getStatusLabel(newStatus).toLowerCase()} e o cliente foi avisado.`
-        : `Pedido #${formatDisplayNumber(order)} agora está como ${getStatusLabel(newStatus).toLowerCase()}.`,
+        ? `Pedido #${formatDisplayNumber(order)} agora estÃ¡ como ${getStatusLabel(newStatus).toLowerCase()} e o cliente foi avisado.`
+        : `Pedido #${formatDisplayNumber(order)} agora estÃ¡ como ${getStatusLabel(newStatus).toLowerCase()}.`,
       tone: "success",
     });
 
     if (result.notification && !result.notification.sent && !result.notification.skipped) {
       showToast({
-        title: "WhatsApp não enviado",
-        description: result.notification.error || "Confira a configuração da API do robô.",
+        title: "WhatsApp nÃ£o enviado",
+        description: result.notification.error || "Confira a configuraÃ§Ã£o da API do robÃ´.",
         tone: "error",
       });
     }
@@ -573,7 +286,7 @@ export default function OrdersPage() {
       const result = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(result.error || "Não foi possível executar a ação no iFood.");
+        throw new Error(result.error || "NÃ£o foi possÃ­vel executar a aÃ§Ã£o no iFood.");
       }
 
       if (action !== "cancellation_reasons") {
@@ -588,7 +301,7 @@ export default function OrdersPage() {
       return result;
     } catch (error) {
       showToast({
-        title: "Não foi possível atualizar o pedido",
+        title: "NÃ£o foi possÃ­vel atualizar o pedido",
         description:
           error instanceof Error ? error.message : "Tente novamente em instantes.",
         tone: "error",
@@ -607,7 +320,7 @@ export default function OrdersPage() {
     if (!firstReason) {
       showToast({
         title: "Sem motivos disponiveis",
-        description: "Não há motivos de cancelamento disponíveis para este pedido.",
+        description: "NÃ£o hÃ¡ motivos de cancelamento disponÃ­veis para este pedido.",
         tone: "error",
       });
       return;
@@ -651,7 +364,7 @@ export default function OrdersPage() {
     const fontSize = restaurantConfig?.printer_font_size || 12;
     const fontWeight = restaurantConfig?.printer_font_weight || 700;
     const createdAt = new Date(order.created_at).toLocaleString("pt-BR");
-  const addressLineOne = `${order.address?.street || "Rua não informada"}, ${order.address?.number || "S/N"}`;
+  const addressLineOne = `${order.address?.street || "Rua nÃ£o informada"}, ${order.address?.number || "S/N"}`;
     const addressLineTwo = [order.address?.neighborhood, order.address?.city, order.address?.state]
       .filter(Boolean)
       .join(" - ");
@@ -774,7 +487,7 @@ export default function OrdersPage() {
       const result = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(result.error || "NÃ£o foi possÃ­vel carregar os eventos iFood.");
+        throw new Error(result.error || "NÃƒÂ£o foi possÃƒÂ­vel carregar os eventos iFood.");
       }
 
       setIfoodEventsByOrder((current) => ({
@@ -830,7 +543,7 @@ export default function OrdersPage() {
                   Pedido #{formatDisplayNumber(cancellationModalOrder)}
                 </h2>
                 <p className="mt-1 text-sm text-gray-500">
-                  Selecione o motivo retornado pelo iFood e confirme a solicitação.
+                  Selecione o motivo retornado pelo iFood e confirme a solicitaÃ§Ã£o.
                 </p>
               </div>
               <button
@@ -901,7 +614,7 @@ export default function OrdersPage() {
         <div>
           <h1 className="text-3xl font-black tracking-tight text-gray-950">Pedidos</h1>
           <p className="mt-1 text-sm text-[var(--muted)]">
-            Acompanhe apenas os pedidos de hoje, com atualização automática da operação em tempo real.
+            Acompanhe apenas os pedidos de hoje, com atualizaÃ§Ã£o automÃ¡tica da operaÃ§Ã£o em tempo real.
           </p>
         </div>
         <div className="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700">
@@ -923,7 +636,7 @@ export default function OrdersPage() {
           <p className="mt-2 text-2xl font-black text-gray-950">{summary.delivering}</p>
         </div>
         <div className="surface-card rounded-[20px] p-4">
-              <p className="text-sm font-medium text-gray-500">Concluídos</p>
+              <p className="text-sm font-medium text-gray-500">ConcluÃ­dos</p>
           <p className="mt-2 text-2xl font-black text-gray-950">{summary.done}</p>
         </div>
         <div className="surface-card rounded-[20px] p-4">
@@ -945,12 +658,12 @@ export default function OrdersPage() {
       </section>
 
       <div className="mt-3 flex items-center justify-end text-xs font-medium text-gray-400">
-        Atualização automática ativa
+        AtualizaÃ§Ã£o automÃ¡tica ativa
       </div>
 
       <div className="surface-card mt-6 rounded-[28px] p-4 md:p-6">
         <div className="mb-5 rounded-[22px] border border-[var(--line)] bg-[#fcfaf7] px-4 py-4 text-sm text-gray-600">
-          Esta tela mostra apenas os pedidos criados hoje. Para consultar dias anteriores, use a aba <span className="font-bold text-gray-950">Histórico</span>.
+          Esta tela mostra apenas os pedidos criados hoje. Para consultar dias anteriores, use a aba <span className="font-bold text-gray-950">HistÃ³rico</span>.
         </div>
 
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
@@ -959,7 +672,7 @@ export default function OrdersPage() {
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Buscar por cliente, telefone ou número do pedido"
+              placeholder="Buscar por cliente, telefone ou nÃºmero do pedido"
               className="w-full bg-transparent text-sm outline-none placeholder:text-gray-400"
             />
           </div>
@@ -1021,7 +734,7 @@ export default function OrdersPage() {
                         </div>
                         <p className="mt-1 text-sm text-gray-500">
                           {order.customer_phone}
-                          {order.external_display_id ? ` • iFood #${order.external_display_id}` : ""}
+                          {order.external_display_id ? ` â€¢ iFood #${order.external_display_id}` : ""}
                         </p>
                       </div>
                     </div>
@@ -1086,7 +799,7 @@ export default function OrdersPage() {
                                   <p className="font-bold text-gray-950">Agendamento</p>
                                   <p className="mt-1 text-xs text-gray-500">
                                     {formatDateTime(getIfoodMeta(order).schedule.deliveryDateTimeStart)}
-                                    {" até "}
+                                    {" atÃ© "}
                                     {formatDateTime(getIfoodMeta(order).schedule.deliveryDateTimeEnd)}
                                   </p>
                                 </div>
@@ -1180,7 +893,7 @@ export default function OrdersPage() {
                                                 {event.event_full_code ? ` / ${event.event_full_code}` : ""}
                                               </p>
                                               <p className="mt-1 text-xs text-gray-500">
-                                                {event.event_group || "ORDER_STATUS"} •{" "}
+                                                {event.event_group || "ORDER_STATUS"} â€¢{" "}
                                                 {formatDateTime(event.event_created_at || event.created_at)}
                                               </p>
                                             </div>
@@ -1233,7 +946,7 @@ export default function OrdersPage() {
                           <div>
                             <p className="text-xs font-bold uppercase tracking-[0.14em] text-gray-400">Entrega</p>
                             <p className="mt-1 text-sm leading-6 text-gray-700">
-                    {order.address?.street || "Rua não informada"}, {order.address?.number || "S/N"}
+                    {order.address?.street || "Rua nÃ£o informada"}, {order.address?.number || "S/N"}
                               <br />
                               {order.address?.neighborhood || "Sem bairro"}
                             </p>
@@ -1259,13 +972,13 @@ export default function OrdersPage() {
                           </div>
                           <p className="text-xs text-gray-400">
                             Pagamento: {order.payment_method}
-                            {order.change_for ? ` • Troco para ${order.change_for}` : ""}
+                            {order.change_for ? ` â€¢ Troco para ${order.change_for}` : ""}
                           </p>
                           {isIfoodOrder(order) && (
                             <div className="mt-2 rounded-xl bg-[#fcfaf7] p-3 text-xs text-gray-500">
                               <p>
-                                Tipo: {getIfoodMeta(order).payment?.methodType || "não informado"} •{" "}
-                                Método: {getIfoodMeta(order).payment?.methodName || order.payment_method}
+                                Tipo: {getIfoodMeta(order).payment?.methodType || "nÃ£o informado"} â€¢{" "}
+                                MÃ©todo: {getIfoodMeta(order).payment?.methodName || order.payment_method}
                               </p>
                               {getIfoodMeta(order).payment?.cardBrand && (
                                 <p>Bandeira: {getIfoodMeta(order).payment.cardBrand}</p>
@@ -1278,7 +991,7 @@ export default function OrdersPage() {
                               )}
                               {listIfoodBenefits(order).length > 0 && (
                                 <div className="mt-2">
-                                  <p className="font-bold text-gray-700">Cupons/benefícios</p>
+                                  <p className="font-bold text-gray-700">Cupons/benefÃ­cios</p>
                                   {listIfoodBenefits(order).map((benefit: any, index: number) => (
                                     <p key={index}>
                                       {getIfoodBenefitLabel(benefit)}
@@ -1371,7 +1084,7 @@ export default function OrdersPage() {
                           >
                             <span className="inline-flex items-center gap-2">
                               <CheckCircle size={16} />
-                                Marcar concluído
+                                Marcar concluÃ­do
                             </span>
                           </button>
                         )}
