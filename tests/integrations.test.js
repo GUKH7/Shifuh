@@ -27,6 +27,28 @@ const ifoodActionRoutePath = path.join(
   "action",
   "route.ts",
 );
+const ifoodSyncRoutePath = path.join(
+  projectRoot,
+  "src",
+  "app",
+  "api",
+  "integrations",
+  "ifood",
+  "orders",
+  "sync",
+  "route.ts",
+);
+const ifoodEventsRoutePath = path.join(
+  projectRoot,
+  "src",
+  "app",
+  "api",
+  "integrations",
+  "ifood",
+  "orders",
+  "events",
+  "route.ts",
+);
 
 function compileTs(filePath) {
   const source = fs.readFileSync(filePath, "utf8");
@@ -73,6 +95,17 @@ class QueryBuilder {
     return this;
   }
 
+  order(column, options) {
+    this.ordering = this.ordering || [];
+    this.ordering.push({ column, options });
+    return this;
+  }
+
+  limit(count) {
+    this.limitCount = count;
+    return this.resolve();
+  }
+
   maybeSingle() {
     if (this.table === "restaurants") {
       const idFilter = this.filters.find((filter) => filter.column === "id")?.value;
@@ -97,6 +130,13 @@ class QueryBuilder {
       return Promise.resolve({ data: order, error: null });
     }
 
+    if (this.table === "ifood_integrations") {
+      return Promise.resolve({
+        data: this.state.integration || null,
+        error: this.state.integrationError || null,
+      });
+    }
+
     return Promise.resolve({ data: null, error: null });
   }
 
@@ -114,6 +154,20 @@ class QueryBuilder {
       this.state.orderUpdates.push({
         payload: this.payload,
         filters: this.filters,
+      });
+    }
+
+    if (this.table === "ifood_integrations" && this.operation === "update") {
+      this.state.integrationUpdates.push({
+        payload: this.payload,
+        filters: this.filters,
+      });
+    }
+
+    if (this.table === "ifood_order_events" && this.operation === "select") {
+      return Promise.resolve({
+        data: this.state.events || [],
+        error: this.state.eventsError || null,
       });
     }
 
@@ -324,4 +378,137 @@ test("bloqueia acao iFood quando o pedido nao pertence ao lojista", async () => 
   assert.match(body.error, /acesso negado/i);
   assert.equal(confirmCalled, false);
   assert.equal(state.orderUpdates.length, 0);
+});
+
+test("sincroniza pedidos iFood para loja autorizada e habilita sync", async () => {
+  const state = {
+    user: { id: "user-1" },
+    ownedRestaurant: { id: "restaurant-1", user_id: "user-1" },
+    integration: { merchant_id: "merchant-1", status: "disconnected" },
+    integrationUpserts: [],
+    integrationUpdates: [],
+    orderUpdates: [],
+  };
+  const calls = [];
+  class IfoodApiError extends Error {}
+  const { POST } = loadRoute(ifoodSyncRoutePath, state, {
+    "@/lib/ifood/orders": { IfoodApiError },
+    "@/lib/ifood/order-sync": {
+      syncIfoodOrdersForRestaurant: async (args) => {
+        calls.push(args);
+        return {
+          eventsReceived: 2,
+          eventsProcessed: 2,
+          eventsAcknowledged: 2,
+          pendingEvents: 0,
+        };
+      },
+    },
+  });
+
+  const response = await POST(jsonRequest({ restaurantId: "restaurant-1" }));
+  const body = await readJson(response);
+
+  assert.equal(response.status, 200);
+  assert.equal(body.ok, true);
+  assert.deepEqual(calls, [
+    {
+      restaurantId: "restaurant-1",
+      merchantId: "merchant-1",
+      source: "manual",
+    },
+  ]);
+  assert.deepEqual(state.integrationUpdates, [
+    {
+      payload: { order_sync_enabled: true, status: "configuring" },
+      filters: [{ column: "restaurant_id", value: "restaurant-1" }],
+    },
+  ]);
+});
+
+test("bloqueia sincronizacao iFood quando merchant nao esta configurado", async () => {
+  const state = {
+    user: { id: "user-1" },
+    ownedRestaurant: { id: "restaurant-1", user_id: "user-1" },
+    integration: { merchant_id: "", status: "configuring" },
+    integrationUpserts: [],
+    integrationUpdates: [],
+    orderUpdates: [],
+  };
+  let syncCalled = false;
+  class IfoodApiError extends Error {}
+  const { POST } = loadRoute(ifoodSyncRoutePath, state, {
+    "@/lib/ifood/orders": { IfoodApiError },
+    "@/lib/ifood/order-sync": {
+      syncIfoodOrdersForRestaurant: async () => {
+        syncCalled = true;
+      },
+    },
+  });
+
+  const response = await POST(jsonRequest({ restaurantId: "restaurant-1" }));
+  const body = await readJson(response);
+
+  assert.equal(response.status, 400);
+  assert.match(body.error, /merchant do iFood/i);
+  assert.equal(syncCalled, false);
+  assert.equal(state.integrationUpdates.length, 0);
+});
+
+test("lista eventos iFood apenas para pedido pertencente ao lojista", async () => {
+  const state = {
+    user: { id: "user-1" },
+    ownedRestaurant: { id: "restaurant-1", user_id: "user-1" },
+    order: {
+      id: "order-1",
+      restaurant_id: "restaurant-1",
+      external_source: "ifood",
+      external_order_id: "ifood-order-1",
+    },
+    events: [
+      {
+        id: "event-row-1",
+        ifood_event_id: "event-1",
+        ifood_order_id: "ifood-order-1",
+        event_code: "PLC",
+        processed_at: "2026-07-02T10:00:00.000Z",
+        acknowledged_at: "2026-07-02T10:01:00.000Z",
+      },
+    ],
+    integrationUpserts: [],
+    integrationUpdates: [],
+    orderUpdates: [],
+  };
+  const { GET } = loadRoute(ifoodEventsRoutePath, state);
+
+  const response = await GET(new Request("http://localhost/api/integrations/ifood/orders/events?orderId=order-1"));
+  const body = await readJson(response);
+
+  assert.equal(response.status, 200);
+  assert.equal(body.ok, true);
+  assert.deepEqual(body.events, state.events);
+});
+
+test("bloqueia listagem de eventos para pedido que nao e do iFood", async () => {
+  const state = {
+    user: { id: "user-1" },
+    ownedRestaurant: { id: "restaurant-1", user_id: "user-1" },
+    order: {
+      id: "order-1",
+      restaurant_id: "restaurant-1",
+      external_source: "manual",
+      external_order_id: null,
+    },
+    events: [],
+    integrationUpserts: [],
+    integrationUpdates: [],
+    orderUpdates: [],
+  };
+  const { GET } = loadRoute(ifoodEventsRoutePath, state);
+
+  const response = await GET(new Request("http://localhost/api/integrations/ifood/orders/events?orderId=order-1"));
+  const body = await readJson(response);
+
+  assert.equal(response.status, 400);
+  assert.match(body.error, /iFood/i);
 });
