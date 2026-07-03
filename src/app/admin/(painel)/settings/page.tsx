@@ -391,7 +391,7 @@ export default function SettingsPage() {
       const currentError = error || ifoodError;
       console.error("Erro ao salvar configurações:", currentError);
       const missingStorefrontColumn =
-        currentError?.message?.includes("storefront_") || (error as any)?.code === "42703";
+        currentError?.message?.includes("storefront_") || ("code" in (error || {}) && error?.code === "42703");
       const missingPrintColumn = currentError?.message?.includes("printer_auto_print");
       const missingIfoodTable = currentError?.message?.includes("ifood_integrations");
 
@@ -477,7 +477,7 @@ export default function SettingsPage() {
   const addTier = () => setTiers([...tiers, { distance: 1, time: 30, price: 5 }]);
   const removeTier = (index: number) => setTiers(tiers.filter((_, i) => i !== index));
 
-  const handleTimeChange = (index: number, field: keyof WorkHour, value: any) => {
+  const handleTimeChange = <K extends keyof WorkHour>(index: number, field: K, value: WorkHour[K]) => {
     const newSchedule = [...schedule];
     newSchedule[index] = { ...newSchedule[index], [field]: value };
     setSchedule(newSchedule);
@@ -505,7 +505,7 @@ export default function SettingsPage() {
     }).format(new Date(value));
   };
 
-  const callIfoodMerchantApi = async (payload: Record<string, any>) => {
+  const callIfoodMerchantApi = async (payload: Record<string, unknown>) => {
     const response = await fetch("/api/integrations/ifood/merchant", {
       method: "POST",
       headers: {

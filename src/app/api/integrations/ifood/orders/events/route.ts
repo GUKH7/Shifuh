@@ -15,7 +15,7 @@ export async function GET(request: Request) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.json({ error: "NÃ£o autenticado." }, { status: 401 });
+    return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   }
 
   const { data: order, error: orderError } = await supabase
@@ -25,7 +25,7 @@ export async function GET(request: Request) {
     .maybeSingle();
 
   if (orderError || !order) {
-    return NextResponse.json({ error: "Pedido nÃ£o encontrado." }, { status: 404 });
+    return NextResponse.json({ error: "Pedido não encontrado." }, { status: 404 });
   }
 
   const { data: restaurant, error: restaurantError } = await supabase
@@ -40,7 +40,7 @@ export async function GET(request: Request) {
   }
 
   if (order.external_source !== "ifood" || !order.external_order_id) {
-    return NextResponse.json({ error: "Este pedido nÃ£o Ã© do iFood." }, { status: 400 });
+    return NextResponse.json({ error: "Este pedido não é do iFood." }, { status: 400 });
   }
 
   const { data: events, error: eventsError } = await supabase
@@ -56,7 +56,7 @@ export async function GET(request: Request) {
 
   if (eventsError) {
     return NextResponse.json(
-      { error: eventsError.message || "NÃ£o foi possÃ­vel listar os eventos iFood." },
+      { error: eventsError.message || "Não foi possível listar os eventos iFood." },
       { status: 500 },
     );
   }

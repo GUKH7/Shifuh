@@ -1,11 +1,11 @@
-import type { IfoodCancellationReason, Order } from "./types";
+import type { IfoodBenefit, IfoodCancellationReason, JsonObject, Order, OrderAddon } from "./types";
 
 export const STATUS_FILTERS = [
   { id: "all", label: "Todos" },
   { id: "pending", label: "Pendentes" },
   { id: "preparing", label: "Em preparo" },
   { id: "delivering", label: "Em rota" },
-  { id: "done", label: "ConcluÃƒÂ­dos" },
+  { id: "done", label: "Concluídos" },
   { id: "canceled", label: "Cancelados" },
 ] as const;
 
@@ -116,7 +116,7 @@ export function getStatusLabel(status: Order["status"]) {
     case "delivering":
       return "Em rota";
     case "done":
-      return "ConcluÃƒÂ­do";
+      return "Concluído";
     case "canceled":
       return "Cancelado";
     default:
@@ -133,7 +133,7 @@ export function isIfoodOrder(order: Order) {
 }
 
 export function formatDateTime(value?: string | null) {
-  if (!value) return "NÃƒÂ£o informado";
+  if (!value) return "Não informado";
   return new Intl.DateTimeFormat("pt-BR", {
     dateStyle: "short",
     timeStyle: "short",
@@ -153,7 +153,7 @@ export function formatIfoodTiming(order: Order) {
   const timing = String(meta.orderTiming || "").toUpperCase();
   if (timing === "SCHEDULED") return "Agendado";
   if (timing === "IMMEDIATE") return "Imediato";
-  return timing || "Timing nÃƒÂ£o informado";
+  return timing || "Timing não informado";
 }
 
 export function listIfoodBenefits(order: Order) {
@@ -162,29 +162,29 @@ export function listIfoodBenefits(order: Order) {
   return benefits.items;
 }
 
-export function getAddonLabel(addon: any) {
-  return addon?.name || addon?.title || addon?.description || "Complemento";
+export function getAddonLabel(addon: OrderAddon) {
+  return addon.name || addon.title || addon.description || "Complemento";
 }
 
-export function getIfoodBenefitLabel(benefit: any) {
+export function getIfoodBenefitLabel(benefit: IfoodBenefit) {
   return (
-    benefit?.target ||
-    benefit?.description ||
-    benefit?.sponsorshipValues?.[0]?.name ||
-    benefit?.campaign?.name ||
-    benefit?.code ||
+    benefit.target ||
+    benefit.description ||
+    benefit.sponsorshipValues?.[0]?.name ||
+    benefit.campaign?.name ||
+    benefit.code ||
     "Beneficio"
   );
 }
 
-export function getIfoodBenefitAmount(benefit: any) {
-  return Number(benefit?.value || benefit?.amount || benefit?.sponsorshipValues?.[0]?.value || 0);
+export function getIfoodBenefitAmount(benefit: IfoodBenefit) {
+  return Number(benefit.value || benefit.amount || benefit.sponsorshipValues?.[0]?.value || 0);
 }
 
 export function formatIfoodPayment(order: Order) {
   const payment = getIfoodMeta(order).payment || {};
   const parts = [
-    payment.methodType || order.payment_method || "nao informado",
+    payment.methodType || order.payment_method || "não informado",
     payment.methodName,
     payment.cardBrand,
   ].filter(Boolean);
@@ -205,25 +205,32 @@ export function formatIfoodCancellationStatus(status?: string | null) {
     case "approved":
       return "Cancelamento aprovado";
     case "accepted":
-      return "SolicitaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o aceita";
+      return "Solicitação aceita";
     default:
       return "Evento de cancelamento";
   }
 }
 
-export function normalizeCancellationReasons(response: any): IfoodCancellationReason[] {
-  const source = Array.isArray(response?.reasons)
-    ? response.reasons
-    : Array.isArray(response?.reasons?.items)
-      ? response.reasons.items
-      : Array.isArray(response?.reasons?.reasons)
-        ? response.reasons.reasons
-        : Array.isArray(response?.reasons?.cancellationReasons)
-          ? response.reasons.cancellationReasons
+function asJsonObject(value: unknown): JsonObject {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as JsonObject) : {};
+}
+
+export function normalizeCancellationReasons(response: unknown): IfoodCancellationReason[] {
+  const payload = asJsonObject(response);
+  const reasons = asJsonObject(payload.reasons);
+  const source = Array.isArray(payload.reasons)
+    ? payload.reasons
+    : Array.isArray(reasons.items)
+      ? reasons.items
+      : Array.isArray(reasons.reasons)
+        ? reasons.reasons
+        : Array.isArray(reasons.cancellationReasons)
+          ? reasons.cancellationReasons
           : [];
 
   return source
-    .map((reason: any) => {
+    .map((rawReason) => {
+      const reason = asJsonObject(rawReason);
       const code = String(
         reason.cancellationCode ||
           reason.cancelCodeId ||

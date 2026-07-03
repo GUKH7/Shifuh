@@ -18,7 +18,7 @@ import {
 import { getCurrentRestaurant } from "@/lib/supabase/restaurant";
 import { useToast } from "@/components/ui/toast-provider";
 import { OrdersSkeleton } from "./OrdersSkeleton";
-import type { IfoodCancellationReason, IfoodEventAudit, Order } from "./types";
+import type { IfoodCancellationReason, IfoodEventAudit, Order, OrderItem } from "./types";
 import {
   STATUS_FILTERS,
   formatDate,
@@ -55,7 +55,14 @@ export default function OrdersPage() {
   const [errorMsg, setErrorMsg] = useState("");
   const [activeStatus, setActiveStatus] = useState<(typeof STATUS_FILTERS)[number]["id"]>("pending");
   const [query, setQuery] = useState("");
-  const [restaurantConfig, setRestaurantConfig] = useState<any>(null);
+  const [restaurantConfig, setRestaurantConfig] = useState<{
+    id: string;
+    name?: string | null;
+    printer_auto_print?: boolean | null;
+    printer_width?: number | null;
+    printer_font_size?: number | null;
+    printer_font_weight?: number | null;
+  } | null>(null);
   const [restaurantId, setRestaurantId] = useState("");
   const [lastSeenOrderId, setLastSeenOrderId] = useState("");
   const [expandedOrders, setExpandedOrders] = useState<string[]>([]);
@@ -95,7 +102,7 @@ export default function OrdersPage() {
             playNewOrderChime();
             showToast({
               title: "Novo pedido recebido",
-          description: `Pedido #${display === "0000" ? String(payload.new.id).slice(0, 4) : display} entrou na fila da operaÃ§Ã£o.`,
+          description: `Pedido #${display === "0000" ? String(payload.new.id).slice(0, 4) : display} entrou na fila da operação.`,
               tone: "success",
             });
           }
@@ -171,7 +178,7 @@ export default function OrdersPage() {
       const { restaurant: resto, user } = await getCurrentRestaurant(supabase);
       if (!user) return router.push("/admin/login");
       if (!resto) {
-        setErrorMsg("NÃ£o foi possÃ­vel localizar a loja.");
+        setErrorMsg("Não foi possível localizar a loja.");
         return;
       }
 
@@ -190,8 +197,9 @@ export default function OrdersPage() {
         return;
       }
 
-      const mappedOrders = (data || [])
-        .map((order: any) => ({
+      type OrderRow = Omit<Order, "items"> & { order_items?: Order["items"] | null };
+      const mappedOrders = ((data || []) as OrderRow[])
+        .map((order) => ({
           ...order,
           items: order.order_items || [],
         }))
@@ -209,7 +217,7 @@ export default function OrdersPage() {
       }
     } catch (err) {
       console.error(err);
-      setErrorMsg("Erro de conexÃ£o.");
+      setErrorMsg("Erro de conexão.");
     } finally {
       if (showLoading) setLoading(false);
     }
@@ -233,7 +241,7 @@ export default function OrdersPage() {
 
     if (!response.ok) {
       showToast({
-        title: "NÃ£o foi possÃ­vel atualizar o pedido",
+        title: "Não foi possível atualizar o pedido",
         description: result.error || "Tente novamente em instantes.",
         tone: "error",
       });
@@ -244,15 +252,15 @@ export default function OrdersPage() {
     showToast({
       title: "Status atualizado",
       description: result.notification?.sent
-        ? `Pedido #${formatDisplayNumber(order)} agora estÃ¡ como ${getStatusLabel(newStatus).toLowerCase()} e o cliente foi avisado.`
-        : `Pedido #${formatDisplayNumber(order)} agora estÃ¡ como ${getStatusLabel(newStatus).toLowerCase()}.`,
+        ? `Pedido #${formatDisplayNumber(order)} agora está como ${getStatusLabel(newStatus).toLowerCase()} e o cliente foi avisado.`
+        : `Pedido #${formatDisplayNumber(order)} agora está como ${getStatusLabel(newStatus).toLowerCase()}.`,
       tone: "success",
     });
 
     if (result.notification && !result.notification.sent && !result.notification.skipped) {
       showToast({
-        title: "WhatsApp nÃ£o enviado",
-        description: result.notification.error || "Confira a configuraÃ§Ã£o da API do robÃ´.",
+        title: "WhatsApp não enviado",
+        description: result.notification.error || "Confira a configuração da API do robô.",
         tone: "error",
       });
     }
@@ -265,7 +273,7 @@ export default function OrdersPage() {
   const runIfoodAction = async (
     order: Order,
     action: "confirm" | "dispatch" | "ready_to_pickup" | "cancellation_reasons" | "request_cancellation",
-    options: Record<string, any> = {},
+    options: Record<string, unknown> = {},
   ) => {
     const busyKey = `${order.id}:${action}`;
     setBusyIfoodAction(busyKey);
@@ -286,7 +294,7 @@ export default function OrdersPage() {
       const result = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(result.error || "NÃ£o foi possÃ­vel executar a aÃ§Ã£o no iFood.");
+        throw new Error(result.error || "Não foi possível executar a ação no iFood.");
       }
 
       if (action !== "cancellation_reasons") {
@@ -301,7 +309,7 @@ export default function OrdersPage() {
       return result;
     } catch (error) {
       showToast({
-        title: "NÃ£o foi possÃ­vel atualizar o pedido",
+        title: "Não foi possível atualizar o pedido",
         description:
           error instanceof Error ? error.message : "Tente novamente em instantes.",
         tone: "error",
@@ -319,8 +327,8 @@ export default function OrdersPage() {
 
     if (!firstReason) {
       showToast({
-        title: "Sem motivos disponiveis",
-        description: "NÃ£o hÃ¡ motivos de cancelamento disponÃ­veis para este pedido.",
+        title: "Sem motivos disponíveis",
+        description: "Não há motivos de cancelamento disponíveis para este pedido.",
         tone: "error",
       });
       return;
@@ -364,7 +372,7 @@ export default function OrdersPage() {
     const fontSize = restaurantConfig?.printer_font_size || 12;
     const fontWeight = restaurantConfig?.printer_font_weight || 700;
     const createdAt = new Date(order.created_at).toLocaleString("pt-BR");
-  const addressLineOne = `${order.address?.street || "Rua nÃ£o informada"}, ${order.address?.number || "S/N"}`;
+  const addressLineOne = `${order.address?.street || "Rua não informada"}, ${order.address?.number || "S/N"}`;
     const addressLineTwo = [order.address?.neighborhood, order.address?.city, order.address?.state]
       .filter(Boolean)
       .join(" - ");
@@ -379,7 +387,7 @@ export default function OrdersPage() {
           </div>
           ${
             item.addons?.length
-              ? `<div style="margin-top:4px;color:#444;">Adicionais: ${item.addons.map((addon: any) => getAddonLabel(addon)).join(", ")}</div>`
+              ? `<div style="margin-top:4px;color:#444;">Adicionais: ${item.addons.map((addon) => getAddonLabel(addon)).join(", ")}</div>`
               : ""
           }
           ${
@@ -487,7 +495,7 @@ export default function OrdersPage() {
       const result = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(result.error || "NÃƒÂ£o foi possÃƒÂ­vel carregar os eventos iFood.");
+        throw new Error(result.error || "Não foi possível carregar os eventos iFood.");
       }
 
       setIfoodEventsByOrder((current) => ({
@@ -543,7 +551,7 @@ export default function OrdersPage() {
                   Pedido #{formatDisplayNumber(cancellationModalOrder)}
                 </h2>
                 <p className="mt-1 text-sm text-gray-500">
-                  Selecione o motivo retornado pelo iFood e confirme a solicitaÃ§Ã£o.
+                  Selecione o motivo retornado pelo iFood e confirme a solicitação.
                 </p>
               </div>
               <button
@@ -614,7 +622,7 @@ export default function OrdersPage() {
         <div>
           <h1 className="text-3xl font-black tracking-tight text-gray-950">Pedidos</h1>
           <p className="mt-1 text-sm text-[var(--muted)]">
-            Acompanhe apenas os pedidos de hoje, com atualizaÃ§Ã£o automÃ¡tica da operaÃ§Ã£o em tempo real.
+            Acompanhe apenas os pedidos de hoje, com atualização automática da operação em tempo real.
           </p>
         </div>
         <div className="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700">
@@ -636,7 +644,7 @@ export default function OrdersPage() {
           <p className="mt-2 text-2xl font-black text-gray-950">{summary.delivering}</p>
         </div>
         <div className="surface-card rounded-[20px] p-4">
-              <p className="text-sm font-medium text-gray-500">ConcluÃ­dos</p>
+              <p className="text-sm font-medium text-gray-500">Concluídos</p>
           <p className="mt-2 text-2xl font-black text-gray-950">{summary.done}</p>
         </div>
         <div className="surface-card rounded-[20px] p-4">
@@ -658,12 +666,12 @@ export default function OrdersPage() {
       </section>
 
       <div className="mt-3 flex items-center justify-end text-xs font-medium text-gray-400">
-        AtualizaÃ§Ã£o automÃ¡tica ativa
+        Atualização automática ativa
       </div>
 
       <div className="surface-card mt-6 rounded-[28px] p-4 md:p-6">
         <div className="mb-5 rounded-[22px] border border-[var(--line)] bg-[#fcfaf7] px-4 py-4 text-sm text-gray-600">
-          Esta tela mostra apenas os pedidos criados hoje. Para consultar dias anteriores, use a aba <span className="font-bold text-gray-950">HistÃ³rico</span>.
+          Esta tela mostra apenas os pedidos criados hoje. Para consultar dias anteriores, use a aba <span className="font-bold text-gray-950">Histórico</span>.
         </div>
 
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
@@ -672,7 +680,7 @@ export default function OrdersPage() {
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Buscar por cliente, telefone ou nÃºmero do pedido"
+              placeholder="Buscar por cliente, telefone ou número do pedido"
               className="w-full bg-transparent text-sm outline-none placeholder:text-gray-400"
             />
           </div>
@@ -706,6 +714,7 @@ export default function OrdersPage() {
           ) : (
             filteredOrders.map((order) => {
               const isExpanded = expandedOrders.includes(order.id);
+              const ifoodCancellation = getIfoodCancellation(order);
 
               return (
                 <div
@@ -734,7 +743,7 @@ export default function OrdersPage() {
                         </div>
                         <p className="mt-1 text-sm text-gray-500">
                           {order.customer_phone}
-                          {order.external_display_id ? ` â€¢ iFood #${order.external_display_id}` : ""}
+                          {order.external_display_id ? ` • iFood #${order.external_display_id}` : ""}
                         </p>
                       </div>
                     </div>
@@ -757,7 +766,7 @@ export default function OrdersPage() {
                   {isExpanded && (
                     <div className="grid gap-6 border-t border-[var(--line)] px-5 py-5 lg:grid-cols-[1.15fr_0.85fr_240px]">
                       <div className="space-y-3">
-                        {order.items?.map((item: any, index: number) => (
+                        {order.items?.map((item: OrderItem, index: number) => (
                           <div key={index} className="rounded-2xl bg-[#fcfaf7] p-3">
                             <div className="flex items-start gap-3">
                               <span className="rounded-lg bg-white px-2 py-1 text-xs font-bold text-gray-500">
@@ -767,7 +776,7 @@ export default function OrdersPage() {
                                 <p className="font-semibold text-gray-950">{item.product_name}</p>
                                 {item.addons?.length ? (
                                   <p className="mt-1 text-xs text-gray-500">
-                                    {item.addons.map((addon: any) => getAddonLabel(addon)).join(", ")}
+                                    {item.addons.map((addon) => getAddonLabel(addon)).join(", ")}
                                   </p>
                                 ) : null}
                                 {item.observation ? (
@@ -798,9 +807,9 @@ export default function OrdersPage() {
                                 <div className="rounded-xl bg-[#fcfaf7] p-3">
                                   <p className="font-bold text-gray-950">Agendamento</p>
                                   <p className="mt-1 text-xs text-gray-500">
-                                    {formatDateTime(getIfoodMeta(order).schedule.deliveryDateTimeStart)}
-                                    {" atÃ© "}
-                                    {formatDateTime(getIfoodMeta(order).schedule.deliveryDateTimeEnd)}
+                                    {formatDateTime(getIfoodMeta(order).schedule?.deliveryDateTimeStart)}
+                                    {" até "}
+                                    {formatDateTime(getIfoodMeta(order).schedule?.deliveryDateTimeEnd)}
                                   </p>
                                 </div>
                               )}
@@ -815,19 +824,19 @@ export default function OrdersPage() {
                                   Obs. pedido: {getIfoodMeta(order).observations}
                                 </div>
                               )}
-                              {getIfoodCancellation(order) && (
+                              {ifoodCancellation && (
                                 <div className="rounded-xl border border-red-100 bg-red-50 p-3 text-red-700">
                                   <p className="font-bold">
-                                    {formatIfoodCancellationStatus(getIfoodCancellation(order).status)}
+                                    {formatIfoodCancellationStatus(ifoodCancellation.status)}
                                   </p>
-                                  {getIfoodCancellation(order).reason && (
+                                  {ifoodCancellation.reason && (
                                     <p className="mt-1 text-xs">
-                                      {getIfoodCancellation(order).reason}
+                                      {ifoodCancellation.reason}
                                     </p>
                                   )}
-                                  {getIfoodCancellation(order).eventCreatedAt && (
+                                  {ifoodCancellation.eventCreatedAt && (
                                     <p className="mt-1 text-xs text-red-400">
-                                      {formatDateTime(getIfoodCancellation(order).eventCreatedAt)}
+                                      {formatDateTime(ifoodCancellation.eventCreatedAt)}
                                     </p>
                                   )}
                                 </div>
@@ -841,8 +850,8 @@ export default function OrdersPage() {
                                 className="rounded-xl border border-[var(--line)] bg-[#fcfaf7] px-3 py-2 text-left text-xs font-bold text-gray-500"
                               >
                                 {expandedTechnicalOrders.includes(order.id)
-                                  ? "Ocultar detalhes tecnicos"
-                                  : "Detalhes tecnicos"}
+                                  ? "Ocultar detalhes técnicos"
+                                  : "Detalhes técnicos"}
                               </button>
                               {expandedTechnicalOrders.includes(order.id) && (
                               <div className="rounded-xl border border-[var(--line)] bg-[#fcfaf7] p-3">
@@ -856,12 +865,12 @@ export default function OrdersPage() {
                                   <div className="flex items-center justify-between gap-3">
                                     <span className="text-gray-500">Pedido externo</span>
                                     <strong className="text-gray-950">
-                                      {order.external_display_id || "Nao informado"}
+                                      {order.external_display_id || "Não informado"}
                                     </strong>
                                   </div>
                                 </div>
                                 <div className="flex items-center justify-between gap-3">
-                                  <p className="font-bold text-gray-950">Eventos da integracao</p>
+                                  <p className="font-bold text-gray-950">Eventos da integração</p>
                                   <button
                                     type="button"
                                     onClick={(event) => {
@@ -893,7 +902,7 @@ export default function OrdersPage() {
                                                 {event.event_full_code ? ` / ${event.event_full_code}` : ""}
                                               </p>
                                               <p className="mt-1 text-xs text-gray-500">
-                                                {event.event_group || "ORDER_STATUS"} â€¢{" "}
+                                                {event.event_group || "ORDER_STATUS"} •{" "}
                                                 {formatDateTime(event.event_created_at || event.created_at)}
                                               </p>
                                             </div>
@@ -946,7 +955,7 @@ export default function OrdersPage() {
                           <div>
                             <p className="text-xs font-bold uppercase tracking-[0.14em] text-gray-400">Entrega</p>
                             <p className="mt-1 text-sm leading-6 text-gray-700">
-                    {order.address?.street || "Rua nÃ£o informada"}, {order.address?.number || "S/N"}
+                    {order.address?.street || "Rua não informada"}, {order.address?.number || "S/N"}
                               <br />
                               {order.address?.neighborhood || "Sem bairro"}
                             </p>
@@ -972,27 +981,27 @@ export default function OrdersPage() {
                           </div>
                           <p className="text-xs text-gray-400">
                             Pagamento: {order.payment_method}
-                            {order.change_for ? ` â€¢ Troco para ${order.change_for}` : ""}
+                            {order.change_for ? ` • Troco para ${order.change_for}` : ""}
                           </p>
                           {isIfoodOrder(order) && (
                             <div className="mt-2 rounded-xl bg-[#fcfaf7] p-3 text-xs text-gray-500">
                               <p>
-                                Tipo: {getIfoodMeta(order).payment?.methodType || "nÃ£o informado"} â€¢{" "}
-                                MÃ©todo: {getIfoodMeta(order).payment?.methodName || order.payment_method}
+                                Tipo: {getIfoodMeta(order).payment?.methodType || "não informado"} •{" "}
+                                Método: {getIfoodMeta(order).payment?.methodName || order.payment_method}
                               </p>
                               {getIfoodMeta(order).payment?.cardBrand && (
-                                <p>Bandeira: {getIfoodMeta(order).payment.cardBrand}</p>
+                                <p>Bandeira: {getIfoodMeta(order).payment?.cardBrand}</p>
                               )}
                               {getIfoodMeta(order).payment?.changeFor && (
                                 <p>
                                   Troco para:{" "}
-                                  {formatPrice(Number(getIfoodMeta(order).payment.changeFor))}
+                                  {formatPrice(Number(getIfoodMeta(order).payment?.changeFor))}
                                 </p>
                               )}
                               {listIfoodBenefits(order).length > 0 && (
                                 <div className="mt-2">
-                                  <p className="font-bold text-gray-700">Cupons/benefÃ­cios</p>
-                                  {listIfoodBenefits(order).map((benefit: any, index: number) => (
+                                  <p className="font-bold text-gray-700">Cupons/benefícios</p>
+                                  {listIfoodBenefits(order).map((benefit, index: number) => (
                                     <p key={index}>
                                       {getIfoodBenefitLabel(benefit)}
                                       : {formatPrice(getIfoodBenefitAmount(benefit))}
@@ -1084,7 +1093,7 @@ export default function OrdersPage() {
                           >
                             <span className="inline-flex items-center gap-2">
                               <CheckCircle size={16} />
-                                Marcar concluÃ­do
+                                Marcar concluído
                             </span>
                           </button>
                         )}

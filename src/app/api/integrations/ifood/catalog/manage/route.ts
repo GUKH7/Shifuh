@@ -73,7 +73,7 @@ export async function POST(request: Request) {
     const action = body.action || "prepare_homologation";
 
     if (!restaurantId) {
-      return NextResponse.json({ error: "Loja invÃ¡lida." }, { status: 400 });
+      return NextResponse.json({ error: "Loja inválida." }, { status: 400 });
     }
 
     const supabase = await createClient();
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "NÃ£o autenticado." }, { status: 401 });
+      return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
     }
 
     const { data: ownedRestaurant, error: restaurantError } = await supabase
@@ -93,7 +93,7 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     if (restaurantError || !ownedRestaurant) {
-      return NextResponse.json({ error: "Loja nÃ£o encontrada." }, { status: 404 });
+      return NextResponse.json({ error: "Loja não encontrada." }, { status: 404 });
     }
 
     const admin = createAdminClient();
@@ -105,7 +105,7 @@ export async function POST(request: Request) {
 
     if (integrationError || !integration?.merchant_id) {
       return NextResponse.json(
-        { error: "Configure o merchant do iFood antes de publicar o catÃ¡logo." },
+        { error: "Configure o merchant do iFood antes de publicar o catálogo." },
         { status: 400 },
       );
     }
@@ -121,7 +121,7 @@ export async function POST(request: Request) {
           : null;
 
     if (!result) {
-      return NextResponse.json({ error: "AÃ§Ã£o Catalog invÃ¡lida." }, { status: 400 });
+      return NextResponse.json({ error: "Ação Catalog inválida." }, { status: 400 });
     }
 
     await admin
@@ -151,13 +151,13 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
-    console.error("Erro ao gerenciar catÃ¡logo do iFood:", error);
+    console.error("Erro ao gerenciar catálogo do iFood:", error);
     return NextResponse.json(
       {
         error:
           error instanceof Error
             ? error.message
-            : "NÃ£o foi possÃ­vel publicar o cenÃ¡rio de catÃ¡logo no iFood.",
+            : "Não foi possível publicar o cenário de catálogo no iFood.",
       },
       { status: 500 },
     );

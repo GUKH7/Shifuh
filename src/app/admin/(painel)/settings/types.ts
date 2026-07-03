@@ -56,10 +56,10 @@ export interface IfoodConnectionCheckState {
 }
 
 export interface IfoodMerchantSnapshot {
-  merchants?: any;
-  details?: any;
-  status?: any;
-  interruptions?: any;
-  openingHours?: any;
+  merchants?: unknown;
+  details?: unknown;
+  status?: unknown;
+  interruptions?: unknown;
+  openingHours?: unknown;
   checkedAt?: string;
 }

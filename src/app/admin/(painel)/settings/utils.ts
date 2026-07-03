@@ -59,7 +59,7 @@ export async function getCroppedImg(imageSrc: string, pixelCrop: { x: number; y:
   );
 }
 
-export async function readJsonResponse(response: Response) {
+export async function readJsonResponse(response: Response): Promise<Record<string, any>> {
   const payloadText = await response.text();
 
   if (!payloadText) {
