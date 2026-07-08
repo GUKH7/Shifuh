@@ -182,6 +182,7 @@ export default function OrdersPage() {
   const [loadingIfoodEvents, setLoadingIfoodEvents] = useState<Record<string, boolean>>({});
   const [expandedIfoodEvent, setExpandedIfoodEvent] = useState("");
   const [expandedTechnicalOrders, setExpandedTechnicalOrders] = useState<string[]>([]);
+  const [isSummaryOpen, setIsSummaryOpen] = useState(false);
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -753,7 +754,7 @@ export default function OrdersPage() {
         </div>
       )}
 
-      <div className="mx-auto max-w-[1540px] space-y-5">
+      <div className={`mx-auto max-w-[1540px] space-y-5 ${isSummaryOpen ? "pb-96" : "pb-28"}`}>
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <h1 className="text-3xl font-black tracking-tight text-gray-950">Pedidos</h1>
@@ -1256,13 +1257,11 @@ export default function OrdersPage() {
           </button>
         </div>
 
-        <section className="rounded-[18px] border border-[var(--line)] bg-white p-5 shadow-sm">
-          <div className="grid gap-4 xl:grid-cols-[240px_1fr]">
-            <div>
-              <p className="text-lg font-black text-gray-950">Resumo do dia</p>
-              <p className="mt-1 text-sm text-gray-500">Atualizado em tempo real</p>
-            </div>
+      </div>
 
+      <section className="fixed bottom-4 right-4 z-40 w-[min(calc(100vw-7rem),1540px)] overflow-hidden rounded-[22px] border border-[var(--line)] bg-white/95 shadow-[0_24px_70px_rgba(17,16,15,0.16)] backdrop-blur md:right-8">
+        {isSummaryOpen && (
+          <div className="border-b border-[var(--line)] p-4">
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
               {STAT_CARDS.map((card) => {
                 const count = summary[card.id];
@@ -1273,12 +1272,12 @@ export default function OrdersPage() {
                     type="button"
                     key={card.id}
                     onClick={() => setActiveStatus(card.id)}
-                    className={`flex min-h-[78px] items-center justify-between rounded-[16px] border bg-white px-4 py-4 text-left transition hover:border-orange-200 ${
+                    className={`flex min-h-[70px] items-center justify-between rounded-[16px] border bg-white px-4 py-3 text-left transition hover:border-orange-200 ${
                       activeStatus === card.id ? "border-orange-300 ring-2 ring-orange-50" : "border-[var(--line)]"
                     }`}
                   >
                     <span className="flex min-w-0 items-center gap-3">
-                      <span className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${card.tone}`}>
+                      <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${card.tone}`}>
                         {meta.icon}
                       </span>
                       <span className="truncate text-sm font-bold text-gray-600">{card.title}</span>
@@ -1290,9 +1289,9 @@ export default function OrdersPage() {
                 );
               })}
 
-              <div className="flex min-h-[78px] items-center gap-3 rounded-[16px] border border-[var(--line)] bg-white px-4 py-4">
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 text-[var(--brand)]">
-                  <WalletCards size={19} />
+              <div className="flex min-h-[70px] items-center gap-3 rounded-[16px] border border-[var(--line)] bg-white px-4 py-3">
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-orange-50 text-[var(--brand)]">
+                  <WalletCards size={18} />
                 </span>
                 <div>
                   <p className="text-sm font-bold text-gray-500">Valor de hoje</p>
@@ -1300,32 +1299,58 @@ export default function OrdersPage() {
                 </div>
               </div>
             </div>
-          </div>
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-4">
-            <div className="rounded-2xl border border-[var(--line)] p-4">
-              <p className="text-sm font-bold text-gray-500">Total de pedidos</p>
-              <p className="mt-2 text-2xl font-black text-gray-950">{summary.count}</p>
-              <p className="mt-1 text-xs font-bold text-emerald-600">Online agora</p>
-            </div>
-            <div className="rounded-2xl border border-[var(--line)] p-4">
-              <p className="text-sm font-bold text-gray-500">Faturamento</p>
-              <p className="mt-2 text-2xl font-black text-gray-950">{formatPrice(summary.revenue)}</p>
-              <p className="mt-1 text-xs font-bold text-emerald-600">Sem cancelados</p>
-            </div>
-            <div className="rounded-2xl border border-[var(--line)] p-4">
-              <p className="text-sm font-bold text-gray-500">Cancelados</p>
-              <p className="mt-2 text-2xl font-black text-gray-950">{summary.canceled}</p>
-              <p className="mt-1 text-xs font-bold text-gray-500">Hoje</p>
-            </div>
-            <div className="rounded-2xl border border-[var(--line)] p-4">
-              <p className="text-sm font-bold text-gray-500">Ticket medio</p>
-              <p className="mt-2 text-2xl font-black text-gray-950">{formatPrice(summary.averageTicket)}</p>
-              <p className="mt-1 text-xs font-bold text-gray-500">{summary.visibleCount} visiveis</p>
+            <div className="mt-3 grid gap-3 lg:grid-cols-4">
+              <div className="rounded-2xl border border-[var(--line)] p-4">
+                <p className="text-sm font-bold text-gray-500">Total de pedidos</p>
+                <p className="mt-2 text-2xl font-black text-gray-950">{summary.count}</p>
+                <p className="mt-1 text-xs font-bold text-emerald-600">Online agora</p>
+              </div>
+              <div className="rounded-2xl border border-[var(--line)] p-4">
+                <p className="text-sm font-bold text-gray-500">Faturamento</p>
+                <p className="mt-2 text-2xl font-black text-gray-950">{formatPrice(summary.revenue)}</p>
+                <p className="mt-1 text-xs font-bold text-emerald-600">Sem cancelados</p>
+              </div>
+              <div className="rounded-2xl border border-[var(--line)] p-4">
+                <p className="text-sm font-bold text-gray-500">Cancelados</p>
+                <p className="mt-2 text-2xl font-black text-gray-950">{summary.canceled}</p>
+                <p className="mt-1 text-xs font-bold text-gray-500">Hoje</p>
+              </div>
+              <div className="rounded-2xl border border-[var(--line)] p-4">
+                <p className="text-sm font-bold text-gray-500">Ticket medio</p>
+                <p className="mt-2 text-2xl font-black text-gray-950">{formatPrice(summary.averageTicket)}</p>
+                <p className="mt-1 text-xs font-bold text-gray-500">{summary.visibleCount} visiveis</p>
+              </div>
             </div>
           </div>
-        </section>
-      </div>
+        )}
+
+        <button
+          type="button"
+          onClick={() => setIsSummaryOpen((current) => !current)}
+          className="flex w-full flex-col gap-3 px-4 py-3 text-left md:flex-row md:items-center md:justify-between"
+          aria-expanded={isSummaryOpen}
+        >
+          <div>
+            <p className="text-lg font-black text-gray-950">Resumo do dia</p>
+            <p className="mt-1 text-sm text-gray-500">Atualizado em tempo real</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="rounded-xl bg-orange-50 px-3 py-2 text-sm font-black text-[var(--brand)]">
+              {summary.count} pedidos
+            </span>
+            <span className="rounded-xl bg-emerald-50 px-3 py-2 text-sm font-black text-emerald-700">
+              {formatPrice(summary.revenue)}
+            </span>
+            <span className="rounded-xl bg-red-50 px-3 py-2 text-sm font-black text-red-700">
+              {summary.canceled} cancelados
+            </span>
+            <span className={`inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--line)] bg-white text-gray-600 transition-transform ${isSummaryOpen ? "rotate-180" : ""}`}>
+              <ChevronDown size={18} />
+            </span>
+          </div>
+        </button>
+      </section>
     </>
   );
 }
