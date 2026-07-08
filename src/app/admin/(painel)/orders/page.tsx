@@ -754,7 +754,7 @@ export default function OrdersPage() {
         </div>
       )}
 
-      <div className={`mx-auto max-w-[1540px] space-y-5 ${isSummaryOpen ? "pb-96" : "pb-28"}`}>
+      <div className={`mx-auto max-w-[1540px] space-y-5 ${isSummaryOpen ? "pb-[28rem]" : "pb-24"}`}>
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <h1 className="text-3xl font-black tracking-tight text-gray-950">Pedidos</h1>
@@ -1259,10 +1259,10 @@ export default function OrdersPage() {
 
       </div>
 
-      <section className="fixed bottom-4 right-4 z-40 w-[min(calc(100vw-7rem),1540px)] overflow-hidden rounded-[22px] border border-[var(--line)] bg-white/95 shadow-[0_24px_70px_rgba(17,16,15,0.16)] backdrop-blur md:right-8">
+      <section className="fixed bottom-3 left-3 right-3 z-40 overflow-hidden rounded-[20px] border border-[var(--line)] bg-white/95 shadow-[0_18px_55px_rgba(17,16,15,0.14)] backdrop-blur md:bottom-4 md:left-28 md:right-8">
         {isSummaryOpen && (
-          <div className="border-b border-[var(--line)] p-4">
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+          <div className="max-h-[70vh] overflow-y-auto border-b border-[var(--line)] p-3 md:p-4">
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-6">
               {STAT_CARDS.map((card) => {
                 const count = summary[card.id];
                 const meta = STATUS_META[card.id];
@@ -1272,7 +1272,7 @@ export default function OrdersPage() {
                     type="button"
                     key={card.id}
                     onClick={() => setActiveStatus(card.id)}
-                    className={`flex min-h-[70px] items-center justify-between rounded-[16px] border bg-white px-4 py-3 text-left transition hover:border-orange-200 ${
+                    className={`flex min-h-[64px] items-center justify-between rounded-[16px] border bg-white px-3 py-2.5 text-left transition hover:border-orange-200 ${
                       activeStatus === card.id ? "border-orange-300 ring-2 ring-orange-50" : "border-[var(--line)]"
                     }`}
                   >
@@ -1300,7 +1300,7 @@ export default function OrdersPage() {
               </div>
             </div>
 
-            <div className="mt-3 grid gap-3 lg:grid-cols-4">
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
               <div className="rounded-2xl border border-[var(--line)] p-4">
                 <p className="text-sm font-bold text-gray-500">Total de pedidos</p>
                 <p className="mt-2 text-2xl font-black text-gray-950">{summary.count}</p>
@@ -1328,24 +1328,24 @@ export default function OrdersPage() {
         <button
           type="button"
           onClick={() => setIsSummaryOpen((current) => !current)}
-          className="flex w-full flex-col gap-3 px-4 py-3 text-left md:flex-row md:items-center md:justify-between"
+          className="flex w-full flex-col gap-2 px-3 py-2.5 text-left sm:flex-row sm:items-center sm:justify-between md:px-4"
           aria-expanded={isSummaryOpen}
         >
           <div>
-            <p className="text-lg font-black text-gray-950">Resumo do dia</p>
-            <p className="mt-1 text-sm text-gray-500">Atualizado em tempo real</p>
+            <p className="text-base font-black text-gray-950 md:text-lg">Resumo do dia</p>
+            <p className="text-xs text-gray-500 md:text-sm">Atualizado em tempo real</p>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="rounded-xl bg-orange-50 px-3 py-2 text-sm font-black text-[var(--brand)]">
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+            <span className="rounded-xl bg-orange-50 px-2.5 py-1.5 text-xs font-black text-[var(--brand)] md:px-3 md:py-2 md:text-sm">
               {summary.count} pedidos
             </span>
-            <span className="rounded-xl bg-emerald-50 px-3 py-2 text-sm font-black text-emerald-700">
+            <span className="rounded-xl bg-emerald-50 px-2.5 py-1.5 text-xs font-black text-emerald-700 md:px-3 md:py-2 md:text-sm">
               {formatPrice(summary.revenue)}
             </span>
-            <span className="rounded-xl bg-red-50 px-3 py-2 text-sm font-black text-red-700">
+            <span className="rounded-xl bg-red-50 px-2.5 py-1.5 text-xs font-black text-red-700 md:px-3 md:py-2 md:text-sm">
               {summary.canceled} cancelados
             </span>
-            <span className={`inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--line)] bg-white text-gray-600 transition-transform ${isSummaryOpen ? "rotate-180" : ""}`}>
+            <span className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--line)] bg-white text-gray-600 transition-transform ${isSummaryOpen ? "rotate-180" : ""}`}>
               <ChevronDown size={18} />
             </span>
           </div>
