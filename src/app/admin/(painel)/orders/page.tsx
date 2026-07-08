@@ -753,7 +753,7 @@ export default function OrdersPage() {
         </div>
       )}
 
-      <div className="mx-auto max-w-[1540px] space-y-6">
+      <div className="mx-auto max-w-[1540px] space-y-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <h1 className="text-3xl font-black tracking-tight text-gray-950">Pedidos</h1>
@@ -773,44 +773,6 @@ export default function OrdersPage() {
             </div>
           </div>
         </div>
-
-        <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
-          {STAT_CARDS.map((card) => {
-            const count = summary[card.id];
-            const meta = STATUS_META[card.id];
-
-            return (
-              <button
-                type="button"
-                key={card.id}
-                onClick={() => setActiveStatus(card.id)}
-                className={`flex min-h-[78px] items-center justify-between rounded-[16px] border bg-white px-4 py-4 text-left shadow-sm transition hover:border-orange-200 ${
-                  activeStatus === card.id ? "border-orange-300 ring-2 ring-orange-50" : "border-[var(--line)]"
-                }`}
-              >
-                <span className="flex items-center gap-3">
-                  <span className={`inline-flex h-10 w-10 items-center justify-center rounded-xl ${card.tone}`}>
-                    {meta.icon}
-                  </span>
-                  <span className="text-sm font-bold text-gray-600">{card.title}</span>
-                </span>
-                <span className="rounded-full bg-gray-100 px-2.5 py-1 text-sm font-black text-gray-950">
-                  {count}
-                </span>
-              </button>
-            );
-          })}
-
-          <div className="flex min-h-[78px] items-center gap-3 rounded-[16px] border border-[var(--line)] bg-white px-4 py-4 shadow-sm">
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 text-[var(--brand)]">
-              <WalletCards size={19} />
-            </span>
-            <div>
-              <p className="text-sm font-bold text-gray-500">Valor de hoje</p>
-              <p className="text-lg font-black text-gray-950">{formatPrice(summary.revenue)}</p>
-            </div>
-          </div>
-        </section>
 
         <section className="space-y-4">
           <div className="flex flex-col gap-3 xl:flex-row">
@@ -1271,12 +1233,76 @@ export default function OrdersPage() {
           </div>
         </section>
 
+        <div className="flex flex-col gap-4 rounded-[18px] border border-dashed border-orange-200 bg-white px-5 py-4 shadow-sm md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-4">
+            <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 text-[var(--brand)]">
+              <Package size={24} />
+            </span>
+            <div>
+              <p className="font-black text-gray-950">Nao encontrou o pedido que procura?</p>
+              <p className="mt-1 text-sm text-gray-500">Tente ajustar os filtros ou buscar por outro termo.</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setQuery("");
+              setActiveStatus("all");
+            }}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700 shadow-sm"
+          >
+            <RefreshCw size={16} />
+            Limpar filtros
+          </button>
+        </div>
+
         <section className="rounded-[18px] border border-[var(--line)] bg-white p-5 shadow-sm">
-          <div className="grid gap-4 lg:grid-cols-[1.2fr_repeat(4,1fr)]">
+          <div className="grid gap-4 xl:grid-cols-[240px_1fr]">
             <div>
               <p className="text-lg font-black text-gray-950">Resumo do dia</p>
               <p className="mt-1 text-sm text-gray-500">Atualizado em tempo real</p>
             </div>
+
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+              {STAT_CARDS.map((card) => {
+                const count = summary[card.id];
+                const meta = STATUS_META[card.id];
+
+                return (
+                  <button
+                    type="button"
+                    key={card.id}
+                    onClick={() => setActiveStatus(card.id)}
+                    className={`flex min-h-[78px] items-center justify-between rounded-[16px] border bg-white px-4 py-4 text-left transition hover:border-orange-200 ${
+                      activeStatus === card.id ? "border-orange-300 ring-2 ring-orange-50" : "border-[var(--line)]"
+                    }`}
+                  >
+                    <span className="flex min-w-0 items-center gap-3">
+                      <span className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${card.tone}`}>
+                        {meta.icon}
+                      </span>
+                      <span className="truncate text-sm font-bold text-gray-600">{card.title}</span>
+                    </span>
+                    <span className="rounded-full bg-gray-100 px-2.5 py-1 text-sm font-black text-gray-950">
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+
+              <div className="flex min-h-[78px] items-center gap-3 rounded-[16px] border border-[var(--line)] bg-white px-4 py-4">
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 text-[var(--brand)]">
+                  <WalletCards size={19} />
+                </span>
+                <div>
+                  <p className="text-sm font-bold text-gray-500">Valor de hoje</p>
+                  <p className="text-lg font-black text-gray-950">{formatPrice(summary.revenue)}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-4 lg:grid-cols-4">
             <div className="rounded-2xl border border-[var(--line)] p-4">
               <p className="text-sm font-bold text-gray-500">Total de pedidos</p>
               <p className="mt-2 text-2xl font-black text-gray-950">{summary.count}</p>
