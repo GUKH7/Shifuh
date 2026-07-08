@@ -48,14 +48,14 @@ export function formatDisplayNumber(order: Pick<Order, "display_number" | "id">)
 }
 
 export function playNewOrderChime() {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined") return false;
 
   try {
     const AudioContextCtor =
       window.AudioContext ||
       (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
 
-    if (!AudioContextCtor) return;
+    if (!AudioContextCtor) return false;
 
     const audioContext = new AudioContextCtor();
     const now = audioContext.currentTime;
@@ -85,8 +85,11 @@ export function playNewOrderChime() {
     window.setTimeout(() => {
       void audioContext.close();
     }, 700);
+
+    return true;
   } catch {
     // Some browsers block audio before the first user interaction.
+    return false;
   }
 }
 

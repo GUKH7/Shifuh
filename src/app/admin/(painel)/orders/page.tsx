@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useRouter } from "next/navigation";
 import {
+  BellRing,
   Bike,
   CalendarDays,
   CheckCircle2,
@@ -13,9 +14,7 @@ import {
   Eye,
   Filter,
   MapPin,
-  MoreVertical,
   Package,
-  Pencil,
   Printer,
   RefreshCw,
   Search,
@@ -157,6 +156,23 @@ function getPrimaryActionLabel(order: Order) {
   return "";
 }
 
+function getOperationalErrorMessage(error: unknown, fallback = "Tente novamente em instantes.") {
+  const message = error instanceof Error ? error.message : String(error || "");
+  const normalized = message.toLowerCase();
+
+  if (
+    normalized.includes("ifood api") ||
+    normalized.includes("bad request") ||
+    normalized.includes("request failed") ||
+    normalized.includes("unexpected end") ||
+    normalized.includes("json")
+  ) {
+    return "A integração não aceitou essa ação agora. Atualize os pedidos e tente novamente.";
+  }
+
+  return message || fallback;
+}
+
 export default function OrdersPage() {
   const router = useRouter();
   const supabase = createBrowserClient(
@@ -183,10 +199,12 @@ export default function OrdersPage() {
   const [expandedIfoodEvent, setExpandedIfoodEvent] = useState("");
   const [expandedTechnicalOrders, setExpandedTechnicalOrders] = useState<string[]>([]);
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
+  const [isChimeEnabled, setIsChimeEnabled] = useState(false);
   const { showToast } = useToast();
 
   useEffect(() => {
     void fetchOrders();
+    setIsChimeEnabled(window.localStorage.getItem("orders-chime-enabled") === "true");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -207,10 +225,14 @@ export default function OrdersPage() {
           if (payload.eventType === "INSERT" && payload.new?.id && payload.new.id !== lastSeenOrderId) {
             setLastSeenOrderId(String(payload.new.id));
             const display = String(payload.new.display_number || 0).padStart(4, "0");
-            playNewOrderChime();
+            if (isChimeEnabled) {
+              playNewOrderChime();
+            }
             showToast({
               title: "Novo pedido recebido",
-              description: `Pedido #${display === "0000" ? String(payload.new.id).slice(0, 4) : display} entrou na fila da operacao.`,
+              description: isChimeEnabled
+                ? `Pedido #${display === "0000" ? String(payload.new.id).slice(0, 4) : display} entrou na fila da operacao.`
+                : `Pedido #${display === "0000" ? String(payload.new.id).slice(0, 4) : display} entrou na fila. Ative a campainha para ouvir os proximos.`,
               tone: "success",
             });
           }
@@ -240,7 +262,7 @@ export default function OrdersPage() {
       supabase.removeChannel(itemsChannel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lastSeenOrderId, restaurantId, showToast, supabase]);
+  }, [isChimeEnabled, lastSeenOrderId, restaurantId, showToast, supabase]);
 
   useEffect(() => {
     if (!restaurantId) return;
@@ -374,6 +396,27 @@ export default function OrdersPage() {
     }
   };
 
+  const enableChime = () => {
+    const played = playNewOrderChime();
+
+    if (!played) {
+      showToast({
+        title: "Campainha bloqueada",
+        description: "Clique novamente ou confira a permissão de som do navegador.",
+        tone: "error",
+      });
+      return;
+    }
+
+    window.localStorage.setItem("orders-chime-enabled", "true");
+    setIsChimeEnabled(true);
+    showToast({
+      title: "Campainha ativada",
+      description: "Novos pedidos vão tocar um aviso sonoro nesta tela.",
+      tone: "success",
+    });
+  };
+
   const runIfoodAction = async (
     order: Order,
     action: IfoodAction,
@@ -414,7 +457,7 @@ export default function OrdersPage() {
     } catch (error) {
       showToast({
         title: "Nao foi possivel atualizar o pedido",
-        description: error instanceof Error ? error.message : "Tente novamente em instantes.",
+        description: getOperationalErrorMessage(error),
         tone: "error",
       });
       return null;
@@ -495,7 +538,14 @@ export default function OrdersPage() {
 
   const handlePrint = (order: Order) => {
     const printWindow = window.open("", "", "width=350,height=600");
-    if (!printWindow) return;
+    if (!printWindow) {
+      showToast({
+        title: "Impressao bloqueada",
+        description: "Permita pop-ups para imprimir o cupom deste pedido.",
+        tone: "error",
+      });
+      return;
+    }
 
     const width = restaurantConfig?.printer_width || 80;
     const fontSize = restaurantConfig?.printer_font_size || 12;
@@ -577,6 +627,12 @@ export default function OrdersPage() {
       printWindow.print();
       printWindow.close();
     }, 400);
+
+    showToast({
+      title: "Cupom enviado para impressao",
+      description: `Pedido #${formatDisplayNumber(order)} aberto na janela da impressora.`,
+      tone: "success",
+    });
   };
 
   const filteredOrders = useMemo(() => {
@@ -596,6 +652,16 @@ export default function OrdersPage() {
             itemNames.includes(term);
 
       return matchesStatus && matchesQuery;
+    }).sort((a, b) => {
+      const priority: Record<OrderStatus, number> = {
+        pending: 0,
+        preparing: 1,
+        delivering: 2,
+        done: 3,
+        canceled: 4,
+      };
+
+      return priority[a.status] - priority[b.status] || new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
   }, [activeStatus, orders, query]);
 
@@ -775,6 +841,44 @@ export default function OrdersPage() {
           </div>
         </div>
 
+        <section className="grid gap-3 lg:grid-cols-[1fr_auto]">
+          <div className="rounded-[18px] border border-orange-100 bg-white px-5 py-4 shadow-sm">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-sm font-black uppercase tracking-[0.14em] text-orange-500">
+                  Operacao de hoje
+                </p>
+                <p className="mt-1 text-sm text-gray-500">
+                  Pedidos novos entram automaticamente na fila e ficam priorizados no topo.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <span className="rounded-xl bg-orange-50 px-3 py-2 text-sm font-black text-orange-700">
+                  {summary.pending} pendentes
+                </span>
+                <span className="rounded-xl bg-blue-50 px-3 py-2 text-sm font-black text-blue-700">
+                  {summary.preparing} em preparo
+                </span>
+                <span className="rounded-xl bg-violet-50 px-3 py-2 text-sm font-black text-violet-700">
+                  {summary.delivering} em rota
+                </span>
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={enableChime}
+            className={`inline-flex items-center justify-center gap-3 rounded-[18px] border px-5 py-4 text-sm font-black shadow-sm transition ${
+              isChimeEnabled
+                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                : "border-orange-200 bg-white text-[var(--brand)] hover:bg-orange-50"
+            }`}
+          >
+            <BellRing size={18} />
+            {isChimeEnabled ? "Campainha ativa" : "Ativar campainha"}
+          </button>
+        </section>
+
         <section className="space-y-4">
           <div className="flex flex-col gap-3 xl:flex-row">
             <div className="flex flex-1 items-center gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-3 shadow-sm">
@@ -819,7 +923,7 @@ export default function OrdersPage() {
           </div>
 
           <div className="overflow-hidden rounded-[18px] border border-[var(--line)] bg-white shadow-sm">
-            <div className="hidden grid-cols-[140px_1.45fr_1.05fr_0.8fr_0.95fr_1fr_0.95fr_150px] gap-4 border-b border-[var(--line)] bg-[#fffdfa] px-6 py-4 text-xs font-black uppercase tracking-[0.12em] text-gray-400 xl:grid">
+            <div className="hidden grid-cols-[140px_1.45fr_1.05fr_0.8fr_0.95fr_1fr_0.95fr_190px] gap-4 border-b border-[var(--line)] bg-[#fffdfa] px-6 py-4 text-xs font-black uppercase tracking-[0.12em] text-gray-400 xl:grid">
               <span>Pedido</span>
               <span>Cliente</span>
               <span>Canal</span>
@@ -860,8 +964,8 @@ export default function OrdersPage() {
                   const firstItem = order.items[0];
 
                   return (
-                    <div key={order.id} className="bg-white">
-                      <div className="grid gap-4 px-5 py-4 xl:grid-cols-[140px_1.45fr_1.05fr_0.8fr_0.95fr_1fr_0.95fr_150px] xl:items-center xl:px-6">
+                    <div key={order.id} className={order.status === "pending" ? "bg-orange-50/25" : "bg-white"}>
+                      <div className="grid gap-4 px-5 py-4 xl:grid-cols-[140px_1.45fr_1.05fr_0.8fr_0.95fr_1fr_0.95fr_190px] xl:items-center xl:px-6">
                         <div>
                           <p className="font-black text-gray-950">#{formatDisplayNumber(order)}</p>
                           <p className="mt-1 text-xs font-medium text-gray-500">
@@ -935,10 +1039,10 @@ export default function OrdersPage() {
                               type="button"
                               onClick={() => void handlePrimaryAction(order)}
                               disabled={busyIfoodAction.startsWith(`${order.id}:`)}
-                              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--line)] bg-white text-gray-600 hover:border-orange-200 hover:text-[var(--brand)] disabled:opacity-50"
+                              className="inline-flex h-10 items-center justify-center rounded-xl bg-[var(--brand)] px-3 text-xs font-black text-white shadow-sm disabled:opacity-50"
                               aria-label={primaryActionLabel}
                             >
-                              <Pencil size={16} />
+                              {busyIfoodAction.startsWith(`${order.id}:`) ? "..." : primaryActionLabel}
                             </button>
                           )}
                           <button
@@ -947,7 +1051,7 @@ export default function OrdersPage() {
                             className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--line)] bg-white text-gray-600 hover:border-orange-200 hover:text-[var(--brand)]"
                             aria-label="Imprimir pedido"
                           >
-                            <MoreVertical size={16} />
+                            <Printer size={16} />
                           </button>
                         </div>
                       </div>
@@ -1148,8 +1252,8 @@ export default function OrdersPage() {
                                   className="w-full rounded-2xl border border-[var(--line)] bg-[#fcfaf7] px-4 py-3 text-left text-xs font-bold text-gray-500"
                                 >
                                   {expandedTechnicalOrders.includes(order.id)
-                                    ? "Ocultar eventos iFood"
-                                    : "Eventos iFood"}
+                                    ? "Ocultar historico iFood"
+                                    : "Historico iFood"}
                                 </button>
                               )}
                             </div>
@@ -1159,7 +1263,7 @@ export default function OrdersPage() {
                             <div className="mt-5 rounded-2xl border border-[var(--line)] bg-white p-4">
                               <div className="flex items-center justify-between gap-3">
                                 <div>
-                                  <p className="font-black text-gray-950">Eventos da integracao</p>
+                                  <p className="font-black text-gray-950">Historico iFood</p>
                                   <p className="text-xs text-gray-500">
                                     {order.external_order_id || "Order ID nao informado"}
                                   </p>
@@ -1210,7 +1314,7 @@ export default function OrdersPage() {
                                           onClick={() => setExpandedIfoodEvent(isRawExpanded ? "" : event.id)}
                                           className="mt-2 text-xs font-bold text-[var(--brand)]"
                                         >
-                                          {isRawExpanded ? "Ocultar payload" : "Ver payload"}
+                                          {isRawExpanded ? "Ocultar dados tecnicos" : "Dados tecnicos"}
                                         </button>
                                         {isRawExpanded && (
                                           <pre className="mt-2 max-h-48 overflow-auto rounded-xl bg-gray-950 p-3 text-[11px] text-gray-100">

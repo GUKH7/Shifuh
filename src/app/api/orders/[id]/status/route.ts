@@ -29,7 +29,7 @@ function getStatusLabel(status: OrderStatus) {
     case "delivering":
       return "em rota para entrega";
     case "done":
-      return "concluído";
+      return "concluido";
     case "canceled":
       return "cancelado";
     default:
@@ -49,8 +49,8 @@ function buildStatusMessage(order: {
   const statusLabel = getStatusLabel(order.status);
 
   return [
-    `Olá, ${order.customer_name}!`,
-    `Seu pedido #${displayNumber} está ${statusLabel}.`,
+    `Ola, ${order.customer_name}!`,
+    `Seu pedido #${displayNumber} esta ${statusLabel}.`,
     `Atenciosamente, ${storeName}.`,
   ].join("\n");
 }
@@ -63,14 +63,14 @@ export async function PATCH(request: Request, context: Params) {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+      return NextResponse.json({ error: "Nao autenticado." }, { status: 401 });
     }
 
     const body = (await request.json()) as { status?: OrderStatus; notifyCustomer?: boolean };
     const nextStatus = body.status;
 
     if (!nextStatus || !ALLOWED_STATUSES.includes(nextStatus)) {
-      return NextResponse.json({ error: "Status inválido." }, { status: 400 });
+      return NextResponse.json({ error: "Status invalido." }, { status: 400 });
     }
 
     const { id } = await context.params;
@@ -81,7 +81,7 @@ export async function PATCH(request: Request, context: Params) {
       .maybeSingle();
 
     if (orderError || !order) {
-      return NextResponse.json({ error: "Pedido não encontrado." }, { status: 404 });
+      return NextResponse.json({ error: "Pedido nao encontrado." }, { status: 404 });
     }
 
     const { data: restaurant, error: restaurantError } = await supabase
@@ -102,7 +102,7 @@ export async function PATCH(request: Request, context: Params) {
 
     if (updateError) {
       return NextResponse.json(
-        { error: updateError.message || "Não foi possível atualizar o pedido." },
+        { error: updateError.message || "Nao foi possivel atualizar o pedido." },
         { status: 400 },
       );
     }
