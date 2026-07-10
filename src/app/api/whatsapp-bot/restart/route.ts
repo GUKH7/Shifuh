@@ -39,8 +39,15 @@ export async function POST() {
     }
 
     if (!response.ok) {
+      const error =
+        typeof payload.error === "string"
+          ? payload.error
+          : typeof payload.message === "string" && payload.message.trim()
+            ? payload.message
+            : `API WhatsApp respondeu HTTP ${response.status}.`;
+
       return NextResponse.json(
-        { error: payload.error || "Nao foi possivel reiniciar a API WhatsApp." },
+        { error },
         { status: response.status },
       );
     }

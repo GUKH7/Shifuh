@@ -28,11 +28,25 @@ export async function GET() {
       headers: buildWhatsappBotHeaders({ accept: "application/json" }),
       signal: getWhatsappBotRequestSignal(),
     });
-    const payload = await response.json().catch(() => ({}));
+    const payloadText = await response.text();
+    let payload: Record<string, unknown> = {};
+
+    try {
+      payload = payloadText ? JSON.parse(payloadText) : {};
+    } catch {
+      payload = { message: payloadText };
+    }
 
     if (!response.ok) {
+      const error =
+        typeof payload.error === "string"
+          ? payload.error
+          : typeof payload.message === "string" && payload.message.trim()
+            ? payload.message
+            : `API WhatsApp respondeu HTTP ${response.status}.`;
+
       return NextResponse.json(
-        { error: payload.error || "API WhatsApp indisponivel." },
+        { error },
         { status: response.status },
       );
     }

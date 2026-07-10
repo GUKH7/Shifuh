@@ -440,12 +440,23 @@ export default function SettingsPage() {
     setWppQrCode("");
     try {
       const response = await fetch("/api/whatsapp-bot/restart", { method: "POST" });
-      if (!response.ok) throw new Error("Falha ao reiniciar API WhatsApp.");
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        const message =
+          typeof payload.error === "string" && payload.error.trim()
+            ? payload.error
+            : "Falha ao reiniciar API WhatsApp.";
+        throw new Error(message);
+      }
     } catch (error) {
       console.error(error);
       showToast({
         title: "Não foi possível reiniciar",
-        description: "Confira WHATSAPP_BOT_API_URL no ambiente do servidor e tente novamente.",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Falha ao reiniciar API WhatsApp.",
         tone: "error",
       });
     }
