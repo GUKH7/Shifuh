@@ -24,7 +24,7 @@ export async function POST() {
 
   try {
     const response = await fetch(restartUrl, {
-      method: "GET",
+      method: "POST",
       cache: "no-store",
       headers: buildWhatsappBotHeaders({ accept: "application/json" }),
       signal: getWhatsappBotRequestSignal(),
@@ -39,12 +39,15 @@ export async function POST() {
     }
 
     if (!response.ok) {
-      const error =
+      const upstreamError =
         typeof payload.error === "string"
           ? payload.error
           : typeof payload.message === "string" && payload.message.trim()
             ? payload.message
             : `API WhatsApp respondeu HTTP ${response.status}.`;
+      const error = upstreamError.trimStart().startsWith("<!DOCTYPE")
+        ? `API WhatsApp recusou o reinicio (HTTP ${response.status}).`
+        : upstreamError;
 
       return NextResponse.json(
         { error },

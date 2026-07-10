@@ -199,3 +199,31 @@ test("bloqueia restart da API WhatsApp quando usuario nao tem loja", async () =>
     global.fetch = originalFetch;
   }
 });
+
+test("reinicia a API WhatsApp usando POST no servidor externo", async () => {
+  const envSnapshot = { ...process.env };
+  const originalFetch = global.fetch;
+  let requestedUrl;
+  let requestedMethod;
+
+  process.env.WHATSAPP_BOT_API_URL = "https://bot.example.test";
+  process.env.WHATSAPP_BOT_TIMEOUT_MS = "0";
+  supabaseState = { user: { id: "user-1" }, restaurants: [{ id: "store-1" }] };
+  global.fetch = async (url, init) => {
+    requestedUrl = String(url);
+    requestedMethod = init.method;
+    return Response.json({ message: "Reiniciando..." });
+  };
+
+  try {
+    const { POST } = loadWhatsappRoute(restartRoutePath);
+    const response = await POST();
+
+    assert.equal(response.status, 200);
+    assert.equal(requestedUrl, "https://bot.example.test/restart");
+    assert.equal(requestedMethod, "POST");
+  } finally {
+    global.fetch = originalFetch;
+    restoreEnv(envSnapshot);
+  }
+});
