@@ -92,3 +92,6 @@ principal do WhatsApp. Ele retorna `200` quando a operacao esta pronta e `503`
 quando alguma dependencia esta degradada ou indisponivel. A resposta publica nao
 inclui URLs, tokens ou mensagens internas; os detalhes tecnicos sao enviados como
 logs estruturados para os Runtime Logs da Vercel.
+
+Os scripts de recuperacao automatica e backup da sessao WhatsApp ficam em
+`ops/oracle` e sao instalados na VM como tarefas agendadas.

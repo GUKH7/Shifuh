@@ -1,0 +1,6 @@
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+MAILTO=""
+
+*/2 * * * * /home/ubuntu/whatsapp-api/ops/whatsapp-watchdog.sh >> /home/ubuntu/whatsapp-api/logs/watchdog.log 2>&1
+15 3 * * * /home/ubuntu/whatsapp-api/ops/backup-whatsapp-session.sh >> /home/ubuntu/whatsapp-api/logs/backup.log 2>&1
