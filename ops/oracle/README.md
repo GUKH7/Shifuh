@@ -8,6 +8,20 @@ Scripts usados pelo bot principal do WhatsApp na VM Oracle.
 responder em ate 10 segundos, reinicia somente o processo PM2 `whatsapp-api` e
 confirma a recuperacao cinco segundos depois.
 
+Quando `alerts.env` esta configurado, uma falha persistente gera apenas um
+alerta no Telegram. O watchdog grava o estado localmente e envia outra mensagem
+quando o servico se recupera, evitando notificacoes repetidas a cada execucao.
+
+Crie o arquivo privado a partir de `alerts.env.example`:
+
+```bash
+cp alerts.env.example alerts.env
+chmod 600 alerts.env
+```
+
+Preencha `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID`. O arquivo real nao deve ser
+versionado.
+
 Agendamento recomendado:
 
 ```cron

@@ -25,6 +25,7 @@ yarn-error.log*
 
 # local env files
 .env*.local
+ops/oracle/alerts.env
 
 # vercel
 .vercel
