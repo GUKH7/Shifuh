@@ -84,3 +84,11 @@ As migrations ficam em `supabase/migrations`. A migration `015_public_restaurant
 | `npx tsc --noEmit` | Checagem de tipos |
 | `npm run build` | Build de produção |
 | `npm run lint` | ESLint |
+
+## Saude operacional
+
+O endpoint `GET /api/health` verifica, em paralelo, a conexao com o banco e o bot
+principal do WhatsApp. Ele retorna `200` quando a operacao esta pronta e `503`
+quando alguma dependencia esta degradada ou indisponivel. A resposta publica nao
+inclui URLs, tokens ou mensagens internas; os detalhes tecnicos sao enviados como
+logs estruturados para os Runtime Logs da Vercel.
