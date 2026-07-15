@@ -81,6 +81,7 @@ As migrations ficam em `supabase/migrations`. A migration `015_public_restaurant
 | --- | --- |
 | `npm run dev` | Servidor de desenvolvimento |
 | `npm test` | Testes automatizados |
+| `npm run test:load -- <url> 100 10` | Carga HTTP GET com 100 requisicoes e concorrencia 10 |
 | `npx tsc --noEmit` | Checagem de tipos |
 | `npm run build` | Build de produção |
 | `npm run lint` | ESLint |
