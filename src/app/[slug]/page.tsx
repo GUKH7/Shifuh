@@ -152,6 +152,13 @@ export default function StorePage() {
           time: feeData.time,
           distance: dist,
           valid: feeData.valid,
+          addressValidated: Boolean(
+            addressData.street &&
+              addressData.number &&
+              addressData.neighborhood &&
+              addressData.city &&
+              addressData.state,
+          ),
         });
       } else {
         setClientCoords(null);
@@ -193,9 +200,7 @@ export default function StorePage() {
           state: data.uf,
         }));
 
-        if (nextAddress.number) {
-          await calculateDeliveryForAddress(nextAddress);
-        }
+        await calculateDeliveryForAddress(nextAddress);
       }
     } catch (error) {
       console.error(error);
@@ -204,6 +209,21 @@ export default function StorePage() {
 
   const feeValue = deliveryInfo?.valid ? deliveryInfo.price : 0;
   const hasAddressMinimum = Boolean(address.street && address.number && address.neighborhood);
+  const handleAddressChange = (nextAddress: typeof EMPTY_ADDRESS) => {
+    const deliveryAddressChanged =
+      nextAddress.cep !== address.cep ||
+      nextAddress.street !== address.street ||
+      nextAddress.number !== address.number ||
+      nextAddress.neighborhood !== address.neighborhood ||
+      nextAddress.city !== address.city ||
+      nextAddress.state !== address.state;
+
+    setAddress(nextAddress);
+    if (deliveryAddressChanged) {
+      setDeliveryInfo(null);
+      setClientCoords(null);
+    }
+  };
   let discountAmount = 0;
 
   if (appliedCoupon) {
@@ -879,7 +899,7 @@ export default function StorePage() {
         onRemoveFromCart={removeFromCart}
         onCustomerNameChange={setCustomerName}
         onCustomerPhoneChange={setCustomerPhone}
-        onAddressChange={setAddress}
+        onAddressChange={handleAddressChange}
         onBlurCep={handleBlurCep}
         onCalculateDelivery={calculateDeliveryForAddress}
         onSelectSavedAddress={selectSavedAddress}

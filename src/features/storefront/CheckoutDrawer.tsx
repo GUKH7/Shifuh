@@ -150,6 +150,9 @@ export function CheckoutDrawer({
                   <span className="text-sm font-bold uppercase tracking-[0.14em] text-gray-400">Subtotal</span>
                   <span className="text-2xl font-black text-gray-950">{formatMoney(cartSubtotal)}</span>
                 </div>
+                <p className="mt-3 border-t border-[var(--line)] pt-3 text-sm leading-6 text-gray-500">
+                  A taxa de entrega será calculada pelo endereço na próxima etapa.
+                </p>
               </div>
             </div>
           )}
@@ -309,11 +312,20 @@ export function CheckoutDrawer({
           {step === "address" && (
             <button
               onClick={() => onStepChange("payment")}
-              disabled={!hasAddressMinimum || calculatingFee || deliveryInfo?.valid === false}
+              disabled={
+                !hasAddressMinimum ||
+                calculatingFee ||
+                !deliveryInfo?.valid ||
+                !deliveryInfo.addressValidated
+              }
               className="w-full rounded-2xl px-5 py-3.5 text-sm font-black text-white disabled:opacity-50 sm:py-4 sm:text-base"
               style={{ backgroundColor: primaryColor }}
             >
-              {calculatingFee ? "Calculando entrega..." : "Ir para pagamento"}
+              {calculatingFee
+                ? "Calculando entrega..."
+                : !deliveryInfo?.addressValidated
+                  ? "Valide o endereço para continuar"
+                  : "Ir para pagamento"}
             </button>
           )}
 

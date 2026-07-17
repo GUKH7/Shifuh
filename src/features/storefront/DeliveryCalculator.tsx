@@ -39,6 +39,9 @@ export function DeliveryCalculator({
         <MapPin size={18} style={{ color: primaryColor }} />
         <h3 className="text-lg font-black text-gray-950">Endereço de entrega</h3>
       </div>
+      <p className="mt-2 text-sm leading-6 text-gray-500">
+        Informe o CEP para ver uma estimativa. Rua e número são necessários para validar a entrega.
+      </p>
 
       {savedAddresses.length > 0 && (
         <div className="mt-4 space-y-2">
@@ -130,12 +133,12 @@ export function DeliveryCalculator({
         </div>
       )}
 
-      {deliveryInfo && deliveryInfo.valid && (
+      {deliveryInfo && deliveryInfo.valid && deliveryInfo.addressValidated && (
         <div className="mt-4 rounded-[18px] border border-emerald-200 bg-emerald-50 p-3.5 sm:mt-5 sm:rounded-[22px] sm:p-4">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="font-black text-emerald-800">Entrega confirmada</p>
-              <p className="mt-1 text-sm text-emerald-700">Distância: {deliveryInfo.distance} km</p>
+              <p className="font-black text-emerald-800">Entrega disponível</p>
+              <p className="mt-1 text-sm text-emerald-700">Distância aproximada: {deliveryInfo.distance} km</p>
             </div>
             <div className="text-right">
               <p className="text-lg font-black text-emerald-800">
@@ -147,20 +150,42 @@ export function DeliveryCalculator({
         </div>
       )}
 
+      {deliveryInfo && deliveryInfo.valid && !deliveryInfo.addressValidated && !calculatingFee && (
+        <div className="mt-4 rounded-[18px] border border-amber-200 bg-amber-50 p-3.5 sm:mt-5 sm:rounded-[22px] sm:p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="font-black text-amber-900">Estimativa pelo CEP</p>
+              <p className="mt-1 text-sm leading-6 text-amber-800">
+                Aproximadamente {deliveryInfo.distance} km. Informe o número para validar a entrega e a taxa.
+              </p>
+            </div>
+            <div className="shrink-0 text-right">
+              <p className="font-black text-amber-900">
+                {deliveryInfo.price === 0 ? "Grátis" : formatMoney(deliveryInfo.price)}
+              </p>
+              <p className="mt-1 text-sm text-amber-800">{deliveryInfo.time} min</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {deliveryInfo && !deliveryInfo.valid && !calculatingFee && (
         <div className="mt-4 rounded-[18px] border border-red-200 bg-red-50 p-3.5 sm:mt-5 sm:rounded-[22px] sm:p-4">
-          <p className="font-black text-red-800">Endereço fora da área de entrega</p>
+          <p className="font-black text-red-800">
+            {deliveryInfo.addressValidated ? "Endereço fora da área de entrega" : "CEP fora da área estimada"}
+          </p>
           <p className="mt-1 text-sm leading-6 text-red-700">
-            A distancia calculada foi de {deliveryInfo.distance} km, acima da ultima faixa configurada pela loja.
+            A distância aproximada é de {deliveryInfo.distance} km, além do limite atendido pela loja. Confira o CEP,
+            a rua e o número. Se estiverem corretos, não será possível concluir a entrega neste endereço.
           </p>
         </div>
       )}
 
       {hasAddressMinimum && !deliveryInfo && !calculatingFee && (
         <div className="mt-4 rounded-[18px] border border-amber-200 bg-amber-50 p-3.5 sm:mt-5 sm:rounded-[22px] sm:p-4">
-          <p className="font-black text-amber-800">Entrega sem cálculo automático</p>
+          <p className="font-black text-amber-800">Não foi possível validar a entrega</p>
           <p className="mt-1 text-sm leading-6 text-amber-700">
-            Não conseguimos calcular a distância agora. O pedido pode seguir e a loja confirma a taxa no atendimento.
+            Confira se CEP, rua e número estão corretos e tente novamente. A taxa só será exibida após a validação.
           </p>
         </div>
       )}

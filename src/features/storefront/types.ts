@@ -27,6 +27,7 @@ export interface DeliveryInfo {
   time: number;
   distance: number;
   valid: boolean;
+  addressValidated: boolean;
 }
 
 export interface CheckoutAddress {
@@ -76,4 +77,3 @@ export interface StorefrontTheme {
 }
 
 export type CheckoutStep = "cart" | "address" | "payment" | "success";
-
