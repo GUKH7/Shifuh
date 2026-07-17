@@ -6,6 +6,39 @@ type Params = {
   params: Promise<{ id: string }>;
 };
 
+export async function GET() {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Nao autenticado." }, { status: 401 });
+    }
+
+    if (!isPlatformAdminEmail(user.email)) {
+      return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
+    }
+
+    const adminSupabase = createAdminClient();
+    const { data, error } = await adminSupabase
+      .from("restaurants")
+      .select("id, name, slug, phone, user_id, created_at, primary_color")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Erro ao listar lojas da plataforma:", error);
+      return NextResponse.json({ error: "Nao foi possivel carregar as lojas." }, { status: 500 });
+    }
+
+    return NextResponse.json({ restaurants: data || [] });
+  } catch (error) {
+    console.error("Erro ao listar lojas da plataforma:", error);
+    return NextResponse.json({ error: "Erro interno ao carregar lojas." }, { status: 500 });
+  }
+}
+
 export async function PATCH(request: Request, context: Params) {
   try {
     const supabase = await createClient();

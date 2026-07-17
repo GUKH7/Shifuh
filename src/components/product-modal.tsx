@@ -207,7 +207,7 @@ export default function ProductModal({
       let finalUrl = imageUrl;
 
       if (croppedImageBlob) {
-        const fileName = `${Date.now()}-prod.jpg`;
+        const fileName = `${restaurantId}/${Date.now()}-prod.jpg`;
         const { error: upErr } = await supabase.storage
           .from("menu-images")
           .upload(fileName, croppedImageBlob);

@@ -196,7 +196,7 @@ export default function ProductModal({ isOpen, onClose, onProductSaved, restaura
 
         // Upload Nova Imagem
         if (croppedImageBlob) {
-            const fileName = `${Date.now()}-prod.jpg`
+            const fileName = `${restaurantId}/${Date.now()}-prod.jpg`
             const { error: upErr } = await supabase.storage.from('menu-images').upload(fileName, croppedImageBlob)
             if (upErr) throw upErr
             const { data } = supabase.storage.from('menu-images').getPublicUrl(fileName)

@@ -226,8 +226,9 @@ export default function SettingsPage() {
   };
 
   const uploadFile = async (file: File) => {
+    if (!restaurantId) throw new Error("Loja nao identificada para o upload.");
     const fileExt = file.name.split(".").pop();
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+    const fileName = `${restaurantId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
     const { error: uploadError } = await supabase.storage.from("restaurant-images").upload(fileName, file);
     if (uploadError) throw uploadError;
     const { data } = supabase.storage.from("restaurant-images").getPublicUrl(fileName);

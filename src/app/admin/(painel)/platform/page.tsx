@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Edit3, ExternalLink, Loader2, Save, Search, Store, Trash2, UserRound, X } from "lucide-react";
-import { isPlatformAdminEmail } from "@/lib/platform-admin";
 import { useToast } from "@/components/ui/toast-provider";
 
 type RestaurantRow = {
@@ -28,11 +26,6 @@ function formatDate(date: string) {
 
 export default function PlatformPage() {
   const router = useRouter();
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  );
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
@@ -48,40 +41,31 @@ export default function PlatformPage() {
   });
   const { showToast } = useToast();
 
-  useEffect(() => {
-    loadRestaurants();
-  }, [router, supabase]);
-
-  const loadRestaurants = async () => {
+  const loadRestaurants = useCallback(async () => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
+      const response = await fetch("/api/platform/restaurants/current", { cache: "no-store" });
+      if (response.status === 401) {
         router.replace("/admin/login");
         return;
       }
-
-      if (!isPlatformAdminEmail(user.email)) {
+      if (response.status === 403) {
         router.replace("/admin");
         return;
       }
-
-      const { data, error } = await supabase
-        .from("restaurants")
-        .select("id, name, slug, phone, user_id, created_at, primary_color")
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      setRestaurants((data || []) as RestaurantRow[]);
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Nao foi possivel carregar as lojas.");
+      setRestaurants((result.restaurants || []) as RestaurantRow[]);
     } catch (err) {
       console.error(err);
       setError(err instanceof Error ? err.message : "Não foi possível carregar as lojas.");
     } finally {
       setLoading(false);
     }
-  };
+  }, [router]);
+
+  useEffect(() => {
+    loadRestaurants();
+  }, [loadRestaurants]);
 
   const filteredRestaurants = useMemo(() => {
     const term = query.trim().toLowerCase();
