@@ -190,7 +190,7 @@ export async function POST(request: Request) {
     const { data: restaurant, error: restaurantError } = await adminSupabase
       .from("restaurants")
       .select(
-        "id, name, phone, whatsapp_number, latitude, longitude, address_street, address_number, address_neighborhood, address_city, address_state, delivery_tiers",
+        "id, name, phone, whatsapp_number, latitude, longitude, address_zip, address_street, address_number, address_neighborhood, address_city, address_state, delivery_tiers",
       )
       .eq("id", body.restaurantId)
       .maybeSingle();
@@ -314,19 +314,15 @@ export async function POST(request: Request) {
         : null;
 
     if (!restaurantCoords) {
-      const restaurantAddress = [
-        restaurant.address_street,
-        restaurant.address_number,
-        restaurant.address_neighborhood,
-        restaurant.address_city,
-        restaurant.address_state,
-        "Brasil",
-      ]
-        .filter(Boolean)
-        .join(", ");
-
-      if (restaurantAddress) {
-        restaurantCoords = await getCoordinates(restaurantAddress);
+      if (restaurant.address_street && restaurant.address_city && restaurant.address_state) {
+        restaurantCoords = await getCoordinates({
+          postalCode: restaurant.address_zip || undefined,
+          street: restaurant.address_street || undefined,
+          number: restaurant.address_number || undefined,
+          neighborhood: restaurant.address_neighborhood || undefined,
+          city: restaurant.address_city || undefined,
+          state: restaurant.address_state || undefined,
+        });
       }
     }
 
@@ -334,7 +330,14 @@ export async function POST(request: Request) {
     const addressQuery = buildAddressQuery(address);
 
     if (addressQuery) {
-      clientCoords = await getCoordinates(addressQuery);
+      clientCoords = await getCoordinates({
+        postalCode: address.cep,
+        street: address.street,
+        number: address.number,
+        neighborhood: address.neighborhood,
+        city: address.city,
+        state: address.state,
+      });
     }
 
     if (restaurantCoords && clientCoords) {

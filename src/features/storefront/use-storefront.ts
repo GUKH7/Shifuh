@@ -117,12 +117,13 @@ export function useStorefront({ slug, onCustomerLoaded, onMissingStore }: UseSto
           lon: Number(resto.longitude),
         });
       } else {
-        let restoQuery = `${resto.name}, Brasil`;
-        if (resto.address_street && resto.address_number) {
-          restoQuery = `${resto.address_street}, ${resto.address_number}, ${resto.address_neighborhood || ""}, ${resto.address_city}, ${resto.address_state}`;
-        }
-
-        getCoordinates(restoQuery).then((coords) => {
+        getCoordinates({
+          street: resto.address_street || resto.name,
+          number: resto.address_number || undefined,
+          neighborhood: resto.address_neighborhood || undefined,
+          city: resto.address_city || undefined,
+          state: resto.address_state || undefined,
+        }).then((coords) => {
           if (coords && mounted) setRestoCoords(coords);
         });
       }

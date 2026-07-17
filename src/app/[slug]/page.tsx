@@ -116,19 +116,14 @@ export default function StorePage() {
     setCalculatingFee(true);
 
     try {
-      const fullQuery = [
-        addressData.cep,
-        addressData.street,
-        addressData.number,
-        addressData.neighborhood,
-        addressData.city,
-        addressData.state,
-        "Brasil",
-      ]
-        .filter(Boolean)
-        .join(", ");
-
-      const clientCoords = await getCoordinates(fullQuery);
+      const clientCoords = await getCoordinates({
+        postalCode: addressData.cep,
+        street: addressData.street,
+        number: addressData.number,
+        neighborhood: addressData.neighborhood,
+        city: addressData.city,
+        state: addressData.state,
+      });
 
       if (clientCoords) {
         setClientCoords(clientCoords);

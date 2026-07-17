@@ -307,19 +307,15 @@ export default function SettingsPage() {
     let latitude: number | null = restaurantLatitude;
     let longitude: number | null = restaurantLongitude;
 
-    const fullAddress = [
-      address.street,
-      address.number,
-      address.neighborhood,
-      address.city,
-      address.state,
-      "Brasil",
-    ]
-      .filter(Boolean)
-      .join(", ");
-
-    if (fullAddress) {
-      const coords = await getCoordinates(fullAddress);
+    if (address.street && address.city && address.state) {
+      const coords = await getCoordinates({
+        postalCode: address.zip,
+        street: address.street,
+        number: address.number,
+        neighborhood: address.neighborhood,
+        city: address.city,
+        state: address.state,
+      });
       if (coords) {
         latitude = coords.lat;
         longitude = coords.lon;
