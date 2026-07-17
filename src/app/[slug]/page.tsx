@@ -413,8 +413,8 @@ export default function StorePage() {
   const featuredProduct = products[0] || null;
   const hasFreeDelivery = deliveryTiers.some((tier: any) => Number(tier.price || 0) === 0);
   const deliveryEstimate = formatDeliveryEstimate(deliveryTiers);
-  const serviceRegion = formatServiceRegion(restaurant);
-  const storeStatus = getStoreStatus(restaurant.work_hours, storeClock);
+  const serviceRegion = formatServiceRegion(restaurant || {});
+  const storeStatus = getStoreStatus(restaurant?.work_hours, storeClock);
   const statusStyles = {
     open: "text-emerald-700 bg-emerald-50",
     closing: "text-amber-800 bg-amber-50",
