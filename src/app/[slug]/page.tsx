@@ -40,6 +40,7 @@ import type { CheckoutStep, DeliveryInfo, OrderResponse, OrderTrackingResponse }
 import { useCart } from "@/features/storefront/use-cart";
 import { useStorefront } from "@/features/storefront/use-storefront";
 import { formatCep, formatPhone, isValidCep, isValidPhone, onlyDigits } from "@/features/storefront/checkout-format";
+import { getFriendlyStorefrontError } from "@/features/storefront/errors";
 
 export default function StorePage() {
   const params = useParams<{ slug: string | string[] }>();
@@ -58,6 +59,7 @@ export default function StorePage() {
   const [address, setAddress] = useState(EMPTY_ADDRESS);
   const [calculatingFee, setCalculatingFee] = useState(false);
   const [deliveryInfo, setDeliveryInfo] = useState<DeliveryInfo | null>(null);
+  const [deliveryError, setDeliveryError] = useState("");
   const [clientCoords, setClientCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [paymentMethod, setPaymentMethod] = useState("pix");
   const [changeFor, setChangeFor] = useState("");
@@ -85,12 +87,12 @@ export default function StorePage() {
         body: JSON.stringify({ phone: onlyDigits(customerPhone) }),
       });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error);
+      if (!response.ok) throw new Error("tracking-failed");
       setOrderTracking(result);
     } catch (error: any) {
       showToast({
         title: "Não foi possível atualizar",
-        description: error.message || "Tente novamente em instantes.",
+        description: getFriendlyStorefrontError("tracking"),
         tone: "error",
       });
     } finally {
@@ -174,6 +176,7 @@ export default function StorePage() {
     if (!addressData.street || !addressData.city || !addressData.state) return;
 
     setCalculatingFee(true);
+    setDeliveryError("");
 
     try {
       const clientCoords = await getCoordinates({
@@ -210,11 +213,13 @@ export default function StorePage() {
       } else {
         setClientCoords(null);
         setDeliveryInfo(null);
+        setDeliveryError(getFriendlyStorefrontError("delivery"));
       }
     } catch (error) {
       console.error(error);
       setClientCoords(null);
       setDeliveryInfo(null);
+      setDeliveryError(getFriendlyStorefrontError("delivery"));
     } finally {
       setCalculatingFee(false);
     }
@@ -225,6 +230,7 @@ export default function StorePage() {
     if (cepLimpo.length < 8) return;
 
     setDeliveryInfo(null);
+    setDeliveryError("");
 
     try {
       const res = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
@@ -248,9 +254,12 @@ export default function StorePage() {
         }));
 
         await calculateDeliveryForAddress(nextAddress);
+      } else {
+        setDeliveryError(getFriendlyStorefrontError("cep"));
       }
     } catch (error) {
       console.error(error);
+      setDeliveryError(getFriendlyStorefrontError("cep"));
     }
   };
 
@@ -269,6 +278,7 @@ export default function StorePage() {
     if (deliveryAddressChanged) {
       setDeliveryInfo(null);
       setClientCoords(null);
+      setDeliveryError("");
     }
   };
   let discountAmount = 0;
@@ -412,7 +422,7 @@ export default function StorePage() {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || "Erro ao finalizar pedido.");
+        throw new Error("order-failed");
       }
 
       setLastOrderSummary(result);
@@ -423,7 +433,7 @@ export default function StorePage() {
     } catch (error: any) {
       showToast({
         title: "Não foi possível finalizar o pedido",
-        description: error.message || "Tente novamente em instantes.",
+        description: getFriendlyStorefrontError("order"),
         tone: "error",
       });
     } finally {
@@ -524,8 +534,28 @@ export default function StorePage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: pageBackground }}>
-        <Loader2 className="animate-spin text-[var(--brand)]" size={28} />
+      <div className="min-h-screen animate-pulse bg-[#f6f1ea]">
+        <div className="mx-auto max-w-5xl bg-white pb-5 sm:px-4">
+          <div className="h-[136px] rounded-b-[18px] bg-gray-200 sm:h-[200px] sm:rounded-b-[28px]" />
+          <div className="flex items-end gap-4 px-4">
+            <div className="-mt-7 h-16 w-16 rounded-[18px] border-4 border-white bg-gray-200 sm:h-20 sm:w-20" />
+            <div className="flex-1 pb-2 pt-5">
+              <div className="h-6 w-48 rounded bg-gray-200" />
+              <div className="mt-3 h-4 w-72 max-w-full rounded bg-gray-100" />
+            </div>
+          </div>
+        </div>
+        <div className="mx-auto max-w-5xl px-3 py-5 sm:px-6">
+          <div className="h-10 rounded-xl bg-white" />
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            {[0, 1, 2, 3].map((item) => (
+              <div key={item} className="flex h-40 gap-4 rounded-[18px] bg-white p-4">
+                <div className="flex-1 space-y-3"><div className="h-5 w-2/3 rounded bg-gray-200" /><div className="h-4 w-full rounded bg-gray-100" /><div className="h-5 w-24 rounded bg-gray-200" /></div>
+                <div className="aspect-square h-full rounded-xl bg-gray-200" />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -916,6 +946,9 @@ export default function StorePage() {
                             </div>
                             <h3 className="text-[14px] font-black leading-snug text-gray-950 sm:text-[16px]">{product.name}</h3>
                             <p className="mt-1.5 line-clamp-2 text-[12px] leading-5 text-gray-500 sm:text-[13px]">{product.description}</p>
+                            {!product.is_active && (
+                              <p className="mt-2 text-xs font-bold text-gray-500">Temporariamente indisponível para pedidos.</p>
+                            )}
                             <div className="mt-3 border-t border-gray-100 pt-2.5">
                               {hasPaidAddons && <span className="mr-1 text-[10px] font-bold text-gray-400">A partir de</span>}
                               <span className="text-[15px] font-black text-gray-950">{formatMoney(product.price)}</span>
@@ -944,9 +977,20 @@ export default function StorePage() {
 
             {visibleProducts.length === 0 && (
               <div className="rounded-2xl border border-gray-200 bg-white px-6 py-16 text-center">
-                <Search className="mx-auto text-gray-300" size={36} />
-                <p className="mt-3 font-bold text-gray-900">Nenhum item encontrado</p>
-                <p className="mt-1 text-sm text-gray-500">Tente buscar por nome, descrição ou complemento.</p>
+                {menuSearch ? <Search className="mx-auto text-gray-300" size={36} /> : <ShoppingBag className="mx-auto text-gray-300" size={36} />}
+                <p className="mt-3 font-bold text-gray-900">
+                  {menuSearch ? "Nenhum item encontrado" : "Cardápio sendo preparado"}
+                </p>
+                <p className="mt-1 text-sm text-gray-500">
+                  {menuSearch
+                    ? "Tente buscar por outro nome, descrição ou complemento."
+                    : "A loja ainda não publicou itens disponíveis. Volte novamente em breve."}
+                </p>
+                {menuSearch && (
+                  <button onClick={() => setMenuSearch("")} className="mt-4 text-sm font-black" style={{ color: primaryColor }}>
+                    Limpar busca
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -1062,6 +1106,7 @@ export default function StorePage() {
         calculatingFee={calculatingFee}
         deliveryInfo={deliveryInfo}
         hasAddressMinimum={hasAddressMinimum}
+        deliveryError={deliveryError}
         couponCode={couponCode}
         appliedCoupon={appliedCoupon}
         verifyingCoupon={verifyingCoupon}
@@ -1088,12 +1133,14 @@ export default function StorePage() {
         onAddressChange={handleAddressChange}
         onBlurCep={handleBlurCep}
         onCalculateDelivery={calculateDeliveryForAddress}
+        onRetryDelivery={() => calculateDeliveryForAddress(address)}
         onSelectSavedAddress={selectSavedAddress}
         onUseAnotherAddress={() => {
           setUsingSavedAddress(false);
           setAddress(EMPTY_ADDRESS);
           setDeliveryInfo(null);
           setClientCoords(null);
+          setDeliveryError("");
         }}
         onCouponCodeChange={setCouponCode}
         onApplyCoupon={handleApplyCoupon}

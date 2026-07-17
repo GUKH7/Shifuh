@@ -20,6 +20,7 @@ type CheckoutDrawerProps = {
   calculatingFee: boolean;
   deliveryInfo: DeliveryInfo | null;
   hasAddressMinimum: boolean;
+  deliveryError: string;
   couponCode: string;
   appliedCoupon: { code: string; value: number; type: string } | null;
   verifyingCoupon: boolean;
@@ -43,6 +44,7 @@ type CheckoutDrawerProps = {
   onAddressChange: (address: CheckoutAddress) => void;
   onBlurCep: () => void;
   onCalculateDelivery: (address: CheckoutAddress) => void;
+  onRetryDelivery: () => void;
   onSelectSavedAddress: (address: any) => void;
   onUseAnotherAddress: () => void;
   onCouponCodeChange: (value: string) => void;
@@ -68,6 +70,7 @@ export function CheckoutDrawer({
   calculatingFee,
   deliveryInfo,
   hasAddressMinimum,
+  deliveryError,
   couponCode,
   appliedCoupon,
   verifyingCoupon,
@@ -91,6 +94,7 @@ export function CheckoutDrawer({
   onAddressChange,
   onBlurCep,
   onCalculateDelivery,
+  onRetryDelivery,
   onSelectSavedAddress,
   onUseAnotherAddress,
   onCouponCodeChange,
@@ -233,9 +237,11 @@ export function CheckoutDrawer({
                 deliveryInfo={deliveryInfo}
                 calculatingFee={calculatingFee}
                 hasAddressMinimum={hasAddressMinimum}
+                deliveryError={deliveryError}
                 onAddressChange={onAddressChange}
                 onBlurCep={onBlurCep}
                 onCalculateDelivery={onCalculateDelivery}
+                onRetryDelivery={onRetryDelivery}
                 onSelectSavedAddress={onSelectSavedAddress}
                 onUseAnotherAddress={onUseAnotherAddress}
               />

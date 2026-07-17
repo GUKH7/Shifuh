@@ -13,11 +13,13 @@ type DeliveryCalculatorProps = {
   deliveryInfo: DeliveryInfo | null;
   calculatingFee: boolean;
   hasAddressMinimum: boolean;
+  deliveryError: string;
   onAddressChange: (address: CheckoutAddress) => void;
   onBlurCep: () => void;
   onCalculateDelivery: (address: CheckoutAddress) => void;
   onSelectSavedAddress: (address: any) => void;
   onUseAnotherAddress: () => void;
+  onRetryDelivery: () => void;
 };
 
 export function DeliveryCalculator({
@@ -28,11 +30,13 @@ export function DeliveryCalculator({
   deliveryInfo,
   calculatingFee,
   hasAddressMinimum,
+  deliveryError,
   onAddressChange,
   onBlurCep,
   onCalculateDelivery,
   onSelectSavedAddress,
   onUseAnotherAddress,
+  onRetryDelivery,
 }: DeliveryCalculatorProps) {
   return (
     <div className="surface-card rounded-[24px] p-5">
@@ -186,8 +190,11 @@ export function DeliveryCalculator({
         <div className="mt-4 rounded-[18px] border border-amber-200 bg-amber-50 p-3.5 sm:mt-5 sm:rounded-[22px] sm:p-4">
           <p className="font-black text-amber-800">Não foi possível validar a entrega</p>
           <p className="mt-1 text-sm leading-6 text-amber-700">
-            Confira se CEP, rua e número estão corretos e tente novamente. A taxa só será exibida após a validação.
+            {deliveryError || "Confira se CEP, rua e número estão corretos e tente novamente."}
           </p>
+          <button onClick={onRetryDelivery} className="mt-3 rounded-xl bg-white px-3 py-2 text-sm font-black text-amber-900">
+            Tentar novamente
+          </button>
         </div>
       )}
     </div>
