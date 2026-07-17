@@ -8,6 +8,7 @@ import {
   CreditCard,
   Loader2,
   MapPin,
+  Minus,
   Plus,
   Search,
   Send,
@@ -131,7 +132,9 @@ export default function StorePage() {
     addToCart,
     removeFromCart,
     clearCart,
-  } = useCart();
+    cartQuantity,
+    updateCartItemQuantity,
+  } = useCart(`gestor-delivery:cart:${slug || "store"}`);
 
   const calculateDeliveryForAddress = async (addressData: typeof EMPTY_ADDRESS) => {
     if (!restoCoords) return;
@@ -834,9 +837,19 @@ export default function StorePage() {
               ) : (
                 <div className="mt-4 space-y-3">
                   {cart.slice(0, 3).map((item) => (
-                    <div key={item.internalId} className="flex justify-between gap-3 text-sm">
-                      <span className="font-medium text-gray-700">{item.quantity}x {item.product.name}</span>
-                      <span className="font-bold text-gray-950">{formatMoney(item.totalPrice)}</span>
+                    <div key={item.internalId} className="border-b border-gray-100 pb-3 text-sm last:border-0">
+                      <div className="flex justify-between gap-3">
+                        <span className="line-clamp-1 font-medium text-gray-700">{item.product.name}</span>
+                        <span className="shrink-0 font-bold text-gray-950">{formatMoney(item.totalPrice)}</span>
+                      </div>
+                      <div className="mt-2 flex items-center justify-between">
+                        <div className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-1.5 py-1">
+                          <button onClick={() => updateCartItemQuantity(item.internalId, item.quantity - 1)} className="p-0.5 text-gray-500" aria-label={`Diminuir ${item.product.name}`}><Minus size={13} /></button>
+                          <span className="min-w-4 text-center text-xs font-black">{item.quantity}</span>
+                          <button onClick={() => updateCartItemQuantity(item.internalId, item.quantity + 1)} className="p-0.5" style={{ color: primaryColor }} aria-label={`Aumentar ${item.product.name}`}><Plus size={13} /></button>
+                        </div>
+                        <button onClick={() => removeFromCart(item.internalId)} className="text-xs font-bold text-gray-400 hover:text-rose-600">Remover</button>
+                      </div>
                     </div>
                   ))}
                   {cart.length > 3 && <p className="text-xs font-bold text-gray-400">+ {cart.length - 3} item(ns)</p>}
@@ -864,7 +877,7 @@ export default function StorePage() {
       </main>
 
       {cart.length > 0 && !isCartOpen && (
-        <div className="fixed bottom-6 left-0 right-0 z-40 px-4 sm:px-6">
+        <div className="fixed bottom-4 left-0 right-0 z-40 px-3 sm:px-6 lg:hidden">
           <div className="mx-auto max-w-3xl">
             <button
               onClick={() => {
@@ -877,7 +890,7 @@ export default function StorePage() {
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <div className="flex h-9 w-9 items-center justify-center rounded-full bg-black/15 text-sm font-black">
-                    {cart.length}
+                    {cartQuantity}
                   </div>
                   <div className="text-left">
                     <p className="text-xs font-bold uppercase tracking-[0.14em] text-white/70">
@@ -934,6 +947,7 @@ export default function StorePage() {
         onBackToAddress={() => setStep("address")}
         onStepChange={setStep}
         onRemoveFromCart={removeFromCart}
+        onCartItemQuantityChange={updateCartItemQuantity}
         onCustomerNameChange={setCustomerName}
         onCustomerPhoneChange={setCustomerPhone}
         onAddressChange={handleAddressChange}

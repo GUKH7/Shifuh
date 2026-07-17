@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, Loader2, Ticket, X } from "lucide-react";
+import { ChevronLeft, Loader2, Minus, Plus, Ticket, X } from "lucide-react";
 import { formatMoney } from "./format";
 import { DeliveryCalculator } from "./DeliveryCalculator";
 import type { CartItem, CheckoutAddress, CheckoutStep, DeliveryInfo } from "./types";
@@ -33,6 +33,7 @@ type CheckoutDrawerProps = {
   onBackToAddress: () => void;
   onStepChange: (step: CheckoutStep) => void;
   onRemoveFromCart: (id: string) => void;
+  onCartItemQuantityChange: (id: string, quantity: number) => void;
   onCustomerNameChange: (value: string) => void;
   onCustomerPhoneChange: (value: string) => void;
   onAddressChange: (address: CheckoutAddress) => void;
@@ -76,6 +77,7 @@ export function CheckoutDrawer({
   onBackToAddress,
   onStepChange,
   onRemoveFromCart,
+  onCartItemQuantityChange,
   onCustomerNameChange,
   onCustomerPhoneChange,
   onAddressChange,
@@ -134,6 +136,24 @@ export function CheckoutDrawer({
                       <p className="mt-2.5 text-base font-black sm:text-lg" style={{ color: primaryColor }}>
                         {formatMoney(item.totalPrice)}
                       </p>
+                      <div className="mt-3 inline-flex items-center gap-3 rounded-xl border border-[var(--line)] bg-white px-2 py-1.5">
+                        <button
+                          onClick={() => onCartItemQuantityChange(item.internalId, item.quantity - 1)}
+                          className="p-1 text-gray-500"
+                          aria-label={`Diminuir ${item.product.name}`}
+                        >
+                          <Minus size={15} />
+                        </button>
+                        <span className="min-w-5 text-center text-sm font-black">{item.quantity}</span>
+                        <button
+                          onClick={() => onCartItemQuantityChange(item.internalId, item.quantity + 1)}
+                          className="p-1"
+                          style={{ color: primaryColor }}
+                          aria-label={`Aumentar ${item.product.name}`}
+                        >
+                          <Plus size={15} />
+                        </button>
+                      </div>
                     </div>
                     <button
                       onClick={() => onRemoveFromCart(item.internalId)}

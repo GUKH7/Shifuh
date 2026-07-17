@@ -1,14 +1,38 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { CartItem, Product } from "./types";
 
-export function useCart() {
+export function useCart(storageKey: string) {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [addonSelections, setAddonSelections] = useState<Record<string, any[]>>({});
   const [quantity, setQuantity] = useState(1);
   const [observation, setObservation] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [cartHydrated, setCartHydrated] = useState(false);
+
+  useEffect(() => {
+    try {
+      const savedCart = window.localStorage.getItem(storageKey);
+      if (savedCart) {
+        const parsed = JSON.parse(savedCart);
+        if (Array.isArray(parsed)) setCart(parsed);
+      }
+    } catch (error) {
+      console.warn("Não foi possível restaurar a sacola.", error);
+    } finally {
+      setCartHydrated(true);
+    }
+  }, [storageKey]);
+
+  useEffect(() => {
+    if (!cartHydrated) return;
+    try {
+      window.localStorage.setItem(storageKey, JSON.stringify(cart));
+    } catch (error) {
+      console.warn("Não foi possível salvar a sacola.", error);
+    }
+  }, [cart, cartHydrated, storageKey]);
 
   const openProduct = (product: Product) => {
     setSelectedProduct(product);
@@ -75,10 +99,36 @@ export function useCart() {
     setCart((current) => current.filter((item) => item.internalId !== id));
   };
 
+  const updateCartItemQuantity = (id: string, nextQuantity: number) => {
+    if (nextQuantity < 1) {
+      removeFromCart(id);
+      return;
+    }
+
+    setCart((current) =>
+      current.map((item) => {
+        if (item.internalId !== id) return item;
+        const addonTotal = item.selectedAddons.reduce(
+          (total, addon) => total + Number(addon.price || 0),
+          0,
+        );
+        return {
+          ...item,
+          quantity: nextQuantity,
+          totalPrice: (Number(item.product.price) + addonTotal) * nextQuantity,
+        };
+      }),
+    );
+  };
+
   const clearCart = () => setCart([]);
 
   const cartSubtotal = useMemo(
     () => cart.reduce((acc, item) => acc + item.totalPrice, 0),
+    [cart],
+  );
+  const cartQuantity = useMemo(
+    () => cart.reduce((total, item) => total + item.quantity, 0),
     [cart],
   );
 
@@ -89,6 +139,7 @@ export function useCart() {
     observation,
     cart,
     cartSubtotal,
+    cartQuantity,
     setQuantity,
     setObservation,
     setCart,
@@ -98,6 +149,7 @@ export function useCart() {
     calculateProductTotal,
     addToCart,
     removeFromCart,
+    updateCartItemQuantity,
     clearCart,
   };
 }
