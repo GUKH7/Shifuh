@@ -16,6 +16,8 @@ import {
   Star,
   X,
   RefreshCw,
+  ChevronDown,
+  Phone,
 } from "lucide-react";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { calculateDistance, calculateDeliveryFee, getCoordinates } from "@/lib/geo";
@@ -23,7 +25,7 @@ import { useToast } from "@/components/ui/toast-provider";
 import { CheckoutDrawer } from "@/features/storefront/CheckoutDrawer";
 import { ProductPicker } from "@/features/storefront/ProductPicker";
 import { EMPTY_ADDRESS } from "@/features/storefront/constants";
-import { formatMoney, hexToRgba } from "@/features/storefront/format";
+import { formatMoney, getContrastTextColor, hexToRgba } from "@/features/storefront/format";
 import {
   isHomologationCategory,
   productMatchesSearch,
@@ -31,6 +33,7 @@ import {
 import {
   formatDeliveryEstimate,
   formatServiceRegion,
+  formatTodayHours,
   getStoreStatus,
 } from "@/features/storefront/store-summary";
 import type { CheckoutStep, DeliveryInfo, OrderResponse, OrderTrackingResponse } from "@/features/storefront/types";
@@ -455,6 +458,7 @@ export default function StorePage() {
 
   const contrastColor = storefrontTheme.contrast_color || "#1f2937";
   const pageBackground = hexToRgba(primaryColor || "#ff5a1f", 0.07);
+  const brandTextColor = getContrastTextColor(primaryColor || "#ff5a1f");
   const heroBackground = `linear-gradient(135deg, ${primaryColor || "#ff5a1f"} 0%, ${contrastColor} 100%)`;
   const heroTitle =
     storefrontHeadline || restaurant?.name || "Sua vitrine digital com pedidos no WhatsApp";
@@ -488,6 +492,7 @@ export default function StorePage() {
   const deliveryEstimate = formatDeliveryEstimate(deliveryTiers);
   const serviceRegion = formatServiceRegion(restaurant || {});
   const storeStatus = getStoreStatus(restaurant?.work_hours, storeClock);
+  const todayHours = formatTodayHours(restaurant?.work_hours, storeClock);
   const statusStyles = {
     open: "text-emerald-700 bg-emerald-50",
     closing: "text-amber-800 bg-amber-50",
@@ -626,7 +631,7 @@ export default function StorePage() {
             onClick={trackLastOrder}
             disabled={trackingOrder}
             className="mt-6 w-full rounded-2xl px-6 py-4 text-base font-black text-white disabled:opacity-60"
-            style={{ backgroundColor: primaryColor }}
+            style={{ backgroundColor: primaryColor, color: brandTextColor }}
           >
             <span className="inline-flex items-center gap-2">
               <RefreshCw size={18} className={trackingOrder ? "animate-spin" : ""} />
@@ -710,7 +715,7 @@ export default function StorePage() {
               {storefrontTheme.show_logo && (
                 <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-[18px] border-[3px] border-white bg-white shadow-[0_10px_24px_rgba(17,16,15,0.14)] sm:h-20 sm:w-20 sm:rounded-[18px] sm:border-4">
                   {restaurant.logo_url ? (
-                    <img src={restaurant.logo_url} alt={restaurant.name} className="h-full w-full object-cover" />
+                    <img src={restaurant.logo_url} alt={restaurant.name} className="h-full w-full object-contain p-1" />
                   ) : restaurant.image_url ? (
                     <img src={restaurant.image_url} alt={restaurant.name} className="h-full w-full object-cover" />
                   ) : (
@@ -779,6 +784,28 @@ export default function StorePage() {
                 Pix, cartão e dinheiro
               </span>
             </div>
+            <details className="group mt-3 border-t border-gray-100 pt-2">
+              <summary className="flex cursor-pointer list-none items-center justify-between py-2 text-xs font-bold text-gray-600 sm:text-sm">
+                <span>Informações da loja</span>
+                <ChevronDown size={16} className="transition-transform group-open:rotate-180" />
+              </summary>
+              <div className="grid gap-2 pb-2 text-xs text-gray-600 sm:grid-cols-2 sm:text-sm">
+                <span className="inline-flex items-center gap-2">
+                  <Clock3 size={15} className="shrink-0 text-gray-400" />
+                  {todayHours}
+                </span>
+                {restaurant.phone && (
+                  <a className="inline-flex items-center gap-2 hover:underline" href={`tel:${restaurant.phone}`}>
+                    <Phone size={15} className="shrink-0 text-gray-400" />
+                    {formatPhone(restaurant.phone)}
+                  </a>
+                )}
+                <span className="inline-flex items-center gap-2 sm:col-span-2">
+                  <MapPin size={15} className="shrink-0 text-gray-400" />
+                  {[restaurant.address_street, restaurant.address_number, serviceRegion].filter(Boolean).join(", ")}
+                </span>
+              </div>
+            </details>
           </div>
 
         </div>

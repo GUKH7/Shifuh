@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   formatDeliveryEstimate,
   formatServiceRegion,
+  formatTodayHours,
   getStoreStatus,
 } from "../src/features/storefront/store-summary.ts";
 
@@ -45,4 +46,9 @@ test("formats the restaurant service region", () => {
     }),
     "Vila Costa, Suzano - SP",
   );
+});
+
+test("formats today's storefront opening hours", () => {
+  assert.equal(formatTodayHours(schedule, new Date("2026-07-17T22:00:00Z")), "Hoje, 18:00 às 23:00");
+  assert.equal(formatTodayHours(schedule, new Date("2026-07-18T14:00:00Z")), "Fechado hoje");
 });

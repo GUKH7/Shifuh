@@ -118,3 +118,13 @@ export function formatServiceRegion(restaurant: RestaurantAddress) {
     .join(" - ");
   return [restaurant.address_neighborhood, cityAndState].filter(Boolean).join(", ") || "Consulte a região de entrega";
 }
+
+export function formatTodayHours(rawWorkHours: unknown, now = new Date()) {
+  const workHours = Array.isArray(rawWorkHours) ? (rawWorkHours as WorkHour[]) : [];
+  if (workHours.length === 0) return "Horário não informado";
+  const { dayId } = getZonedDayAndMinutes(now);
+  const today = workHours.find((day) => Number(day.day_id) === dayId);
+  if (!today || today.is_open === false) return "Fechado hoje";
+  if (!today.open_time || !today.close_time) return "Horário não informado";
+  return `Hoje, ${today.open_time.slice(0, 5)} às ${today.close_time.slice(0, 5)}`;
+}
