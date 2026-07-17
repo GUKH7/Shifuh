@@ -23,6 +23,10 @@ import { ProductPicker } from "@/features/storefront/ProductPicker";
 import { EMPTY_ADDRESS } from "@/features/storefront/constants";
 import { formatMoney, hexToRgba } from "@/features/storefront/format";
 import {
+  isHomologationCategory,
+  productMatchesSearch,
+} from "@/features/storefront/catalog-navigation";
+import {
   formatDeliveryEstimate,
   formatServiceRegion,
   getStoreStatus,
@@ -103,6 +107,13 @@ export default function StorePage() {
     onCustomerLoaded: handleCustomerLoaded,
     onMissingStore: handleMissingStore,
   });
+
+  useEffect(() => {
+    if (!activeCategory) return;
+    document
+      .querySelector(`[data-category-tab="${activeCategory}"]`)
+      ?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+  }, [activeCategory]);
 
   const {
     selectedProduct,
@@ -445,14 +456,24 @@ export default function StorePage() {
     closing: "bg-amber-500",
     closed: "bg-rose-500",
   }[storeStatus.tone];
-  const visibleProducts = products.filter((product) => {
-    const term = menuSearch.trim().toLowerCase();
-    if (!term) return true;
-    return (
-      product.name.toLowerCase().includes(term) ||
-      (product.description || "").toLowerCase().includes(term)
-    );
-  });
+  const customerCategories = categories.filter(
+    (category) =>
+      !isHomologationCategory(category.name) &&
+      products.some((product) => product.category_id === category.id),
+  );
+  const customerCategoryIds = new Set(customerCategories.map((category) => category.id));
+  const customerProducts = products.filter((product) => customerCategoryIds.has(product.category_id));
+  const visibleProducts = customerProducts.filter((product) => productMatchesSearch(product, menuSearch));
+  const displayedCategories = customerCategories.filter((category) =>
+    visibleProducts.some((product) => product.category_id === category.id),
+  );
+
+  useEffect(() => {
+    if (displayedCategories.length === 0) return;
+    if (!displayedCategories.some((category) => category.id === activeCategory)) {
+      setActiveCategory(displayedCategories[0].id);
+    }
+  }, [activeCategory, displayedCategories, setActiveCategory]);
 
   if (loading) {
     return (
@@ -679,9 +700,10 @@ export default function StorePage() {
             )}
           </div>
           <div className="flex gap-1.5 overflow-x-auto pb-0.5 sm:gap-2">
-            {categories.map((category) => (
+            {displayedCategories.map((category) => (
               <button
                 key={category.id}
+                data-category-tab={category.id}
                 onClick={() => {
                   setActiveCategory(category.id);
                   document.getElementById(`cat-${category.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -721,7 +743,7 @@ export default function StorePage() {
               </div>
             )}
 
-            {categories.map((category) => {
+            {displayedCategories.map((category) => {
               const categoryProducts = visibleProducts.filter((product) => product.category_id === category.id);
               if (categoryProducts.length === 0) return null;
 
@@ -781,7 +803,7 @@ export default function StorePage() {
               <div className="rounded-2xl border border-gray-200 bg-white px-6 py-16 text-center">
                 <Search className="mx-auto text-gray-300" size={36} />
                 <p className="mt-3 font-bold text-gray-900">Nenhum item encontrado</p>
-                <p className="mt-1 text-sm text-gray-500">Tente buscar por outro nome ou categoria.</p>
+                <p className="mt-1 text-sm text-gray-500">Tente buscar por nome, descrição ou complemento.</p>
               </div>
             )}
           </div>

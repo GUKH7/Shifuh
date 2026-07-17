@@ -172,10 +172,10 @@ export function useStorefront({ slug, onCustomerLoaded, onMissingStore }: UseSto
 
   useEffect(() => {
     const handleScroll = () => {
-      const offsets = categories.map((cat) => ({
-        id: cat.id,
-        offset: document.getElementById(`cat-${cat.id}`)?.offsetTop || 0,
-      }));
+      const offsets = categories.flatMap((cat) => {
+        const element = document.getElementById(`cat-${cat.id}`);
+        return element ? [{ id: cat.id, offset: element.offsetTop }] : [];
+      });
       const current = offsets.findLast((item) => window.scrollY + 240 >= item.offset);
       if (current) setActiveCategory(current.id);
     };
