@@ -35,6 +35,7 @@ import {
 import type { CheckoutStep, DeliveryInfo, OrderResponse } from "@/features/storefront/types";
 import { useCart } from "@/features/storefront/use-cart";
 import { useStorefront } from "@/features/storefront/use-storefront";
+import { formatCep, formatPhone, isValidCep, isValidPhone, onlyDigits } from "@/features/storefront/checkout-format";
 
 export default function StorePage() {
   const params = useParams<{ slug: string | string[] }>();
@@ -57,6 +58,7 @@ export default function StorePage() {
   const [paymentMethod, setPaymentMethod] = useState("pix");
   const [changeFor, setChangeFor] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [saveAddress, setSaveAddress] = useState(false);
 
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<{
@@ -74,7 +76,7 @@ export default function StorePage() {
 
   const handleCustomerLoaded = useCallback((profile: { name: string; phone: string }) => {
     setCustomerName(profile.name);
-    setCustomerPhone(profile.phone);
+    setCustomerPhone(formatPhone(profile.phone));
   }, []);
 
   const handleMissingStore = useCallback(() => {
@@ -330,6 +332,14 @@ export default function StorePage() {
       });
       return;
     }
+    if (!isValidPhone(customerPhone)) {
+      showToast({ title: "WhatsApp inválido", description: "Informe um telefone com DDD.", tone: "error" });
+      return;
+    }
+    if (!isValidCep(address.cep)) {
+      showToast({ title: "CEP inválido", description: "Informe os 8 números do CEP.", tone: "error" });
+      return;
+    }
     if (!hasAddressMinimum) {
       showToast({
         title: "Endereço incompleto",
@@ -350,12 +360,13 @@ export default function StorePage() {
         body: JSON.stringify({
           restaurantId: restaurant.id,
           customerName,
-          customerPhone,
+          customerPhone: onlyDigits(customerPhone),
           address,
           paymentMethod,
           changeFor,
           couponCode: appliedCoupon?.code || null,
           usingSavedAddress,
+          saveAddress,
           clientCoords,
           deliveryPreview: deliveryInfo,
           cart: cart.map((item) => ({
@@ -391,7 +402,7 @@ export default function StorePage() {
 
   const selectSavedAddress = async (savedAddr: any) => {
     const nextAddress = {
-      cep: savedAddr.cep,
+      cep: formatCep(savedAddr.cep || ""),
       street: savedAddr.street,
       number: savedAddr.number,
       neighborhood: savedAddr.neighborhood,
@@ -942,6 +953,8 @@ export default function StorePage() {
         paymentMethod={paymentMethod}
         changeFor={changeFor}
         isSubmitting={isSubmitting}
+        saveAddress={saveAddress}
+        canSaveAddress={Boolean(currentUser)}
         onClose={() => setIsCartOpen(false)}
         onBackToCart={() => setStep("cart")}
         onBackToAddress={() => setStep("address")}
@@ -968,6 +981,7 @@ export default function StorePage() {
         }}
         onPaymentMethodChange={setPaymentMethod}
         onChangeForChange={setChangeFor}
+        onSaveAddressChange={setSaveAddress}
         onPlaceOrder={handlePlaceOrder}
       />
     </div>

@@ -4,6 +4,7 @@ import { ChevronLeft, Loader2, Minus, Plus, Ticket, X } from "lucide-react";
 import { formatMoney } from "./format";
 import { DeliveryCalculator } from "./DeliveryCalculator";
 import type { CartItem, CheckoutAddress, CheckoutStep, DeliveryInfo } from "./types";
+import { formatPhone } from "./checkout-format";
 
 type CheckoutDrawerProps = {
   isOpen: boolean;
@@ -28,6 +29,8 @@ type CheckoutDrawerProps = {
   paymentMethod: string;
   changeFor: string;
   isSubmitting: boolean;
+  saveAddress: boolean;
+  canSaveAddress: boolean;
   onClose: () => void;
   onBackToCart: () => void;
   onBackToAddress: () => void;
@@ -46,6 +49,7 @@ type CheckoutDrawerProps = {
   onRemoveCoupon: () => void;
   onPaymentMethodChange: (value: string) => void;
   onChangeForChange: (value: string) => void;
+  onSaveAddressChange: (value: boolean) => void;
   onPlaceOrder: () => void;
 };
 
@@ -72,6 +76,8 @@ export function CheckoutDrawer({
   paymentMethod,
   changeFor,
   isSubmitting,
+  saveAddress,
+  canSaveAddress,
   onClose,
   onBackToCart,
   onBackToAddress,
@@ -90,6 +96,7 @@ export function CheckoutDrawer({
   onRemoveCoupon,
   onPaymentMethodChange,
   onChangeForChange,
+  onSaveAddressChange,
   onPlaceOrder,
 }: CheckoutDrawerProps) {
   if (!isOpen) return null;
@@ -115,6 +122,17 @@ export function CheckoutDrawer({
                 {step === "cart" ? "Sua sacola" : step === "address" ? "Entrega" : "Pagamento"}
               </h2>
             </div>
+          </div>
+          <div className="mt-3 grid grid-cols-4 gap-1.5">
+            {["Sacola", "Entrega", "Pagamento", "Confirmação"].map((label, index) => {
+              const currentIndex = step === "cart" ? 0 : step === "address" ? 1 : step === "payment" ? 2 : 3;
+              return (
+                <div key={label} className="min-w-0">
+                  <div className={`h-1 rounded-full ${index <= currentIndex ? "bg-[var(--brand)]" : "bg-gray-200"}`} />
+                  <p className={`mt-1 truncate text-[9px] font-bold ${index === currentIndex ? "text-gray-800" : "text-gray-400"}`}>{label}</p>
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -190,8 +208,9 @@ export function CheckoutDrawer({
                   />
                   <input
                     value={customerPhone}
-                    onChange={(event) => onCustomerPhoneChange(event.target.value)}
+                    onChange={(event) => onCustomerPhoneChange(formatPhone(event.target.value))}
                     placeholder="WhatsApp"
+                    inputMode="tel"
                     className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none"
                   />
                 </div>
@@ -211,11 +230,43 @@ export function CheckoutDrawer({
                 onSelectSavedAddress={onSelectSavedAddress}
                 onUseAnotherAddress={onUseAnotherAddress}
               />
+              {canSaveAddress && !usingSavedAddress && (
+                <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-[var(--line)] bg-white p-4 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={saveAddress}
+                    onChange={(event) => onSaveAddressChange(event.target.checked)}
+                    className="mt-0.5 h-4 w-4 accent-[var(--brand)]"
+                  />
+                  <span>
+                    <strong className="block text-gray-900">Salvar este endereço</strong>
+                    Use somente nos próximos pedidos desta conta.
+                  </span>
+                </label>
+              )}
             </div>
           )}
 
           {step === "payment" && (
             <div className="space-y-4">
+              <div className="surface-card rounded-[20px] p-4 sm:rounded-[24px] sm:p-5">
+                <h3 className="text-lg font-black text-gray-950">Revisão final</h3>
+                <div className="mt-4 space-y-3 text-sm text-gray-600">
+                  <div>
+                    <p className="font-bold text-gray-900">{customerName} · {customerPhone}</p>
+                    <p className="mt-1">{address.street}, {address.number}{address.complement ? `, ${address.complement}` : ""}</p>
+                    <p>{address.neighborhood} · {address.city}/{address.state}</p>
+                  </div>
+                  <div className="border-t border-[var(--line)] pt-3">
+                    {cart.map((item) => (
+                      <div key={item.internalId} className="flex justify-between gap-3 py-1">
+                        <span>{item.quantity}x {item.product.name}</span>
+                        <strong className="text-gray-900">{formatMoney(item.totalPrice)}</strong>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
               <div className="surface-card rounded-[20px] p-4 sm:rounded-[24px] sm:p-5">
                 <div className="flex items-center gap-2">
                   <Ticket size={18} className="text-[var(--brand)]" />
@@ -355,7 +406,7 @@ export function CheckoutDrawer({
               disabled={isSubmitting}
               className="w-full rounded-2xl bg-[#25D366] px-5 py-3.5 text-sm font-black text-white disabled:opacity-60 sm:py-4 sm:text-base"
             >
-              {isSubmitting ? "Enviando pedido..." : `Finalizar pedido (${formatMoney(finalTotal)})`}
+              {isSubmitting ? "Enviando pedido..." : `Confirmar pedido (${formatMoney(finalTotal)})`}
             </button>
           )}
         </div>

@@ -35,6 +35,7 @@ type CheckoutPayload = {
   couponCode?: string;
   cart?: CheckoutItem[];
   usingSavedAddress?: boolean;
+  saveAddress?: boolean;
   clientCoords?: { lat: number; lon: number } | null;
   deliveryPreview?: { price: number; time: number; distance: number; valid: boolean } | null;
 };
@@ -171,6 +172,15 @@ export async function POST(request: Request) {
 
     if (!body.customerName?.trim() || !body.customerPhone?.trim()) {
       return NextResponse.json({ error: "Preencha os dados do cliente." }, { status: 400 });
+    }
+
+    const phoneDigits = body.customerPhone.replace(/\D/g, "");
+    const cepDigits = address.cep.replace(/\D/g, "");
+    if (!/^\d{10,11}$/.test(phoneDigits)) {
+      return NextResponse.json({ error: "Informe um telefone válido com DDD." }, { status: 400 });
+    }
+    if (!/^\d{8}$/.test(cepDigits)) {
+      return NextResponse.json({ error: "Informe um CEP válido." }, { status: 400 });
     }
 
     if (!address.street || !address.number || !address.neighborhood) {
@@ -381,7 +391,7 @@ export async function POST(request: Request) {
       {
         p_restaurant_id: restaurant.id,
         p_customer_name: body.customerName.trim(),
-        p_customer_phone: body.customerPhone.trim(),
+        p_customer_phone: phoneDigits,
         p_address: orderAddress,
         p_items: transactionItems,
         p_subtotal: subtotal,
@@ -419,11 +429,11 @@ export async function POST(request: Request) {
         await (supabase as any).from("profiles").upsert({
           id: user!.id,
           name: body.customerName.trim(),
-          phone: body.customerPhone.trim(),
+          phone: phoneDigits,
           updated_at: new Date().toISOString(),
         });
 
-        if (!body.usingSavedAddress) {
+        if (body.saveAddress === true && !body.usingSavedAddress) {
           await (supabase as any).from("customer_addresses").insert({
             user_id: user!.id,
             cep: address.cep,

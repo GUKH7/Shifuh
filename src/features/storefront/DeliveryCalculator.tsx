@@ -3,6 +3,7 @@
 import { Check, Loader2, MapPin, Search } from "lucide-react";
 import { formatMoney } from "./format";
 import type { CheckoutAddress, DeliveryInfo } from "./types";
+import { formatCep } from "./checkout-format";
 
 type DeliveryCalculatorProps = {
   primaryColor: string;
@@ -85,7 +86,7 @@ export function DeliveryCalculator({
           <div className="grid gap-2.5 sm:grid-cols-[1fr_64px]">
             <input
               value={address.cep}
-              onChange={(event) => onAddressChange({ ...address, cep: event.target.value })}
+              onChange={(event) => onAddressChange({ ...address, cep: formatCep(event.target.value) })}
               onBlur={onBlurCep}
               placeholder="CEP"
               className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none"
