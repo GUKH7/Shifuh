@@ -1,0 +1,30 @@
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const test = require("node:test");
+
+const migration = fs.readFileSync(
+  path.join(__dirname, "..", "supabase", "migrations", "20260717133957_harden_order_rpc_and_rls.sql"),
+  "utf8",
+);
+
+test("order transaction RPC is restricted to service_role", () => {
+  assert.match(migration, /revoke all on function public\.create_order_transaction[\s\S]+from public, anon, authenticated;/i);
+  assert.match(migration, /grant execute on function public\.create_order_transaction[\s\S]+to service_role;/i);
+});
+
+test("public order inserts and display number allocation are revoked", () => {
+  for (const table of ["customers", "orders", "order_items"]) {
+    assert.match(migration, new RegExp(`revoke insert on public\\.${table} from anon, authenticated;`, "i"));
+  }
+  assert.match(migration, /revoke all on function public\.next_order_display_number\(uuid\) from public, anon, authenticated;/i);
+});
+
+test("coupon columns required by the transaction are aligned", () => {
+  const couponAlignment = fs.readFileSync(
+    path.join(__dirname, "..", "supabase", "migrations", "20260717134645_align_coupon_rpc_columns.sql"),
+    "utf8",
+  );
+  assert.match(migration, /add column if not exists expires_at timestamptz/i);
+  assert.match(couponAlignment, /add column if not exists usage_limit integer/i);
+});

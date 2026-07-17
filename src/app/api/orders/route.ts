@@ -373,7 +373,7 @@ export async function POST(request: Request) {
       observation: item.observation,
       addons: item.addons,
     }));
-    const { data: createdOrderData, error: createOrderError } = await supabase.rpc(
+    const { data: createdOrderData, error: createOrderError } = await adminSupabase.rpc(
       "create_order_transaction",
       {
         p_restaurant_id: restaurant.id,

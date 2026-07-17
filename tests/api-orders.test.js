@@ -41,6 +41,8 @@ function baseState(overrides = {}) {
     orderItems: [],
     customers: [],
     rpcCounter: 0,
+    publicRpcCalls: 0,
+    adminRpcCalls: 0,
     createOrderError: null,
     distance: 2,
     deliveryFeeResult: null,
@@ -153,7 +155,7 @@ class QueryBuilder {
   }
 }
 
-function createSupabaseMock() {
+function createSupabaseMock(role = "public") {
   return {
     auth: {
       getUser: async () => ({ data: { user: mockState.user } }),
@@ -161,6 +163,8 @@ function createSupabaseMock() {
     from: (table) => new QueryBuilder(table),
     rpc: async (name, args) => {
       assert.equal(name, "create_order_transaction");
+      if (role === "admin") mockState.adminRpcCalls += 1;
+      else mockState.publicRpcCalls += 1;
       if (mockState.createOrderError) {
         return { data: null, error: mockState.createOrderError };
       }
@@ -224,8 +228,8 @@ function loadOrdersRoute() {
 
     if (request === "@/lib/supabase/server") {
       return {
-        createAdminClient: () => createSupabaseMock(),
-        createClient: async () => createSupabaseMock(),
+        createAdminClient: () => createSupabaseMock("admin"),
+        createClient: async () => createSupabaseMock("public"),
       };
     }
 
@@ -310,6 +314,8 @@ test("ignora preço adulterado no cliente e usa o preço do banco", async () => 
   assert.equal(body.deliveryFee, 7);
   assert.equal(body.total, 47);
   assert.equal(mockState.orders[0].subtotal, 40);
+  assert.equal(mockState.adminRpcCalls, 1);
+  assert.equal(mockState.publicRpcCalls, 0);
 });
 
 test("bloqueia produto inativo", async () => {
