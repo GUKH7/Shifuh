@@ -151,6 +151,8 @@ export interface Database {
           price: number;
           image_url: string | null;
           is_active: boolean;
+          is_promotional: boolean;
+          is_vegetarian: boolean;
           addons: Json | null;
           created_at: string;
           updated_at: string;
@@ -164,6 +166,8 @@ export interface Database {
           price: number;
           image_url?: string | null;
           is_active?: boolean;
+          is_promotional?: boolean;
+          is_vegetarian?: boolean;
           addons?: Json | null;
           created_at?: string;
           updated_at?: string;
@@ -177,6 +181,8 @@ export interface Database {
           price?: number;
           image_url?: string | null;
           is_active?: boolean;
+          is_promotional?: boolean;
+          is_vegetarian?: boolean;
           addons?: Json | null;
           created_at?: string;
           updated_at?: string;

@@ -139,11 +139,20 @@ export function useStorefront({ slug, onCustomerLoaded, onMissingStore }: UseSto
         if (cats.length > 0) setActiveCategory(cats[0].id);
       }
 
-      const { data: prods } = await supabase
-        .from("products")
+      const storefrontProductsResult = await supabase
+        .from("public_storefront_products")
         .select("*")
-        .eq("restaurant_id", resto.id)
-        .eq("is_active", true);
+        .eq("restaurant_id", resto.id);
+      let prods = storefrontProductsResult.data;
+
+      if (!prods && storefrontProductsResult.error) {
+        const fallbackProductsResult = await supabase
+          .from("products")
+          .select("*")
+          .eq("restaurant_id", resto.id)
+          .eq("is_active", true);
+        prods = fallbackProductsResult.data;
+      }
 
       if (prods && mounted) setProducts(prods as Product[]);
       if (mounted) setLoading(false);

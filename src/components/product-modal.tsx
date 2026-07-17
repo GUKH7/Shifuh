@@ -78,6 +78,8 @@ export default function ProductModal({
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [categoryId, setCategoryId] = useState("");
+  const [isPromotional, setIsPromotional] = useState(false);
+  const [isVegetarian, setIsVegetarian] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [addonGroups, setAddonGroups] = useState<AddonGroup[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -97,6 +99,8 @@ export default function ProductModal({
       setPrice(productToEdit.price.toString());
       setCategoryId(productToEdit.category_id);
       setImageUrl(productToEdit.image_url);
+      setIsPromotional(Boolean(productToEdit.is_promotional));
+      setIsVegetarian(Boolean(productToEdit.is_vegetarian));
 
       if (productToEdit.addons && Array.isArray(productToEdit.addons)) {
         if (productToEdit.addons.length > 0 && productToEdit.addons[0].title) {
@@ -125,6 +129,8 @@ export default function ProductModal({
       setImageUrl(null);
       setCroppedImageBlob(null);
       setImageSrc(null);
+      setIsPromotional(false);
+      setIsVegetarian(false);
       if (categories.length > 0) setCategoryId(categories[0].id);
     }
   }, [isOpen, productToEdit, categories]);
@@ -231,6 +237,8 @@ export default function ProductModal({
         price: parseFloat(price.replace(",", ".")),
         image_url: finalUrl,
         addons: cleanGroups,
+        is_promotional: isPromotional,
+        is_vegetarian: isVegetarian,
       };
 
       let error;
@@ -372,6 +380,26 @@ export default function ProductModal({
                     </option>
                   ))}
                 </select>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <label className="flex items-center gap-2 rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-xs font-bold text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={isPromotional}
+                    onChange={(event) => setIsPromotional(event.target.checked)}
+                    className="h-4 w-4 accent-[var(--brand)]"
+                  />
+                  Produto em promoção
+                </label>
+                <label className="flex items-center gap-2 rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-xs font-bold text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={isVegetarian}
+                    onChange={(event) => setIsVegetarian(event.target.checked)}
+                    className="h-4 w-4 accent-emerald-600"
+                  />
+                  Vegetariano
+                </label>
               </div>
             </div>
           </div>

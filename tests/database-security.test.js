@@ -28,3 +28,13 @@ test("coupon columns required by the transaction are aligned", () => {
   assert.match(migration, /add column if not exists expires_at timestamptz/i);
   assert.match(couponAlignment, /add column if not exists usage_limit integer/i);
 });
+
+test("public storefront products expose only catalog metadata", () => {
+  const storefrontProducts = fs.readFileSync(
+    path.join(__dirname, "..", "supabase", "migrations", "017_storefront_product_metadata.sql"),
+    "utf8",
+  );
+  assert.match(storefrontProducts, /revoke all on public\.public_storefront_products from public;/i);
+  assert.match(storefrontProducts, /grant select on public\.public_storefront_products to anon, authenticated;/i);
+  assert.doesNotMatch(storefrontProducts, /customer_(name|phone)|address_json/i);
+});

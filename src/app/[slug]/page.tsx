@@ -761,39 +761,54 @@ export default function StorePage() {
                         : `divide-y divide-gray-100 sm:grid sm:gap-3 sm:divide-y-0 sm:p-4 ${catalogGridClass}`
                     }
                   >
-                    {categoryProducts.map((product) => (
-                      <button
-                        key={product.id}
-                        onClick={() => openProduct(product)}
-                        className={`group text-left transition-all hover:-translate-y-0.5 ${
-                          storefrontTheme.catalog_layout === "list"
-                            ? "flex w-full gap-3 px-3 py-3 hover:bg-[#fafafa] sm:px-5 sm:py-3.5"
-                            : `flex w-full gap-3 px-3 py-3 hover:bg-[#fafafa] sm:block sm:rounded-[20px] sm:p-3 ${cardTone}`
-                        }`}
-                      >
-                        <div className={`min-w-0 flex-1 ${storefrontTheme.catalog_layout === "list" ? "flex-1" : "sm:block"}`}>
-                          <h3 className="text-[13px] font-bold leading-snug text-gray-950 sm:text-[15px]">{product.name}</h3>
-                          <p className="mt-0.5 line-clamp-2 text-[11px] leading-4 text-gray-500 sm:mt-1 sm:text-[13px] sm:leading-5">{product.description}</p>
-                          <p className="mt-1.5 text-[13px] font-black text-gray-950 sm:mt-2 sm:text-[14px]">{formatMoney(product.price)}</p>
-                        </div>
-                        <div className={`relative overflow-hidden rounded-xl bg-gray-100 ${
-                          storefrontTheme.catalog_layout === "list"
-                            ? "h-[72px] w-[72px] flex-shrink-0 sm:h-24 sm:w-24"
-                            : "h-[72px] w-[72px] flex-shrink-0 sm:mt-3 sm:h-32 sm:w-full"
-                        }`}>
-                          {product.image_url ? (
-                            <img src={product.image_url} alt={product.name} className="h-full w-full object-cover" />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center text-gray-300">
-                              <ShoppingBag size={24} />
+                    {categoryProducts.map((product) => {
+                      const hasPaidAddons = product.addons?.some((group: any) =>
+                        Array.isArray(group?.options)
+                          ? group.options.some((option: any) => Number(option?.price) > 0)
+                          : Number(group?.price) > 0,
+                      );
+
+                      return (
+                        <button
+                          key={product.id}
+                          onClick={() => product.is_active && openProduct(product)}
+                          disabled={!product.is_active}
+                          className={`group relative text-left transition-all ${product.is_active ? "hover:-translate-y-0.5" : "cursor-not-allowed"} ${
+                            storefrontTheme.catalog_layout === "list"
+                              ? "flex w-full gap-4 px-3 py-4 hover:bg-[#fafafa] sm:px-5"
+                              : `flex w-full gap-4 px-3 py-4 hover:bg-[#fafafa] sm:block sm:rounded-[20px] sm:p-3 ${cardTone}`
+                          }`}
+                        >
+                          <div className={`min-w-0 flex-1 ${product.is_active ? "" : "opacity-55"}`}>
+                            <div className="mb-2 flex flex-wrap gap-1.5">
+                              {!product.is_active && <span className="rounded-md bg-gray-200 px-2 py-1 text-[9px] font-black uppercase text-gray-600">Indisponível</span>}
+                              {product.is_promotional && <span className="rounded-md bg-rose-50 px-2 py-1 text-[9px] font-black uppercase text-rose-700">Promoção</span>}
+                              {product.is_vegetarian && <span className="rounded-md bg-emerald-50 px-2 py-1 text-[9px] font-black uppercase text-emerald-700">Vegetariano</span>}
+                              {product.is_best_seller && <span className="rounded-md bg-amber-50 px-2 py-1 text-[9px] font-black uppercase text-amber-800">Mais pedido</span>}
                             </div>
-                          )}
-                          <span className="absolute bottom-1.5 right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-white shadow-sm sm:bottom-2 sm:right-2 sm:h-6 sm:w-6" style={{ color: primaryColor }}>
-                            <Plus size={13} className="sm:h-[15px] sm:w-[15px]" />
-                          </span>
-                        </div>
-                      </button>
-                    ))}
+                            <h3 className="text-[14px] font-black leading-snug text-gray-950 sm:text-[16px]">{product.name}</h3>
+                            <p className="mt-1.5 line-clamp-2 text-[12px] leading-5 text-gray-500 sm:text-[13px]">{product.description}</p>
+                            <div className="mt-3 border-t border-gray-100 pt-2.5">
+                              {hasPaidAddons && <span className="mr-1 text-[10px] font-bold text-gray-400">A partir de</span>}
+                              <span className="text-[15px] font-black text-gray-950">{formatMoney(product.price)}</span>
+                            </div>
+                          </div>
+                          <div className={`relative aspect-[4/3] overflow-hidden rounded-xl bg-gray-100 ${
+                            storefrontTheme.catalog_layout === "list" ? "w-[112px] flex-shrink-0 sm:w-36" : "w-[112px] flex-shrink-0 sm:mt-3 sm:w-full"
+                          }`}>
+                            {product.image_url ? (
+                              <img src={product.image_url} alt={product.name} className="h-full w-full object-cover" />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center text-gray-300"><ShoppingBag size={28} /></div>
+                            )}
+                            {product.is_active && (
+                              <span className="absolute bottom-2 right-2 flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-sm" style={{ color: primaryColor }}><Plus size={15} /></span>
+                            )}
+                            {!product.is_active && <div className="absolute inset-0 bg-white/45" />}
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </section>
               );
