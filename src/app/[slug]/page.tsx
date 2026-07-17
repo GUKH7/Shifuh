@@ -123,11 +123,13 @@ export default function StorePage() {
     addonSelections,
     quantity,
     observation,
+    editingCartItemId,
     cart,
     cartSubtotal,
     setQuantity,
     setObservation,
     openProduct,
+    editCartItem,
     closeProduct,
     toggleAddon,
     calculateProductTotal,
@@ -859,7 +861,10 @@ export default function StorePage() {
                           <span className="min-w-4 text-center text-xs font-black">{item.quantity}</span>
                           <button onClick={() => updateCartItemQuantity(item.internalId, item.quantity + 1)} className="p-0.5" style={{ color: primaryColor }} aria-label={`Aumentar ${item.product.name}`}><Plus size={13} /></button>
                         </div>
-                        <button onClick={() => removeFromCart(item.internalId)} className="text-xs font-bold text-gray-400 hover:text-rose-600">Remover</button>
+                        <div className="flex gap-3">
+                          <button onClick={() => editCartItem(item)} className="text-xs font-bold" style={{ color: primaryColor }}>Editar</button>
+                          <button onClick={() => removeFromCart(item.internalId)} className="text-xs font-bold text-gray-400 hover:text-rose-600">Remover</button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -923,6 +928,7 @@ export default function StorePage() {
         addonSelections={addonSelections}
         quantity={quantity}
         observation={observation}
+        isEditing={Boolean(editingCartItemId)}
         onClose={closeProduct}
         onToggleAddon={toggleAddon}
         onQuantityChange={setQuantity}
@@ -961,6 +967,10 @@ export default function StorePage() {
         onStepChange={setStep}
         onRemoveFromCart={removeFromCart}
         onCartItemQuantityChange={updateCartItemQuantity}
+        onEditCartItem={(item) => {
+          editCartItem(item);
+          setIsCartOpen(false);
+        }}
         onCustomerNameChange={setCustomerName}
         onCustomerPhoneChange={setCustomerPhone}
         onAddressChange={handleAddressChange}

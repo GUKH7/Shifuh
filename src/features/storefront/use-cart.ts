@@ -8,6 +8,7 @@ export function useCart(storageKey: string) {
   const [addonSelections, setAddonSelections] = useState<Record<string, any[]>>({});
   const [quantity, setQuantity] = useState(1);
   const [observation, setObservation] = useState("");
+  const [editingCartItemId, setEditingCartItemId] = useState<string | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartHydrated, setCartHydrated] = useState(false);
 
@@ -39,9 +40,29 @@ export function useCart(storageKey: string) {
     setQuantity(1);
     setObservation("");
     setAddonSelections({});
+    setEditingCartItemId(null);
   };
 
-  const closeProduct = () => setSelectedProduct(null);
+  const editCartItem = (item: CartItem) => {
+    const selections = item.selectedAddons.reduce<Record<string, any[]>>((groups, addon) => {
+      const groupId = addon.groupId || item.product.addons?.find((group: any) =>
+        group.options?.some((option: any) => option.name === addon.name),
+      )?.id;
+      if (!groupId) return groups;
+      groups[groupId] = [...(groups[groupId] || []), addon];
+      return groups;
+    }, {});
+    setSelectedProduct(item.product);
+    setQuantity(item.quantity);
+    setObservation(item.observation || "");
+    setAddonSelections(selections);
+    setEditingCartItemId(item.internalId);
+  };
+
+  const closeProduct = () => {
+    setSelectedProduct(null);
+    setEditingCartItemId(null);
+  };
 
   const toggleAddon = (groupId: string, option: any, group: any) => {
     setAddonSelections((prev) => {
@@ -74,6 +95,12 @@ export function useCart(storageKey: string) {
   const addToCart = () => {
     if (!selectedProduct) return;
 
+    const hasMissingRequiredGroup = selectedProduct.addons?.some((group: any) => {
+      const minimum = Number(group.min_options ?? (group.required ? 1 : 0));
+      return (addonSelections[group.id]?.length || 0) < minimum;
+    });
+    if (hasMissingRequiredGroup) return;
+
     const selectedAddonEntries = Object.entries(addonSelections).flatMap(([groupId, options]) =>
       options.map((option) => ({
         ...option,
@@ -81,18 +108,26 @@ export function useCart(storageKey: string) {
       })),
     );
 
-    setCart((current) => [
-      ...current,
-      {
+    const nextItem = {
         internalId: Date.now().toString(),
         product: selectedProduct,
         quantity,
         selectedAddons: selectedAddonEntries,
         totalPrice: calculateProductTotal(),
         observation,
-      },
-    ]);
+      };
+
+    setCart((current) =>
+      editingCartItemId
+        ? current.map((item) =>
+            item.internalId === editingCartItemId
+              ? { ...nextItem, internalId: editingCartItemId }
+              : item,
+          )
+        : [...current, nextItem],
+    );
     setSelectedProduct(null);
+    setEditingCartItemId(null);
   };
 
   const removeFromCart = (id: string) => {
@@ -137,6 +172,7 @@ export function useCart(storageKey: string) {
     addonSelections,
     quantity,
     observation,
+    editingCartItemId,
     cart,
     cartSubtotal,
     cartQuantity,
@@ -144,6 +180,7 @@ export function useCart(storageKey: string) {
     setObservation,
     setCart,
     openProduct,
+    editCartItem,
     closeProduct,
     toggleAddon,
     calculateProductTotal,

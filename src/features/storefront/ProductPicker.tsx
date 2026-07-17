@@ -10,6 +10,7 @@ type ProductPickerProps = {
   addonSelections: Record<string, any[]>;
   quantity: number;
   observation: string;
+  isEditing: boolean;
   onClose: () => void;
   onToggleAddon: (groupId: string, option: any, group: any) => void;
   onQuantityChange: (quantity: number) => void;
@@ -24,6 +25,7 @@ export function ProductPicker({
   addonSelections,
   quantity,
   observation,
+  isEditing,
   onClose,
   onToggleAddon,
   onQuantityChange,
@@ -32,6 +34,11 @@ export function ProductPicker({
   calculateProductTotal,
 }: ProductPickerProps) {
   if (!product) return null;
+
+  const missingRequiredGroups = product.addons?.filter((group: any) => {
+    const minimum = Number(group.min_options ?? (group.required ? 1 : 0));
+    return (addonSelections[group.id]?.length || 0) < minimum;
+  }) || [];
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-0 backdrop-blur-sm sm:items-center sm:p-4">
@@ -64,6 +71,11 @@ export function ProductPicker({
                   {group.required ? "Obrigatório" : "Opcional"}
                 </span>
               </div>
+              <p className="mb-3 text-xs font-medium text-gray-500">
+                {`Mínimo ${Number(group.min_options ?? (group.required ? 1 : 0))}`}
+                {group.max_options > 0 ? ` · Máximo ${group.max_options}` : " · Sem limite máximo"}
+                {` · ${addonSelections[group.id]?.length || 0} selecionado(s)`}
+              </p>
 
               <div className="space-y-3">
                 {group.options.map((option: any, index: number) => (
@@ -111,6 +123,11 @@ export function ProductPicker({
         </div>
 
         <div className="border-t border-[var(--line)] bg-white p-4">
+          {missingRequiredGroups.length > 0 && (
+            <p className="mb-3 text-center text-xs font-bold text-rose-600">
+              Complete as escolhas obrigatórias para continuar.
+            </p>
+          )}
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-4 rounded-2xl border border-[var(--line)] px-4 py-3">
               <button
@@ -127,11 +144,12 @@ export function ProductPicker({
 
             <button
               onClick={onAddToCart}
-              className="flex-1 rounded-2xl px-5 py-4 font-black text-white"
+              disabled={missingRequiredGroups.length > 0}
+              className="flex-1 rounded-2xl px-5 py-4 font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
               style={{ backgroundColor: primaryColor }}
             >
               <span className="flex items-center justify-between gap-3">
-                <span>Adicionar</span>
+                <span>{missingRequiredGroups.length > 0 ? "Escolha os itens obrigatórios" : isEditing ? "Salvar alterações" : "Adicionar"}</span>
                 <span>{formatMoney(calculateProductTotal())}</span>
               </span>
             </button>

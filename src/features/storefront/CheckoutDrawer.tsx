@@ -37,6 +37,7 @@ type CheckoutDrawerProps = {
   onStepChange: (step: CheckoutStep) => void;
   onRemoveFromCart: (id: string) => void;
   onCartItemQuantityChange: (id: string, quantity: number) => void;
+  onEditCartItem: (item: CartItem) => void;
   onCustomerNameChange: (value: string) => void;
   onCustomerPhoneChange: (value: string) => void;
   onAddressChange: (address: CheckoutAddress) => void;
@@ -84,6 +85,7 @@ export function CheckoutDrawer({
   onStepChange,
   onRemoveFromCart,
   onCartItemQuantityChange,
+  onEditCartItem,
   onCustomerNameChange,
   onCustomerPhoneChange,
   onAddressChange,
@@ -172,6 +174,13 @@ export function CheckoutDrawer({
                           <Plus size={15} />
                         </button>
                       </div>
+                      <button
+                        onClick={() => onEditCartItem(item)}
+                        className="ml-3 text-sm font-bold"
+                        style={{ color: primaryColor }}
+                      >
+                        Editar
+                      </button>
                     </div>
                     <button
                       onClick={() => onRemoveFromCart(item.internalId)}
