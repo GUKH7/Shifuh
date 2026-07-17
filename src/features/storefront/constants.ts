@@ -8,10 +8,10 @@ export const DEFAULT_STOREFRONT_THEME: StorefrontTheme = {
   show_logo: true,
   show_reviews: true,
   show_banners: true,
-  show_featured_badge: true,
+  show_featured_badge: false,
   show_promo_badge: true,
   category_style: "underline",
-  highlight_badge: "Mais pedido",
+  highlight_badge: "",
   promo_text: "Promo do dia",
 };
 

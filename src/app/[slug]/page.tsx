@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Bike,
   Check,
   Clock3,
+  CreditCard,
   Loader2,
+  MapPin,
   Plus,
   Search,
   Send,
@@ -20,6 +22,11 @@ import { CheckoutDrawer } from "@/features/storefront/CheckoutDrawer";
 import { ProductPicker } from "@/features/storefront/ProductPicker";
 import { EMPTY_ADDRESS } from "@/features/storefront/constants";
 import { formatMoney, hexToRgba } from "@/features/storefront/format";
+import {
+  formatDeliveryEstimate,
+  formatServiceRegion,
+  getStoreStatus,
+} from "@/features/storefront/store-summary";
 import type { CheckoutStep, DeliveryInfo, OrderResponse } from "@/features/storefront/types";
 import { useCart } from "@/features/storefront/use-cart";
 import { useStorefront } from "@/features/storefront/use-storefront";
@@ -33,6 +40,7 @@ export default function StorePage() {
   const [usingSavedAddress, setUsingSavedAddress] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [menuSearch, setMenuSearch] = useState("");
+  const [storeClock, setStoreClock] = useState(() => new Date());
 
   const [step, setStep] = useState<CheckoutStep>("cart");
   const [customerName, setCustomerName] = useState("");
@@ -53,6 +61,11 @@ export default function StorePage() {
   } | null>(null);
   const [verifyingCoupon, setVerifyingCoupon] = useState(false);
   const [lastOrderSummary, setLastOrderSummary] = useState<OrderResponse | null>(null);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setStoreClock(new Date()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const handleCustomerLoaded = useCallback((profile: { name: string; phone: string }) => {
     setCustomerName(profile.name);
@@ -399,6 +412,19 @@ export default function StorePage() {
   const totalProducts = products.length;
   const featuredProduct = products[0] || null;
   const hasFreeDelivery = deliveryTiers.some((tier: any) => Number(tier.price || 0) === 0);
+  const deliveryEstimate = formatDeliveryEstimate(deliveryTiers);
+  const serviceRegion = formatServiceRegion(restaurant);
+  const storeStatus = getStoreStatus(restaurant.work_hours, storeClock);
+  const statusStyles = {
+    open: "text-emerald-700 bg-emerald-50",
+    closing: "text-amber-800 bg-amber-50",
+    closed: "text-rose-700 bg-rose-50",
+  }[storeStatus.tone];
+  const statusDotStyles = {
+    open: "bg-emerald-500",
+    closing: "bg-amber-500",
+    closed: "bg-rose-500",
+  }[storeStatus.tone];
   const visibleProducts = products.filter((product) => {
     const term = menuSearch.trim().toLowerCase();
     if (!term) return true;
@@ -584,29 +610,32 @@ export default function StorePage() {
                   )}
                   <span className="inline-flex items-center gap-1">
                     <Clock3 size={13} className="sm:h-[15px] sm:w-[15px]" />
-                    30-45 min
+                    {deliveryEstimate}
                   </span>
                   <span className="inline-flex items-center gap-1">
                     <Bike size={13} className="sm:h-[15px] sm:w-[15px]" />
                     {deliveryTiers.length > 0 ? "Entrega por distância" : "Entrega grátis"}
                   </span>
-                  <span className="inline-flex items-center gap-1 text-emerald-700">
-                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                    Aberto
+                  <span className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-bold ${statusStyles}`}>
+                    <span className={`h-2 w-2 rounded-full ${statusDotStyles}`} />
+                    {storeStatus.label}
                   </span>
-                  {storefrontTheme.show_featured_badge && storefrontTheme.highlight_badge && (
-                    <span
-                      className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.08em]"
-                      style={{
-                        backgroundColor: hexToRgba(contrastColor, 0.14),
-                        color: contrastColor,
-                      }}
-                    >
-                      {storefrontTheme.highlight_badge}
-                    </span>
-                  )}
                 </div>
               </div>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-gray-100 pt-3 text-[11px] font-medium text-gray-600 sm:grid-cols-3 sm:text-sm">
+              <span className="col-span-2 inline-flex min-w-0 items-center gap-1.5 sm:col-span-1">
+                <MapPin size={14} className="shrink-0 text-gray-400" />
+                <span className="truncate">{serviceRegion}</span>
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <ShoppingBag size={14} className="shrink-0 text-gray-400" />
+                Sem pedido mínimo
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <CreditCard size={14} className="shrink-0 text-gray-400" />
+                Pix, cartão e dinheiro
+              </span>
             </div>
           </div>
 
