@@ -15,6 +15,7 @@ import {
   ShoppingBag,
   Star,
   X,
+  RefreshCw,
 } from "lucide-react";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { calculateDistance, calculateDeliveryFee, getCoordinates } from "@/lib/geo";
@@ -32,7 +33,7 @@ import {
   formatServiceRegion,
   getStoreStatus,
 } from "@/features/storefront/store-summary";
-import type { CheckoutStep, DeliveryInfo, OrderResponse } from "@/features/storefront/types";
+import type { CheckoutStep, DeliveryInfo, OrderResponse, OrderTrackingResponse } from "@/features/storefront/types";
 import { useCart } from "@/features/storefront/use-cart";
 import { useStorefront } from "@/features/storefront/use-storefront";
 import { formatCep, formatPhone, isValidCep, isValidPhone, onlyDigits } from "@/features/storefront/checkout-format";
@@ -68,6 +69,31 @@ export default function StorePage() {
   } | null>(null);
   const [verifyingCoupon, setVerifyingCoupon] = useState(false);
   const [lastOrderSummary, setLastOrderSummary] = useState<OrderResponse | null>(null);
+  const [orderTracking, setOrderTracking] = useState<OrderTrackingResponse | null>(null);
+  const [trackingOrder, setTrackingOrder] = useState(false);
+
+  const trackLastOrder = async () => {
+    if (!lastOrderSummary) return;
+    setTrackingOrder(true);
+    try {
+      const response = await fetch(`/api/orders/${lastOrderSummary.orderId}/tracking`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: onlyDigits(customerPhone) }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+      setOrderTracking(result);
+    } catch (error: any) {
+      showToast({
+        title: "Não foi possível atualizar",
+        description: error.message || "Tente novamente em instantes.",
+        tone: "error",
+      });
+    } finally {
+      setTrackingOrder(false);
+    }
+  };
 
   useEffect(() => {
     const timer = window.setInterval(() => setStoreClock(new Date()), 60_000);
@@ -528,33 +554,92 @@ export default function StorePage() {
   }
 
   if (step === "success") {
+    const status = orderTracking?.status || "pending";
+    const statusLabels: Record<string, string> = {
+      pending: "Pedido recebido pela loja",
+      preparing: "Pedido em preparo",
+      delivering: "Pedido saiu para entrega",
+      done: "Pedido concluído",
+      canceled: "Pedido cancelado",
+    };
+    const paymentLabels: Record<string, string> = {
+      pix: "PIX",
+      cash: "Dinheiro",
+      credit: "Cartão de crédito",
+      debit: "Cartão de débito",
+    };
+
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f6f1ea] px-6 py-12">
-        <div className="surface-card w-full max-w-xl rounded-[32px] p-8 text-center">
+      <div className="flex min-h-screen items-center justify-center bg-[#f6f1ea] px-4 py-8 sm:px-6 sm:py-12">
+        <div className="surface-card w-full max-w-2xl rounded-[24px] p-5 sm:rounded-[32px] sm:p-8">
           <div
             className="mx-auto flex h-20 w-20 items-center justify-center rounded-full text-white"
             style={{ backgroundColor: primaryColor }}
           >
             <Check size={38} />
           </div>
-          <h1 className="mt-6 text-4xl font-black tracking-tight text-gray-950">
+          <h1 className="mt-6 text-center text-3xl font-black tracking-tight text-gray-950 sm:text-4xl">
             Pedido recebido
           </h1>
-          {lastOrderSummary?.displayNumber && (
-            <p className="mt-3 text-sm font-bold uppercase tracking-[0.14em] text-gray-400">
-              Pedido #{lastOrderSummary.displayNumber}
-            </p>
-          )}
-          <p className="mt-3 text-base leading-7 text-[var(--muted)]">
-            A loja já recebeu seu pedido e você pode confirmar tudo no WhatsApp.
+          <p className="mt-3 text-center text-base leading-7 text-[var(--muted)]">
+            Seu pedido foi registrado no sistema da loja.
           </p>
+
+          <div className="mt-6 rounded-2xl px-5 py-4 text-center" style={{ backgroundColor: `${primaryColor}12` }}>
+            <p className="text-xs font-black uppercase text-gray-500">Número do pedido</p>
+            <p className="mt-1 text-4xl font-black text-gray-950">
+              #{lastOrderSummary?.displayNumber || lastOrderSummary?.orderId.slice(0, 4).toUpperCase()}
+            </p>
+            <p className="mt-2 text-sm font-bold" style={{ color: primaryColor }}>{statusLabels[status]}</p>
+          </div>
+
+          {lastOrderSummary && (
+            <div className="mt-5 grid gap-3 text-left sm:grid-cols-2">
+              <div className="rounded-2xl border border-[var(--line)] bg-white p-4">
+                <p className="text-xs font-black uppercase text-gray-400">Resumo</p>
+                <p className="mt-2 font-bold text-gray-950">{lastOrderSummary.items.length} item(ns)</p>
+                <p className="mt-1 text-xl font-black text-gray-950">{formatMoney(lastOrderSummary.total)}</p>
+              </div>
+              <div className="rounded-2xl border border-[var(--line)] bg-white p-4">
+                <p className="text-xs font-black uppercase text-gray-400">Pagamento</p>
+                <p className="mt-2 font-bold text-gray-950">
+                  {paymentLabels[lastOrderSummary.paymentMethod] || lastOrderSummary.paymentMethod}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-[var(--line)] bg-white p-4 sm:col-span-2">
+                <p className="text-xs font-black uppercase text-gray-400">Entrega</p>
+                <p className="mt-2 font-bold text-gray-950">
+                  {lastOrderSummary.address.street}, {lastOrderSummary.address.number}
+                  {lastOrderSummary.address.complement ? `, ${lastOrderSummary.address.complement}` : ""}
+                </p>
+                <p className="mt-1 text-sm text-gray-500">
+                  {lastOrderSummary.address.neighborhood} - {lastOrderSummary.address.city}/{lastOrderSummary.address.state}
+                </p>
+                <p className="mt-2 text-sm font-bold" style={{ color: primaryColor }}>
+                  Previsão: aproximadamente {lastOrderSummary.deliveryTime} min
+                </p>
+              </div>
+            </div>
+          )}
+
+          <button
+            onClick={trackLastOrder}
+            disabled={trackingOrder}
+            className="mt-6 w-full rounded-2xl px-6 py-4 text-base font-black text-white disabled:opacity-60"
+            style={{ backgroundColor: primaryColor }}
+          >
+            <span className="inline-flex items-center gap-2">
+              <RefreshCw size={18} className={trackingOrder ? "animate-spin" : ""} />
+              {trackingOrder ? "Atualizando..." : "Acompanhar pedido"}
+            </span>
+          </button>
           <button
             onClick={() => lastOrderSummary && sendToWhatsApp(lastOrderSummary)}
-            className="mt-8 w-full rounded-2xl bg-[#25D366] px-6 py-4 text-base font-bold text-white"
+            className="mt-3 w-full rounded-2xl border border-[var(--line)] bg-white px-6 py-4 text-sm font-bold text-gray-700"
           >
             <span className="inline-flex items-center gap-2">
               <Send size={18} />
-              Enviar no WhatsApp
+              Abrir resumo no WhatsApp
             </span>
           </button>
           <button

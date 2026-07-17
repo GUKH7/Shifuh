@@ -65,6 +65,14 @@ export interface OrderResponse {
   }>;
 }
 
+export type PublicOrderStatus = "pending" | "preparing" | "delivering" | "done" | "canceled";
+
+export interface OrderTrackingResponse {
+  displayNumber: string;
+  status: PublicOrderStatus;
+  createdAt: string;
+}
+
 export interface StorefrontTheme {
   hero_style: "banner" | "split" | "spotlight";
   catalog_layout: "grid" | "list";
