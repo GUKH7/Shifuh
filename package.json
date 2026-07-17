@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "test": "node --test",
+    "test:tenants": "node scripts/multi-tenant-check.mjs",
     "test:load": "node scripts/load-check.mjs",
     "ifood:worker": "node scripts/ifood-polling-worker.mjs",
     "start": "next start",
