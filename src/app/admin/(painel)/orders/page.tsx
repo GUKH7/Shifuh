@@ -128,10 +128,10 @@ function getCustomerInitials(name: string) {
 
 function getRelativeOrderTime(dateStr: string) {
   const minutes = Math.max(0, Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000));
-  if (minutes < 1) return "Agora ha pouco";
-  if (minutes < 60) return `${minutes} min atras`;
+  if (minutes < 1) return "Agora há pouco";
+  if (minutes < 60) return `${minutes} min atrás`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} h atras`;
+  if (hours < 24) return `${hours} h atrás`;
   return formatDate(dateStr);
 }
 
