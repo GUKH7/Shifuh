@@ -221,7 +221,14 @@ export function extractMerchantUuidFromIfoodUrl(rawUrl: string) {
 export function isValidIfoodPublicUrl(rawUrl: string) {
   try {
     const parsed = new URL(rawUrl);
-    return parsed.hostname.endsWith("ifood.com.br") && parsed.pathname.includes("/delivery/");
+    const hostname = parsed.hostname.toLowerCase();
+    const isIfoodHost = hostname === "ifood.com.br" || hostname.endsWith(".ifood.com.br");
+
+    return (
+      parsed.protocol === "https:" &&
+      isIfoodHost &&
+      parsed.pathname.toLowerCase().includes("/delivery/")
+    );
   } catch {
     return false;
   }

@@ -11,6 +11,8 @@ import {
   ChevronUp,
   Edit3,
   GripVertical,
+  Import,
+  Link2,
   Loader2,
   Plus,
   Power,
@@ -45,6 +47,10 @@ export default function AdminDashboard() {
   const [newCategoryName, setNewCategoryName] = useState("");
   const [categoryModalError, setCategoryModalError] = useState("");
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [ifoodMenuUrl, setIfoodMenuUrl] = useState("");
+  const [importError, setImportError] = useState("");
+  const [isImportingMenu, setIsImportingMenu] = useState(false);
 
   const router = useRouter();
   const { showToast } = useToast();
@@ -110,6 +116,79 @@ export default function AdminDashboard() {
   const handleOpenNewProduct = () => {
     setEditingProduct(null);
     setIsProductModalOpen(true);
+  };
+
+  const handleOpenImportModal = () => {
+    setIfoodMenuUrl("");
+    setImportError("");
+    setIsImportModalOpen(true);
+  };
+
+  const handleImportIfoodMenu = async () => {
+    if (!restaurant?.id || isImportingMenu) return;
+
+    const publicUrl = ifoodMenuUrl.trim();
+
+    try {
+      const parsedUrl = new URL(publicUrl);
+      const hostname = parsedUrl.hostname.toLowerCase();
+      const isIfoodHost = hostname === "ifood.com.br" || hostname.endsWith(".ifood.com.br");
+
+      if (
+        parsedUrl.protocol !== "https:" ||
+        !isIfoodHost ||
+        !parsedUrl.pathname.toLowerCase().includes("/delivery/")
+      ) {
+        throw new Error("Cole o link público da loja no iFood.");
+      }
+    } catch {
+      setImportError("Cole um link público válido de uma loja no iFood.");
+      return;
+    }
+
+    setIsImportingMenu(true);
+    setImportError("");
+
+    try {
+      const response = await fetch("/api/integrations/ifood/public-link/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          restaurantId: restaurant.id,
+          publicUrl,
+          importStoreProfile: false,
+        }),
+      });
+      const responseText = await response.text();
+      let result: Record<string, any> = {};
+
+      try {
+        result = responseText ? JSON.parse(responseText) : {};
+      } catch {
+        result = {};
+      }
+
+      if (!response.ok) {
+        throw new Error(result.error || "Não foi possível importar esse cardápio agora.");
+      }
+
+      await fetchData();
+      setIsImportModalOpen(false);
+      setIfoodMenuUrl("");
+      showToast({
+        title: "Cardápio importado",
+        description: `${result.summary?.categoriesProcessed || 0} categorias e ${result.summary?.productsProcessed || 0} produtos foram processados. Revise os itens antes de publicar.`,
+        tone: "success",
+      });
+    } catch (error) {
+      setImportError(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível importar esse cardápio agora.",
+      );
+    } finally {
+      setIsImportingMenu(false);
+    }
   };
 
   const handleEditProduct = (product: any) => {
@@ -336,6 +415,16 @@ export default function AdminDashboard() {
               className="w-full rounded-2xl border border-[var(--line)] bg-white py-3 pl-11 pr-4 text-sm outline-none transition-colors focus:border-[var(--brand)]"
             />
           </div>
+
+          <button
+            onClick={handleOpenImportModal}
+            className="rounded-2xl border border-[var(--line)] bg-white px-5 py-3 text-sm font-bold text-gray-700"
+          >
+            <span className="inline-flex items-center gap-2">
+              <Import size={16} />
+              Importar do iFood
+            </span>
+          </button>
 
           <button
             onClick={handleOpenCategoryModal}
@@ -663,6 +752,115 @@ export default function AdminDashboard() {
         categories={categories}
         productToEdit={editingProduct}
       />
+
+      {isImportModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="ifood-import-title"
+            className="w-full max-w-lg overflow-hidden rounded-[24px] border border-[var(--line)] bg-[#fffdfa] shadow-[0_30px_80px_rgba(17,16,15,0.18)]"
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-[var(--line)] bg-white px-6 py-5">
+              <div className="flex items-start gap-3">
+                <span className="inline-flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-600">
+                  <Link2 size={20} />
+                </span>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-red-600">
+                    Importação por link
+                  </p>
+                  <h2 id="ifood-import-title" className="mt-1 text-xl font-black text-gray-950">
+                    Importar cardápio do iFood
+                  </h2>
+                  <p className="mt-2 text-sm leading-6 text-gray-500">
+                    Cole o link público da loja. O nome, o endereço e a identidade visual da sua
+                    loja não serão alterados.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsImportModalOpen(false)}
+                disabled={isImportingMenu}
+                className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[#fbf7f2] text-gray-500 disabled:opacity-50"
+                aria-label="Fechar importação"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-4 px-6 py-5">
+              <label className="block space-y-2">
+                <span className="text-sm font-bold text-gray-700">Link público da loja</span>
+                <input
+                  autoFocus
+                  type="url"
+                  inputMode="url"
+                  value={ifoodMenuUrl}
+                  onChange={(event) => {
+                    setIfoodMenuUrl(event.target.value);
+                    if (importError) setImportError("");
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      handleImportIfoodMenu();
+                    }
+                  }}
+                  placeholder="https://www.ifood.com.br/delivery/..."
+                  aria-invalid={Boolean(importError)}
+                  aria-describedby={importError ? "ifood-import-error" : "ifood-import-help"}
+                  className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-[var(--brand)]"
+                />
+              </label>
+
+              <p id="ifood-import-help" className="text-sm leading-6 text-gray-500">
+                Categorias e produtos importados anteriormente serão atualizados. Itens criados
+                manualmente continuarão no seu cardápio. Alguns complementos podem precisar de
+                ajustes após a importação.
+              </p>
+
+              {importError && (
+                <div
+                  id="ifood-import-error"
+                  role="alert"
+                  className="flex items-start gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-700"
+                >
+                  <AlertCircle size={17} className="mt-0.5 flex-shrink-0" />
+                  <span>{importError}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col-reverse gap-3 border-t border-[var(--line)] bg-white px-6 py-5 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setIsImportModalOpen(false)}
+                disabled={isImportingMenu}
+                className="rounded-2xl border border-[var(--line)] bg-white px-5 py-3 text-sm font-bold text-gray-700 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleImportIfoodMenu}
+                disabled={isImportingMenu || !ifoodMenuUrl.trim()}
+                className="brand-gradient rounded-2xl px-5 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <span className="inline-flex items-center gap-2">
+                  {isImportingMenu ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <Import size={16} />
+                  )}
+                  {isImportingMenu ? "Importando cardápio..." : "Importar cardápio"}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isCategoryModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">

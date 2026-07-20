@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { fetchIfoodPublicStoreData } from "@/lib/ifood/public-page";
 import { scrapeIfoodPublicMenu } from "@/lib/ifood/public-menu-importer";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -9,6 +10,7 @@ export const maxDuration = 60;
 type ImportFromPublicLinkPayload = {
   restaurantId?: string;
   publicUrl?: string;
+  importStoreProfile?: boolean;
 };
 
 function buildRestaurantUpdate(current: Record<string, any>, imported: Awaited<ReturnType<typeof fetchIfoodPublicStoreData>>) {
@@ -47,9 +49,17 @@ function normalizeMoney(value: unknown) {
 
 export async function POST(request: Request) {
   try {
+    const rateLimitResponse = checkRateLimit(request, {
+      keyPrefix: "ifood-public-link-import",
+      limit: 6,
+      windowMs: 10 * 60_000,
+    });
+    if (rateLimitResponse) return rateLimitResponse;
+
     const body = (await request.json()) as ImportFromPublicLinkPayload;
     const restaurantId = body.restaurantId?.trim();
     const publicUrl = body.publicUrl?.trim();
+    const importStoreProfile = body.importStoreProfile === true;
 
     if (!restaurantId) {
       return NextResponse.json({ error: "Loja inválida." }, { status: 400 });
@@ -82,8 +92,6 @@ export async function POST(request: Request) {
     const admin = createAdminClient();
     const imported = await fetchIfoodPublicStoreData(publicUrl);
     let importedMenuSections = imported.menuSections;
-    let fallbackErrorMessage: string | null =
-      "O iFood não expôs nenhuma categoria nessa sessão de importação.";
 
     if (importedMenuSections.length === 0) {
       try {
@@ -95,35 +103,32 @@ export async function POST(request: Request) {
           state: imported.address.state,
         });
       } catch (error) {
-        fallbackErrorMessage =
-          error instanceof Error
-            ? error.message
-            : "O fallback do cardápio público do iFood falhou.";
         console.error("Fallback headless do iFood falhou:", error);
       }
     }
 
-    const restaurantUpdate = buildRestaurantUpdate(ownedRestaurant, imported);
+    if (importStoreProfile) {
+      const restaurantUpdate = buildRestaurantUpdate(ownedRestaurant, imported);
+      const { error: updateRestaurantError } = await admin
+        .from("restaurants")
+        .update(restaurantUpdate)
+        .eq("id", restaurantId);
 
-    const { error: updateRestaurantError } = await admin
-      .from("restaurants")
-      .update(restaurantUpdate)
-      .eq("id", restaurantId);
+      if (updateRestaurantError) {
+        throw new Error("Não foi possível atualizar os dados da loja com o link informado.");
+      }
 
-    if (updateRestaurantError) {
-      throw new Error("Não foi possível atualizar os dados da loja com o link informado.");
+      await admin.from("ifood_integrations").upsert(
+        {
+          restaurant_id: restaurantId,
+          merchant_id: imported.merchantUuid,
+          merchant_name: imported.name || ownedRestaurant.name,
+          status: "configuring",
+          notes: `Importado por link público em ${new Date().toLocaleString("pt-BR")}`,
+        },
+        { onConflict: "restaurant_id" },
+      );
     }
-
-    await admin.from("ifood_integrations").upsert(
-      {
-        restaurant_id: restaurantId,
-        merchant_id: imported.merchantUuid,
-        merchant_name: imported.name || ownedRestaurant.name,
-        status: "configuring",
-        notes: `Importado por link público em ${new Date().toLocaleString("pt-BR")}`,
-      },
-      { onConflict: "restaurant_id" },
-    );
 
     let createdCategories = 0;
     let updatedCategories = 0;
@@ -192,14 +197,15 @@ export async function POST(request: Request) {
 
         for (const item of section.items) {
           const linkedProductId = productLinkMap.get(item.id);
+          const importedPrice = normalizeMoney(item.price);
           const productPayload = {
             restaurant_id: restaurantId,
             category_id: localCategoryId,
             name: item.name,
             description: item.description,
-            price: normalizeMoney(item.price),
+            price: importedPrice,
             image_url: item.imageUrl,
-            is_active: true,
+            is_active: importedPrice > 0,
           };
 
           if (linkedProductId) {
@@ -246,7 +252,8 @@ export async function POST(request: Request) {
     if (importedMenuSections.length === 0) {
       return NextResponse.json(
         {
-          error: `A loja foi lida, mas o cardápio público não pôde ser copiado agora. ${fallbackErrorMessage}`,
+          error:
+            "O link da loja foi reconhecido, mas o iFood não disponibilizou o cardápio para importação agora. Tente novamente mais tarde.",
         },
         { status: 502 },
       );
@@ -266,14 +273,14 @@ export async function POST(request: Request) {
         updatedProducts,
       },
       details:
-        importedMenuSections.length > 0
+        importStoreProfile
           ? [
-              "Os dados básicos da loja e o cardápio visível foram importados.",
+              "Os dados públicos da loja e o cardápio visível foram importados.",
               "Você pode revisar as categorias e os produtos no Gestor antes de publicar.",
             ]
           : [
-              "Os dados básicos da loja foram importados pelo link público.",
-              "O iFood não expôs o cardápio completo nesse carregamento público, então nenhum produto foi criado agora.",
+              "O cardápio visível foi importado sem alterar o nome, o endereço ou a identidade da sua loja.",
+              "Revise preços, imagens e disponibilidade antes de publicar.",
             ],
     });
   } catch (error) {

@@ -852,6 +852,7 @@ export default function SettingsPage() {
         body: JSON.stringify({
           restaurantId,
           publicUrl: ifoodPublicUrl,
+          importStoreProfile: true,
         }),
       });
 
