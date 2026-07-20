@@ -17,6 +17,7 @@ import {
   Phone,
 } from "lucide-react";
 import { useParams, usePathname, useRouter } from "next/navigation";
+import Image from "next/image";
 import { calculateDistance, calculateDeliveryFee, getCoordinates } from "@/lib/geo";
 import { useToast } from "@/components/ui/toast-provider";
 import { CheckoutDrawer } from "@/features/storefront/CheckoutDrawer";
@@ -36,6 +37,7 @@ import {
 import type { CheckoutStep, DeliveryInfo, OrderResponse } from "@/features/storefront/types";
 import { useCart } from "@/features/storefront/use-cart";
 import { useStorefront } from "@/features/storefront/use-storefront";
+import { useCheckoutAnalytics } from "@/features/storefront/use-checkout-analytics";
 import {
   formatCep,
   formatPhone,
@@ -152,6 +154,12 @@ export default function StorePage() {
     cartQuantity,
     updateCartItemQuantity,
   } = useCart(`gestor-delivery:cart:${slug || "store"}`);
+  const { markCompleted, trackError } = useCheckoutAnalytics({
+    restaurantId: restaurant?.id,
+    isOpen: isCartOpen,
+    step,
+    cartQuantity,
+  });
 
   const calculateDeliveryForAddress = async (addressData: typeof EMPTY_ADDRESS) => {
     if (!isCompleteCheckoutAddress(addressData)) {
@@ -195,11 +203,13 @@ export default function StorePage() {
         });
       } else {
         setDeliveryInfo(null);
+        trackError("address_not_found");
         setDeliveryError("Não encontramos uma localização compatível com este endereço. Confira os campos e tente novamente.");
       }
     } catch (error) {
       console.error(error);
       setDeliveryInfo(null);
+      trackError("geocoding_unavailable");
       setDeliveryError(getFriendlyStorefrontError("delivery"));
     } finally {
       setCalculatingFee(false);
@@ -407,6 +417,7 @@ export default function StorePage() {
 
       if (!response.ok) {
         const message = getOrderApiErrorMessage(result?.code);
+        trackError(String(result?.code || "order_rejected").toLowerCase());
         setCheckoutError(message);
         if (["INCOMPLETE_ADDRESS", "ADDRESS_NOT_FOUND", "OUTSIDE_DELIVERY_AREA", "DELIVERY_CALCULATION_UNAVAILABLE"].includes(result?.code)) {
           if (result?.code === "OUTSIDE_DELIVERY_AREA") {
@@ -433,6 +444,7 @@ export default function StorePage() {
       }
 
       const completedOrder = result as OrderResponse;
+      markCompleted();
       clearCart();
       setAppliedCoupon(null);
       setScheduledFor("");
@@ -440,6 +452,7 @@ export default function StorePage() {
       setCheckoutError("");
       router.replace(completedOrder.trackingPath);
     } catch (error: any) {
+      trackError("order_request_failed");
       setCheckoutError(getFriendlyStorefrontError("order"));
       showToast({
         title: "Não foi possível finalizar o pedido",
@@ -613,18 +626,17 @@ export default function StorePage() {
           <div className="relative overflow-hidden rounded-b-[18px] sm:rounded-[28px]">
             <div className={`relative bg-gray-200 ${heroHeightClass}`}>
             {usesHeroBanner && banners.length > 0 ? (
-              banners.map((banner, index) => (
-                <img
-                  key={banner}
-                  src={banner}
-                  alt={`Banner ${index + 1}`}
-                  className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${
-                    index === currentBanner ? "opacity-100" : "opacity-0"
-                  }`}
-                />
-              ))
+              <Image
+                key={banners[currentBanner]}
+                src={banners[currentBanner]}
+                alt={`Banner da ${restaurant.name}`}
+                fill
+                priority
+                sizes="(max-width: 1024px) 100vw, 1024px"
+                className="object-cover"
+              />
             ) : usesHeroBanner && restaurant.image_url ? (
-              <img src={restaurant.image_url} alt={restaurant.name} className="h-full w-full object-cover" />
+              <Image src={restaurant.image_url} alt={restaurant.name} fill priority sizes="(max-width: 1024px) 100vw, 1024px" className="object-cover" />
             ) : (
               <div className="h-full w-full" style={{ background: heroBackground }} />
             )}
@@ -661,11 +673,11 @@ export default function StorePage() {
           <div className="-mt-1 relative z-10 px-3 sm:mt-0 sm:px-0">
             <div className="flex min-w-0 items-end gap-3 sm:gap-5">
               {storefrontTheme.show_logo && (
-                <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-[18px] border-[3px] border-white bg-white shadow-[0_10px_24px_rgba(17,16,15,0.14)] sm:h-20 sm:w-20 sm:rounded-[18px] sm:border-4">
+                <div className="relative flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-[18px] border-[3px] border-white bg-white shadow-[0_10px_24px_rgba(17,16,15,0.14)] sm:h-20 sm:w-20 sm:rounded-[18px] sm:border-4">
                   {restaurant.logo_url ? (
-                    <img src={restaurant.logo_url} alt={restaurant.name} className="h-full w-full object-contain p-1" />
+                    <Image src={restaurant.logo_url} alt={`Logo da ${restaurant.name}`} fill sizes="80px" className="object-contain p-1" />
                   ) : restaurant.image_url ? (
-                    <img src={restaurant.image_url} alt={restaurant.name} className="h-full w-full object-cover" />
+                    <Image src={restaurant.image_url} alt={`Logo da ${restaurant.name}`} fill sizes="80px" className="object-cover" />
                   ) : (
                     <span className="text-3xl font-black" style={{ color: primaryColor }}>
                       {restaurant.name.charAt(0)}
@@ -826,7 +838,7 @@ export default function StorePage() {
               if (categoryProducts.length === 0) return null;
 
               return (
-                <section key={category.id} id={`cat-${category.id}`} className="scroll-mt-24 overflow-hidden rounded-[18px] border border-gray-200 bg-white sm:rounded-[22px]">
+                <section key={category.id} id={`cat-${category.id}`} className="catalog-section scroll-mt-24 overflow-hidden rounded-[18px] border border-gray-200 bg-white sm:rounded-[22px]">
                   <div className="border-b border-gray-100 px-3 py-2.5 sm:px-5 sm:py-3">
                     <h2 className="text-[15px] font-black text-gray-950 sm:text-[17px]">{category.name}</h2>
                     <p className="mt-0.5 text-[10px] font-medium text-gray-500 sm:text-[11px]">{categoryProducts.length} itens</p>
@@ -878,7 +890,7 @@ export default function StorePage() {
                             storefrontTheme.catalog_layout === "list" ? "w-[112px] flex-shrink-0 sm:w-36" : "w-[112px] flex-shrink-0 sm:mt-3 sm:w-full"
                           }`}>
                             {product.image_url ? (
-                              <img src={product.image_url} alt={product.name} className="h-full w-full object-cover" />
+                              <Image src={product.image_url} alt={product.name} fill sizes="(max-width: 640px) 112px, (max-width: 1280px) 33vw, 320px" className="object-cover" />
                             ) : (
                               <div className="flex h-full w-full items-center justify-center text-gray-300"><ShoppingBag size={28} /></div>
                             )}

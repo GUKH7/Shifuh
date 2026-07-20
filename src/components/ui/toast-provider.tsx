@@ -78,6 +78,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         {toasts.map((toast) => (
           <div
             key={toast.id}
+            role={toast.tone === "error" ? "alert" : "status"}
+            aria-live={toast.tone === "error" ? "assertive" : "polite"}
             className={`pointer-events-auto rounded-2xl border px-4 py-3 shadow-[0_18px_45px_rgba(17,16,15,0.12)] toast-enter ${getToastToneClasses(
               toast.tone,
             )}`}
@@ -93,6 +95,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               <button
                 onClick={() => removeToast(toast.id)}
                 className="rounded-full p-1 text-gray-400 hover:bg-white/60 hover:text-gray-700"
+                aria-label="Fechar aviso"
               >
                 <X size={16} />
               </button>

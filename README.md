@@ -70,6 +70,8 @@ tests/                              Testes de API, integrações e WhatsApp
 
 As migrations ficam em `supabase/migrations`. A migration `015_public_restaurants_view.sql` cria a view pública segura `public_restaurants`, usada pela vitrine para evitar exposição direta da tabela `restaurants`.
 
+A tabela `storefront_checkout_events` registra somente eventos anônimos do funil de checkout, sem telefone, endereço ou conteúdo da sacola. Ela permite medir abertura, etapas visitadas, abandono, erros e conclusão por restaurante.
+
 ## Integrações
 
 - iFood: credenciais centralizadas, merchant, catálogo, eventos e pedidos.
@@ -81,6 +83,7 @@ As migrations ficam em `supabase/migrations`. A migration `015_public_restaurant
 | --- | --- |
 | `npm run dev` | Servidor de desenvolvimento |
 | `npm test` | Testes automatizados |
+| `npm run test:e2e` | Build isolado e cenários Playwright em celular e desktop |
 | `npm run test:load -- <url> 100 10` | Carga HTTP GET com 100 requisicoes e concorrencia 10 |
 | `npx tsc --noEmit` | Checagem de tipos |
 | `npm run build` | Build de produção |

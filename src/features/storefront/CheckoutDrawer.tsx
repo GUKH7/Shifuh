@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import Image from "next/image";
+import { useEffect, useState } from "react";
 import { Banknote, ChevronLeft, CreditCard, Loader2, Minus, Pencil, Plus, QrCode, Ticket, Trash2 } from "lucide-react";
 import { formatMoney, getContrastTextColor } from "./format";
 import { DeliveryCalculator } from "./DeliveryCalculator";
@@ -15,6 +16,7 @@ import {
   paymentMethodDetails,
   type StorefrontPaymentMethod,
 } from "./checkout-format";
+import { useAccessibleDialog } from "./use-accessible-dialog";
 
 type CheckoutDrawerProps = {
   isOpen: boolean;
@@ -137,6 +139,12 @@ export function CheckoutDrawer({
 }: CheckoutDrawerProps) {
   const [addressAttempted, setAddressAttempted] = useState(false);
   const [paymentAttempted, setPaymentAttempted] = useState(false);
+  const { dialogRef, initialFocusRef } = useAccessibleDialog(isOpen, onClose);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    window.requestAnimationFrame(() => initialFocusRef.current?.focus());
+  }, [initialFocusRef, isOpen, step]);
 
   if (!isOpen) return null;
   const brandTextColor = getContrastTextColor(primaryColor);
@@ -176,8 +184,18 @@ export function CheckoutDrawer({
 
   return (
     <div className="fixed inset-0 z-50 bg-[#f6f1ea]">
-      <div className="mx-auto flex h-full min-h-0 w-full max-w-2xl flex-col">
-        <header className="sticky top-0 z-10 border-b border-[var(--line)] bg-[#faf5ef]/95 px-4 py-3 backdrop-blur sm:px-6 sm:py-4">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="checkout-step-title"
+        tabIndex={-1}
+        className="mx-auto flex h-[100dvh] min-h-0 w-full max-w-2xl flex-col overflow-hidden overscroll-none"
+      >
+        <div className="absolute h-px w-px overflow-hidden whitespace-nowrap [clip:rect(0,0,0,0)]" role="status" aria-live="polite">
+          Etapa atual: {step === "cart" ? "sacola" : step === "address" ? "entrega" : "pagamento"}.
+        </div>
+        <header className="safe-area-top sticky top-0 z-10 border-b border-[var(--line)] bg-[#faf5ef]/95 px-4 py-3 backdrop-blur sm:px-6 sm:py-4">
           <div className="flex items-center gap-4">
             <button
               onClick={() => {
@@ -192,7 +210,7 @@ export function CheckoutDrawer({
             </button>
             <div>
               <p className="text-[11px] font-bold uppercase text-gray-400">Finalizar pedido</p>
-              <h2 className="text-xl font-black text-gray-950 sm:text-2xl">
+              <h2 id="checkout-step-title" ref={initialFocusRef as React.RefObject<HTMLHeadingElement>} tabIndex={-1} className="text-xl font-black text-gray-950 outline-none sm:text-2xl">
                 {step === "cart" ? "Sua sacola" : step === "address" ? "Entrega" : "Pagamento"}
               </h2>
             </div>
@@ -200,7 +218,7 @@ export function CheckoutDrawer({
           <nav aria-label="Etapas do pedido" className="mt-4 grid grid-cols-3 gap-2">
             {["Sacola", "Entrega", "Pagamento"].map((label, index) => {
               return (
-                <div key={label} className="min-w-0">
+                <div key={label} className="min-w-0" aria-current={index === currentIndex ? "step" : undefined}>
                   <div className="flex items-center gap-2">
                     <span
                       className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-black"
@@ -221,7 +239,7 @@ export function CheckoutDrawer({
           </nav>
         </header>
 
-        <div className="flex-1 overflow-y-auto px-3 py-4 sm:px-6 sm:py-6">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 sm:px-6 sm:py-6">
           {storeStatus.tone === "closing" && (
             <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
               <p className="font-black">A loja fecha em breve</p>
@@ -256,7 +274,7 @@ export function CheckoutDrawer({
                 <article key={item.internalId} className="surface-card rounded-[16px] p-3.5 sm:rounded-[20px] sm:p-5">
                   <div className="flex items-start gap-3">
                     {item.product.image_url && (
-                      <img src={item.product.image_url} alt="" className="h-16 w-16 shrink-0 rounded-xl object-cover sm:h-20 sm:w-20" />
+                      <Image src={item.product.image_url} alt="" width={80} height={80} sizes="80px" className="h-16 w-16 shrink-0 rounded-xl object-cover sm:h-20 sm:w-20" />
                     )}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-3">
@@ -303,28 +321,34 @@ export function CheckoutDrawer({
                   <label className="block text-xs font-bold text-gray-600">
                     Nome completo
                     <input
+                      id="checkout-customer-name"
                       value={customerName}
                       onChange={(event) => onCustomerNameChange(event.target.value)}
                       placeholder="Como podemos chamar você?"
                       autoComplete="name"
+                      aria-invalid={addressAttempted && Boolean(addressErrors.customerName)}
+                      aria-describedby={addressAttempted && addressErrors.customerName ? "checkout-customer-name-error" : undefined}
                       className="mt-1.5 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-normal text-gray-950 outline-none"
                     />
                     {addressAttempted && addressErrors.customerName && (
-                      <span className="mt-1.5 block text-xs font-bold text-rose-600">{addressErrors.customerName}</span>
+                      <span id="checkout-customer-name-error" role="alert" className="mt-1.5 block text-xs font-bold text-rose-600">{addressErrors.customerName}</span>
                     )}
                   </label>
                   <label className="block text-xs font-bold text-gray-600">
                     Celular com DDD
                     <input
+                      id="checkout-customer-phone"
                       value={customerPhone}
                       onChange={(event) => onCustomerPhoneChange(formatPhone(event.target.value))}
                       placeholder="(11) 99999-9999"
                       inputMode="tel"
                       autoComplete="tel"
+                      aria-invalid={addressAttempted && Boolean(addressErrors.customerPhone)}
+                      aria-describedby={addressAttempted && addressErrors.customerPhone ? "checkout-customer-phone-error" : undefined}
                       className="mt-1.5 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-normal text-gray-950 outline-none"
                     />
                     {addressAttempted && addressErrors.customerPhone && (
-                      <span className="mt-1.5 block text-xs font-bold text-rose-600">{addressErrors.customerPhone}</span>
+                      <span id="checkout-customer-phone-error" role="alert" className="mt-1.5 block text-xs font-bold text-rose-600">{addressErrors.customerPhone}</span>
                     )}
                   </label>
                 </div>
@@ -492,7 +516,7 @@ export function CheckoutDrawer({
                 </div>
 
                 {appliedCoupon && <p className="mt-3 text-sm font-bold text-emerald-600">Cupom aplicado com sucesso.</p>}
-                {couponError && <p className="mt-3 text-xs font-bold text-rose-600">{couponError}</p>}
+                {couponError && <p role="alert" className="mt-3 text-xs font-bold text-rose-600">{couponError}</p>}
               </div>
 
               <div id="checkout-payment" className="surface-card scroll-mt-4 rounded-[20px] p-4 sm:rounded-[24px] sm:p-5">
@@ -534,7 +558,7 @@ export function CheckoutDrawer({
                     );
                   })}
                   {paymentAttempted && paymentError && (
-                    <p className="text-xs font-bold text-rose-600">{paymentError}</p>
+                    <p role="alert" className="text-xs font-bold text-rose-600">{paymentError}</p>
                   )}
 
                   {paymentMethod === "cash" && (
@@ -564,10 +588,11 @@ export function CheckoutDrawer({
                             onChange={(event) => onChangeForChange(formatCurrencyInput(event.target.value))}
                             placeholder="R$ 50,00"
                             inputMode="numeric"
+                            aria-invalid={paymentAttempted && Boolean(changeForError)}
                             className="mt-1.5 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-normal text-gray-950 outline-none"
                           />
                           {paymentAttempted && changeForError && (
-                            <span className="mt-1.5 block text-xs font-bold text-rose-600">{changeForError}</span>
+                            <span role="alert" className="mt-1.5 block text-xs font-bold text-rose-600">{changeForError}</span>
                           )}
                         </label>
                       )}
@@ -576,7 +601,7 @@ export function CheckoutDrawer({
                 </div>
               </div>
               {checkoutError && (
-                <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
+                <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
                   {checkoutError}
                 </div>
               )}

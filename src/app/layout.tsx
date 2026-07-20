@@ -4,7 +4,7 @@ import "./globals.css";
 import { CartProvider } from "@/contexts/cart-context";
 import { ToastProvider } from "@/components/ui/toast-provider";
 
-const outfit = Outfit({ subsets: ["latin"] });
+const outfit = Outfit({ subsets: ["latin"], display: "swap", preload: true });
 
 export const metadata: Metadata = {
   title: "Gestor Delivery",

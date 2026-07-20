@@ -1,8 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import { Minus, Plus, ShoppingBag, X } from "lucide-react";
 import { formatMoney } from "./format";
 import type { Product } from "./types";
+import { useAccessibleDialog } from "./use-accessible-dialog";
 
 type ProductPickerProps = {
   product: Product | null;
@@ -33,6 +35,8 @@ export function ProductPicker({
   onAddToCart,
   calculateProductTotal,
 }: ProductPickerProps) {
+  const { dialogRef, initialFocusRef } = useAccessibleDialog(Boolean(product), onClose);
+
   if (!product) return null;
 
   const missingRequiredGroups = product.addons?.filter((group: any) => {
@@ -42,16 +46,26 @@ export function ProductPicker({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-      <div className="flex h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-[32px] bg-[#fffdfa] sm:h-auto sm:max-h-[88vh] sm:rounded-[32px]">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="product-picker-title"
+        tabIndex={-1}
+        className="flex max-h-[100dvh] min-h-0 w-full max-w-2xl flex-col overflow-hidden rounded-t-[24px] bg-[#fffdfa] sm:max-h-[88vh] sm:rounded-[24px]"
+        style={{ height: "min(92dvh, 820px)" }}
+      >
         <div className="relative h-72 bg-[#efe7de]">
           <button
+            ref={initialFocusRef as React.RefObject<HTMLButtonElement>}
             onClick={onClose}
             className="absolute right-4 top-4 z-10 rounded-full bg-white/92 p-2 text-gray-700 shadow-sm"
+            aria-label="Fechar detalhes do produto"
           >
             <X size={20} />
           </button>
           {product.image_url ? (
-            <img src={product.image_url} alt={product.name} className="h-full w-full object-cover" />
+            <Image src={product.image_url} alt={product.name} fill sizes="(max-width: 640px) 100vw, 672px" className="object-cover" />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-gray-300">
               <ShoppingBag size={42} />
@@ -59,8 +73,8 @@ export function ProductPicker({
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6">
-          <h2 className="text-3xl font-black tracking-tight text-gray-950">{product.name}</h2>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-6">
+          <h2 id="product-picker-title" className="text-3xl font-black tracking-tight text-gray-950">{product.name}</h2>
           <p className="mt-3 text-sm leading-7 text-[var(--muted)]">{product.description}</p>
 
           {product.addons?.map((group: any) => (
@@ -122,9 +136,9 @@ export function ProductPicker({
           </div>
         </div>
 
-        <div className="border-t border-[var(--line)] bg-white p-4">
+        <div className="border-t border-[var(--line)] bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
           {missingRequiredGroups.length > 0 && (
-            <p className="mb-3 text-center text-xs font-bold text-rose-600">
+            <p role="status" aria-live="polite" className="mb-3 text-center text-xs font-bold text-rose-600">
               Complete as escolhas obrigatórias para continuar.
             </p>
           )}

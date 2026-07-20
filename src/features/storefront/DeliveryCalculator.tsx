@@ -99,15 +99,18 @@ export function DeliveryCalculator({
             <label className="block text-xs font-bold text-gray-600">
               CEP
               <input
+                id="delivery-cep"
                 value={address.cep}
                 onChange={(event) => onAddressChange({ ...address, cep: formatCep(event.target.value) })}
                 onBlur={onBlurCep}
                 placeholder="00000-000"
                 inputMode="numeric"
                 autoComplete="postal-code"
+                aria-invalid={Boolean(fieldErrors?.cep)}
+                aria-describedby={fieldErrors?.cep ? "delivery-cep-error" : undefined}
                 className="mt-1.5 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-normal text-gray-950 outline-none"
               />
-              {fieldErrors?.cep && <span className="mt-1.5 block text-xs font-bold text-rose-600">{fieldErrors.cep}</span>}
+              {fieldErrors?.cep && <span id="delivery-cep-error" role="alert" className="mt-1.5 block text-xs font-bold text-rose-600">{fieldErrors.cep}</span>}
             </label>
             <div className="flex items-center justify-center rounded-2xl border border-[var(--line)] bg-white">
               {calculatingFee ? (
@@ -120,28 +123,28 @@ export function DeliveryCalculator({
 
           <div className="grid gap-2.5 sm:grid-cols-[1fr_140px]">
             <label className="block text-xs font-bold text-gray-600">Rua
-              <input value={address.street} onChange={(event) => onAddressChange({ ...address, street: event.target.value })} autoComplete="address-line1" className="mt-1.5 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-normal text-gray-950 outline-none" />
-              {fieldErrors?.street && <span className="mt-1.5 block text-xs font-bold text-rose-600">{fieldErrors.street}</span>}
+              <input id="delivery-street" value={address.street} onChange={(event) => onAddressChange({ ...address, street: event.target.value })} autoComplete="address-line1" aria-invalid={Boolean(fieldErrors?.street)} aria-describedby={fieldErrors?.street ? "delivery-street-error" : undefined} className="mt-1.5 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-normal text-gray-950 outline-none" />
+              {fieldErrors?.street && <span id="delivery-street-error" role="alert" className="mt-1.5 block text-xs font-bold text-rose-600">{fieldErrors.street}</span>}
             </label>
             <label className="block text-xs font-bold text-gray-600">Número
-              <input value={address.number} onChange={(event) => onAddressChange({ ...address, number: event.target.value })} inputMode="text" className="mt-1.5 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-normal text-gray-950 outline-none" />
-              {fieldErrors?.number && <span className="mt-1.5 block text-xs font-bold text-rose-600">{fieldErrors.number}</span>}
+              <input id="delivery-number" value={address.number} onChange={(event) => onAddressChange({ ...address, number: event.target.value })} inputMode="text" aria-invalid={Boolean(fieldErrors?.number)} aria-describedby={fieldErrors?.number ? "delivery-number-error" : undefined} className="mt-1.5 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-normal text-gray-950 outline-none" />
+              {fieldErrors?.number && <span id="delivery-number-error" role="alert" className="mt-1.5 block text-xs font-bold text-rose-600">{fieldErrors.number}</span>}
             </label>
           </div>
 
           <label className="block text-xs font-bold text-gray-600">Bairro
-            <input value={address.neighborhood} onChange={(event) => onAddressChange({ ...address, neighborhood: event.target.value })} autoComplete="address-level3" className="mt-1.5 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-normal text-gray-950 outline-none" />
-            {fieldErrors?.neighborhood && <span className="mt-1.5 block text-xs font-bold text-rose-600">{fieldErrors.neighborhood}</span>}
+            <input id="delivery-neighborhood" value={address.neighborhood} onChange={(event) => onAddressChange({ ...address, neighborhood: event.target.value })} autoComplete="address-level3" aria-invalid={Boolean(fieldErrors?.neighborhood)} aria-describedby={fieldErrors?.neighborhood ? "delivery-neighborhood-error" : undefined} className="mt-1.5 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-normal text-gray-950 outline-none" />
+            {fieldErrors?.neighborhood && <span id="delivery-neighborhood-error" role="alert" className="mt-1.5 block text-xs font-bold text-rose-600">{fieldErrors.neighborhood}</span>}
           </label>
 
           <div className="grid grid-cols-[1fr_88px] gap-2.5">
             <label className="block text-xs font-bold text-gray-600">Cidade
-              <input value={address.city} onChange={(event) => onAddressChange({ ...address, city: event.target.value })} autoComplete="address-level2" className="mt-1.5 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-normal text-gray-950 outline-none" />
-              {fieldErrors?.city && <span className="mt-1.5 block text-xs font-bold text-rose-600">{fieldErrors.city}</span>}
+              <input id="delivery-city" value={address.city} onChange={(event) => onAddressChange({ ...address, city: event.target.value })} autoComplete="address-level2" aria-invalid={Boolean(fieldErrors?.city)} aria-describedby={fieldErrors?.city ? "delivery-city-error" : undefined} className="mt-1.5 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-normal text-gray-950 outline-none" />
+              {fieldErrors?.city && <span id="delivery-city-error" role="alert" className="mt-1.5 block text-xs font-bold text-rose-600">{fieldErrors.city}</span>}
             </label>
             <label className="block text-xs font-bold text-gray-600">UF
-              <input value={address.state} onChange={(event) => onAddressChange({ ...address, state: event.target.value.toUpperCase().slice(0, 2) })} maxLength={2} autoComplete="address-level1" className="mt-1.5 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-normal uppercase text-gray-950 outline-none" />
-              {fieldErrors?.state && <span className="mt-1.5 block text-xs font-bold text-rose-600">{fieldErrors.state}</span>}
+              <input id="delivery-state" value={address.state} onChange={(event) => onAddressChange({ ...address, state: event.target.value.toUpperCase().slice(0, 2) })} maxLength={2} autoComplete="address-level1" aria-invalid={Boolean(fieldErrors?.state)} aria-describedby={fieldErrors?.state ? "delivery-state-error" : undefined} className="mt-1.5 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-normal uppercase text-gray-950 outline-none" />
+              {fieldErrors?.state && <span id="delivery-state-error" role="alert" className="mt-1.5 block text-xs font-bold text-rose-600">{fieldErrors.state}</span>}
             </label>
           </div>
 
@@ -163,11 +166,11 @@ export function DeliveryCalculator({
       )}
 
       {fieldErrors?.delivery && !calculatingFee && (
-        <p className="mt-3 text-xs font-bold text-rose-600">{fieldErrors.delivery}</p>
+        <p role="alert" className="mt-3 text-xs font-bold text-rose-600">{fieldErrors.delivery}</p>
       )}
 
       {deliveryInfo && deliveryInfo.valid && deliveryInfo.addressValidated && (
-        <div className="mt-4 rounded-[18px] border border-emerald-200 bg-emerald-50 p-3.5 sm:mt-5 sm:rounded-[22px] sm:p-4">
+        <div role="status" aria-live="polite" className="mt-4 rounded-[18px] border border-emerald-200 bg-emerald-50 p-3.5 sm:mt-5 sm:rounded-[22px] sm:p-4">
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="font-black text-emerald-800">Taxa e prazo estimados</p>
@@ -203,7 +206,7 @@ export function DeliveryCalculator({
       )}
 
       {deliveryInfo && !deliveryInfo.valid && !calculatingFee && (
-        <div className="mt-4 rounded-[18px] border border-red-200 bg-red-50 p-3.5 sm:mt-5 sm:rounded-[22px] sm:p-4">
+        <div role="alert" className="mt-4 rounded-[18px] border border-red-200 bg-red-50 p-3.5 sm:mt-5 sm:rounded-[22px] sm:p-4">
           <p className="font-black text-red-800">
             {deliveryInfo.addressValidated ? "Endereço fora da área de entrega" : "CEP fora da área estimada"}
           </p>
@@ -215,7 +218,7 @@ export function DeliveryCalculator({
       )}
 
       {hasAddressMinimum && !deliveryInfo && !calculatingFee && (
-        <div className="mt-4 rounded-[18px] border border-amber-200 bg-amber-50 p-3.5 sm:mt-5 sm:rounded-[22px] sm:p-4">
+        <div role="alert" className="mt-4 rounded-[18px] border border-amber-200 bg-amber-50 p-3.5 sm:mt-5 sm:rounded-[22px] sm:p-4">
           <p className="font-black text-amber-800">Não localizamos este endereço</p>
           <p className="mt-1 text-sm leading-6 text-amber-700">
             {deliveryError || "Confira CEP, rua, número, cidade e UF. Seus dados foram mantidos para uma nova tentativa."}

@@ -19,6 +19,7 @@
 
 html {
   scroll-behavior: smooth;
+  text-size-adjust: 100%;
 }
 
 body {
@@ -64,5 +65,46 @@ a {
 
   .toast-enter {
     animation: toast-enter 0.18s ease-out;
+  }
+
+  .catalog-section {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 520px;
+  }
+
+  .safe-area-bottom {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .sr-focusable:focus {
+    position: fixed;
+    left: 1rem;
+    top: 1rem;
+    z-index: 200;
+    width: auto;
+    height: auto;
+    padding: 0.75rem 1rem;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

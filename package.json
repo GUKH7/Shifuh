@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "test": "node --test",
+    "test:e2e": "cross-env NEXT_DIST_DIR=.next-e2e next build && playwright test",
     "test:tenants": "node scripts/multi-tenant-check.mjs",
     "test:load": "node scripts/load-check.mjs",
     "ifood:worker": "node scripts/ifood-polling-worker.mjs",
@@ -27,10 +28,12 @@
     "recharts": "^3.7.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@types/node": "^20",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "autoprefixer": "^10.4.20",
+    "cross-env": "^10.1.0",
     "eslint": "^9.39.4",
     "eslint-config-next": "^16.2.9",
     "postcss": "^8",

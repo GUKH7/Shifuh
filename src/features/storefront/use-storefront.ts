@@ -128,21 +128,24 @@ export function useStorefront({ slug, onCustomerLoaded, onMissingStore }: UseSto
         });
       }
 
-      const { data: cats } = await supabase
-        .from("categories")
-        .select("*")
-        .eq("restaurant_id", resto.id)
-        .order("order");
+      const [categoriesResult, storefrontProductsResult] = await Promise.all([
+        supabase
+          .from("categories")
+          .select("*")
+          .eq("restaurant_id", resto.id)
+          .order("order"),
+        supabase
+          .from("public_storefront_products")
+          .select("*")
+          .eq("restaurant_id", resto.id),
+      ]);
+      const cats = categoriesResult.data;
 
       if (cats && mounted) {
         setCategories(cats);
         if (cats.length > 0) setActiveCategory(cats[0].id);
       }
 
-      const storefrontProductsResult = await supabase
-        .from("public_storefront_products")
-        .select("*")
-        .eq("restaurant_id", resto.id);
       let prods = storefrontProductsResult.data;
 
       if (!prods && storefrontProductsResult.error) {
