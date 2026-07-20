@@ -87,14 +87,19 @@ export function DeliveryCalculator({
 
       {(!usingSavedAddress || savedAddresses.length === 0) && (
         <div className="mt-4 space-y-3">
-          <div className="grid gap-2.5 sm:grid-cols-[1fr_64px]">
-            <input
-              value={address.cep}
-              onChange={(event) => onAddressChange({ ...address, cep: formatCep(event.target.value) })}
-              onBlur={onBlurCep}
-              placeholder="CEP"
-              className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none"
-            />
+          <div className="grid items-end gap-2.5 sm:grid-cols-[1fr_64px]">
+            <label className="block text-xs font-bold text-gray-600">
+              CEP
+              <input
+                value={address.cep}
+                onChange={(event) => onAddressChange({ ...address, cep: formatCep(event.target.value) })}
+                onBlur={onBlurCep}
+                placeholder="00000-000"
+                inputMode="numeric"
+                autoComplete="postal-code"
+                className="mt-1.5 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-normal text-gray-950 outline-none"
+              />
+            </label>
             <div className="flex items-center justify-center rounded-2xl border border-[var(--line)] bg-white">
               {calculatingFee ? (
                 <Loader2 className="animate-spin text-[var(--brand)]" size={18} />
@@ -105,36 +110,30 @@ export function DeliveryCalculator({
           </div>
 
           <div className="grid gap-2.5 sm:grid-cols-[1fr_140px]">
-            <input
-              value={address.street}
-              onChange={(event) => onAddressChange({ ...address, street: event.target.value })}
-              onBlur={() => onCalculateDelivery(address)}
-              placeholder="Rua"
-              className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none"
-            />
-            <input
-              value={address.number}
-              onChange={(event) => onAddressChange({ ...address, number: event.target.value })}
-              onBlur={() => onCalculateDelivery(address)}
-              placeholder="Número"
-              className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none"
-            />
+            <label className="block text-xs font-bold text-gray-600">Rua
+              <input value={address.street} onChange={(event) => onAddressChange({ ...address, street: event.target.value })} onBlur={() => onCalculateDelivery(address)} autoComplete="address-line1" className="mt-1.5 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-normal text-gray-950 outline-none" />
+            </label>
+            <label className="block text-xs font-bold text-gray-600">Número
+              <input value={address.number} onChange={(event) => onAddressChange({ ...address, number: event.target.value })} onBlur={() => onCalculateDelivery(address)} inputMode="numeric" className="mt-1.5 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-normal text-gray-950 outline-none" />
+            </label>
           </div>
 
-          <input
-            value={address.neighborhood}
-            onChange={(event) => onAddressChange({ ...address, neighborhood: event.target.value })}
-            onBlur={() => onCalculateDelivery(address)}
-            placeholder="Bairro"
-            className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none"
-          />
+          <label className="block text-xs font-bold text-gray-600">Bairro
+            <input value={address.neighborhood} onChange={(event) => onAddressChange({ ...address, neighborhood: event.target.value })} onBlur={() => onCalculateDelivery(address)} autoComplete="address-level3" className="mt-1.5 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-normal text-gray-950 outline-none" />
+          </label>
 
-          <input
-            value={address.complement}
-            onChange={(event) => onAddressChange({ ...address, complement: event.target.value })}
-            placeholder="Complemento"
-            className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none"
-          />
+          <div className="grid grid-cols-[1fr_88px] gap-2.5">
+            <label className="block text-xs font-bold text-gray-600">Cidade
+              <input value={address.city} onChange={(event) => onAddressChange({ ...address, city: event.target.value })} onBlur={() => onCalculateDelivery(address)} autoComplete="address-level2" className="mt-1.5 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-normal text-gray-950 outline-none" />
+            </label>
+            <label className="block text-xs font-bold text-gray-600">UF
+              <input value={address.state} onChange={(event) => onAddressChange({ ...address, state: event.target.value.toUpperCase().slice(0, 2) })} onBlur={() => onCalculateDelivery(address)} maxLength={2} autoComplete="address-level1" className="mt-1.5 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-normal uppercase text-gray-950 outline-none" />
+            </label>
+          </div>
+
+          <label className="block text-xs font-bold text-gray-600">Complemento <span className="font-normal text-gray-400">(opcional)</span>
+            <input value={address.complement} onChange={(event) => onAddressChange({ ...address, complement: event.target.value })} placeholder="Apartamento, bloco ou referência" autoComplete="address-line2" className="mt-1.5 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-normal text-gray-950 outline-none" />
+          </label>
         </div>
       )}
 
