@@ -26,6 +26,37 @@ export function isValidCep(value: string) {
   return onlyDigits(value).length === 8;
 }
 
+const BRAZILIAN_STATE_CODES = new Set([
+  "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG",
+  "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO",
+]);
+
+export type CheckoutAddressFields = {
+  cep?: string;
+  street?: string;
+  number?: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
+};
+
+export function getCheckoutAddressErrors(address: CheckoutAddressFields) {
+  const state = address.state?.trim().toUpperCase() || "";
+
+  return {
+    cep: isValidCep(address.cep || "") ? "" : "Informe um CEP com 8 números.",
+    street: (address.street?.trim().length || 0) >= 3 ? "" : "Informe a rua.",
+    number: address.number?.trim() ? "" : "Informe o número.",
+    neighborhood: (address.neighborhood?.trim().length || 0) >= 2 ? "" : "Informe o bairro.",
+    city: (address.city?.trim().length || 0) >= 2 ? "" : "Informe a cidade.",
+    state: BRAZILIAN_STATE_CODES.has(state) ? "" : "Informe uma UF válida.",
+  };
+}
+
+export function isCompleteCheckoutAddress(address: CheckoutAddressFields) {
+  return !Object.values(getCheckoutAddressErrors(address)).some(Boolean);
+}
+
 export const storefrontPaymentMethods = ["pix", "credit", "debit", "cash"] as const;
 
 export type StorefrontPaymentMethod = (typeof storefrontPaymentMethods)[number];

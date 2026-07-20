@@ -19,6 +19,10 @@ export function getOrderApiErrorMessage(code?: string) {
     INVALID_SCHEDULE: "Escolha uma data e um horário dentro do funcionamento da loja.",
     INVALID_PAYMENT_METHOD: "Escolha uma forma de pagamento para continuar.",
     INVALID_CHANGE_FOR: "Confira o valor informado para o troco.",
+    INCOMPLETE_ADDRESS: "Complete CEP, rua, número, bairro, cidade e UF.",
+    ADDRESS_NOT_FOUND: "Não localizamos este endereço. Confira os campos e tente novamente.",
+    OUTSIDE_DELIVERY_AREA: "Este endereço está fora da área atendida pela loja.",
+    DELIVERY_CALCULATION_UNAVAILABLE: "Não conseguimos recalcular a entrega agora. Seus dados foram mantidos; tente novamente.",
     ORDER_CREATION_FAILED: "Não conseguimos registrar o pedido. Sua sacola foi mantida para você tentar novamente.",
   };
 

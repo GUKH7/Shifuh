@@ -4,6 +4,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { getStoreStatus } from "@/features/storefront/store-summary";
 import {
+  getCheckoutAddressErrors,
   getChangeForError,
   isStorefrontPaymentMethod,
   parseCurrencyInput,
@@ -42,8 +43,6 @@ type CheckoutPayload = {
   cart?: CheckoutItem[];
   usingSavedAddress?: boolean;
   saveAddress?: boolean;
-  clientCoords?: { lat: number; lon: number } | null;
-  deliveryPreview?: { price: number; time: number; distance: number; valid: boolean } | null;
   scheduledFor?: string | null;
 };
 
@@ -62,23 +61,9 @@ function normalizeAddress(address: CheckoutAddress = {}) {
     number: address.number?.trim() || "",
     neighborhood: address.neighborhood?.trim() || "",
     city: address.city?.trim() || "",
-    state: address.state?.trim() || "",
+    state: address.state?.trim().toUpperCase() || "",
     complement: address.complement?.trim() || "",
   };
-}
-
-function buildAddressQuery(address: ReturnType<typeof normalizeAddress>) {
-  return [
-    address.cep,
-    address.street,
-    address.number,
-    address.neighborhood,
-    address.city,
-    address.state,
-    "Brasil",
-  ]
-    .filter(Boolean)
-    .join(", ");
 }
 
 function parseNumber(value: unknown) {
@@ -191,8 +176,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Informe um CEP válido." }, { status: 400 });
     }
 
-    if (!address.street || !address.number || !address.neighborhood) {
-    return NextResponse.json({ error: "Informe o endereço de entrega." }, { status: 400 });
+    const addressErrors = getCheckoutAddressErrors(address);
+    const invalidAddressFields = Object.entries(addressErrors)
+      .filter(([, message]) => Boolean(message))
+      .map(([field]) => field);
+    if (invalidAddressFields.length > 0) {
+      return NextResponse.json(
+        {
+          code: "INCOMPLETE_ADDRESS",
+          error: "Complete e confira o endereço de entrega.",
+          fields: invalidAddressFields,
+        },
+        { status: 400 },
+      );
     }
 
     if (cart.length === 0) {
@@ -391,7 +387,6 @@ export async function POST(request: Request) {
     let deliveryFee = 0;
     let deliveryTime = 0;
     let deliveryDistance: number | null = null;
-    let deliveryCalculated = false;
     const tiers = Array.isArray(restaurant.delivery_tiers) ? restaurant.delivery_tiers : [];
 
     let restaurantCoords =
@@ -412,42 +407,58 @@ export async function POST(request: Request) {
       }
     }
 
-    let clientCoords: { lat: number; lon: number } | null = null;
-    const addressQuery = buildAddressQuery(address);
-
-    if (addressQuery) {
-      clientCoords = await getCoordinates({
-        postalCode: address.cep,
-        street: address.street,
-        number: address.number,
-        neighborhood: address.neighborhood,
-        city: address.city,
-        state: address.state,
-      });
-    }
-
-    if (restaurantCoords && clientCoords) {
-      const distance = calculateDistance(
-        restaurantCoords.lat,
-        restaurantCoords.lon,
-        clientCoords.lat,
-        clientCoords.lon,
+    if (!restaurantCoords) {
+      return NextResponse.json(
+        {
+          code: "DELIVERY_CALCULATION_UNAVAILABLE",
+          error: "A loja não conseguiu calcular a entrega agora. Tente novamente.",
+        },
+        { status: 503 },
       );
-      const fee = calculateDeliveryFee(distance, tiers);
-
-      deliveryDistance = distance;
-      deliveryTime = fee.time;
-      deliveryCalculated = true;
-
-      if (!fee.valid && tiers.length > 0) {
-        return NextResponse.json(
-      { error: "O endereço informado está fora da área de entrega." },
-          { status: 400 },
-        );
-      }
-
-      deliveryFee = roundMoney(fee.price);
     }
+
+    const clientCoords = await getCoordinates({
+      postalCode: address.cep,
+      street: address.street,
+      number: address.number,
+      neighborhood: address.neighborhood,
+      city: address.city,
+      state: address.state,
+    });
+
+    if (!clientCoords) {
+      return NextResponse.json(
+        {
+          code: "ADDRESS_NOT_FOUND",
+          error: "Não foi possível localizar o endereço informado.",
+        },
+        { status: 422 },
+      );
+    }
+
+    const distance = calculateDistance(
+      restaurantCoords.lat,
+      restaurantCoords.lon,
+      clientCoords.lat,
+      clientCoords.lon,
+    );
+    const fee = calculateDeliveryFee(distance, tiers);
+
+    deliveryDistance = distance;
+    deliveryTime = fee.time;
+
+    if (!fee.valid && tiers.length > 0) {
+      return NextResponse.json(
+        {
+          code: "OUTSIDE_DELIVERY_AREA",
+          error: "O endereço informado está fora da área de entrega.",
+          distance,
+        },
+        { status: 422 },
+      );
+    }
+
+    deliveryFee = roundMoney(fee.price);
 
     const total = roundMoney(subtotal + deliveryFee - discount);
     let normalizedChangeFor: string | null = null;
@@ -465,7 +476,8 @@ export async function POST(request: Request) {
     const orderAddress = {
       ...address,
       distance: deliveryDistance,
-      delivery_calculated: deliveryCalculated,
+      delivery_calculated: true,
+      distance_method: "straight_line",
     };
     const transactionItems = normalizedItems.map((item) => ({
       product_name: item.product_name,

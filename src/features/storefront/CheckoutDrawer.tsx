@@ -9,8 +9,8 @@ import type { StoreStatus } from "./store-summary";
 import {
   formatCurrencyInput,
   formatPhone,
+  getCheckoutAddressErrors,
   getChangeForError,
-  isValidCep,
   isValidPhone,
   paymentMethodDetails,
   type StorefrontPaymentMethod,
@@ -146,20 +146,17 @@ export function CheckoutDrawer({
   const storeClosedWithoutScheduling = storeStatus.tone === "closed" && !scheduledOrdersEnabled;
   const scheduleRequired = storeStatus.tone === "closed" && scheduledOrdersEnabled;
   const scheduleMissing = scheduleRequired && !scheduledFor;
+  const addressFieldErrors = getCheckoutAddressErrors(address);
+  const deliveryReady = Boolean(deliveryInfo?.valid && deliveryInfo.addressValidated);
   const addressErrors = {
     customerName: customerName.trim().length >= 2 ? "" : "Informe seu nome.",
     customerPhone: isValidPhone(customerPhone) ? "" : "Informe um celular válido com DDD.",
-    cep: isValidCep(address.cep) ? "" : "Informe um CEP com 8 números.",
-    street: address.street.trim() ? "" : "Informe a rua.",
-    number: address.number.trim() ? "" : "Informe o número.",
-    neighborhood: address.neighborhood.trim() ? "" : "Informe o bairro.",
-    city: address.city.trim() ? "" : "Informe a cidade.",
-    state: address.state.trim().length === 2 ? "" : "Informe a UF.",
-    delivery: deliveryInfo?.valid && deliveryInfo.addressValidated
+    ...addressFieldErrors,
+    delivery: deliveryReady || deliveryInfo || deliveryError
       ? ""
-      : "Valide o endereço e a taxa de entrega antes de continuar.",
+      : "Calcule a taxa e o prazo da entrega antes de continuar.",
   };
-  const hasAddressErrors = Object.values(addressErrors).some(Boolean);
+  const hasAddressErrors = Object.values(addressErrors).some(Boolean) || !deliveryReady;
   const changeForError = paymentMethod === "cash" && cashNeedsChange
     ? getChangeForError(changeFor, finalTotal)
     : "";
@@ -421,6 +418,11 @@ export function CheckoutDrawer({
                     <p className="mt-2 font-bold text-gray-900">{customerName} · {customerPhone}</p>
                     <p className="mt-1">{address.street}, {address.number}{address.complement ? `, ${address.complement}` : ""}</p>
                     <p>{address.neighborhood} · {address.city}/{address.state}</p>
+                    {deliveryInfo?.valid && (
+                      <p className="mt-2 text-xs font-bold text-emerald-700">
+                        {deliveryInfo.distance} km aproximadamente, em linha reta · previsão de {deliveryInfo.time} min
+                      </p>
+                    )}
                   </div>
                   <div className="rounded-2xl bg-[#faf8f5] p-3.5">
                     <p className="mb-2 font-black text-gray-900">Itens</p>
@@ -610,14 +612,16 @@ export function CheckoutDrawer({
           {step === "address" && (
             <button
               onClick={continueToPayment}
-              disabled={calculatingFee}
+              disabled={calculatingFee || deliveryInfo?.valid === false}
               className="w-full rounded-2xl px-5 py-3.5 text-sm font-black disabled:opacity-50 sm:py-4 sm:text-base"
               style={{ backgroundColor: primaryColor, color: brandTextColor }}
             >
               {calculatingFee
                 ? "Calculando entrega..."
-                : !deliveryInfo?.addressValidated
-                  ? "Valide o endereço para continuar"
+                : deliveryInfo?.valid === false
+                  ? "Endereço fora da área de entrega"
+                  : !deliveryInfo?.addressValidated
+                    ? "Calcule a entrega para continuar"
                   : "Ir para pagamento"}
             </button>
           )}

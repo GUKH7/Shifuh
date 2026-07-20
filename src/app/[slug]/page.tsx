@@ -43,6 +43,7 @@ import {
   formatCep,
   formatPhone,
   getChangeForError,
+  isCompleteCheckoutAddress,
   isValidCep,
   isValidPhone,
   onlyDigits,
@@ -69,7 +70,6 @@ export default function StorePage() {
   const [calculatingFee, setCalculatingFee] = useState(false);
   const [deliveryInfo, setDeliveryInfo] = useState<DeliveryInfo | null>(null);
   const [deliveryError, setDeliveryError] = useState("");
-  const [clientCoords, setClientCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<StorefrontPaymentMethod>("pix");
   const [changeFor, setChangeFor] = useState("");
   const [cashNeedsChange, setCashNeedsChange] = useState(false);
@@ -185,8 +185,16 @@ export default function StorePage() {
   } = useCart(`gestor-delivery:cart:${slug || "store"}`);
 
   const calculateDeliveryForAddress = async (addressData: typeof EMPTY_ADDRESS) => {
-    if (!restoCoords) return;
-    if (!addressData.street || !addressData.city || !addressData.state) return;
+    if (!isCompleteCheckoutAddress(addressData)) {
+      setDeliveryInfo(null);
+      setDeliveryError("Complete CEP, rua, número, bairro, cidade e UF para calcular a entrega.");
+      return;
+    }
+    if (!restoCoords) {
+      setDeliveryInfo(null);
+      setDeliveryError("A loja não conseguiu calcular a entrega agora. Tente novamente em instantes.");
+      return;
+    }
 
     setCalculatingFee(true);
     setDeliveryError("");
@@ -202,7 +210,6 @@ export default function StorePage() {
       });
 
       if (clientCoords) {
-        setClientCoords(clientCoords);
         const dist = calculateDistance(
           restoCoords.lat,
           restoCoords.lon,
@@ -215,22 +222,14 @@ export default function StorePage() {
           time: feeData.time,
           distance: dist,
           valid: feeData.valid,
-          addressValidated: Boolean(
-            addressData.street &&
-              addressData.number &&
-              addressData.neighborhood &&
-              addressData.city &&
-              addressData.state,
-          ),
+          addressValidated: true,
         });
       } else {
-        setClientCoords(null);
         setDeliveryInfo(null);
-        setDeliveryError(getFriendlyStorefrontError("delivery"));
+        setDeliveryError("Não encontramos uma localização compatível com este endereço. Confira os campos e tente novamente.");
       }
     } catch (error) {
       console.error(error);
-      setClientCoords(null);
       setDeliveryInfo(null);
       setDeliveryError(getFriendlyStorefrontError("delivery"));
     } finally {
@@ -250,14 +249,6 @@ export default function StorePage() {
       const data = await res.json();
 
       if (!data.erro) {
-        const nextAddress = {
-          ...address,
-          street: data.logradouro,
-          neighborhood: data.bairro,
-          city: data.localidade,
-          state: data.uf,
-        };
-
         setAddress((prev) => ({
           ...prev,
           street: data.logradouro,
@@ -265,8 +256,6 @@ export default function StorePage() {
           city: data.localidade,
           state: data.uf,
         }));
-
-        await calculateDeliveryForAddress(nextAddress);
       } else {
         setDeliveryError(getFriendlyStorefrontError("cep"));
       }
@@ -277,7 +266,7 @@ export default function StorePage() {
   };
 
   const feeValue = deliveryInfo?.valid ? deliveryInfo.price : 0;
-  const hasAddressMinimum = Boolean(address.street && address.number && address.neighborhood);
+  const hasAddressMinimum = isCompleteCheckoutAddress(address);
   const handleAddressChange = (nextAddress: typeof EMPTY_ADDRESS) => {
     const deliveryAddressChanged =
       nextAddress.cep !== address.cep ||
@@ -291,7 +280,6 @@ export default function StorePage() {
     setCheckoutError("");
     if (deliveryAddressChanged) {
       setDeliveryInfo(null);
-      setClientCoords(null);
       setDeliveryError("");
     }
   };
@@ -415,7 +403,17 @@ export default function StorePage() {
     if (!hasAddressMinimum) {
       showToast({
         title: "Endereço incompleto",
-        description: "Informe rua, número e bairro para seguir.",
+        description: "Complete CEP, rua, número, bairro, cidade e UF.",
+        tone: "error",
+      });
+      return;
+    }
+    if (!deliveryInfo?.valid || !deliveryInfo.addressValidated) {
+      setStep("address");
+      setDeliveryError("Calcule novamente a taxa e o prazo para continuar.");
+      showToast({
+        title: "Entrega ainda não validada",
+        description: "Confira o endereço e calcule a entrega antes de confirmar.",
         tone: "error",
       });
       return;
@@ -470,8 +468,6 @@ export default function StorePage() {
           couponCode: appliedCoupon?.code || null,
           usingSavedAddress,
           saveAddress,
-          clientCoords,
-          deliveryPreview: deliveryInfo,
           scheduledFor: scheduledFor ? new Date(scheduledFor).toISOString() : null,
           cart: cart.map((item) => ({
             productId: item.product.id,
@@ -487,6 +483,22 @@ export default function StorePage() {
       if (!response.ok) {
         const message = getOrderApiErrorMessage(result?.code);
         setCheckoutError(message);
+        if (["INCOMPLETE_ADDRESS", "ADDRESS_NOT_FOUND", "OUTSIDE_DELIVERY_AREA", "DELIVERY_CALCULATION_UNAVAILABLE"].includes(result?.code)) {
+          if (result?.code === "OUTSIDE_DELIVERY_AREA") {
+            setDeliveryInfo({
+              price: 0,
+              time: 0,
+              distance: Number(result?.distance) || 0,
+              valid: false,
+              addressValidated: true,
+            });
+            setDeliveryError("");
+          } else {
+            setDeliveryInfo(null);
+            setDeliveryError(message);
+          }
+          setStep("address");
+        }
         showToast({
           title: "Não foi possível finalizar o pedido",
           description: message,
@@ -501,6 +513,7 @@ export default function StorePage() {
       clearCart();
       setAppliedCoupon(null);
       setScheduledFor("");
+      setSaveAddress(false);
       setCheckoutError("");
     } catch (error: any) {
       setCheckoutError(getFriendlyStorefrontError("order"));
@@ -534,7 +547,6 @@ export default function StorePage() {
     setStep("cart");
     setIsCartOpen(false);
     setDeliveryInfo(null);
-    setClientCoords(null);
     setAppliedCoupon(null);
     setLastOrderSummary(null);
   };
@@ -1241,7 +1253,6 @@ export default function StorePage() {
           setUsingSavedAddress(false);
           setAddress(EMPTY_ADDRESS);
           setDeliveryInfo(null);
-          setClientCoords(null);
           setDeliveryError("");
         }}
         onCouponCodeChange={(value) => { setCouponCode(value); setCouponError(""); }}

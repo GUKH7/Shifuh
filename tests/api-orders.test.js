@@ -44,6 +44,7 @@ function baseState(overrides = {}) {
     orders: [],
     orderItems: [],
     customers: [],
+    savedAddresses: [],
     rpcCounter: 0,
     publicRpcCalls: 0,
     adminRpcCalls: 0,
@@ -129,6 +130,10 @@ class QueryBuilder {
 
     if (this.table === "customers") {
       mockState.customers.push(payload);
+    }
+
+    if (this.table === "customer_addresses") {
+      mockState.savedAddresses.push(payload);
     }
 
     return Promise.resolve({ data: null, error: null });
@@ -258,7 +263,19 @@ function loadOrdersRoute() {
 
     if (request === "@/lib/geo") {
       return {
-        getCoordinates: async () => ({ lat: -23.56, lon: -46.64 }),
+        getCoordinates: async (address) => {
+          const isRestaurantAddress =
+            address.street === mockState.restaurant.address_street &&
+            address.number === mockState.restaurant.address_number;
+          if (isRestaurantAddress) {
+            return mockState.restaurantCoordinates === undefined
+              ? { lat: -23.55, lon: -46.63 }
+              : mockState.restaurantCoordinates;
+          }
+          return mockState.clientCoordinates === undefined
+            ? { lat: -23.56, lon: -46.64 }
+            : mockState.clientCoordinates;
+        },
         calculateDistance: () => mockState.distance,
         calculateDeliveryFee: (distance) =>
           mockState.deliveryFeeResult || {
@@ -408,9 +425,67 @@ test("bloqueia endereço fora da área de entrega", async () => {
   const response = await postOrder(createPayload());
   const body = await readJson(response);
 
-  assert.equal(response.status, 400);
+  assert.equal(response.status, 422);
+  assert.equal(body.code, "OUTSIDE_DELIVERY_AREA");
   assert.match(body.error, /fora da área de entrega/i);
   assert.equal(mockState.orders.length, 0);
+});
+
+test("diferencia endereço incompleto de endereço fora da área", async () => {
+  mockState = baseState();
+
+  const response = await postOrder(createPayload({
+    address: { ...createPayload().address, city: "", state: "XX" },
+  }));
+  const body = await readJson(response);
+
+  assert.equal(response.status, 400);
+  assert.equal(body.code, "INCOMPLETE_ADDRESS");
+  assert.deepEqual(body.fields.sort(), ["city", "state"]);
+  assert.equal(mockState.orders.length, 0);
+});
+
+test("bloqueia pedido quando o endereço não pode ser localizado no servidor", async () => {
+  mockState = baseState({ clientCoordinates: null });
+
+  const response = await postOrder(createPayload());
+  const body = await readJson(response);
+
+  assert.equal(response.status, 422);
+  assert.equal(body.code, "ADDRESS_NOT_FOUND");
+  assert.equal(mockState.orders.length, 0);
+});
+
+test("bloqueia pedido quando a origem da loja não pode ser calculada", async () => {
+  mockState = baseState({
+    restaurant: {
+      ...baseState().restaurant,
+      latitude: null,
+      longitude: null,
+    },
+    restaurantCoordinates: null,
+  });
+
+  const response = await postOrder(createPayload());
+  const body = await readJson(response);
+
+  assert.equal(response.status, 503);
+  assert.equal(body.code, "DELIVERY_CALCULATION_UNAVAILABLE");
+  assert.equal(mockState.orders.length, 0);
+});
+
+test("salva endereço somente com autorização explícita do cliente autenticado", async () => {
+  resetRateLimitForTests();
+  mockState = baseState({ user: { id: "customer-1" } });
+
+  const firstResponse = await postOrder(createPayload({ saveAddress: false }));
+  assert.equal(firstResponse.status, 200);
+  assert.equal(mockState.savedAddresses.length, 0);
+
+  const secondResponse = await postOrder(createPayload({ saveAddress: true }));
+  assert.equal(secondResponse.status, 200);
+  assert.equal(mockState.savedAddresses.length, 1);
+  assert.equal(mockState.savedAddresses[0].user_id, "customer-1");
 });
 
 test("bloqueia pedido imediato quando a loja está fechada", async () => {

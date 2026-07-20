@@ -20,6 +20,10 @@ test("maps operational order failures without exposing server details", () => {
     "INVALID_SCHEDULE",
     "INVALID_PAYMENT_METHOD",
     "INVALID_CHANGE_FOR",
+    "INCOMPLETE_ADDRESS",
+    "ADDRESS_NOT_FOUND",
+    "OUTSIDE_DELIVERY_AREA",
+    "DELIVERY_CALCULATION_UNAVAILABLE",
     "ORDER_CREATION_FAILED",
     "UNKNOWN_CODE",
   ]) {
