@@ -5,6 +5,8 @@ const test = require("node:test");
 const ts = require("typescript");
 const fs = require("node:fs");
 
+process.env.ORDER_TRACKING_SECRET = "test-order-tracking-secret-with-at-least-32-bytes";
+
 const routePath = path.join(__dirname, "..", "src", "app", "api", "orders", "route.ts");
 let mockState;
 let resetRateLimitForTests = () => {};
@@ -286,6 +288,24 @@ function loadOrdersRoute() {
       };
     }
 
+    if (request === "@/lib/order-tracking") {
+      const trackingPath = path.join(__dirname, "..", "src", "lib", "order-tracking.ts");
+      const trackingModule = new Module(trackingPath, module.parent);
+      trackingModule.filename = trackingPath;
+      trackingModule.paths = Module._nodeModulePaths(path.dirname(trackingPath));
+      trackingModule._compile(
+        ts.transpileModule(fs.readFileSync(trackingPath, "utf8"), {
+          compilerOptions: {
+            esModuleInterop: true,
+            module: ts.ModuleKind.CommonJS,
+            target: ts.ScriptTarget.ES2022,
+          },
+        }).outputText,
+        trackingPath,
+      );
+      return trackingModule.exports;
+    }
+
     if (request === "@/features/storefront/store-summary") {
       const summaryPath = path.join(__dirname, "..", "src", "features", "storefront", "store-summary.ts");
       const summarySource = fs.readFileSync(summaryPath, "utf8");
@@ -369,6 +389,8 @@ test("ignora preço adulterado no cliente e usa o preço do banco", async () => 
   assert.equal(body.subtotal, 40);
   assert.equal(body.deliveryFee, 7);
   assert.equal(body.total, 47);
+  assert.match(body.trackingPath, /^\/acompanhar\/order-1\?token=/);
+  assert.match(body.trackingUrl, /^http:\/\/localhost\/acompanhar\/order-1\?token=/);
   assert.equal(mockState.orders[0].subtotal, 40);
   assert.equal(mockState.adminRpcCalls, 1);
   assert.equal(mockState.publicRpcCalls, 0);

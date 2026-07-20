@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   Bike,
-  Check,
   Clock3,
   CreditCard,
   Loader2,
@@ -11,11 +10,9 @@ import {
   Minus,
   Plus,
   Search,
-  Send,
   ShoppingBag,
   Star,
   X,
-  RefreshCw,
   ChevronDown,
   Phone,
 } from "lucide-react";
@@ -36,7 +33,7 @@ import {
   formatTodayHours,
   getStoreStatus,
 } from "@/features/storefront/store-summary";
-import type { CheckoutStep, DeliveryInfo, OrderResponse, OrderTrackingResponse } from "@/features/storefront/types";
+import type { CheckoutStep, DeliveryInfo, OrderResponse } from "@/features/storefront/types";
 import { useCart } from "@/features/storefront/use-cart";
 import { useStorefront } from "@/features/storefront/use-storefront";
 import {
@@ -47,7 +44,6 @@ import {
   isValidCep,
   isValidPhone,
   onlyDigits,
-  paymentMethodDetails,
   type StorefrontPaymentMethod,
 } from "@/features/storefront/checkout-format";
 import { getFriendlyStorefrontError, getOrderApiErrorMessage } from "@/features/storefront/errors";
@@ -86,33 +82,6 @@ export default function StorePage() {
     type: string;
   } | null>(null);
   const [verifyingCoupon, setVerifyingCoupon] = useState(false);
-  const [lastOrderSummary, setLastOrderSummary] = useState<OrderResponse | null>(null);
-  const [orderTracking, setOrderTracking] = useState<OrderTrackingResponse | null>(null);
-  const [trackingOrder, setTrackingOrder] = useState(false);
-
-  const trackLastOrder = async () => {
-    if (!lastOrderSummary) return;
-    setTrackingOrder(true);
-    try {
-      const response = await fetch(`/api/orders/${lastOrderSummary.orderId}/tracking`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: onlyDigits(customerPhone) }),
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error("tracking-failed");
-      setOrderTracking(result);
-    } catch (error: any) {
-      showToast({
-        title: "Não foi possível atualizar",
-        description: getFriendlyStorefrontError("tracking"),
-        tone: "error",
-      });
-    } finally {
-      setTrackingOrder(false);
-    }
-  };
-
   useEffect(() => {
     const timer = window.setInterval(() => setStoreClock(new Date()), 60_000);
     return () => window.clearInterval(timer);
@@ -338,50 +307,6 @@ export default function StorePage() {
     }
   };
 
-  const sendToWhatsApp = (summary: OrderResponse) => {
-    const orderLabel = summary.displayNumber || summary.orderId.slice(0, 4).toUpperCase();
-    const itemsList = summary.items
-      .map((item) => {
-        const addons = item.addons.map((addon) => `+ ${addon.name}`).join(", ");
-        return `- ${item.quantity}x ${item.product_name}${addons ? ` (${addons})` : ""}${
-          item.observation ? `\n  Obs: ${item.observation}` : ""
-        }`;
-      })
-      .join("\n");
-
-    const deliveryLine =
-      summary.deliveryFee > 0
-        ? `${formatMoney(summary.deliveryFee)} (${summary.deliveryTime} min)`
-        : summary.deliveryDistance
-          ? `Sem taxa (${summary.deliveryTime} min)`
-          : "A combinar";
-    const scheduleLine = summary.scheduledFor
-      ? `Agendado para: ${new Date(summary.scheduledFor).toLocaleString("pt-BR")}\n`
-      : "";
-    const payment = paymentMethodDetails[summary.paymentMethod as StorefrontPaymentMethod];
-    const paymentLine = payment
-      ? `${payment.label} (${payment.timing.toLowerCase()})`
-      : summary.paymentMethod;
-
-    const msg =
-      `NOVO PEDIDO #${orderLabel}\n\n` +
-      `Cliente: ${customerName}\n` +
-      scheduleLine +
-      `Endereço: ${summary.address.street}, ${summary.address.number}` +
-      `${summary.address.complement ? `, ${summary.address.complement}` : ""}\n` +
-      `${summary.address.neighborhood} - ${summary.address.city}/${summary.address.state}\n\n` +
-      `PEDIDO:\n${itemsList}\n\n` +
-      `Subtotal: ${formatMoney(summary.subtotal)}\n` +
-      `Entrega: ${deliveryLine}\n` +
-      `${summary.discount > 0 ? `Desconto: -${formatMoney(summary.discount)}\n` : ""}` +
-      `TOTAL: ${formatMoney(summary.total)}\n` +
-      `Pagamento: ${paymentLine}` +
-      `${summary.changeFor ? `\nTroco para: ${formatMoney(Number(summary.changeFor))}` : ""}`;
-
-    const phone = summary.restaurantPhone || restaurant.phone || "5511999999999";
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, "_blank");
-  };
-
   const handlePlaceOrder = async () => {
     setCheckoutError("");
     if (!customerName || !customerPhone || !address.street || !address.number) {
@@ -507,14 +432,13 @@ export default function StorePage() {
         return;
       }
 
-      setLastOrderSummary(result);
-      sendToWhatsApp(result);
-      setStep("success");
+      const completedOrder = result as OrderResponse;
       clearCart();
       setAppliedCoupon(null);
       setScheduledFor("");
       setSaveAddress(false);
       setCheckoutError("");
+      router.replace(completedOrder.trackingPath);
     } catch (error: any) {
       setCheckoutError(getFriendlyStorefrontError("order"));
       showToast({
@@ -548,7 +472,6 @@ export default function StorePage() {
     setIsCartOpen(false);
     setDeliveryInfo(null);
     setAppliedCoupon(null);
-    setLastOrderSummary(null);
   };
 
   const contrastColor = storefrontTheme.contrast_color || "#1f2937";
@@ -677,115 +600,6 @@ export default function StorePage() {
             style={{ backgroundColor: primaryColor }}
           >
             Voltar ao painel
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (step === "success") {
-    const status = orderTracking?.status || "pending";
-    const statusLabels: Record<string, string> = {
-      pending: "Pedido recebido pela loja",
-      preparing: "Pedido em preparo",
-      delivering: "Pedido saiu para entrega",
-      done: "Pedido concluído",
-      canceled: "Pedido cancelado",
-    };
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f6f1ea] px-4 py-8 sm:px-6 sm:py-12">
-        <div className="surface-card w-full max-w-2xl rounded-[24px] p-5 sm:rounded-[32px] sm:p-8">
-          <div
-            className="mx-auto flex h-20 w-20 items-center justify-center rounded-full text-white"
-            style={{ backgroundColor: primaryColor }}
-          >
-            <Check size={38} />
-          </div>
-          <h1 className="mt-6 text-center text-3xl font-black tracking-tight text-gray-950 sm:text-4xl">
-            Pedido recebido
-          </h1>
-          <p className="mt-3 text-center text-base leading-7 text-[var(--muted)]">
-            Seu pedido foi registrado no sistema da loja.
-          </p>
-
-          <div className="mt-6 rounded-2xl px-5 py-4 text-center" style={{ backgroundColor: `${primaryColor}12` }}>
-            <p className="text-xs font-black uppercase text-gray-500">Número do pedido</p>
-            <p className="mt-1 text-4xl font-black text-gray-950">
-              #{lastOrderSummary?.displayNumber || lastOrderSummary?.orderId.slice(0, 4).toUpperCase()}
-            </p>
-            <p className="mt-2 text-sm font-bold" style={{ color: primaryColor }}>{statusLabels[status]}</p>
-          </div>
-
-          {lastOrderSummary && (
-            <div className="mt-5 grid gap-3 text-left sm:grid-cols-2">
-              <div className="rounded-2xl border border-[var(--line)] bg-white p-4">
-                <p className="text-xs font-black uppercase text-gray-400">Resumo</p>
-                <p className="mt-2 font-bold text-gray-950">{lastOrderSummary.items.length} item(ns)</p>
-                <p className="mt-1 text-xl font-black text-gray-950">{formatMoney(lastOrderSummary.total)}</p>
-              </div>
-              <div className="rounded-2xl border border-[var(--line)] bg-white p-4">
-                <p className="text-xs font-black uppercase text-gray-400">Pagamento</p>
-                <p className="mt-2 font-bold text-gray-950">
-                  {paymentMethodDetails[lastOrderSummary.paymentMethod as StorefrontPaymentMethod]?.label || lastOrderSummary.paymentMethod}
-                </p>
-                <p className="mt-1 text-sm text-gray-500">
-                  {paymentMethodDetails[lastOrderSummary.paymentMethod as StorefrontPaymentMethod]?.timing}
-                </p>
-                {lastOrderSummary.changeFor && (
-                  <p className="mt-1 text-sm font-bold text-gray-700">
-                    Troco para {formatMoney(Number(lastOrderSummary.changeFor))}
-                  </p>
-                )}
-              </div>
-              {lastOrderSummary.scheduledFor && (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 sm:col-span-2">
-                  <p className="text-xs font-black uppercase text-amber-700">Pedido agendado</p>
-                  <p className="mt-2 font-black text-amber-950">
-                    {new Date(lastOrderSummary.scheduledFor).toLocaleString("pt-BR")}
-                  </p>
-                </div>
-              )}
-              <div className="rounded-2xl border border-[var(--line)] bg-white p-4 sm:col-span-2">
-                <p className="text-xs font-black uppercase text-gray-400">Entrega</p>
-                <p className="mt-2 font-bold text-gray-950">
-                  {lastOrderSummary.address.street}, {lastOrderSummary.address.number}
-                  {lastOrderSummary.address.complement ? `, ${lastOrderSummary.address.complement}` : ""}
-                </p>
-                <p className="mt-1 text-sm text-gray-500">
-                  {lastOrderSummary.address.neighborhood} - {lastOrderSummary.address.city}/{lastOrderSummary.address.state}
-                </p>
-                <p className="mt-2 text-sm font-bold" style={{ color: primaryColor }}>
-                  Previsão: aproximadamente {lastOrderSummary.deliveryTime} min
-                </p>
-              </div>
-            </div>
-          )}
-
-          <button
-            onClick={trackLastOrder}
-            disabled={trackingOrder}
-            className="mt-6 w-full rounded-2xl px-6 py-4 text-base font-black text-white disabled:opacity-60"
-            style={{ backgroundColor: primaryColor, color: brandTextColor }}
-          >
-            <span className="inline-flex items-center gap-2">
-              <RefreshCw size={18} className={trackingOrder ? "animate-spin" : ""} />
-              {trackingOrder ? "Atualizando..." : "Acompanhar pedido"}
-            </span>
-          </button>
-          <button
-            onClick={() => lastOrderSummary && sendToWhatsApp(lastOrderSummary)}
-            className="mt-3 w-full rounded-2xl border border-[var(--line)] bg-white px-6 py-4 text-sm font-bold text-gray-700"
-          >
-            <span className="inline-flex items-center gap-2">
-              <Send size={18} />
-              Abrir resumo no WhatsApp
-            </span>
-          </button>
-          <button
-            onClick={resetCheckout}
-            className="mt-4 w-full rounded-2xl border border-[var(--line)] bg-white px-6 py-4 text-sm font-bold text-gray-700"
-          >
-            Voltar ao cardápio
           </button>
         </div>
       </div>

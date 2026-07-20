@@ -3,6 +3,7 @@ import { calculateDeliveryFee, calculateDistance, getCoordinates } from "@/lib/g
 import { checkRateLimit } from "@/lib/rate-limit";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { getStoreStatus } from "@/features/storefront/store-summary";
+import { createOrderTrackingToken } from "@/lib/order-tracking";
 import {
   getCheckoutAddressErrors,
   getChangeForError,
@@ -518,6 +519,9 @@ export async function POST(request: Request) {
 
     const orderId = createdOrder.order_id;
     const displayNumber = String(createdOrder.display_number).padStart(4, "0");
+    const trackingToken = createOrderTrackingToken(orderId);
+    const trackingPath = `/acompanhar/${orderId}?token=${encodeURIComponent(trackingToken)}`;
+    const trackingUrl = new URL(trackingPath, request.url).toString();
 
     if (hasCurrentUser(user)) {
       try {
@@ -549,6 +553,8 @@ export async function POST(request: Request) {
     return NextResponse.json({
       orderId,
       displayNumber,
+      trackingPath,
+      trackingUrl,
       restaurantPhone: restaurant.phone || restaurant.whatsapp_number || "",
       subtotal,
       deliveryFee,

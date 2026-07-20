@@ -47,6 +47,8 @@ export interface CheckoutAddress {
 export interface OrderResponse {
   orderId: string;
   displayNumber?: string;
+  trackingPath: string;
+  trackingUrl: string;
   restaurantPhone: string;
   subtotal: number;
   deliveryFee: number;
@@ -70,9 +72,34 @@ export interface OrderResponse {
 export type PublicOrderStatus = "pending" | "preparing" | "delivering" | "done" | "canceled";
 
 export interface OrderTrackingResponse {
+  orderId: string;
   displayNumber: string;
   status: PublicOrderStatus;
   createdAt: string;
+  updatedAt: string;
+  scheduledFor: string | null;
+  deliveryTime: number;
+  customerName: string;
+  address: CheckoutAddress;
+  subtotal: number;
+  deliveryFee: number;
+  discount: number;
+  total: number;
+  paymentMethod: string;
+  changeFor: string | null;
+  items: Array<{
+    productName: string;
+    quantity: number;
+    price: number;
+    observation: string | null;
+    addons: Array<{ name: string; price?: number }>;
+  }>;
+  restaurant: {
+    name: string;
+    slug: string;
+    phone: string;
+    primaryColor: string;
+  };
 }
 
 export interface StorefrontTheme {
