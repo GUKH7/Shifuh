@@ -83,6 +83,11 @@ export default function SettingsPage() {
   const [storefrontTheme, setStorefrontTheme] = useState<StorefrontTheme>(DEFAULT_STOREFRONT_THEME);
   const [tiers, setTiers] = useState<DeliveryTier[]>([]);
   const [schedule, setSchedule] = useState<WorkHour[]>(DEFAULT_SCHEDULE);
+  const [scheduleMode, setScheduleMode] = useState<"shared" | "individual">("shared");
+  const [sharedSchedule, setSharedSchedule] = useState({
+    open_time: "18:00",
+    close_time: "23:00",
+  });
   const [minimumOrderAmount, setMinimumOrderAmount] = useState(0);
   const [scheduledOrdersEnabled, setScheduledOrdersEnabled] = useState(false);
   const [scheduledOrderLeadMinutes, setScheduledOrderLeadMinutes] = useState(60);
@@ -189,7 +194,23 @@ export default function SettingsPage() {
         });
         if (data.delivery_tiers) setTiers(data.delivery_tiers);
         else setTiers([{ distance: 1, time: 20, price: 0 }]);
-        setSchedule(normalizeWorkHours(data.work_hours));
+        const normalizedSchedule = normalizeWorkHours(data.work_hours);
+        const firstOpenDay = normalizedSchedule.find((day) => day.is_open);
+        const sharedTimes = {
+          open_time: firstOpenDay?.open_time || "18:00",
+          close_time: firstOpenDay?.close_time || "23:00",
+        };
+        const hasDifferentOpenHours = normalizedSchedule
+          .filter((day) => day.is_open)
+          .some(
+            (day) =>
+              day.open_time !== sharedTimes.open_time ||
+              day.close_time !== sharedTimes.close_time,
+          );
+
+        setSchedule(normalizedSchedule);
+        setSharedSchedule(sharedTimes);
+        setScheduleMode(hasDifferentOpenHours ? "individual" : "shared");
         setMinimumOrderAmount(Number(data.minimum_order_amount) || 0);
         setScheduledOrdersEnabled(Boolean(data.scheduled_orders_enabled));
         setScheduledOrderLeadMinutes(Math.max(30, Number(data.scheduled_order_lead_minutes) || 60));
@@ -496,9 +517,59 @@ export default function SettingsPage() {
   const removeTier = (index: number) => setTiers(tiers.filter((_, i) => i !== index));
 
   const handleTimeChange = <K extends keyof WorkHour>(index: number, field: K, value: WorkHour[K]) => {
-    const newSchedule = [...schedule];
-    newSchedule[index] = { ...newSchedule[index], [field]: value };
-    setSchedule(newSchedule);
+    setSchedule((current) =>
+      current.map((day, dayIndex) =>
+        dayIndex === index ? { ...day, [field]: value } : day,
+      ),
+    );
+  };
+
+  const handleScheduleDayToggle = (index: number, isOpen: boolean) => {
+    setSchedule((current) =>
+      current.map((day, dayIndex) => {
+        if (dayIndex !== index) return day;
+
+        return {
+          ...day,
+          is_open: isOpen,
+          ...(isOpen && scheduleMode === "shared" ? sharedSchedule : {}),
+        };
+      }),
+    );
+  };
+
+  const handleScheduleModeChange = (mode: "shared" | "individual") => {
+    if (mode === "shared") {
+      const firstOpenDay = schedule.find((day) => day.is_open);
+      if (firstOpenDay) {
+        setSharedSchedule({
+          open_time: firstOpenDay.open_time,
+          close_time: firstOpenDay.close_time,
+        });
+      }
+    }
+
+    setScheduleMode(mode);
+  };
+
+  const applySharedSchedule = () => {
+    const openDaysCount = schedule.filter((day) => day.is_open).length;
+    setSchedule((current) =>
+      current.map((day) =>
+        day.is_open
+          ? {
+              ...day,
+              open_time: sharedSchedule.open_time,
+              close_time: sharedSchedule.close_time,
+            }
+          : day,
+      ),
+    );
+    showToast({
+      title: "Horário aplicado",
+      description: `O intervalo foi aplicado a ${openDaysCount} ${openDaysCount === 1 ? "dia aberto" : "dias abertos"}.`,
+      tone: "success",
+    });
   };
 
   const updateStorefrontTheme = <K extends keyof StorefrontTheme>(
@@ -1984,22 +2055,105 @@ export default function SettingsPage() {
         <CollapsibleSection
           icon={<Clock size={20} />}
           title="Horários de funcionamento"
-          description="Marque os dias e ajuste a janela de atendimento."
+          description="Use um horário geral ou ajuste cada dia separadamente."
           defaultOpen={false}
         >
-          <div className="mt-6 space-y-3">
+          <div className="mt-6 inline-flex w-full rounded-2xl border border-[var(--line)] bg-[#f7f5f2] p-1 sm:w-auto" role="group" aria-label="Modo de configuração dos horários">
+            <button
+              type="button"
+              onClick={() => handleScheduleModeChange("shared")}
+              aria-pressed={scheduleMode === "shared"}
+              className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-bold transition sm:flex-none ${
+                scheduleMode === "shared"
+                  ? "bg-white text-gray-950 shadow-sm"
+                  : "text-gray-500 hover:text-gray-800"
+              }`}
+            >
+              Horário geral
+            </button>
+            <button
+              type="button"
+              onClick={() => handleScheduleModeChange("individual")}
+              aria-pressed={scheduleMode === "individual"}
+              className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-bold transition sm:flex-none ${
+                scheduleMode === "individual"
+                  ? "bg-white text-gray-950 shadow-sm"
+                  : "text-gray-500 hover:text-gray-800"
+              }`}
+            >
+              Ajustar por dia
+            </button>
+          </div>
+
+          {scheduleMode === "shared" && (
+            <div className="mt-4 rounded-2xl border border-[var(--line)] bg-[#fcfaf7] p-4">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <p className="text-sm font-black text-gray-950">Horário dos dias abertos</p>
+                  <p className="mt-1 text-xs leading-5 text-gray-500">
+                    Defina o intervalo e aplique de uma vez. Dias fechados não serão alterados.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                  <label className="space-y-1.5">
+                    <span className="block text-xs font-bold text-gray-500">Abertura</span>
+                    <input
+                      type="time"
+                      value={sharedSchedule.open_time}
+                      onChange={(event) =>
+                        setSharedSchedule((current) => ({
+                          ...current,
+                          open_time: event.target.value,
+                        }))
+                      }
+                      className="w-full rounded-xl border border-[var(--line)] bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--brand)] sm:w-32"
+                    />
+                  </label>
+                  <label className="space-y-1.5">
+                    <span className="block text-xs font-bold text-gray-500">Fechamento</span>
+                    <input
+                      type="time"
+                      value={sharedSchedule.close_time}
+                      onChange={(event) =>
+                        setSharedSchedule((current) => ({
+                          ...current,
+                          close_time: event.target.value,
+                        }))
+                      }
+                      className="w-full rounded-xl border border-[var(--line)] bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--brand)] sm:w-32"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={applySharedSchedule}
+                    disabled={!schedule.some((day) => day.is_open)}
+                    className="rounded-xl bg-[var(--brand)] px-4 py-2.5 text-sm font-black text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Aplicar aos dias abertos
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="mt-4 space-y-3">
             {schedule.map((item, index) => (
               <div key={item.day_id} className="flex flex-col gap-3 rounded-2xl border border-[var(--line)] bg-white p-4 md:flex-row md:items-center md:justify-between">
                 <label className="flex items-center gap-3">
-                  <input type="checkbox" checked={item.is_open} onChange={(e) => handleTimeChange(index, "is_open", e.target.checked)} className="h-4 w-4 accent-[var(--brand)]" />
+                  <input type="checkbox" checked={item.is_open} onChange={(e) => handleScheduleDayToggle(index, e.target.checked)} className="h-4 w-4 accent-[var(--brand)]" />
                   <span className={`text-sm font-bold ${item.is_open ? "text-gray-950" : "text-gray-400"}`}>{item.day_label}</span>
                 </label>
-                {item.is_open && (
-                  <div className="flex items-center gap-2">
+                {item.is_open && scheduleMode === "individual" && (
+                  <div className="flex items-center gap-2 sm:justify-end">
                     <input type="time" value={item.open_time} onChange={(e) => handleTimeChange(index, "open_time", e.target.value)} className="rounded-xl border border-[var(--line)] px-3 py-2 text-sm outline-none focus:border-[var(--brand)]" />
                     <span className="text-sm text-gray-400">as</span>
                     <input type="time" value={item.close_time} onChange={(e) => handleTimeChange(index, "close_time", e.target.value)} className="rounded-xl border border-[var(--line)] px-3 py-2 text-sm outline-none focus:border-[var(--brand)]" />
                   </div>
+                )}
+                {item.is_open && scheduleMode === "shared" && (
+                  <span className="text-xs font-bold text-gray-500">
+                    {item.open_time} às {item.close_time}
+                  </span>
                 )}
               </div>
             ))}

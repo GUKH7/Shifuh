@@ -41,7 +41,7 @@ test("public storefront products expose only catalog metadata", () => {
 
 test("storefront order RPC keeps operational rules server-only", () => {
   const operationalRules = fs.readFileSync(
-    path.join(__dirname, "..", "supabase", "migrations", "20260720142104_operational_order_rules.sql"),
+    path.join(__dirname, "..", "supabase", "migrations", "20260720143723_operational_order_rules.sql"),
     "utf8",
   );
   assert.match(operationalRules, /minimum_order_amount numeric/i);
