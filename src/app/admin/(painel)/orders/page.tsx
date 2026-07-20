@@ -1002,7 +1002,9 @@ export default function OrdersPage() {
                         </div>
 
                         <div>
-                          <p className="font-black text-gray-950">{order.items.length} item(ns)</p>
+                          <p className="font-black text-gray-950">
+                            {order.items.length} {order.items.length === 1 ? "item" : "itens"}
+                          </p>
                           <button
                             type="button"
                             onClick={() => toggleExpandedOrder(order)}
@@ -1453,13 +1455,13 @@ export default function OrdersPage() {
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:justify-end">
             <span className="rounded-xl bg-orange-50 px-2.5 py-1.5 text-xs font-black text-[var(--brand)] md:px-3 md:py-2 md:text-sm">
-              {summary.count} pedidos
+              {summary.count} {summary.count === 1 ? "pedido" : "pedidos"}
             </span>
             <span className="rounded-xl bg-emerald-50 px-2.5 py-1.5 text-xs font-black text-emerald-700 md:px-3 md:py-2 md:text-sm">
               {formatPrice(summary.revenue)}
             </span>
             <span className="rounded-xl bg-red-50 px-2.5 py-1.5 text-xs font-black text-red-700 md:px-3 md:py-2 md:text-sm">
-              {summary.canceled} cancelados
+              {summary.canceled} {summary.canceled === 1 ? "cancelado" : "cancelados"}
             </span>
             <span className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--line)] bg-white text-gray-600 transition-transform ${isSummaryOpen ? "rotate-180" : ""}`}>
               <ChevronDown size={18} />
