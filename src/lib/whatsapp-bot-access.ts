@@ -10,7 +10,7 @@ export async function requireWhatsappBotAccess() {
 
   if (userError || !user) {
     return {
-      response: NextResponse.json({ error: "Nao autenticado." }, { status: 401 }),
+      response: NextResponse.json({ error: "Não autenticado." }, { status: 401 }),
     };
   }
 
@@ -25,7 +25,7 @@ export async function requireWhatsappBotAccess() {
 
   if (restaurantError || !restaurant) {
     return {
-      response: NextResponse.json({ error: "Loja nao encontrada." }, { status: 403 }),
+      response: NextResponse.json({ error: "Loja não encontrada." }, { status: 403 }),
     };
   }
 

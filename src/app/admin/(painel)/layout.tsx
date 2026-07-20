@@ -108,12 +108,15 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
   return (
     <div className="min-h-screen bg-[#fbf7f2] text-gray-950">
       <AdminSidebar isCollapsed={isCollapsed} toggleSidebar={toggleSidebar} />
-      <div className={`transition-all duration-300 ${isCollapsed ? "ml-20" : "ml-64"}`}>
+      <div
+        className={`transition-all duration-300 ${isCollapsed ? "ml-16" : "ml-56"}`}
+        style={{ "--admin-sidebar-width": isCollapsed ? "4rem" : "14rem" } as React.CSSProperties}
+      >
         <header className="sticky top-0 z-40 bg-[#fbf7f2]/95 backdrop-blur">
-          <div className="flex h-[96px] items-center justify-between px-8 pt-3">
-            <div className="relative w-full max-w-xl">
-              <div className="flex items-center gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
-                <Search size={18} className="text-gray-400" />
+          <div className="flex h-20 items-center justify-between px-6">
+            <div className="relative w-full max-w-lg">
+              <div className="flex items-center gap-2.5 rounded-xl border border-[var(--line)] bg-white px-4 py-2.5">
+                <Search size={17} className="text-gray-400" />
                 <input
                   value={panelSearch}
                   onChange={(event) => setPanelSearch(event.target.value)}
@@ -152,17 +155,17 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
               )}
             </div>
 
-            <div className="ml-6 flex items-center gap-3">
-              <button className="surface-card rounded-xl p-3 text-gray-500">
-                <HelpCircle size={18} />
+            <div className="ml-5 flex items-center gap-2.5">
+              <button className="surface-card rounded-xl p-2.5 text-gray-500">
+                <HelpCircle size={17} />
               </button>
-              <button className="surface-card rounded-xl p-3 text-gray-500">
-                <Bell size={18} />
+              <button className="surface-card rounded-xl p-2.5 text-gray-500">
+                <Bell size={17} />
               </button>
             </div>
           </div>
         </header>
-        <main className="px-8 py-8">{children}</main>
+        <main className="px-6 py-5">{children}</main>
       </div>
     </div>
   );

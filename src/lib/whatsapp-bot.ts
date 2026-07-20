@@ -77,7 +77,7 @@ export async function sendWhatsappMessage({
     return {
       ok: false,
       skipped: true,
-      error: "WHATSAPP_BOT_API_URL nao configurada.",
+      error: "WHATSAPP_BOT_API_URL não configurada.",
     };
   }
 
@@ -87,7 +87,7 @@ export async function sendWhatsappMessage({
     return {
       ok: false,
       skipped: false,
-      error: "Telefone do cliente invalido para envio via WhatsApp.",
+      error: "Telefone do cliente inválido para envio via WhatsApp.",
     };
   }
 

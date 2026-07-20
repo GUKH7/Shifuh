@@ -150,7 +150,7 @@ test("atualiza status e envia mensagem limpa pelo WhatsApp", async () => {
   assert.equal(body.order.status, "preparing");
   assert.deepEqual(state.orderUpdates[0].payload, { status: "preparing" });
   assert.equal(sentMessages.length, 1);
-  assert.equal(sentMessages[0].message.includes("Seu pedido #0027 esta em preparo."), true);
+  assert.equal(sentMessages[0].message.includes("Seu pedido #0027 está em preparo."), true);
   assert.equal(sentMessages[0].message.includes("Ã"), false);
 });
 

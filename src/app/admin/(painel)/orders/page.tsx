@@ -94,7 +94,7 @@ const STATUS_META: Record<OrderStatus, {
     icon: <Bike size={18} />,
   },
   done: {
-    label: "Concluido",
+    label: "Concluído",
     dot: "bg-emerald-500",
     badge: "border-emerald-200 bg-emerald-50 text-emerald-700",
     icon: <CheckCircle2 size={18} />,
@@ -115,7 +115,7 @@ const STAT_CARDS: Array<{
   { id: "pending", title: "Pendentes", tone: "bg-orange-50 text-orange-600" },
   { id: "preparing", title: "Em preparo", tone: "bg-slate-100 text-slate-600" },
   { id: "delivering", title: "Em rota", tone: "bg-blue-50 text-blue-600" },
-  { id: "done", title: "Concluidos", tone: "bg-emerald-50 text-emerald-600" },
+  { id: "done", title: "Concluídos", tone: "bg-emerald-50 text-emerald-600" },
   { id: "canceled", title: "Cancelados", tone: "bg-red-50 text-red-600" },
 ];
 
@@ -152,7 +152,7 @@ function getPrimaryActionLabel(order: Order) {
       ? "Pronto para retirada"
       : "Despachar pedido";
   }
-  if (order.status === "delivering") return "Marcar concluido";
+  if (order.status === "delivering") return "Marcar concluído";
   return "";
 }
 
@@ -231,7 +231,7 @@ export default function OrdersPage() {
             showToast({
               title: "Novo pedido recebido",
               description: isChimeEnabled
-                ? `Pedido #${display === "0000" ? String(payload.new.id).slice(0, 4) : display} entrou na fila da operacao.`
+                ? `Pedido #${display === "0000" ? String(payload.new.id).slice(0, 4) : display} entrou na fila da operação.`
                 : `Pedido #${display === "0000" ? String(payload.new.id).slice(0, 4) : display} entrou na fila. Ative a campainha para ouvir os proximos.`,
               tone: "success",
             });
@@ -309,7 +309,7 @@ export default function OrdersPage() {
       const { restaurant: resto, user } = await getCurrentRestaurant(supabase);
       if (!user) return router.push("/admin/login");
       if (!resto) {
-        setErrorMsg("Nao foi possivel localizar a loja.");
+        setErrorMsg("Não foi possível localizar a loja.");
         return;
       }
 
@@ -343,7 +343,7 @@ export default function OrdersPage() {
       }
     } catch (err) {
       console.error(err);
-      setErrorMsg("Erro de conexao.");
+      setErrorMsg("Erro de conexão.");
     } finally {
       if (showLoading) setLoading(false);
     }
@@ -367,7 +367,7 @@ export default function OrdersPage() {
 
     if (!response.ok) {
       showToast({
-        title: "Nao foi possivel atualizar o pedido",
+        title: "Não foi possível atualizar o pedido",
         description: result.error || "Tente novamente em instantes.",
         tone: "error",
       });
@@ -385,8 +385,8 @@ export default function OrdersPage() {
 
     if (result.notification && !result.notification.sent && !result.notification.skipped) {
       showToast({
-        title: "WhatsApp nao enviado",
-        description: result.notification.error || "Confira a configuracao da API do robo.",
+        title: "WhatsApp não enviado",
+        description: result.notification.error || "Confira a configuração da API do robô.",
         tone: "error",
       });
     }
@@ -441,7 +441,7 @@ export default function OrdersPage() {
       const result = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(result.error || "Nao foi possivel executar a acao no iFood.");
+        throw new Error(result.error || "Não foi possível executar a ação no iFood.");
       }
 
       if (action !== "cancellation_reasons") {
@@ -456,7 +456,7 @@ export default function OrdersPage() {
       return result;
     } catch (error) {
       showToast({
-        title: "Nao foi possivel atualizar o pedido",
+        title: "Não foi possível atualizar o pedido",
         description: getOperationalErrorMessage(error),
         tone: "error",
       });
@@ -500,7 +500,7 @@ export default function OrdersPage() {
     if (!firstReason) {
       showToast({
         title: "Sem motivos disponiveis",
-        description: "O iFood nao retornou motivos de cancelamento para este pedido.",
+        description: "O iFood não retornou motivos de cancelamento para este pedido.",
         tone: "error",
       });
       return;
@@ -540,7 +540,7 @@ export default function OrdersPage() {
     const printWindow = window.open("", "", "width=350,height=600");
     if (!printWindow) {
       showToast({
-        title: "Impressao bloqueada",
+        title: "Impressão bloqueada",
         description: "Permita pop-ups para imprimir o cupom deste pedido.",
         tone: "error",
       });
@@ -551,7 +551,7 @@ export default function OrdersPage() {
     const fontSize = restaurantConfig?.printer_font_size || 12;
     const fontWeight = restaurantConfig?.printer_font_weight || 700;
     const createdAt = new Date(order.created_at).toLocaleString("pt-BR");
-    const addressLineOne = `${order.address?.street || "Rua nao informada"}, ${order.address?.number || "S/N"}`;
+    const addressLineOne = `${order.address?.street || "Rua não informada"}, ${order.address?.number || "S/N"}`;
     const addressLineTwo = [order.address?.neighborhood, order.address?.city, order.address?.state]
       .filter(Boolean)
       .join(" - ");
@@ -630,7 +630,7 @@ export default function OrdersPage() {
     }, 400);
 
     showToast({
-      title: "Cupom enviado para impressao",
+      title: "Cupom enviado para impressão",
       description: `Pedido #${formatDisplayNumber(order)} aberto na janela da impressora.`,
       tone: "success",
     });
@@ -700,7 +700,7 @@ export default function OrdersPage() {
       const result = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(result.error || "Nao foi possivel carregar os eventos iFood.");
+        throw new Error(result.error || "Não foi possível carregar os eventos iFood.");
       }
 
       setIfoodEventsByOrder((current) => ({
@@ -755,7 +755,7 @@ export default function OrdersPage() {
                   Pedido #{formatDisplayNumber(cancellationModalOrder)}
                 </h2>
                 <p className="mt-1 text-sm text-gray-500">
-                  Selecione o motivo retornado pelo iFood e confirme a solicitacao.
+                  Selecione o motivo retornado pelo iFood e confirme a solicitação.
                 </p>
               </div>
               <button
@@ -821,21 +821,21 @@ export default function OrdersPage() {
         </div>
       )}
 
-      <div className={`mx-auto max-w-[1540px] space-y-5 ${isSummaryOpen ? "pb-[28rem]" : "pb-24"}`}>
+      <div className={`mx-auto max-w-[1460px] space-y-4 ${isSummaryOpen ? "pb-[26rem]" : "pb-20"}`}>
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
-            <h1 className="text-3xl font-black tracking-tight text-gray-950">Pedidos</h1>
+            <h1 className="text-[28px] font-black tracking-tight text-gray-950">Pedidos</h1>
             <p className="mt-1 text-sm font-medium text-gray-500">
               Acompanhe e atualize os pedidos em tempo real.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <div className="inline-flex items-center gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700 shadow-sm">
+            <div className="inline-flex items-center gap-2.5 rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm font-bold text-gray-700 shadow-sm">
               <CalendarDays size={17} className="text-gray-500" />
               Hoje, {new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
               <ChevronDown size={16} className="text-gray-400" />
             </div>
-            <div className="inline-flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-black text-emerald-700">
+            <div className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-black text-emerald-700">
               <span className="h-2 w-2 rounded-full bg-emerald-500" />
               Loja aberta
             </div>
@@ -843,11 +843,11 @@ export default function OrdersPage() {
         </div>
 
         <section className="grid gap-3 lg:grid-cols-[1fr_auto]">
-          <div className="rounded-[18px] border border-orange-100 bg-white px-5 py-4 shadow-sm">
+          <div className="rounded-2xl border border-orange-100 bg-white px-4 py-3 shadow-sm">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
                 <p className="text-sm font-black uppercase tracking-[0.14em] text-orange-500">
-                  Operacao de hoje
+                  Operação de hoje
                 </p>
                 <p className="mt-1 text-sm text-gray-500">
                   Pedidos novos entram automaticamente na fila e ficam priorizados no topo.
@@ -869,7 +869,7 @@ export default function OrdersPage() {
           <button
             type="button"
             onClick={enableChime}
-            className={`inline-flex items-center justify-center gap-3 rounded-[18px] border px-5 py-4 text-sm font-black shadow-sm transition ${
+            className={`inline-flex items-center justify-center gap-2.5 rounded-2xl border px-4 py-3 text-sm font-black shadow-sm transition ${
               isChimeEnabled
                 ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                 : "border-orange-200 bg-white text-[var(--brand)] hover:bg-orange-50"
@@ -882,19 +882,19 @@ export default function OrdersPage() {
 
         <section className="space-y-4">
           <div className="flex flex-col gap-3 xl:flex-row">
-            <div className="flex flex-1 items-center gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-3 shadow-sm">
+            <div className="flex flex-1 items-center gap-3 rounded-xl border border-[var(--line)] bg-white px-4 py-2.5 shadow-sm">
               <Search size={18} className="text-gray-400" />
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Buscar por cliente, telefone, produto ou numero do pedido..."
+                placeholder="Buscar por cliente, telefone, produto ou número do pedido..."
                 className="w-full bg-transparent text-sm font-medium text-gray-700 outline-none placeholder:text-gray-400"
               />
             </div>
             <button
               type="button"
               onClick={() => setQuery("")}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[var(--line)] bg-white px-5 py-3 text-sm font-bold text-gray-700 shadow-sm"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--line)] bg-white px-4 py-2.5 text-sm font-bold text-gray-700 shadow-sm"
             >
               <Filter size={17} />
               Filtros
@@ -907,7 +907,7 @@ export default function OrdersPage() {
               <button
                 key={tab.id}
                 onClick={() => setActiveStatus(tab.id)}
-                className={`inline-flex min-w-[96px] items-center justify-center gap-3 rounded-xl border px-4 py-3 text-sm font-bold transition-colors ${
+                className={`inline-flex min-w-[92px] items-center justify-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-sm font-bold transition-colors ${
                   activeStatus === tab.id
                     ? "border-[var(--brand)] bg-white text-[var(--brand)] shadow-sm"
                     : "border-[var(--line)] bg-white text-gray-700 hover:border-orange-200"
@@ -931,14 +931,14 @@ export default function OrdersPage() {
               <span>Itens</span>
               <span>Valor</span>
               <span>Status</span>
-              <span>Horario</span>
-              <span>Acoes</span>
+              <span>Horário</span>
+              <span>Ações</span>
             </div>
 
             {filteredOrders.length === 0 ? (
               <div className="px-6 py-16 text-center">
                 <Package className="mx-auto h-12 w-12 text-orange-300" />
-                <p className="mt-4 font-black text-gray-950">Nao encontrou o pedido que procura?</p>
+                <p className="mt-4 font-black text-gray-950">Não encontrou o pedido que procura?</p>
                 <p className="mt-1 text-sm text-gray-500">Tente ajustar os filtros ou buscar por outro termo.</p>
                 <button
                   type="button"
@@ -1141,7 +1141,7 @@ export default function OrdersPage() {
                                         <p className="font-bold text-gray-950">Agendamento</p>
                                         <p className="mt-1 text-xs text-gray-500">
                                           {formatDateTime(ifoodMeta.schedule.deliveryDateTimeStart)}
-                                          {" ate "}
+                                          {" até "}
                                           {formatDateTime(ifoodMeta.schedule.deliveryDateTimeEnd)}
                                         </p>
                                       </div>
@@ -1175,7 +1175,7 @@ export default function OrdersPage() {
                                       Entrega
                                     </p>
                                     <p className="mt-1 text-sm leading-6 text-gray-700">
-                                      {order.address?.street || "Rua nao informada"}, {order.address?.number || "S/N"}
+                                      {order.address?.street || "Rua não informada"}, {order.address?.number || "S/N"}
                                       <br />
                                       {order.address?.neighborhood || "Sem bairro"}
                                     </p>
@@ -1185,7 +1185,7 @@ export default function OrdersPage() {
 
                               {listIfoodBenefits(order).length > 0 && (
                                 <div className="rounded-2xl border border-[var(--line)] bg-white p-4 text-sm">
-                                  <p className="font-black text-gray-950">Cupons/beneficios</p>
+                                  <p className="font-black text-gray-950">Cupons/benefícios</p>
                                   <div className="mt-2 space-y-1 text-gray-600">
                                     {listIfoodBenefits(order).map((benefit, index: number) => (
                                       <p key={index}>
@@ -1264,8 +1264,8 @@ export default function OrdersPage() {
                                   className="w-full rounded-2xl border border-[var(--line)] bg-[#fcfaf7] px-4 py-3 text-left text-xs font-bold text-gray-500"
                                 >
                                   {expandedTechnicalOrders.includes(order.id)
-                                    ? "Ocultar historico iFood"
-                                    : "Historico iFood"}
+                                    ? "Ocultar histórico iFood"
+                                    : "Histórico iFood"}
                                 </button>
                               )}
                             </div>
@@ -1275,9 +1275,9 @@ export default function OrdersPage() {
                             <div className="mt-5 rounded-2xl border border-[var(--line)] bg-white p-4">
                               <div className="flex items-center justify-between gap-3">
                                 <div>
-                                  <p className="font-black text-gray-950">Historico iFood</p>
+                                  <p className="font-black text-gray-950">Histórico iFood</p>
                                   <p className="text-xs text-gray-500">
-                                    {order.external_order_id || "Order ID nao informado"}
+                                    {order.external_order_id || "Order ID não informado"}
                                   </p>
                                 </div>
                                 <button
@@ -1326,7 +1326,7 @@ export default function OrdersPage() {
                                           onClick={() => setExpandedIfoodEvent(isRawExpanded ? "" : event.id)}
                                           className="mt-2 text-xs font-bold text-[var(--brand)]"
                                         >
-                                          {isRawExpanded ? "Ocultar dados tecnicos" : "Dados tecnicos"}
+                                          {isRawExpanded ? "Ocultar dados técnicos" : "Dados técnicos"}
                                         </button>
                                         {isRawExpanded && (
                                           <pre className="mt-2 max-h-48 overflow-auto rounded-xl bg-gray-950 p-3 text-[11px] text-gray-100">
@@ -1356,7 +1356,7 @@ export default function OrdersPage() {
               <Package size={24} />
             </span>
             <div>
-              <p className="font-black text-gray-950">Nao encontrou o pedido que procura?</p>
+              <p className="font-black text-gray-950">Não encontrou o pedido que procura?</p>
               <p className="mt-1 text-sm text-gray-500">Tente ajustar os filtros ou buscar por outro termo.</p>
             </div>
           </div>
@@ -1375,7 +1375,7 @@ export default function OrdersPage() {
 
       </div>
 
-      <section className="fixed bottom-3 left-3 right-3 z-40 overflow-hidden rounded-[20px] border border-[var(--line)] bg-white/95 shadow-[0_18px_55px_rgba(17,16,15,0.14)] backdrop-blur md:bottom-4 md:left-28 md:right-8">
+      <section className="fixed bottom-3 left-3 right-3 z-40 overflow-hidden rounded-[18px] border border-[var(--line)] bg-white/95 shadow-[0_18px_55px_rgba(17,16,15,0.14)] backdrop-blur md:bottom-3 md:left-[calc(var(--admin-sidebar-width)+1.5rem)] md:right-6">
         {isSummaryOpen && (
           <div className="max-h-[70vh] overflow-y-auto border-b border-[var(--line)] p-3 md:p-4">
             <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-6">

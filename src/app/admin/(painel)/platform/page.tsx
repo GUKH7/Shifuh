@@ -53,7 +53,7 @@ export default function PlatformPage() {
         return;
       }
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Nao foi possivel carregar as lojas.");
+      if (!response.ok) throw new Error(result.error || "Não foi possível carregar as lojas.");
       setRestaurants((result.restaurants || []) as RestaurantRow[]);
     } catch (err) {
       console.error(err);
@@ -200,7 +200,7 @@ export default function PlatformPage() {
         <div>
           <h1 className="text-3xl font-black tracking-tight text-gray-950">Lojas cadastradas</h1>
           <p className="mt-1 text-sm text-[var(--muted)]">
-            Visao administrativa da plataforma com todas as operacoes registradas.
+            Visão administrativa da plataforma com todas as operações registradas.
           </p>
         </div>
       </div>

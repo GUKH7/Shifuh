@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Voce precisa entrar para avaliar." }, { status: 401 });
+      return NextResponse.json({ error: "Você precisa entrar para avaliar." }, { status: 401 });
     }
 
     const { data: order, error: orderError } = await supabase

@@ -254,7 +254,7 @@ export default function SettingsPage() {
   };
 
   const uploadFile = async (file: File) => {
-    if (!restaurantId) throw new Error("Loja nao identificada para o upload.");
+    if (!restaurantId) throw new Error("Loja não identificada para o upload.");
     const fileExt = file.name.split(".").pop();
     const fileName = `${restaurantId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
     const { error: uploadError } = await supabase.storage.from("restaurant-images").upload(fileName, file);
@@ -820,7 +820,7 @@ export default function SettingsPage() {
         title: isMutation ? "Cenário Catalog alterado" : "Cenário Catalog preparado",
         description: isMutation
           ? "Produto alterado e segundo complemento pausado no iFood."
-          : `Categoria ${result.summary?.categoryName || "Teste Homologacao"} e item de teste enviados ao iFood.`,
+          : `Categoria ${result.summary?.categoryName || "Teste Homologação"} e item de teste enviados ao iFood.`,
         tone: "success",
       });
 

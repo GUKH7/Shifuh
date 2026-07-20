@@ -89,13 +89,13 @@ A tabela `storefront_checkout_events` registra somente eventos anônimos do funi
 | `npm run build` | Build de produção |
 | `npm run lint` | ESLint |
 
-## Saude operacional
+## Saúde operacional
 
-O endpoint `GET /api/health` verifica, em paralelo, a conexao com o banco e o bot
-principal do WhatsApp. Ele retorna `200` quando a operacao esta pronta e `503`
-quando alguma dependencia esta degradada ou indisponivel. A resposta publica nao
-inclui URLs, tokens ou mensagens internas; os detalhes tecnicos sao enviados como
+O endpoint `GET /api/health` verifica, em paralelo, a conexão com o banco e o bot
+principal do WhatsApp. Ele retorna `200` quando a operação está pronta e `503`
+quando alguma dependência está degradada ou indisponível. A resposta pública não
+inclui URLs, tokens ou mensagens internas; os detalhes técnicos são enviados como
 logs estruturados para os Runtime Logs da Vercel.
 
-Os scripts de recuperacao automatica e backup da sessao WhatsApp ficam em
-`ops/oracle` e sao instalados na VM como tarefas agendadas.
+Os scripts de recuperação automática e backup da sessão WhatsApp ficam em
+`ops/oracle` e são instalados na VM como tarefas agendadas.

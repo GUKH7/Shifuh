@@ -14,7 +14,7 @@ export async function GET() {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Nao autenticado." }, { status: 401 });
+      return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
     }
 
     if (!isPlatformAdminEmail(user.email)) {
@@ -29,7 +29,7 @@ export async function GET() {
 
     if (error) {
       console.error("Erro ao listar lojas da plataforma:", error);
-      return NextResponse.json({ error: "Nao foi possivel carregar as lojas." }, { status: 500 });
+      return NextResponse.json({ error: "Não foi possível carregar as lojas." }, { status: 500 });
     }
 
     return NextResponse.json({ restaurants: data || [] });
@@ -72,7 +72,7 @@ export async function PATCH(request: Request, context: Params) {
     }
 
     if (!/^[a-z0-9-]+$/.test(slug)) {
-      return NextResponse.json({ error: "Slug invalido." }, { status: 400 });
+      return NextResponse.json({ error: "Slug inválido." }, { status: 400 });
     }
 
     const adminSupabase = createAdminClient();

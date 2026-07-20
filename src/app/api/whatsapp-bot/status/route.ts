@@ -17,7 +17,7 @@ export async function GET() {
 
   if (!statusUrl) {
     return NextResponse.json(
-      { error: "WHATSAPP_BOT_API_URL nao configurada." },
+      { error: "WHATSAPP_BOT_API_URL não configurada." },
       { status: 503 },
     );
   }

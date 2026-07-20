@@ -392,7 +392,7 @@ async function upsertLocalOrderFromIfood(
     const createdOrder = Array.isArray(createdOrderData) ? createdOrderData[0] : createdOrderData;
 
     if (createOrderError || !createdOrder?.order_id) {
-      throw new Error(createOrderError?.message || "Nao foi possivel criar o pedido iFood.");
+      throw new Error(createOrderError?.message || "Não foi possível criar o pedido iFood.");
     }
 
     localOrderId = createdOrder.order_id;

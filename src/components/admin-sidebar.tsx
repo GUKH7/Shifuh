@@ -72,36 +72,36 @@ export default function AdminSidebar({ isCollapsed, toggleSidebar }: AdminSideba
   return (
     <aside
       className={`fixed left-0 top-0 z-50 flex h-screen flex-col overflow-visible border-r border-[var(--line)] bg-white transition-all duration-300 ${
-        isCollapsed ? "w-20" : "w-64"
+        isCollapsed ? "w-16" : "w-56"
       }`}
     >
       <button
         onClick={toggleSidebar}
-        className="absolute -right-[18px] top-[86px] z-50 flex h-9 w-9 items-center justify-center rounded-full border border-[var(--line)] bg-white text-gray-500 shadow-sm transition-colors hover:bg-[var(--brand-soft)] hover:text-[var(--brand)]"
+        className="absolute -right-4 top-[70px] z-50 flex h-8 w-8 items-center justify-center rounded-full border border-[var(--line)] bg-white text-gray-500 shadow-sm transition-colors hover:bg-[var(--brand-soft)] hover:text-[var(--brand)]"
       >
         {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
       </button>
 
       <div
-        className={`flex h-[96px] items-center px-6 ${
-          isCollapsed ? "justify-center px-2 pt-2" : "pt-3"
+        className={`flex h-20 items-center px-5 ${
+          isCollapsed ? "justify-center px-2" : ""
         }`}
       >
         <div className={`flex items-center gap-3 ${isCollapsed ? "justify-center" : ""}`}>
-          <div className="brand-gradient flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-white shadow-sm">
-            <Store size={18} />
+          <div className="brand-gradient flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl text-white shadow-sm">
+            <Store size={17} />
           </div>
           {!isCollapsed && (
             <div>
-              <p className="text-lg font-black tracking-tight text-gray-950">GESTOR.</p>
-              <p className="text-xs text-gray-500">Portal da loja</p>
+              <p className="text-base font-black tracking-tight text-gray-950">GESTOR.</p>
+              <p className="text-[11px] text-gray-500">Portal da loja</p>
             </div>
           )}
         </div>
       </div>
 
-      <div className={`px-4 py-6 ${isCollapsed ? "px-2" : ""}`}>
-        <nav className="space-y-1.5">
+      <div className={`px-3 py-4 ${isCollapsed ? "px-2" : ""}`}>
+        <nav className="space-y-1">
           {MENU_ITEMS.map((item) => {
             const isActive = pathname === item.href;
 
@@ -111,7 +111,7 @@ export default function AdminSidebar({ isCollapsed, toggleSidebar }: AdminSideba
                 href={item.href}
                 title={isCollapsed ? item.name : undefined}
                 className={`flex items-center rounded-2xl text-sm font-semibold transition-all ${
-                  isCollapsed ? "justify-center px-3 py-3" : "gap-3 px-4 py-3"
+                  isCollapsed ? "justify-center px-3 py-2.5" : "gap-3 px-4 py-2.5"
                 } ${
                   isActive
                     ? "bg-[var(--brand-soft)] text-[var(--brand)]"
@@ -132,7 +132,7 @@ export default function AdminSidebar({ isCollapsed, toggleSidebar }: AdminSideba
               href="/admin/platform"
               title={isCollapsed ? "Lojas cadastradas" : undefined}
               className={`flex items-center rounded-2xl text-sm font-semibold transition-all ${
-                isCollapsed ? "justify-center px-3 py-3" : "gap-3 px-4 py-3"
+                isCollapsed ? "justify-center px-3 py-2.5" : "gap-3 px-4 py-2.5"
               } ${
                 pathname === "/admin/platform"
                   ? "bg-[var(--brand-soft)] text-[var(--brand)]"
@@ -149,7 +149,7 @@ export default function AdminSidebar({ isCollapsed, toggleSidebar }: AdminSideba
         </nav>
       </div>
 
-      <div className="mt-auto border-t border-[var(--line)] p-4">
+      <div className="mt-auto border-t border-[var(--line)] p-3">
         {storeSlug ? (
           <Link
             href={`/${storeSlug}`}

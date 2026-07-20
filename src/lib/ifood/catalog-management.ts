@@ -52,7 +52,7 @@ export const DEFAULT_HOMOLOGATION_IDS: IfoodCatalogHomologationIds = {
 };
 
 const HOMOLOGATION_CONFIG = {
-  categoryName: "Teste Homologacao",
+  categoryName: "Teste Homologação",
 };
 
 export async function resolveIfoodCatalogId(merchantId: string) {
@@ -235,7 +235,7 @@ function buildHomologationItemPayload(params: {
     optionGroups: [
       {
         id: ids.optionGroupId,
-        name: "Grupo de Complementos Homologacao",
+        name: "Grupo de Complementos Homologação",
         status: "AVAILABLE",
         optionGroupType: "OFFER_UNIT",
         optionIds: [ids.optionOneId, ids.optionTwoId],
