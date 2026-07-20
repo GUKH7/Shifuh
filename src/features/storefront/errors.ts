@@ -17,6 +17,8 @@ export function getOrderApiErrorMessage(code?: string) {
     MINIMUM_ORDER_NOT_REACHED: "Adicione mais itens para atingir o pedido mínimo.",
     SCHEDULING_DISABLED: "Esta loja não está aceitando pedidos agendados.",
     INVALID_SCHEDULE: "Escolha uma data e um horário dentro do funcionamento da loja.",
+    INVALID_PAYMENT_METHOD: "Escolha uma forma de pagamento para continuar.",
+    INVALID_CHANGE_FOR: "Confira o valor informado para o troco.",
     ORDER_CREATION_FAILED: "Não conseguimos registrar o pedido. Sua sacola foi mantida para você tentar novamente.",
   };
 

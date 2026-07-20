@@ -25,3 +25,62 @@ export function isValidPhone(value: string) {
 export function isValidCep(value: string) {
   return onlyDigits(value).length === 8;
 }
+
+export const storefrontPaymentMethods = ["pix", "credit", "debit", "cash"] as const;
+
+export type StorefrontPaymentMethod = (typeof storefrontPaymentMethods)[number];
+
+export const paymentMethodDetails: Record<
+  StorefrontPaymentMethod,
+  { label: string; description: string; timing: string }
+> = {
+  pix: {
+    label: "Pix",
+    description: "Use a chave ou o QR Code informado pela loja.",
+    timing: "Pagamento na entrega",
+  },
+  credit: {
+    label: "Crédito",
+    description: "Pagamento na maquininha do entregador.",
+    timing: "Pagamento na entrega",
+  },
+  debit: {
+    label: "Débito",
+    description: "Pagamento na maquininha do entregador.",
+    timing: "Pagamento na entrega",
+  },
+  cash: {
+    label: "Dinheiro",
+    description: "Pague ao receber o pedido.",
+    timing: "Pagamento na entrega",
+  },
+};
+
+export function isStorefrontPaymentMethod(value: unknown): value is StorefrontPaymentMethod {
+  return typeof value === "string" && storefrontPaymentMethods.includes(value as StorefrontPaymentMethod);
+}
+
+export function formatCurrencyInput(value: string) {
+  const cents = Number(onlyDigits(value));
+  if (!Number.isFinite(cents) || cents <= 0) return "";
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(cents / 100);
+}
+
+export function parseCurrencyInput(value: string) {
+  const normalized = value
+    .replace(/[^\d,.-]/g, "")
+    .replace(/\./g, "")
+    .replace(",", ".");
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+export function getChangeForError(changeFor: string, orderTotal: number) {
+  const amount = parseCurrencyInput(changeFor);
+  if (amount === null || amount <= 0) return "Informe o valor que será entregue em dinheiro.";
+  if (amount <= orderTotal) return "O valor para troco deve ser maior que o total do pedido.";
+  return "";
+}

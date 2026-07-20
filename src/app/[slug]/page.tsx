@@ -39,7 +39,16 @@ import {
 import type { CheckoutStep, DeliveryInfo, OrderResponse, OrderTrackingResponse } from "@/features/storefront/types";
 import { useCart } from "@/features/storefront/use-cart";
 import { useStorefront } from "@/features/storefront/use-storefront";
-import { formatCep, formatPhone, isValidCep, isValidPhone, onlyDigits } from "@/features/storefront/checkout-format";
+import {
+  formatCep,
+  formatPhone,
+  getChangeForError,
+  isValidCep,
+  isValidPhone,
+  onlyDigits,
+  paymentMethodDetails,
+  type StorefrontPaymentMethod,
+} from "@/features/storefront/checkout-format";
 import { getFriendlyStorefrontError, getOrderApiErrorMessage } from "@/features/storefront/errors";
 
 export default function StorePage() {
@@ -61,8 +70,11 @@ export default function StorePage() {
   const [deliveryInfo, setDeliveryInfo] = useState<DeliveryInfo | null>(null);
   const [deliveryError, setDeliveryError] = useState("");
   const [clientCoords, setClientCoords] = useState<{ lat: number; lon: number } | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState("pix");
+  const [paymentMethod, setPaymentMethod] = useState<StorefrontPaymentMethod>("pix");
   const [changeFor, setChangeFor] = useState("");
+  const [cashNeedsChange, setCashNeedsChange] = useState(false);
+  const [checkoutError, setCheckoutError] = useState("");
+  const [couponError, setCouponError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [saveAddress, setSaveAddress] = useState(false);
   const [scheduledFor, setScheduledFor] = useState("");
@@ -276,6 +288,7 @@ export default function StorePage() {
       nextAddress.state !== address.state;
 
     setAddress(nextAddress);
+    setCheckoutError("");
     if (deliveryAddressChanged) {
       setDeliveryInfo(null);
       setClientCoords(null);
@@ -297,8 +310,12 @@ export default function StorePage() {
   const finalTotal = cartSubtotal + feeValue - discountAmount;
 
   const handleApplyCoupon = async () => {
-    if (!couponCode) return;
+    if (!couponCode.trim()) {
+      setCouponError("Digite o código do cupom.");
+      return;
+    }
 
+    setCouponError("");
     setVerifyingCoupon(true);
     try {
       const { data, error } = await supabase
@@ -316,15 +333,18 @@ export default function StorePage() {
           tone: "error",
         });
         setAppliedCoupon(null);
+        setCouponError("Cupom não encontrado ou indisponível.");
       } else {
         setAppliedCoupon({
           code: data.code,
           value: data.value,
           type: data.discount_type,
         });
+        setCouponError("");
       }
     } catch (error) {
       console.error(error);
+      setCouponError("Não foi possível validar o cupom agora. Tente novamente.");
     } finally {
       setVerifyingCoupon(false);
     }
@@ -350,6 +370,10 @@ export default function StorePage() {
     const scheduleLine = summary.scheduledFor
       ? `Agendado para: ${new Date(summary.scheduledFor).toLocaleString("pt-BR")}\n`
       : "";
+    const payment = paymentMethodDetails[summary.paymentMethod as StorefrontPaymentMethod];
+    const paymentLine = payment
+      ? `${payment.label} (${payment.timing.toLowerCase()})`
+      : summary.paymentMethod;
 
     const msg =
       `NOVO PEDIDO #${orderLabel}\n\n` +
@@ -363,13 +387,15 @@ export default function StorePage() {
       `Entrega: ${deliveryLine}\n` +
       `${summary.discount > 0 ? `Desconto: -${formatMoney(summary.discount)}\n` : ""}` +
       `TOTAL: ${formatMoney(summary.total)}\n` +
-      `Pagamento: ${summary.paymentMethod}`;
+      `Pagamento: ${paymentLine}` +
+      `${summary.changeFor ? `\nTroco para: ${formatMoney(Number(summary.changeFor))}` : ""}`;
 
     const phone = summary.restaurantPhone || restaurant.phone || "5511999999999";
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, "_blank");
   };
 
   const handlePlaceOrder = async () => {
+    setCheckoutError("");
     if (!customerName || !customerPhone || !address.street || !address.number) {
       showToast({
         title: "Dados incompletos",
@@ -418,6 +444,13 @@ export default function StorePage() {
       });
       return;
     }
+    if (paymentMethod === "cash" && cashNeedsChange) {
+      const changeError = getChangeForError(changeFor, finalTotal);
+      if (changeError) {
+        setCheckoutError(changeError);
+        return;
+      }
+    }
 
     setIsSubmitting(true);
 
@@ -433,7 +466,7 @@ export default function StorePage() {
           customerPhone: onlyDigits(customerPhone),
           address,
           paymentMethod,
-          changeFor,
+          changeFor: paymentMethod === "cash" && cashNeedsChange ? changeFor : "",
           couponCode: appliedCoupon?.code || null,
           usingSavedAddress,
           saveAddress,
@@ -452,9 +485,11 @@ export default function StorePage() {
       const result = await response.json();
 
       if (!response.ok) {
+        const message = getOrderApiErrorMessage(result?.code);
+        setCheckoutError(message);
         showToast({
           title: "Não foi possível finalizar o pedido",
-          description: getOrderApiErrorMessage(result?.code),
+          description: message,
           tone: "error",
         });
         return;
@@ -466,7 +501,9 @@ export default function StorePage() {
       clearCart();
       setAppliedCoupon(null);
       setScheduledFor("");
+      setCheckoutError("");
     } catch (error: any) {
+      setCheckoutError(getFriendlyStorefrontError("order"));
       showToast({
         title: "Não foi possível finalizar o pedido",
         description: getFriendlyStorefrontError("order"),
@@ -643,13 +680,6 @@ export default function StorePage() {
       done: "Pedido concluído",
       canceled: "Pedido cancelado",
     };
-    const paymentLabels: Record<string, string> = {
-      pix: "PIX",
-      cash: "Dinheiro",
-      credit: "Cartão de crédito",
-      debit: "Cartão de débito",
-    };
-
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#f6f1ea] px-4 py-8 sm:px-6 sm:py-12">
         <div className="surface-card w-full max-w-2xl rounded-[24px] p-5 sm:rounded-[32px] sm:p-8">
@@ -684,8 +714,16 @@ export default function StorePage() {
               <div className="rounded-2xl border border-[var(--line)] bg-white p-4">
                 <p className="text-xs font-black uppercase text-gray-400">Pagamento</p>
                 <p className="mt-2 font-bold text-gray-950">
-                  {paymentLabels[lastOrderSummary.paymentMethod] || lastOrderSummary.paymentMethod}
+                  {paymentMethodDetails[lastOrderSummary.paymentMethod as StorefrontPaymentMethod]?.label || lastOrderSummary.paymentMethod}
                 </p>
+                <p className="mt-1 text-sm text-gray-500">
+                  {paymentMethodDetails[lastOrderSummary.paymentMethod as StorefrontPaymentMethod]?.timing}
+                </p>
+                {lastOrderSummary.changeFor && (
+                  <p className="mt-1 text-sm font-bold text-gray-700">
+                    Troco para {formatMoney(Number(lastOrderSummary.changeFor))}
+                  </p>
+                )}
               </div>
               {lastOrderSummary.scheduledFor && (
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 sm:col-span-2">
@@ -1171,6 +1209,9 @@ export default function StorePage() {
         finalTotal={finalTotal}
         paymentMethod={paymentMethod}
         changeFor={changeFor}
+        cashNeedsChange={cashNeedsChange}
+        checkoutError={checkoutError}
+        couponError={couponError}
         isSubmitting={isSubmitting}
         saveAddress={saveAddress}
         canSaveAddress={Boolean(currentUser)}
@@ -1189,8 +1230,8 @@ export default function StorePage() {
           editCartItem(item);
           setIsCartOpen(false);
         }}
-        onCustomerNameChange={setCustomerName}
-        onCustomerPhoneChange={setCustomerPhone}
+        onCustomerNameChange={(value) => { setCustomerName(value); setCheckoutError(""); }}
+        onCustomerPhoneChange={(value) => { setCustomerPhone(value); setCheckoutError(""); }}
         onAddressChange={handleAddressChange}
         onBlurCep={handleBlurCep}
         onCalculateDelivery={calculateDeliveryForAddress}
@@ -1203,16 +1244,18 @@ export default function StorePage() {
           setClientCoords(null);
           setDeliveryError("");
         }}
-        onCouponCodeChange={setCouponCode}
+        onCouponCodeChange={(value) => { setCouponCode(value); setCouponError(""); }}
         onApplyCoupon={handleApplyCoupon}
         onRemoveCoupon={() => {
           setAppliedCoupon(null);
           setCouponCode("");
+          setCouponError("");
         }}
-        onPaymentMethodChange={setPaymentMethod}
-        onChangeForChange={setChangeFor}
+        onPaymentMethodChange={(value) => { setPaymentMethod(value); setCheckoutError(""); }}
+        onChangeForChange={(value) => { setChangeFor(value); setCheckoutError(""); }}
+        onCashNeedsChange={(value) => { setCashNeedsChange(value); setCheckoutError(""); }}
         onSaveAddressChange={setSaveAddress}
-        onScheduledForChange={setScheduledFor}
+        onScheduledForChange={(value) => { setScheduledFor(value); setCheckoutError(""); }}
         onPlaceOrder={handlePlaceOrder}
       />
     </div>

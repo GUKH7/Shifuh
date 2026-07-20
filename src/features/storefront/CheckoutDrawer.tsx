@@ -1,11 +1,20 @@
 "use client";
 
-import { ChevronLeft, Loader2, Minus, Pencil, Plus, Ticket, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { Banknote, ChevronLeft, CreditCard, Loader2, Minus, Pencil, Plus, QrCode, Ticket, Trash2 } from "lucide-react";
 import { formatMoney, getContrastTextColor } from "./format";
 import { DeliveryCalculator } from "./DeliveryCalculator";
 import type { CartItem, CheckoutAddress, CheckoutStep, DeliveryInfo } from "./types";
 import type { StoreStatus } from "./store-summary";
-import { formatPhone } from "./checkout-format";
+import {
+  formatCurrencyInput,
+  formatPhone,
+  getChangeForError,
+  isValidCep,
+  isValidPhone,
+  paymentMethodDetails,
+  type StorefrontPaymentMethod,
+} from "./checkout-format";
 
 type CheckoutDrawerProps = {
   isOpen: boolean;
@@ -28,8 +37,11 @@ type CheckoutDrawerProps = {
   discountAmount: number;
   feeValue: number;
   finalTotal: number;
-  paymentMethod: string;
+  paymentMethod: StorefrontPaymentMethod;
   changeFor: string;
+  cashNeedsChange: boolean;
+  checkoutError: string;
+  couponError: string;
   isSubmitting: boolean;
   saveAddress: boolean;
   canSaveAddress: boolean;
@@ -56,8 +68,9 @@ type CheckoutDrawerProps = {
   onCouponCodeChange: (value: string) => void;
   onApplyCoupon: () => void;
   onRemoveCoupon: () => void;
-  onPaymentMethodChange: (value: string) => void;
+  onPaymentMethodChange: (value: StorefrontPaymentMethod) => void;
   onChangeForChange: (value: string) => void;
+  onCashNeedsChange: (value: boolean) => void;
   onSaveAddressChange: (value: boolean) => void;
   onScheduledForChange: (value: string) => void;
   onPlaceOrder: () => void;
@@ -86,6 +99,9 @@ export function CheckoutDrawer({
   finalTotal,
   paymentMethod,
   changeFor,
+  cashNeedsChange,
+  checkoutError,
+  couponError,
   isSubmitting,
   saveAddress,
   canSaveAddress,
@@ -114,10 +130,14 @@ export function CheckoutDrawer({
   onRemoveCoupon,
   onPaymentMethodChange,
   onChangeForChange,
+  onCashNeedsChange,
   onSaveAddressChange,
   onScheduledForChange,
   onPlaceOrder,
 }: CheckoutDrawerProps) {
+  const [addressAttempted, setAddressAttempted] = useState(false);
+  const [paymentAttempted, setPaymentAttempted] = useState(false);
+
   if (!isOpen) return null;
   const brandTextColor = getContrastTextColor(primaryColor);
   const currentIndex = step === "cart" ? 0 : step === "address" ? 1 : 2;
@@ -126,6 +146,36 @@ export function CheckoutDrawer({
   const storeClosedWithoutScheduling = storeStatus.tone === "closed" && !scheduledOrdersEnabled;
   const scheduleRequired = storeStatus.tone === "closed" && scheduledOrdersEnabled;
   const scheduleMissing = scheduleRequired && !scheduledFor;
+  const addressErrors = {
+    customerName: customerName.trim().length >= 2 ? "" : "Informe seu nome.",
+    customerPhone: isValidPhone(customerPhone) ? "" : "Informe um celular válido com DDD.",
+    cep: isValidCep(address.cep) ? "" : "Informe um CEP com 8 números.",
+    street: address.street.trim() ? "" : "Informe a rua.",
+    number: address.number.trim() ? "" : "Informe o número.",
+    neighborhood: address.neighborhood.trim() ? "" : "Informe o bairro.",
+    city: address.city.trim() ? "" : "Informe a cidade.",
+    state: address.state.trim().length === 2 ? "" : "Informe a UF.",
+    delivery: deliveryInfo?.valid && deliveryInfo.addressValidated
+      ? ""
+      : "Valide o endereço e a taxa de entrega antes de continuar.",
+  };
+  const hasAddressErrors = Object.values(addressErrors).some(Boolean);
+  const changeForError = paymentMethod === "cash" && cashNeedsChange
+    ? getChangeForError(changeFor, finalTotal)
+    : "";
+  const paymentError = !paymentMethod ? "Escolha uma forma de pagamento." : "";
+  const scheduleError = scheduleMissing ? "Escolha a data e o horário do pedido." : "";
+  const hasPaymentErrors = Boolean(paymentError || changeForError || scheduleError);
+
+  const continueToPayment = () => {
+    setAddressAttempted(true);
+    if (!hasAddressErrors) onStepChange("payment");
+  };
+
+  const submitOrder = () => {
+    setPaymentAttempted(true);
+    if (!hasPaymentErrors) onPlaceOrder();
+  };
 
   return (
     <div className="fixed inset-0 z-50 bg-[#f6f1ea]">
@@ -262,6 +312,9 @@ export function CheckoutDrawer({
                       autoComplete="name"
                       className="mt-1.5 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-normal text-gray-950 outline-none"
                     />
+                    {addressAttempted && addressErrors.customerName && (
+                      <span className="mt-1.5 block text-xs font-bold text-rose-600">{addressErrors.customerName}</span>
+                    )}
                   </label>
                   <label className="block text-xs font-bold text-gray-600">
                     Celular com DDD
@@ -273,6 +326,9 @@ export function CheckoutDrawer({
                       autoComplete="tel"
                       className="mt-1.5 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-normal text-gray-950 outline-none"
                     />
+                    {addressAttempted && addressErrors.customerPhone && (
+                      <span className="mt-1.5 block text-xs font-bold text-rose-600">{addressErrors.customerPhone}</span>
+                    )}
                   </label>
                 </div>
               </div>
@@ -286,6 +342,7 @@ export function CheckoutDrawer({
                 calculatingFee={calculatingFee}
                 hasAddressMinimum={hasAddressMinimum}
                 deliveryError={deliveryError}
+                fieldErrors={addressAttempted ? addressErrors : undefined}
                 onAddressChange={onAddressChange}
                 onBlurCep={onBlurCep}
                 onCalculateDelivery={onCalculateDelivery}
@@ -331,6 +388,9 @@ export function CheckoutDrawer({
                       onChange={(event) => onScheduledForChange(event.target.value)}
                       className="mt-1.5 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-normal text-gray-950 outline-none"
                     />
+                    {paymentAttempted && scheduleError && (
+                      <span className="mt-1.5 block text-xs font-bold text-rose-600">{scheduleError}</span>
+                    )}
                   </label>
                   {scheduledFor && (
                     <button
@@ -344,20 +404,59 @@ export function CheckoutDrawer({
                 </div>
               )}
               <div className="surface-card rounded-[20px] p-4 sm:rounded-[24px] sm:p-5">
-                <h3 className="text-lg font-black text-gray-950">Revisão final</h3>
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-lg font-black text-gray-950">Revisão final</h3>
+                  <button type="button" onClick={() => onStepChange("cart")} className="text-xs font-black" style={{ color: primaryColor }}>
+                    Editar itens
+                  </button>
+                </div>
                 <div className="mt-4 space-y-3 text-sm text-gray-600">
-                  <div>
-                    <p className="font-bold text-gray-900">{customerName} · {customerPhone}</p>
+                  <div className="rounded-2xl bg-[#faf8f5] p-3.5">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="font-black text-gray-900">Entrega</p>
+                      <button type="button" onClick={() => onStepChange("address")} className="text-xs font-black" style={{ color: primaryColor }}>
+                        Editar
+                      </button>
+                    </div>
+                    <p className="mt-2 font-bold text-gray-900">{customerName} · {customerPhone}</p>
                     <p className="mt-1">{address.street}, {address.number}{address.complement ? `, ${address.complement}` : ""}</p>
                     <p>{address.neighborhood} · {address.city}/{address.state}</p>
                   </div>
-                  <div className="border-t border-[var(--line)] pt-3">
+                  <div className="rounded-2xl bg-[#faf8f5] p-3.5">
+                    <p className="mb-2 font-black text-gray-900">Itens</p>
                     {cart.map((item) => (
                       <div key={item.internalId} className="flex justify-between gap-3 py-1">
                         <span>{item.quantity}x {item.product.name}</span>
                         <strong className="text-gray-900">{formatMoney(item.totalPrice)}</strong>
                       </div>
                     ))}
+                  </div>
+                  <div className="rounded-2xl bg-[#faf8f5] p-3.5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-black text-gray-900">{paymentMethodDetails[paymentMethod].label}</p>
+                        <p className="mt-1 text-xs text-gray-500">{paymentMethodDetails[paymentMethod].timing}</p>
+                        {paymentMethod === "cash" && cashNeedsChange && changeFor && (
+                          <p className="mt-1 text-xs font-bold text-gray-700">Troco para {changeFor}</p>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => document.getElementById("checkout-payment")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                        className="text-xs font-black"
+                        style={{ color: primaryColor }}
+                      >
+                        Alterar
+                      </button>
+                    </div>
+                  </div>
+                  <div className="border-t border-[var(--line)] pt-3">
+                    <div className="flex justify-between py-1"><span>Subtotal</span><span>{formatMoney(cartSubtotal)}</span></div>
+                    <div className="flex justify-between py-1"><span>Entrega</span><span>{formatMoney(feeValue)}</span></div>
+                    {discountAmount > 0 && <div className="flex justify-between py-1 font-bold text-emerald-600"><span>Desconto</span><span>- {formatMoney(discountAmount)}</span></div>}
+                    <div className="mt-2 flex justify-between border-t border-[var(--line)] pt-3 text-lg font-black text-gray-950">
+                      <span>Total</span><span>{formatMoney(finalTotal)}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -391,47 +490,22 @@ export function CheckoutDrawer({
                 </div>
 
                 {appliedCoupon && <p className="mt-3 text-sm font-bold text-emerald-600">Cupom aplicado com sucesso.</p>}
+                {couponError && <p className="mt-3 text-xs font-bold text-rose-600">{couponError}</p>}
               </div>
 
-              <div className="surface-card rounded-[20px] p-4 sm:rounded-[24px] sm:p-5">
-                <h3 className="text-lg font-black text-gray-950">Resumo</h3>
-                <div className="mt-4 space-y-3 text-sm">
-                  <div className="flex justify-between text-gray-600">
-                    <span>Subtotal</span>
-                    <span>{formatMoney(cartSubtotal)}</span>
-                  </div>
-                  <div className="flex justify-between text-gray-600">
-                    <span>Entrega</span>
-                    <span>{formatMoney(feeValue)}</span>
-                  </div>
-                  {discountAmount > 0 && (
-                    <div className="flex justify-between font-bold text-emerald-600">
-                      <span>Desconto</span>
-                      <span>- {formatMoney(discountAmount)}</span>
-                    </div>
-                  )}
-                  <div className="border-t border-[var(--line)] pt-3">
-                    <div className="flex justify-between text-xl font-black text-gray-950">
-                      <span>Total</span>
-                      <span>{formatMoney(finalTotal)}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="surface-card rounded-[20px] p-4 sm:rounded-[24px] sm:p-5">
+              <div id="checkout-payment" className="surface-card scroll-mt-4 rounded-[20px] p-4 sm:rounded-[24px] sm:p-5">
                 <h3 className="text-lg font-black text-gray-950">Pagamento</h3>
+                <p className="mt-1 text-sm text-gray-500">Escolha como prefere pagar ao receber o pedido.</p>
                 <div className="mt-4 space-y-3">
-                  {[
-                    { value: "pix", label: "PIX" },
-                    { value: "card", label: "Cartão" },
-                    { value: "cash", label: "Dinheiro" },
-                  ].map((method) => (
+                  {(["pix", "credit", "debit", "cash"] as StorefrontPaymentMethod[]).map((value) => {
+                    const method = paymentMethodDetails[value];
+                    const MethodIcon = value === "pix" ? QrCode : value === "cash" ? Banknote : CreditCard;
+                    return (
                     <label
-                      key={method.value}
-                      className="flex cursor-pointer items-center gap-3 rounded-2xl border bg-white px-4 py-4"
+                      key={value}
+                      className="flex cursor-pointer items-start gap-3 rounded-2xl border bg-white px-4 py-4"
                       style={
-                        paymentMethod === method.value
+                        paymentMethod === value
                           ? {
                               borderColor: primaryColor,
                               backgroundColor: `${primaryColor}10`,
@@ -441,24 +515,69 @@ export function CheckoutDrawer({
                     >
                       <input
                         type="radio"
-                        checked={paymentMethod === method.value}
-                        onChange={() => onPaymentMethodChange(method.value)}
+                        checked={paymentMethod === value}
+                        onChange={() => onPaymentMethodChange(value)}
                         style={{ accentColor: primaryColor }}
+                        className="mt-1"
                       />
-                      <span className="font-bold text-gray-900">{method.label}</span>
+                      <MethodIcon size={19} className="mt-0.5 shrink-0 text-gray-500" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-black text-gray-900">{method.label}</span>
+                        <span className="mt-0.5 block text-xs leading-5 text-gray-500">{method.description}</span>
+                      </span>
+                      <span className="shrink-0 rounded-full bg-[#f4f0eb] px-2 py-1 text-[10px] font-black uppercase text-gray-600">
+                        Na entrega
+                      </span>
                     </label>
-                  ))}
+                    );
+                  })}
+                  {paymentAttempted && paymentError && (
+                    <p className="text-xs font-bold text-rose-600">{paymentError}</p>
+                  )}
 
                   {paymentMethod === "cash" && (
-                    <input
-                      value={changeFor}
-                      onChange={(event) => onChangeForChange(event.target.value)}
-                      placeholder="Troco para quanto?"
-                      className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none"
-                    />
+                    <div className="rounded-2xl border border-[var(--line)] bg-[#faf8f5] p-3.5">
+                      <p className="text-sm font-black text-gray-900">Você precisa de troco?</p>
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => onCashNeedsChange(false)}
+                          className={`rounded-xl border px-3 py-2.5 text-sm font-bold ${!cashNeedsChange ? "border-gray-950 bg-gray-950 text-white" : "border-[var(--line)] bg-white text-gray-700"}`}
+                        >
+                          Não preciso
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onCashNeedsChange(true)}
+                          className={`rounded-xl border px-3 py-2.5 text-sm font-bold ${cashNeedsChange ? "border-gray-950 bg-gray-950 text-white" : "border-[var(--line)] bg-white text-gray-700"}`}
+                        >
+                          Preciso de troco
+                        </button>
+                      </div>
+                      {cashNeedsChange && (
+                        <label className="mt-3 block text-xs font-bold text-gray-600">
+                          Troco para quanto?
+                          <input
+                            value={changeFor}
+                            onChange={(event) => onChangeForChange(formatCurrencyInput(event.target.value))}
+                            placeholder="R$ 50,00"
+                            inputMode="numeric"
+                            className="mt-1.5 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-normal text-gray-950 outline-none"
+                          />
+                          {paymentAttempted && changeForError && (
+                            <span className="mt-1.5 block text-xs font-bold text-rose-600">{changeForError}</span>
+                          )}
+                        </label>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
+              {checkoutError && (
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
+                  {checkoutError}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -490,13 +609,8 @@ export function CheckoutDrawer({
 
           {step === "address" && (
             <button
-              onClick={() => onStepChange("payment")}
-              disabled={
-                !hasAddressMinimum ||
-                calculatingFee ||
-                !deliveryInfo?.valid ||
-                !deliveryInfo.addressValidated
-              }
+              onClick={continueToPayment}
+              disabled={calculatingFee}
               className="w-full rounded-2xl px-5 py-3.5 text-sm font-black disabled:opacity-50 sm:py-4 sm:text-base"
               style={{ backgroundColor: primaryColor, color: brandTextColor }}
             >
@@ -510,8 +624,8 @@ export function CheckoutDrawer({
 
           {step === "payment" && (
             <button
-              onClick={onPlaceOrder}
-              disabled={isSubmitting || !minimumReached || storeClosedWithoutScheduling || scheduleMissing}
+              onClick={submitOrder}
+              disabled={isSubmitting || !minimumReached || storeClosedWithoutScheduling}
               className="w-full rounded-2xl px-5 py-3.5 text-sm font-black disabled:opacity-60 sm:py-4 sm:text-base"
               style={{ backgroundColor: primaryColor, color: brandTextColor }}
             >

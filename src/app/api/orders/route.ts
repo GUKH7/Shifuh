@@ -3,6 +3,11 @@ import { calculateDeliveryFee, calculateDistance, getCoordinates } from "@/lib/g
 import { checkRateLimit } from "@/lib/rate-limit";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { getStoreStatus } from "@/features/storefront/store-summary";
+import {
+  getChangeForError,
+  isStorefrontPaymentMethod,
+  parseCurrencyInput,
+} from "@/features/storefront/checkout-format";
 
 type CheckoutAddress = {
   cep?: string;
@@ -167,6 +172,7 @@ export async function POST(request: Request) {
     const body = (await request.json()) as CheckoutPayload;
     const address = normalizeAddress(body.address);
     const cart = Array.isArray(body.cart) ? body.cart : [];
+    const paymentMethod = isStorefrontPaymentMethod(body.paymentMethod) ? body.paymentMethod : null;
 
     if (!body.restaurantId) {
     return NextResponse.json({ error: "Loja inválida." }, { status: 400 });
@@ -191,6 +197,13 @@ export async function POST(request: Request) {
 
     if (cart.length === 0) {
       return NextResponse.json({ error: "Seu carrinho esta vazio." }, { status: 400 });
+    }
+
+    if (!paymentMethod) {
+      return NextResponse.json(
+        { code: "INVALID_PAYMENT_METHOD", error: "Escolha uma forma de pagamento válida." },
+        { status: 400 },
+      );
     }
 
     const supabase = await createClient();
@@ -437,6 +450,18 @@ export async function POST(request: Request) {
     }
 
     const total = roundMoney(subtotal + deliveryFee - discount);
+    let normalizedChangeFor: string | null = null;
+    if (paymentMethod === "cash" && body.changeFor?.trim()) {
+      const changeError = getChangeForError(body.changeFor, total);
+      const changeAmount = parseCurrencyInput(body.changeFor);
+      if (changeError || changeAmount === null) {
+        return NextResponse.json(
+          { code: "INVALID_CHANGE_FOR", error: changeError || "Informe um valor válido para o troco." },
+          { status: 400 },
+        );
+      }
+      normalizedChangeFor = changeAmount.toFixed(2);
+    }
     const orderAddress = {
       ...address,
       distance: deliveryDistance,
@@ -461,8 +486,8 @@ export async function POST(request: Request) {
         p_delivery_fee: deliveryFee,
         p_discount: discount,
         p_total: total,
-        p_payment_method: body.paymentMethod || "pix",
-        p_change_for: body.changeFor?.trim() || null,
+        p_payment_method: paymentMethod,
+        p_change_for: normalizedChangeFor,
         p_coupon_code: appliedCouponCode,
         p_user_id: user?.id || null,
         p_scheduled_for: scheduledFor?.toISOString() || null,
@@ -519,7 +544,8 @@ export async function POST(request: Request) {
       deliveryDistance,
       discount,
       total,
-      paymentMethod: body.paymentMethod || "pix",
+      paymentMethod,
+      changeFor: normalizedChangeFor,
       scheduledFor: scheduledFor?.toISOString() || null,
       address,
       items: normalizedItems,

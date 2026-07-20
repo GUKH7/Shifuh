@@ -286,6 +286,23 @@ function loadOrdersRoute() {
       return summaryModule.exports;
     }
 
+    if (request === "@/features/storefront/checkout-format") {
+      const checkoutPath = path.join(__dirname, "..", "src", "features", "storefront", "checkout-format.ts");
+      const checkoutSource = fs.readFileSync(checkoutPath, "utf8");
+      const checkoutCompiled = ts.transpileModule(checkoutSource, {
+        compilerOptions: {
+          esModuleInterop: true,
+          module: ts.ModuleKind.CommonJS,
+          target: ts.ScriptTarget.ES2022,
+        },
+      }).outputText;
+      const checkoutModule = new Module(checkoutPath, module.parent);
+      checkoutModule.filename = checkoutPath;
+      checkoutModule.paths = Module._nodeModulePaths(path.dirname(checkoutPath));
+      checkoutModule._compile(checkoutCompiled, checkoutPath);
+      return checkoutModule.exports;
+    }
+
     return originalLoad.call(this, request, parent, isMain);
   };
 
@@ -469,6 +486,32 @@ test("registra agendamento habilitado na mesma transacao do pedido", async () =>
   assert.equal(body.scheduledFor, scheduledFor);
   assert.equal(mockState.orders[0].scheduled_for, scheduledFor);
   assert.equal(mockState.adminRpcCalls, 1);
+});
+
+test("rejeita forma de pagamento adulterada", async () => {
+  resetRateLimitForTests();
+  mockState = baseState();
+
+  const response = await postOrder(createPayload({ paymentMethod: "free-card" }));
+  const body = await readJson(response);
+
+  assert.equal(response.status, 400);
+  assert.equal(body.code, "INVALID_PAYMENT_METHOD");
+  assert.equal(mockState.orders.length, 0);
+});
+
+test("valida e normaliza o valor de troco no servidor", async () => {
+  resetRateLimitForTests();
+  mockState = baseState();
+
+  const invalidResponse = await postOrder(createPayload({ paymentMethod: "cash", changeFor: "R$ 20,00" }));
+  const invalidBody = await readJson(invalidResponse);
+  assert.equal(invalidResponse.status, 400);
+  assert.equal(invalidBody.code, "INVALID_CHANGE_FOR");
+
+  const validResponse = await postOrder(createPayload({ paymentMethod: "cash", changeFor: "R$ 50,00" }));
+  assert.equal(validResponse.status, 200);
+  assert.equal(mockState.orders[0].change_for, "50.00");
 });
 
 test("reserva display_number via RPC em pedidos concorrentes", async () => {

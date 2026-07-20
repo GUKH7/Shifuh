@@ -18,6 +18,8 @@ test("maps operational order failures without exposing server details", () => {
     "MINIMUM_ORDER_NOT_REACHED",
     "SCHEDULING_DISABLED",
     "INVALID_SCHEDULE",
+    "INVALID_PAYMENT_METHOD",
+    "INVALID_CHANGE_FOR",
     "ORDER_CREATION_FAILED",
     "UNKNOWN_CODE",
   ]) {
