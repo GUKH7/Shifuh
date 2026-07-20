@@ -80,3 +80,10 @@ test("a importação iniciada em Cardápios preserva a identidade da loja", () =
   assert.match(importRoute, /if \(importStoreProfile\)/);
   assert.match(importRoute, /is_active: importedPrice > 0/);
 });
+
+test("o build inclui o Chromium na função de importação pública", () => {
+  const nextConfig = readFileSync(new URL("../next.config.mjs", import.meta.url), "utf8");
+
+  assert.match(nextConfig, /\/api\/integrations\/ifood\/public-link\/import/);
+  assert.match(nextConfig, /@sparticuz\/chromium\/bin\/\*\*\/\*/);
+});

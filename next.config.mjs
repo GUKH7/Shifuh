@@ -5,6 +5,11 @@ const nextConfig = {
     "@sparticuz/chromium",
     "puppeteer-core",
   ],
+  outputFileTracingIncludes: {
+    "/api/integrations/ifood/public-link/import": [
+      "./node_modules/@sparticuz/chromium/bin/**/*",
+    ],
+  },
   images: {
     remotePatterns: [
       {
