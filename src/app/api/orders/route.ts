@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { calculateDeliveryFee, calculateDistance, getCoordinates } from "@/lib/geo";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
+import { getStoreStatus } from "@/features/storefront/store-summary";
 
 type CheckoutAddress = {
   cep?: string;
@@ -38,6 +39,7 @@ type CheckoutPayload = {
   saveAddress?: boolean;
   clientCoords?: { lat: number; lon: number } | null;
   deliveryPreview?: { price: number; time: number; distance: number; valid: boolean } | null;
+  scheduledFor?: string | null;
 };
 
 function roundMoney(value: number) {
@@ -200,7 +202,7 @@ export async function POST(request: Request) {
     const { data: restaurant, error: restaurantError } = await adminSupabase
       .from("restaurants")
       .select(
-        "id, name, phone, whatsapp_number, latitude, longitude, address_zip, address_street, address_number, address_neighborhood, address_city, address_state, delivery_tiers",
+        "id, name, phone, whatsapp_number, latitude, longitude, address_zip, address_street, address_number, address_neighborhood, address_city, address_state, delivery_tiers, work_hours, minimum_order_amount, scheduled_orders_enabled, scheduled_order_lead_minutes",
       )
       .eq("id", body.restaurantId)
       .maybeSingle();
@@ -209,8 +211,56 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Loja não encontrada." }, { status: 404 });
     }
 
+    const now = new Date();
+    const storeStatus = getStoreStatus(restaurant.work_hours, now);
+    const scheduledFor = body.scheduledFor ? new Date(body.scheduledFor) : null;
+    const scheduleLeadMinutes = Math.max(30, Number(restaurant.scheduled_order_lead_minutes) || 60);
+
+    if (scheduledFor) {
+      if (!restaurant.scheduled_orders_enabled) {
+        return NextResponse.json(
+          { code: "SCHEDULING_DISABLED", error: "Esta loja não aceita pedidos agendados." },
+          { status: 400 },
+        );
+      }
+
+      const earliestSchedule = now.getTime() + scheduleLeadMinutes * 60_000;
+      const latestSchedule = now.getTime() + 14 * 24 * 60 * 60_000;
+      if (
+        !Number.isFinite(scheduledFor.getTime()) ||
+        scheduledFor.getTime() < earliestSchedule ||
+        scheduledFor.getTime() > latestSchedule
+      ) {
+        return NextResponse.json(
+          {
+            code: "INVALID_SCHEDULE",
+            error: `Escolha um horário entre ${scheduleLeadMinutes} minutos e 14 dias a partir de agora.`,
+          },
+          { status: 400 },
+        );
+      }
+
+      if (getStoreStatus(restaurant.work_hours, scheduledFor).tone === "closed") {
+        return NextResponse.json(
+          { code: "INVALID_SCHEDULE", error: "Escolha um horário dentro do funcionamento da loja." },
+          { status: 400 },
+        );
+      }
+    } else if (storeStatus.tone === "closed") {
+      return NextResponse.json(
+        {
+          code: "STORE_CLOSED",
+          error: restaurant.scheduled_orders_enabled
+            ? "A loja está fechada agora. Agende seu pedido para continuar."
+            : "A loja está fechada e não está recebendo pedidos agora.",
+          canSchedule: Boolean(restaurant.scheduled_orders_enabled),
+        },
+        { status: 409 },
+      );
+    }
+
     const productIds = cart.map((item) => item.productId).filter(Boolean);
-    const { data: products, error: productsError } = await supabase
+    const { data: products, error: productsError } = await adminSupabase
       .from("products")
       .select("id, name, price, is_active, restaurant_id, addons")
       .eq("restaurant_id", restaurant.id)
@@ -267,12 +317,25 @@ export async function POST(request: Request) {
 
     subtotal = roundMoney(subtotal);
 
+    const minimumOrderAmount = roundMoney(Number(restaurant.minimum_order_amount) || 0);
+    if (subtotal < minimumOrderAmount) {
+      return NextResponse.json(
+        {
+          code: "MINIMUM_ORDER_NOT_REACHED",
+          error: "O valor mínimo do pedido ainda não foi atingido.",
+          minimumOrderAmount,
+          missingAmount: roundMoney(minimumOrderAmount - subtotal),
+        },
+        { status: 400 },
+      );
+    }
+
     let discount = 0;
     let appliedCouponCode: string | null = null;
 
     if (body.couponCode?.trim()) {
       const couponCode = body.couponCode.trim().toUpperCase();
-      const { data: coupon, error: couponError } = await (supabase as any)
+      const { data: coupon, error: couponError } = await (adminSupabase as any)
         .from("coupons")
         .select("*")
         .eq("restaurant_id", restaurant.id)
@@ -289,7 +352,7 @@ export async function POST(request: Request) {
       }
 
       if (coupon.usage_limit) {
-        const { count } = await supabase
+        const { count } = await adminSupabase
           .from("orders")
           .select("id", { count: "exact", head: true })
           .eq("restaurant_id", restaurant.id)
@@ -387,7 +450,7 @@ export async function POST(request: Request) {
       addons: item.addons,
     }));
     const { data: createdOrderData, error: createOrderError } = await adminSupabase.rpc(
-      "create_order_transaction",
+      "create_storefront_order_transaction",
       {
         p_restaurant_id: restaurant.id,
         p_customer_name: body.customerName.trim(),
@@ -402,12 +465,7 @@ export async function POST(request: Request) {
         p_change_for: body.changeFor?.trim() || null,
         p_coupon_code: appliedCouponCode,
         p_user_id: user?.id || null,
-        p_status: "pending",
-        p_external_source: null,
-        p_external_order_id: null,
-        p_external_display_id: null,
-        p_is_test: false,
-        p_external_payload: null,
+        p_scheduled_for: scheduledFor?.toISOString() || null,
         p_save_customer: true,
       },
     );
@@ -416,7 +474,7 @@ export async function POST(request: Request) {
     if (createOrderError || !createdOrder) {
       console.error("Erro ao criar pedido em transacao:", createOrderError);
       return NextResponse.json(
-        { error: createOrderError?.message || "Nao foi possivel criar o pedido." },
+        { code: "ORDER_CREATION_FAILED", error: "Não foi possível registrar o pedido. Tente novamente." },
         { status: 400 },
       );
     }
@@ -462,6 +520,7 @@ export async function POST(request: Request) {
       discount,
       total,
       paymentMethod: body.paymentMethod || "pix",
+      scheduledFor: scheduledFor?.toISOString() || null,
       address,
       items: normalizedItems,
     });

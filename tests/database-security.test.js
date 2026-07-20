@@ -38,3 +38,16 @@ test("public storefront products expose only catalog metadata", () => {
   assert.match(storefrontProducts, /grant select on public\.public_storefront_products to anon, authenticated;/i);
   assert.doesNotMatch(storefrontProducts, /customer_(name|phone)|address_json/i);
 });
+
+test("storefront order RPC keeps operational rules server-only", () => {
+  const operationalRules = fs.readFileSync(
+    path.join(__dirname, "..", "supabase", "migrations", "20260720142104_operational_order_rules.sql"),
+    "utf8",
+  );
+  assert.match(operationalRules, /minimum_order_amount numeric/i);
+  assert.match(operationalRules, /scheduled_orders_enabled boolean/i);
+  assert.match(operationalRules, /scheduled_for timestamptz/i);
+  assert.match(operationalRules, /security_invoker\s*=\s*true/i);
+  assert.match(operationalRules, /revoke all on function public\.create_storefront_order_transaction[\s\S]+from public, anon, authenticated;/i);
+  assert.match(operationalRules, /grant execute on function public\.create_storefront_order_transaction[\s\S]+to service_role;/i);
+});

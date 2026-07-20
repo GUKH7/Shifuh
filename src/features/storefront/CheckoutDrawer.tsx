@@ -4,6 +4,7 @@ import { ChevronLeft, Loader2, Minus, Pencil, Plus, Ticket, Trash2 } from "lucid
 import { formatMoney, getContrastTextColor } from "./format";
 import { DeliveryCalculator } from "./DeliveryCalculator";
 import type { CartItem, CheckoutAddress, CheckoutStep, DeliveryInfo } from "./types";
+import type { StoreStatus } from "./store-summary";
 import { formatPhone } from "./checkout-format";
 
 type CheckoutDrawerProps = {
@@ -32,6 +33,11 @@ type CheckoutDrawerProps = {
   isSubmitting: boolean;
   saveAddress: boolean;
   canSaveAddress: boolean;
+  storeStatus: StoreStatus;
+  minimumOrderAmount: number;
+  scheduledOrdersEnabled: boolean;
+  minimumScheduleValue: string;
+  scheduledFor: string;
   onClose: () => void;
   onBackToCart: () => void;
   onBackToAddress: () => void;
@@ -53,6 +59,7 @@ type CheckoutDrawerProps = {
   onPaymentMethodChange: (value: string) => void;
   onChangeForChange: (value: string) => void;
   onSaveAddressChange: (value: boolean) => void;
+  onScheduledForChange: (value: string) => void;
   onPlaceOrder: () => void;
 };
 
@@ -82,6 +89,11 @@ export function CheckoutDrawer({
   isSubmitting,
   saveAddress,
   canSaveAddress,
+  storeStatus,
+  minimumOrderAmount,
+  scheduledOrdersEnabled,
+  minimumScheduleValue,
+  scheduledFor,
   onClose,
   onBackToCart,
   onBackToAddress,
@@ -103,11 +115,17 @@ export function CheckoutDrawer({
   onPaymentMethodChange,
   onChangeForChange,
   onSaveAddressChange,
+  onScheduledForChange,
   onPlaceOrder,
 }: CheckoutDrawerProps) {
   if (!isOpen) return null;
   const brandTextColor = getContrastTextColor(primaryColor);
   const currentIndex = step === "cart" ? 0 : step === "address" ? 1 : 2;
+  const missingMinimum = Math.max(0, minimumOrderAmount - cartSubtotal);
+  const minimumReached = missingMinimum <= 0;
+  const storeClosedWithoutScheduling = storeStatus.tone === "closed" && !scheduledOrdersEnabled;
+  const scheduleRequired = storeStatus.tone === "closed" && scheduledOrdersEnabled;
+  const scheduleMissing = scheduleRequired && !scheduledFor;
 
   return (
     <div className="fixed inset-0 z-50 bg-[#f6f1ea]">
@@ -157,6 +175,24 @@ export function CheckoutDrawer({
         </header>
 
         <div className="flex-1 overflow-y-auto px-3 py-4 sm:px-6 sm:py-6">
+          {storeStatus.tone === "closing" && (
+            <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <p className="font-black">A loja fecha em breve</p>
+              <p className="mt-1">Finalize o pedido agora para não perder o horário de atendimento.</p>
+            </div>
+          )}
+          {storeClosedWithoutScheduling && (
+            <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+              <p className="font-black">Loja fechada no momento</p>
+              <p className="mt-1">Sua sacola ficará salva para você concluir quando a loja abrir.</p>
+            </div>
+          )}
+          {scheduleRequired && (
+            <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <p className="font-black">A loja está fechada agora</p>
+              <p className="mt-1">Você pode continuar e escolher um horário de atendimento.</p>
+            </div>
+          )}
           {step === "cart" && (
             <div className="space-y-3">
               <div className="flex items-center justify-between px-1">
@@ -276,6 +312,37 @@ export function CheckoutDrawer({
 
           {step === "payment" && (
             <div className="space-y-4">
+              {scheduledOrdersEnabled && (
+                <div className="surface-card rounded-[20px] p-4 sm:rounded-[24px] sm:p-5">
+                  <h3 className="text-lg font-black text-gray-950">
+                    {scheduleRequired ? "Agendamento obrigatório" : "Agendar pedido"}
+                  </h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    {scheduleRequired
+                      ? "Escolha uma data e um horário dentro do funcionamento da loja."
+                      : "Opcional. Deixe em branco para pedir assim que possível."}
+                  </p>
+                  <label className="mt-4 block text-xs font-bold text-gray-600">
+                    Data e horário
+                    <input
+                      type="datetime-local"
+                      min={minimumScheduleValue}
+                      value={scheduledFor}
+                      onChange={(event) => onScheduledForChange(event.target.value)}
+                      className="mt-1.5 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-normal text-gray-950 outline-none"
+                    />
+                  </label>
+                  {scheduledFor && (
+                    <button
+                      type="button"
+                      onClick={() => onScheduledForChange("")}
+                      className="mt-3 text-sm font-bold text-gray-500"
+                    >
+                      Remover agendamento
+                    </button>
+                  )}
+                </div>
+              )}
               <div className="surface-card rounded-[20px] p-4 sm:rounded-[24px] sm:p-5">
                 <h3 className="text-lg font-black text-gray-950">Revisão final</h3>
                 <div className="mt-4 space-y-3 text-sm text-gray-600">
@@ -408,11 +475,15 @@ export function CheckoutDrawer({
               </div>
               <button
                 onClick={() => onStepChange("address")}
-                disabled={cart.length === 0}
+                disabled={cart.length === 0 || !minimumReached || storeClosedWithoutScheduling}
                 className="w-full rounded-2xl px-5 py-3.5 text-sm font-black disabled:opacity-50 sm:py-4 sm:text-base"
                 style={{ backgroundColor: primaryColor, color: brandTextColor }}
               >
-                Continuar para entrega
+                {storeClosedWithoutScheduling
+                  ? "Loja fechada no momento"
+                  : !minimumReached
+                    ? `Adicione mais ${formatMoney(missingMinimum)}`
+                    : "Continuar para entrega"}
               </button>
             </div>
           )}
@@ -440,11 +511,15 @@ export function CheckoutDrawer({
           {step === "payment" && (
             <button
               onClick={onPlaceOrder}
-              disabled={isSubmitting}
+              disabled={isSubmitting || !minimumReached || storeClosedWithoutScheduling || scheduleMissing}
               className="w-full rounded-2xl px-5 py-3.5 text-sm font-black disabled:opacity-60 sm:py-4 sm:text-base"
               style={{ backgroundColor: primaryColor, color: brandTextColor }}
             >
-              {isSubmitting ? "Enviando pedido..." : `Confirmar pedido (${formatMoney(finalTotal)})`}
+              {isSubmitting
+                ? "Enviando pedido..."
+                : scheduleMissing
+                  ? "Escolha o horário do pedido"
+                  : `Confirmar pedido (${formatMoney(finalTotal)})`}
             </button>
           )}
         </footer>

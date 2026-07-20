@@ -318,7 +318,7 @@ export default function OrdersPage() {
 
       const { data, error } = await supabase
         .from("orders")
-        .select("id, customer_name, customer_phone, total, subtotal, delivery_fee, discount, status, payment_method, display_number, external_source, external_order_id, external_display_id, external_payload, is_test, created_at, address, change_for, order_items (*)")
+        .select("id, customer_name, customer_phone, total, subtotal, delivery_fee, discount, status, payment_method, display_number, external_source, external_order_id, external_display_id, external_payload, is_test, scheduled_for, created_at, address, change_for, order_items (*)")
         .eq("restaurant_id", resto.id)
         .in("status", ["pending", "preparing", "delivering", "done", "canceled"])
         .order("created_at", { ascending: false });
@@ -334,7 +334,7 @@ export default function OrdersPage() {
           ...order,
           items: order.order_items || [],
         }))
-        .filter((order: Order) => isToday(order.created_at)) as Order[];
+        .filter((order: Order) => isToday(order.created_at) || Boolean(order.scheduled_for && isToday(order.scheduled_for))) as Order[];
 
       setOrders(mappedOrders);
 
@@ -596,6 +596,7 @@ export default function OrdersPage() {
         <div class="center title">${restaurantConfig?.name || "Delivery"}</div>
         <div class="center">Pedido #${formatDisplayNumber(order)}</div>
         <div class="center muted">${createdAt}</div>
+        ${order.scheduled_for ? `<div class="center"><strong>AGENDADO: ${new Date(order.scheduled_for).toLocaleString("pt-BR")}</strong></div>` : ""}
         <div class="line"></div>
         <div><strong>Cliente:</strong> ${order.customer_name}</div>
         <div><strong>Telefone:</strong> ${order.customer_phone}</div>
@@ -971,6 +972,11 @@ export default function OrdersPage() {
                           <p className="mt-1 text-xs font-medium text-gray-500">
                             {formatDate(order.created_at)}, {formatTime(order.created_at)}
                           </p>
+                          {order.scheduled_for && (
+                            <span className="mt-2 inline-flex rounded-full bg-amber-100 px-2 py-1 text-[11px] font-black text-amber-800">
+                              Agendado {formatDateTime(order.scheduled_for)}
+                            </span>
+                          )}
                         </div>
 
                         <div className="flex min-w-0 items-center gap-3">
@@ -1104,6 +1110,12 @@ export default function OrdersPage() {
                             </div>
 
                             <div className="space-y-4">
+                              {order.scheduled_for && (
+                                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                                  <p className="text-xs font-bold uppercase text-amber-700">Pedido agendado</p>
+                                  <p className="mt-1 font-black text-amber-950">{formatDateTime(order.scheduled_for)}</p>
+                                </div>
+                              )}
                               {isIfoodOrder(order) && (
                                 <div className="rounded-2xl border border-[var(--line)] bg-white p-4">
                                   <p className="text-xs font-black uppercase tracking-[0.14em] text-red-400">

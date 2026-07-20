@@ -55,6 +55,7 @@ export interface OrderResponse {
   discount: number;
   total: number;
   paymentMethod: string;
+  scheduledFor?: string | null;
   address: CheckoutAddress;
   items: Array<{
     product_name: string;

@@ -16,6 +16,7 @@ import {
   RefreshCw,
   Save,
   Scissors,
+  ShoppingBag,
   Smartphone,
   Store,
   Trash2,
@@ -82,6 +83,9 @@ export default function SettingsPage() {
   const [storefrontTheme, setStorefrontTheme] = useState<StorefrontTheme>(DEFAULT_STOREFRONT_THEME);
   const [tiers, setTiers] = useState<DeliveryTier[]>([]);
   const [schedule, setSchedule] = useState<WorkHour[]>(DEFAULT_SCHEDULE);
+  const [minimumOrderAmount, setMinimumOrderAmount] = useState(0);
+  const [scheduledOrdersEnabled, setScheduledOrdersEnabled] = useState(false);
+  const [scheduledOrderLeadMinutes, setScheduledOrderLeadMinutes] = useState(60);
   const [printerWidth, setPrinterWidth] = useState(80);
   const [printerFontSize, setPrinterFontSize] = useState(12);
   const [printerFontWeight, setPrinterFontWeight] = useState(700);
@@ -186,6 +190,9 @@ export default function SettingsPage() {
         if (data.delivery_tiers) setTiers(data.delivery_tiers);
         else setTiers([{ distance: 1, time: 20, price: 0 }]);
         setSchedule(normalizeWorkHours(data.work_hours));
+        setMinimumOrderAmount(Number(data.minimum_order_amount) || 0);
+        setScheduledOrdersEnabled(Boolean(data.scheduled_orders_enabled));
+        setScheduledOrderLeadMinutes(Math.max(30, Number(data.scheduled_order_lead_minutes) || 60));
         setPrinterWidth(data.printer_width || 80);
         setPrinterFontSize(data.printer_font_size || 12);
         setPrinterFontWeight(data.printer_font_weight || 700);
@@ -329,6 +336,9 @@ export default function SettingsPage() {
         phone,
         delivery_tiers: sortedTiers,
         work_hours: normalizedSchedule,
+        minimum_order_amount: Math.max(0, minimumOrderAmount),
+        scheduled_orders_enabled: scheduledOrdersEnabled,
+        scheduled_order_lead_minutes: Math.max(30, scheduledOrderLeadMinutes),
         address_zip: address.zip,
         address_street: address.street,
         address_number: address.number,
@@ -1836,6 +1846,65 @@ export default function SettingsPage() {
           title="Regras de atendimento"
           description="Entrega, horários e impressão usados no fluxo diário da loja."
         />
+        <CollapsibleSection
+          icon={<ShoppingBag size={20} />}
+          title="Pedidos pela vitrine"
+          description="Defina o valor mínimo e se clientes podem agendar pedidos."
+          defaultOpen={false}
+        >
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            <label className="space-y-2">
+              <span className="text-sm font-bold text-gray-700">Pedido mínimo</span>
+              <div className="flex items-center rounded-2xl border border-[var(--line)] bg-white px-4 focus-within:border-[var(--brand)]">
+                <span className="mr-2 text-sm font-bold text-gray-400">R$</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={minimumOrderAmount}
+                  onChange={(event) => setMinimumOrderAmount(Math.max(0, Number(event.target.value) || 0))}
+                  className="w-full py-3 text-sm outline-none"
+                />
+              </div>
+              <p className="text-xs text-gray-500">Use zero para não exigir valor mínimo.</p>
+            </label>
+
+            <div className="rounded-2xl border border-[var(--line)] bg-white p-4">
+              <label className="flex cursor-pointer items-start justify-between gap-4">
+                <span>
+                  <span className="block text-sm font-bold text-gray-900">Aceitar pedidos agendados</span>
+                  <span className="mt-1 block text-xs leading-5 text-gray-500">
+                    Quando desligado, a vitrine bloqueia pedidos fora do horário.
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={scheduledOrdersEnabled}
+                  onChange={(event) => setScheduledOrdersEnabled(event.target.checked)}
+                  className="mt-1 h-5 w-5 accent-[var(--brand)]"
+                />
+              </label>
+              {scheduledOrdersEnabled && (
+                <label className="mt-4 block border-t border-[var(--line)] pt-4">
+                  <span className="text-xs font-bold uppercase text-gray-400">Antecedência mínima</span>
+                  <div className="mt-2 flex items-center rounded-xl border border-[var(--line)] px-3">
+                    <input
+                      type="number"
+                      min="30"
+                      max="10080"
+                      step="15"
+                      value={scheduledOrderLeadMinutes}
+                      onChange={(event) => setScheduledOrderLeadMinutes(Math.max(30, Number(event.target.value) || 60))}
+                      className="w-full py-2 text-sm outline-none"
+                    />
+                    <span className="text-sm font-bold text-gray-400">min</span>
+                  </div>
+                </label>
+              )}
+            </div>
+          </div>
+        </CollapsibleSection>
+
         <CollapsibleSection
           icon={<MapPin size={20} />}
           title="Taxas de entrega"

@@ -25,6 +25,10 @@ function baseState(overrides = {}) {
       address_city: "São Paulo",
       address_state: "SP",
       delivery_tiers: [{ max_km: 5, price: 7, time: 35 }],
+      work_hours: [],
+      minimum_order_amount: 0,
+      scheduled_orders_enabled: false,
+      scheduled_order_lead_minutes: 60,
     },
     products: [
       {
@@ -162,7 +166,7 @@ function createSupabaseMock(role = "public") {
     },
     from: (table) => new QueryBuilder(table),
     rpc: async (name, args) => {
-      assert.equal(name, "create_order_transaction");
+      assert.equal(name, "create_storefront_order_transaction");
       if (role === "admin") mockState.adminRpcCalls += 1;
       else mockState.publicRpcCalls += 1;
       if (mockState.createOrderError) {
@@ -188,6 +192,7 @@ function createSupabaseMock(role = "public") {
         payment_method: args.p_payment_method,
         change_for: args.p_change_for,
         coupon_code: args.p_coupon_code,
+        scheduled_for: args.p_scheduled_for,
         display_number: displayNumber,
       });
       mockState.orderItems.push(
@@ -262,6 +267,23 @@ function loadOrdersRoute() {
             valid: distance <= 5,
           },
       };
+    }
+
+    if (request === "@/features/storefront/store-summary") {
+      const summaryPath = path.join(__dirname, "..", "src", "features", "storefront", "store-summary.ts");
+      const summarySource = fs.readFileSync(summaryPath, "utf8");
+      const summaryCompiled = ts.transpileModule(summarySource, {
+        compilerOptions: {
+          esModuleInterop: true,
+          module: ts.ModuleKind.CommonJS,
+          target: ts.ScriptTarget.ES2022,
+        },
+      }).outputText;
+      const summaryModule = new Module(summaryPath, module.parent);
+      summaryModule.filename = summaryPath;
+      summaryModule.paths = Module._nodeModulePaths(path.dirname(summaryPath));
+      summaryModule._compile(summaryCompiled, summaryPath);
+      return summaryModule.exports;
     }
 
     return originalLoad.call(this, request, parent, isMain);
@@ -374,6 +396,81 @@ test("bloqueia endereço fora da área de entrega", async () => {
   assert.equal(mockState.orders.length, 0);
 });
 
+test("bloqueia pedido imediato quando a loja está fechada", async () => {
+  resetRateLimitForTests();
+  mockState = baseState({
+    restaurant: {
+      ...baseState().restaurant,
+      work_hours: Array.from({ length: 7 }, (_, dayId) => ({
+        day_id: dayId,
+        is_open: false,
+        open_time: "00:00",
+        close_time: "00:00",
+      })),
+    },
+  });
+
+  const response = await postOrder(createPayload());
+  const body = await readJson(response);
+
+  assert.equal(response.status, 409);
+  assert.equal(body.code, "STORE_CLOSED");
+  assert.equal(mockState.orders.length, 0);
+});
+
+test("aplica pedido mínimo usando o subtotal recalculado no servidor", async () => {
+  resetRateLimitForTests();
+  mockState = baseState({
+    restaurant: {
+      ...baseState().restaurant,
+      minimum_order_amount: 50,
+    },
+  });
+
+  const response = await postOrder(createPayload());
+  const body = await readJson(response);
+
+  assert.equal(response.status, 400);
+  assert.equal(body.code, "MINIMUM_ORDER_NOT_REACHED");
+  assert.equal(body.minimumOrderAmount, 50);
+  assert.equal(body.missingAmount, 30);
+  assert.equal(mockState.orders.length, 0);
+});
+
+test("rejeita agendamento quando a loja não habilitou a opção", async () => {
+  resetRateLimitForTests();
+  mockState = baseState();
+
+  const response = await postOrder(createPayload({
+    scheduledFor: new Date(Date.now() + 2 * 60 * 60_000).toISOString(),
+  }));
+  const body = await readJson(response);
+
+  assert.equal(response.status, 400);
+  assert.equal(body.code, "SCHEDULING_DISABLED");
+  assert.equal(mockState.orders.length, 0);
+});
+
+test("registra agendamento habilitado na mesma transacao do pedido", async () => {
+  resetRateLimitForTests();
+  const scheduledFor = new Date(Date.now() + 2 * 60 * 60_000).toISOString();
+  mockState = baseState({
+    restaurant: {
+      ...baseState().restaurant,
+      scheduled_orders_enabled: true,
+      scheduled_order_lead_minutes: 60,
+    },
+  });
+
+  const response = await postOrder(createPayload({ scheduledFor }));
+  const body = await readJson(response);
+
+  assert.equal(response.status, 200);
+  assert.equal(body.scheduledFor, scheduledFor);
+  assert.equal(mockState.orders[0].scheduled_for, scheduledFor);
+  assert.equal(mockState.adminRpcCalls, 1);
+});
+
 test("reserva display_number via RPC em pedidos concorrentes", async () => {
   mockState = baseState();
 
@@ -405,7 +502,8 @@ test("nao grava pedido nem itens quando a RPC transacional falha", async () => {
   const body = await readJson(response);
 
   assert.equal(response.status, 400);
-  assert.equal(body.error, "falha transacional");
+  assert.equal(body.code, "ORDER_CREATION_FAILED");
+  assert.match(body.error, /não foi possível registrar/i);
   assert.equal(mockState.orders.length, 0);
   assert.equal(mockState.orderItems.length, 0);
   assert.equal(mockState.customers.length, 0);

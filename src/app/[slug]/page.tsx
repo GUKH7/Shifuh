@@ -40,7 +40,7 @@ import type { CheckoutStep, DeliveryInfo, OrderResponse, OrderTrackingResponse }
 import { useCart } from "@/features/storefront/use-cart";
 import { useStorefront } from "@/features/storefront/use-storefront";
 import { formatCep, formatPhone, isValidCep, isValidPhone, onlyDigits } from "@/features/storefront/checkout-format";
-import { getFriendlyStorefrontError } from "@/features/storefront/errors";
+import { getFriendlyStorefrontError, getOrderApiErrorMessage } from "@/features/storefront/errors";
 
 export default function StorePage() {
   const params = useParams<{ slug: string | string[] }>();
@@ -65,6 +65,7 @@ export default function StorePage() {
   const [changeFor, setChangeFor] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [saveAddress, setSaveAddress] = useState(false);
+  const [scheduledFor, setScheduledFor] = useState("");
 
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<{
@@ -346,10 +347,14 @@ export default function StorePage() {
         : summary.deliveryDistance
           ? `Sem taxa (${summary.deliveryTime} min)`
           : "A combinar";
+    const scheduleLine = summary.scheduledFor
+      ? `Agendado para: ${new Date(summary.scheduledFor).toLocaleString("pt-BR")}\n`
+      : "";
 
     const msg =
       `NOVO PEDIDO #${orderLabel}\n\n` +
       `Cliente: ${customerName}\n` +
+      scheduleLine +
       `Endereço: ${summary.address.street}, ${summary.address.number}` +
       `${summary.address.complement ? `, ${summary.address.complement}` : ""}\n` +
       `${summary.address.neighborhood} - ${summary.address.city}/${summary.address.state}\n\n` +
@@ -389,6 +394,30 @@ export default function StorePage() {
       });
       return;
     }
+    if (cartSubtotal < minimumOrderAmount) {
+      showToast({
+        title: "Pedido mínimo não atingido",
+        description: `Adicione mais ${formatMoney(minimumOrderAmount - cartSubtotal)} para continuar.`,
+        tone: "error",
+      });
+      return;
+    }
+    if (storeStatus.tone === "closed" && !scheduledOrdersEnabled) {
+      showToast({
+        title: "Loja fechada",
+        description: "Sua sacola foi mantida. Volte quando a loja estiver aberta.",
+        tone: "error",
+      });
+      return;
+    }
+    if (storeStatus.tone === "closed" && scheduledOrdersEnabled && !scheduledFor) {
+      showToast({
+        title: "Escolha um horário",
+        description: "A loja está fechada agora, mas aceita pedidos agendados.",
+        tone: "error",
+      });
+      return;
+    }
 
     setIsSubmitting(true);
 
@@ -410,6 +439,7 @@ export default function StorePage() {
           saveAddress,
           clientCoords,
           deliveryPreview: deliveryInfo,
+          scheduledFor: scheduledFor ? new Date(scheduledFor).toISOString() : null,
           cart: cart.map((item) => ({
             productId: item.product.id,
             quantity: item.quantity,
@@ -422,7 +452,12 @@ export default function StorePage() {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error("order-failed");
+        showToast({
+          title: "Não foi possível finalizar o pedido",
+          description: getOrderApiErrorMessage(result?.code),
+          tone: "error",
+        });
+        return;
       }
 
       setLastOrderSummary(result);
@@ -430,6 +465,7 @@ export default function StorePage() {
       setStep("success");
       clearCart();
       setAppliedCoupon(null);
+      setScheduledFor("");
     } catch (error: any) {
       showToast({
         title: "Não foi possível finalizar o pedido",
@@ -502,6 +538,16 @@ export default function StorePage() {
   const deliveryEstimate = formatDeliveryEstimate(deliveryTiers);
   const serviceRegion = formatServiceRegion(restaurant || {});
   const storeStatus = getStoreStatus(restaurant?.work_hours, storeClock);
+  const minimumOrderAmount = Math.max(0, Number(restaurant?.minimum_order_amount) || 0);
+  const scheduledOrdersEnabled = Boolean(restaurant?.scheduled_orders_enabled);
+  const scheduledOrderLeadMinutes = Math.max(
+    30,
+    Number(restaurant?.scheduled_order_lead_minutes) || 60,
+  );
+  const minimumScheduleDate = new Date(storeClock.getTime() + scheduledOrderLeadMinutes * 60_000);
+  const minimumScheduleValue = new Date(
+    minimumScheduleDate.getTime() - minimumScheduleDate.getTimezoneOffset() * 60_000,
+  ).toISOString().slice(0, 16);
   const todayHours = formatTodayHours(restaurant?.work_hours, storeClock);
   const statusStyles = {
     open: "text-emerald-700 bg-emerald-50",
@@ -641,6 +687,14 @@ export default function StorePage() {
                   {paymentLabels[lastOrderSummary.paymentMethod] || lastOrderSummary.paymentMethod}
                 </p>
               </div>
+              {lastOrderSummary.scheduledFor && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 sm:col-span-2">
+                  <p className="text-xs font-black uppercase text-amber-700">Pedido agendado</p>
+                  <p className="mt-2 font-black text-amber-950">
+                    {new Date(lastOrderSummary.scheduledFor).toLocaleString("pt-BR")}
+                  </p>
+                </div>
+              )}
               <div className="rounded-2xl border border-[var(--line)] bg-white p-4 sm:col-span-2">
                 <p className="text-xs font-black uppercase text-gray-400">Entrega</p>
                 <p className="mt-2 font-bold text-gray-950">
@@ -807,7 +861,9 @@ export default function StorePage() {
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <ShoppingBag size={14} className="shrink-0 text-gray-400" />
-                Sem pedido mínimo
+                {minimumOrderAmount > 0
+                  ? `Pedido mínimo ${formatMoney(minimumOrderAmount)}`
+                  : "Sem pedido mínimo"}
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <CreditCard size={14} className="shrink-0 text-gray-400" />
@@ -1118,6 +1174,11 @@ export default function StorePage() {
         isSubmitting={isSubmitting}
         saveAddress={saveAddress}
         canSaveAddress={Boolean(currentUser)}
+        storeStatus={storeStatus}
+        minimumOrderAmount={minimumOrderAmount}
+        scheduledOrdersEnabled={scheduledOrdersEnabled}
+        minimumScheduleValue={minimumScheduleValue}
+        scheduledFor={scheduledFor}
         onClose={() => setIsCartOpen(false)}
         onBackToCart={() => setStep("cart")}
         onBackToAddress={() => setStep("address")}
@@ -1151,6 +1212,7 @@ export default function StorePage() {
         onPaymentMethodChange={setPaymentMethod}
         onChangeForChange={setChangeFor}
         onSaveAddressChange={setSaveAddress}
+        onScheduledForChange={setScheduledFor}
         onPlaceOrder={handlePlaceOrder}
       />
     </div>

@@ -10,3 +10,15 @@ const FRIENDLY_MESSAGES: Record<StorefrontErrorContext, string> = {
 export function getFriendlyStorefrontError(context: StorefrontErrorContext) {
   return FRIENDLY_MESSAGES[context];
 }
+
+export function getOrderApiErrorMessage(code?: string) {
+  const messages: Record<string, string> = {
+    STORE_CLOSED: "A loja está fechada e não está recebendo pedidos agora.",
+    MINIMUM_ORDER_NOT_REACHED: "Adicione mais itens para atingir o pedido mínimo.",
+    SCHEDULING_DISABLED: "Esta loja não está aceitando pedidos agendados.",
+    INVALID_SCHEDULE: "Escolha uma data e um horário dentro do funcionamento da loja.",
+    ORDER_CREATION_FAILED: "Não conseguimos registrar o pedido. Sua sacola foi mantida para você tentar novamente.",
+  };
+
+  return (code && messages[code]) || FRIENDLY_MESSAGES.order;
+}

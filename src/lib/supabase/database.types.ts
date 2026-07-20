@@ -34,6 +34,9 @@ export interface Database {
           address_state: string | null;
           delivery_tiers: Json | null;
           work_hours: Json | null;
+          minimum_order_amount: number;
+          scheduled_orders_enabled: boolean;
+          scheduled_order_lead_minutes: number;
           printer_width: number | null;
           printer_font_size: number | null;
           printer_font_weight: number;
@@ -68,6 +71,9 @@ export interface Database {
           address_state?: string | null;
           delivery_tiers?: Json | null;
           work_hours?: Json | null;
+          minimum_order_amount?: number;
+          scheduled_orders_enabled?: boolean;
+          scheduled_order_lead_minutes?: number;
           printer_width?: number | null;
           printer_font_size?: number | null;
           printer_font_weight?: number;
@@ -102,6 +108,9 @@ export interface Database {
           address_state?: string | null;
           delivery_tiers?: Json | null;
           work_hours?: Json | null;
+          minimum_order_amount?: number;
+          scheduled_orders_enabled?: boolean;
+          scheduled_order_lead_minutes?: number;
           printer_width?: number | null;
           printer_font_size?: number | null;
           printer_font_weight?: number;
@@ -211,6 +220,7 @@ export interface Database {
             external_display_id: string | null;
             is_test: boolean;
             external_payload: Json | null;
+            scheduled_for: string | null;
             created_at: string;
             updated_at: string;
           };
@@ -235,6 +245,7 @@ export interface Database {
             external_display_id?: string | null;
             is_test?: boolean;
             external_payload?: Json | null;
+            scheduled_for?: string | null;
             created_at?: string;
             updated_at?: string;
           };
@@ -259,6 +270,7 @@ export interface Database {
             external_display_id?: string | null;
             is_test?: boolean;
             external_payload?: Json | null;
+            scheduled_for?: string | null;
             created_at?: string;
             updated_at?: string;
           };
@@ -603,11 +615,37 @@ export interface Database {
           banners: Json | null;
           rating_average: number | null;
           rating_count: number | null;
+          minimum_order_amount: number;
+          scheduled_orders_enabled: boolean;
+          scheduled_order_lead_minutes: number;
         };
         Relationships: [];
       };
     };
     Functions: {
+      create_storefront_order_transaction: {
+        Args: {
+          p_restaurant_id: string;
+          p_customer_name: string;
+          p_customer_phone: string;
+          p_address: Json;
+          p_items: Json;
+          p_subtotal: number;
+          p_delivery_fee: number;
+          p_discount: number;
+          p_total: number;
+          p_payment_method: string;
+          p_change_for: string | null;
+          p_coupon_code: string | null;
+          p_user_id: string | null;
+          p_scheduled_for: string | null;
+          p_save_customer: boolean;
+        };
+        Returns: Array<{
+          order_id: string;
+          display_number: number;
+        }>;
+      };
       create_order_transaction: {
         Args: {
           p_restaurant_id: string;

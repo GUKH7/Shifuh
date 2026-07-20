@@ -78,6 +78,7 @@ export interface Order {
     gestorDelivery?: IfoodOrderMeta;
   } | null;
   is_test?: boolean;
+  scheduled_for?: string | null;
   created_at: string;
   address: OrderAddress | null;
   items: OrderItem[];
