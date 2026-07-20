@@ -1,4 +1,8 @@
-import { extractMerchantUuidFromIfoodUrl } from "@/lib/ifood/public-page";
+import {
+  extractMerchantUuidFromIfoodUrl,
+  normalizeIfoodAddonGroups,
+  type ImportedAddonGroup,
+} from "@/lib/ifood/public-page";
 
 type ScrapedMenuSection = {
   id: string;
@@ -9,6 +13,7 @@ type ScrapedMenuSection = {
     description: string | null;
     price: number;
     imageUrl: string | null;
+    addons: ImportedAddonGroup[];
   }>;
 };
 
@@ -113,10 +118,12 @@ function normalizeStateMenu(menu: unknown): ScrapedMenuSection[] {
                 : `https://static.ifood-static.com.br/image/upload/t_high/pratos/${itemRecord.logoUrl}`
               : null;
 
+          const itemId =
+            String(itemRecord.id || itemRecord.code || "").trim() ||
+            `${title}-${name}`.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+
           return {
-            id:
-              String(itemRecord.id || itemRecord.code || "").trim() ||
-              `${title}-${name}`.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+            id: itemId,
             name,
             description:
               typeof itemRecord.details === "string" && itemRecord.details.trim().length > 0
@@ -124,6 +131,7 @@ function normalizeStateMenu(menu: unknown): ScrapedMenuSection[] {
                 : null,
             price: parseMoneyFromText(String(itemRecord.unitPrice ?? itemRecord.price ?? "")),
             imageUrl: logoUrl,
+            addons: normalizeIfoodAddonGroups(itemRecord, itemId),
           };
         })
         .filter(Boolean) as ScrapedMenuItem[];
@@ -529,6 +537,7 @@ export async function scrapeIfoodPublicMenu(
         description: item.description,
         price: parseMoneyFromText(item.priceText),
         imageUrl: item.imageUrl,
+        addons: [],
       })),
     })) as ScrapedMenuSection[];
 

@@ -1,5 +1,171 @@
 type JsonRecord = Record<string, unknown>;
 
+export type ImportedAddonOption = {
+  id: string;
+  name: string;
+  price: number;
+};
+
+export type ImportedAddonGroup = {
+  id: string;
+  title: string;
+  required: boolean;
+  min_options: number;
+  max_options: number;
+  options: ImportedAddonOption[];
+};
+
+function readNestedNumber(value: unknown) {
+  const candidate =
+    value && typeof value === "object" && "value" in value
+      ? (value as JsonRecord).value
+      : value;
+  const parsed = Number(candidate);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function addonMoney(...values: unknown[]) {
+  const parsed = values.map(readNestedNumber).find((value) => value !== null) ?? 0;
+  return Math.round(parsed * 100) / 100;
+}
+
+function positiveInteger(...values: unknown[]) {
+  const parsed = values.map(readNestedNumber).find((value) => value !== null);
+  return parsed === undefined || parsed === null ? 0 : Math.max(0, Math.floor(parsed));
+}
+
+function readAddonOptions(group: JsonRecord) {
+  const candidates = [
+    group.garnishItens,
+    group.garnishItems,
+    group.options,
+    group.optionItems,
+    group.items,
+    group.complements,
+  ];
+
+  return candidates.find(Array.isArray) as unknown[] | undefined;
+}
+
+function normalizeAddonOption(
+  option: unknown,
+  fallbackId: string,
+): ImportedAddonOption | null {
+  if (!option || typeof option !== "object") return null;
+
+  const record = option as JsonRecord;
+  const name = normalizeText(record.description) || normalizeText(record.name) || normalizeText(record.title);
+  if (!name) return null;
+
+  return {
+    id: normalizeText(record.id) || normalizeText(record.code) || fallbackId,
+    name,
+    price: addonMoney(
+      record.unitPrice,
+      record.additionalPrice,
+      record.price,
+      record.unitMinPrice,
+      record.value,
+    ),
+  };
+}
+
+function normalizeAddonGroup(
+  group: unknown,
+  itemId: string,
+  groupIndex: number,
+): ImportedAddonGroup | null {
+  if (!group || typeof group !== "object") return null;
+
+  const record = group as JsonRecord;
+  const title =
+    normalizeText(record.name) ||
+    normalizeText(record.title) ||
+    normalizeText(record.description) ||
+    "Complementos";
+  const groupId =
+    normalizeText(record.id) ||
+    normalizeText(record.code) ||
+    `${itemId}-addon-${slugify(title)}-${groupIndex + 1}`;
+  const rawOptions = readAddonOptions(record);
+  if (!rawOptions) return null;
+
+  const options = rawOptions
+    .map((option, optionIndex) =>
+      normalizeAddonOption(option, `${groupId}-option-${optionIndex + 1}`),
+    )
+    .filter(Boolean) as ImportedAddonOption[];
+
+  if (options.length === 0) return null;
+
+  const minOptions = positiveInteger(
+    record.min,
+    record.minimum,
+    record.minOptions,
+    record.min_options,
+    record.minQuantity,
+    record.minimumQuantity,
+  );
+  const maxOptions = positiveInteger(
+    record.max,
+    record.maximum,
+    record.maxOptions,
+    record.max_options,
+    record.maxQuantity,
+    record.maximumQuantity,
+  );
+
+  return {
+    id: groupId,
+    title,
+    required: record.required === true || minOptions > 0,
+    min_options: minOptions,
+    max_options: maxOptions,
+    options,
+  };
+}
+
+export function normalizeIfoodAddonGroups(
+  item: unknown,
+  itemId = "ifood-item",
+): ImportedAddonGroup[] {
+  if (!item || typeof item !== "object") return [];
+
+  const record = item as JsonRecord;
+  const candidates = [
+    record.choices,
+    record.optionGroups,
+    record.option_groups,
+    record.garnishGroups,
+    record.complementGroups,
+    record.addonGroups,
+  ];
+  let rawGroups = candidates.find(Array.isArray) as unknown[] | undefined;
+
+  if (!rawGroups && Array.isArray(record.options)) {
+    const optionsAreGroups = record.options.some(
+      (option) =>
+        option &&
+        typeof option === "object" &&
+        Boolean(readAddonOptions(option as JsonRecord)),
+    );
+
+    rawGroups = optionsAreGroups
+      ? record.options
+      : [{ id: `${itemId}-addons`, name: "Complementos", options: record.options }];
+  }
+
+  if (!rawGroups) return [];
+
+  const groups = rawGroups
+    .map((group, groupIndex) => normalizeAddonGroup(group, itemId, groupIndex))
+    .filter(Boolean) as ImportedAddonGroup[];
+
+  return groups.filter(
+    (group, index) => groups.findIndex((candidate) => candidate.id === group.id) === index,
+  );
+}
+
 export type IfoodPublicStoreData = {
   sourceUrl: string;
   merchantUuid: string;
@@ -31,6 +197,7 @@ export type IfoodPublicStoreData = {
       description: string | null;
       price: number;
       imageUrl: string | null;
+      addons: ImportedAddonGroup[];
     }>;
   }>;
 };
@@ -176,17 +343,20 @@ function collectMenuSections(node: unknown, seen = new Set<string>()) {
               itemRecord.price ??
               itemRecord.unitPrice;
 
+            const itemId =
+              normalizeText(itemRecord.itemId) ||
+              normalizeText(itemRecord.id) ||
+              `${sectionId}-item-${index + 1}`;
+
             return {
-              id:
-                normalizeText(itemRecord.itemId) ||
-                normalizeText(itemRecord.id) ||
-                `${sectionId}-item-${index + 1}`,
+              id: itemId,
               name,
               description:
                 normalizeText(itemRecord.itemDescription) ||
                 normalizeText(itemRecord.description),
               price: normalizeMoney(rawPrice),
               imageUrl,
+              addons: normalizeIfoodAddonGroups(itemRecord, itemId),
             };
           })
           .filter(Boolean) as IfoodPublicStoreData["menuSections"][number]["items"];

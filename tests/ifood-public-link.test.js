@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
   isValidIfoodPublicUrl,
+  normalizeIfoodAddonGroups,
   parseIfoodPublicStorePage,
 } from "../src/lib/ifood/public-page.ts";
 
@@ -40,6 +41,18 @@ test("extrai loja, categoria e produto do HTML público do iFood", () => {
                     description: "Pão, carne e queijo",
                     price: 24.9,
                     imageUrl: "https://static.ifood-static.com.br/item.jpg",
+                    choices: [
+                      {
+                        code: "group-1",
+                        name: "Escolha o queijo",
+                        min: 1,
+                        max: 2,
+                        garnishItens: [
+                          { id: "option-1", description: "Mussarela", unitPrice: 2.5 },
+                          { id: "option-2", description: "Cheddar", unitPrice: 3 },
+                        ],
+                      },
+                    ],
                   },
                 ],
               },
@@ -62,7 +75,49 @@ test("extrai loja, categoria e produto do HTML público do iFood", () => {
     description: "Pão, carne e queijo",
     price: 24.9,
     imageUrl: "https://static.ifood-static.com.br/item.jpg",
+    addons: [
+      {
+        id: "group-1",
+        title: "Escolha o queijo",
+        required: true,
+        min_options: 1,
+        max_options: 2,
+        options: [
+          { id: "option-1", name: "Mussarela", price: 2.5 },
+          { id: "option-2", name: "Cheddar", price: 3 },
+        ],
+      },
+    ],
   });
+});
+
+test("normaliza complementos no formato optionGroups do catalogo publico", async () => {
+  assert.deepEqual(
+    normalizeIfoodAddonGroups(
+      {
+        optionGroups: [
+          {
+            id: "sizes",
+            title: "Tamanho",
+            minimumQuantity: 0,
+            maximumQuantity: 1,
+            options: [{ id: "large", name: "Grande", price: { value: 4.9 } }],
+          },
+        ],
+      },
+      "pizza",
+    ),
+    [
+      {
+        id: "sizes",
+        title: "Tamanho",
+        required: false,
+        min_options: 0,
+        max_options: 1,
+        options: [{ id: "large", name: "Grande", price: 4.9 }],
+      },
+    ],
+  );
 });
 
 test("a importação iniciada em Cardápios preserva a identidade da loja", () => {
@@ -77,8 +132,10 @@ test("a importação iniciada em Cardápios preserva a identidade da loja", () =
 
   assert.match(menuPage, /Importar cardápio do iFood/);
   assert.match(menuPage, /importStoreProfile:\s*false/);
+  assert.match(menuPage, /addonOptionsProcessed/);
   assert.match(importRoute, /if \(importStoreProfile\)/);
   assert.match(importRoute, /is_active: importedPrice > 0/);
+  assert.match(importRoute, /addons: importedAddons/);
 });
 
 test("o build inclui o Chromium na função de importação pública", () => {

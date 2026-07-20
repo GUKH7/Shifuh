@@ -134,6 +134,8 @@ export async function POST(request: Request) {
     let updatedCategories = 0;
     let createdProducts = 0;
     let updatedProducts = 0;
+    let addonGroupsProcessed = 0;
+    let addonOptionsProcessed = 0;
 
     if (importedMenuSections.length > 0) {
       const { data: existingCategoryLinks } = await admin
@@ -198,6 +200,7 @@ export async function POST(request: Request) {
         for (const item of section.items) {
           const linkedProductId = productLinkMap.get(item.id);
           const importedPrice = normalizeMoney(item.price);
+          const importedAddons = Array.isArray(item.addons) ? item.addons : [];
           const productPayload = {
             restaurant_id: restaurantId,
             category_id: localCategoryId,
@@ -205,8 +208,15 @@ export async function POST(request: Request) {
             description: item.description,
             price: importedPrice,
             image_url: item.imageUrl,
+            addons: importedAddons,
             is_active: importedPrice > 0,
           };
+
+          addonGroupsProcessed += importedAddons.length;
+          addonOptionsProcessed += importedAddons.reduce(
+            (total, group) => total + (Array.isArray(group.options) ? group.options.length : 0),
+            0,
+          );
 
           if (linkedProductId) {
             await admin.from("products").update(productPayload).eq("id", linkedProductId);
@@ -271,6 +281,8 @@ export async function POST(request: Request) {
         updatedCategories,
         createdProducts,
         updatedProducts,
+        addonGroupsProcessed,
+        addonOptionsProcessed,
       },
       details:
         importStoreProfile

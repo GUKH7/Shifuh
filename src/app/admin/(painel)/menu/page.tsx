@@ -177,7 +177,7 @@ export default function AdminDashboard() {
       setIfoodMenuUrl("");
       showToast({
         title: "Cardápio importado",
-        description: `${result.summary?.categoriesProcessed || 0} categorias e ${result.summary?.productsProcessed || 0} produtos foram processados. Revise os itens antes de publicar.`,
+        description: `${result.summary?.categoriesProcessed || 0} categorias, ${result.summary?.productsProcessed || 0} produtos, ${result.summary?.addonGroupsProcessed || 0} grupos e ${result.summary?.addonOptionsProcessed || 0} complementos foram processados. Revise os itens antes de publicar.`,
         tone: "success",
       });
     } catch (error) {
