@@ -111,7 +111,7 @@ export function CheckoutDrawer({
 
   return (
     <div className="fixed inset-0 z-50 bg-[#f6f1ea]">
-      <div className="mx-auto flex h-dvh w-full max-w-2xl flex-col">
+      <div className="mx-auto flex h-full min-h-0 w-full max-w-2xl flex-col">
         <header className="sticky top-0 z-10 border-b border-[var(--line)] bg-[#faf5ef]/95 px-4 py-3 backdrop-blur sm:px-6 sm:py-4">
           <div className="flex items-center gap-4">
             <button
