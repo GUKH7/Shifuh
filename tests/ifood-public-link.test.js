@@ -87,3 +87,25 @@ test("o build inclui o Chromium na função de importação pública", () => {
   assert.match(nextConfig, /\/api\/integrations\/ifood\/public-link\/import/);
   assert.match(nextConfig, /@sparticuz\/chromium\/bin\/\*\*\/\*/);
 });
+
+test("a importação tenta o catálogo direto antes do navegador e respeita a duração da função", () => {
+  const importer = readFileSync(
+    new URL("../src/lib/ifood/public-menu-importer.ts", import.meta.url),
+    "utf8",
+  );
+  const importRoute = readFileSync(
+    new URL("../src/app/api/integrations/ifood/public-link/import/route.ts", import.meta.url),
+    "utf8",
+  );
+  const directProbeIndex = importer.indexOf(
+    "publicCatalogProbe = await probePublicCatalogEndpoint",
+  );
+  const chromiumImportIndex = importer.indexOf(
+    'const chromium = (await import("@sparticuz/chromium")).default',
+  );
+
+  assert.ok(directProbeIndex >= 0);
+  assert.ok(chromiumImportIndex > directProbeIndex);
+  assert.match(importer, /AbortSignal\.timeout\(6_000\)/);
+  assert.match(importRoute, /export const maxDuration = 120/);
+});

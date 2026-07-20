@@ -171,6 +171,7 @@ async function probePublicCatalogEndpoint(merchantUuid: string, sourceUrl: strin
         accept: "application/json,text/plain,*/*",
         referer: sourceUrl,
       },
+      signal: AbortSignal.timeout(6_000),
       cache: "no-store",
     },
   );
@@ -216,7 +217,7 @@ async function tryResolveMenuByAddressFlow(
   }
 
   await hintButton.evaluate((node) => (node as HTMLElement).click());
-  await delay(1500);
+  await delay(700);
 
   const searchTrigger =
     (await page.$(".address-search-input__button")) ||
@@ -228,14 +229,14 @@ async function tryResolveMenuByAddressFlow(
   }
 
   await searchTrigger.evaluate((node) => (node as HTMLElement).click());
-  await delay(1000);
+  await delay(600);
 
   await page.waitForFunction(
     () =>
       Array.from(document.querySelectorAll("input.address-search-input__field")).some(
         (input) => !input.hasAttribute("disabled"),
       ),
-    { timeout: 10000 },
+    { timeout: 4000 },
   );
 
   const searchField = await page.evaluateHandle(() => {
@@ -261,7 +262,7 @@ async function tryResolveMenuByAddressFlow(
   await searchInput.type(addressQuery, { delay: 40 });
 
   await page.waitForSelector("li[data-test-id^='button-address-'] .btn-address--full-size", {
-    timeout: 15000,
+    timeout: 5000,
   });
 
   const addressOptions = await page.$$(
@@ -272,10 +273,10 @@ async function tryResolveMenuByAddressFlow(
   }
 
   await addressOptions[0].evaluate((node) => (node as HTMLElement).click());
-  await delay(1500);
+  await delay(700);
 
   const numberFieldSelector = "input.form-input__field";
-  await page.waitForSelector(numberFieldSelector, { timeout: 10000 }).catch(() => null);
+  await page.waitForSelector(numberFieldSelector, { timeout: 4000 }).catch(() => null);
 
   const numberFields = await page.$$(numberFieldSelector);
   if (numberFields.length > 0 && addressHint?.number?.trim()) {
@@ -287,7 +288,7 @@ async function tryResolveMenuByAddressFlow(
   const mapConfirmButton = await page.$(".address-maps__submit");
   if (mapConfirmButton) {
     await mapConfirmButton.evaluate((node) => (node as HTMLElement).click());
-    await delay(1200);
+    await delay(800);
   }
 
   const saveAddressButton = await page.evaluateHandle(() => {
@@ -303,7 +304,7 @@ async function tryResolveMenuByAddressFlow(
     await saveAddressElement.evaluate((node) => (node as HTMLElement).click()).catch(() => null);
   }
 
-  await delay(6000);
+  await delay(3000);
   return true;
 }
 
@@ -312,6 +313,20 @@ export async function scrapeIfoodPublicMenu(
   addressHint?: PublicMenuAddressHint | null,
 ) {
   const merchantUuid = extractMerchantUuidFromIfoodUrl(sourceUrl);
+  let publicCatalogProbe: Awaited<ReturnType<typeof probePublicCatalogEndpoint>> | null = null;
+
+  if (merchantUuid) {
+    try {
+      publicCatalogProbe = await probePublicCatalogEndpoint(merchantUuid, sourceUrl);
+      if (publicCatalogProbe.status === 200) {
+        const directMenu = parseCatalogApiResponse(publicCatalogProbe.bodyText);
+        if (directMenu.length > 0) return directMenu;
+      }
+    } catch (error) {
+      console.warn("Leitura direta do catálogo público do iFood falhou:", error);
+    }
+  }
+
   const chromium = (await import("@sparticuz/chromium")).default;
   const puppeteer = await import("puppeteer-core");
   const executablePath = await resolveExecutablePath(chromium);
@@ -370,7 +385,7 @@ export async function scrapeIfoodPublicMenu(
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
     );
     await page.setViewport({ width: 1440, height: 1800, deviceScaleFactor: 1 });
-    await page.goto(sourceUrl, { waitUntil: "networkidle2", timeout: 45000 });
+    await page.goto(sourceUrl, { waitUntil: "domcontentloaded", timeout: 15000 }).catch(() => null);
 
     const hadAddressPrompt = await page
       .evaluate(() => {
@@ -388,7 +403,7 @@ export async function scrapeIfoodPublicMenu(
 
     const catalogPayload = await Promise.race<string | null>([
       catalogPayloadPromise,
-      delay(12000).then(() => null),
+      delay(6000).then(() => null),
     ]);
 
     if (catalogPayload) {
@@ -418,7 +433,7 @@ export async function scrapeIfoodPublicMenu(
             ),
           );
         },
-        { timeout: 25000 },
+        { timeout: 6000 },
       )
       .catch(() => null);
 
@@ -527,28 +542,20 @@ export async function scrapeIfoodPublicMenu(
       );
     }
 
-    if (merchantUuid) {
-      try {
-        const publicCatalogProbe = await probePublicCatalogEndpoint(merchantUuid, sourceUrl);
-        if (publicCatalogProbe.isCloudflareBlock) {
-          throw new Error(
-            "O iFood bloqueou o acesso automatizado ao catálogo público por proteção anti-bot (Cloudflare). Nesse ambiente do servidor, o cardápio não pode ser copiado apenas pelo link.",
-          );
-        }
+    if (publicCatalogProbe?.isCloudflareBlock) {
+      throw new Error(
+        "O iFood bloqueou o acesso automatizado ao catálogo público por proteção anti-bot (Cloudflare). Nesse ambiente do servidor, o cardápio não pode ser copiado apenas pelo link.",
+      );
+    }
 
-        if (
-          publicCatalogProbe.status >= 400 &&
-          publicCatalogProbe.contentType.includes("text/html")
-        ) {
-          throw new Error(
-            `O endpoint público do catálogo respondeu ${publicCatalogProbe.status} com HTML em vez de JSON. O iFood não liberou o cardápio público para leitura automatizada nessa sessão.`,
-          );
-        }
-      } catch (probeError) {
-        if (probeError instanceof Error) {
-          throw probeError;
-        }
-      }
+    if (
+      publicCatalogProbe &&
+      publicCatalogProbe.status >= 400 &&
+      publicCatalogProbe.contentType.includes("text/html")
+    ) {
+      throw new Error(
+        `O endpoint público do catálogo respondeu ${publicCatalogProbe.status} com HTML em vez de JSON. O iFood não liberou o cardápio público para leitura automatizada nessa sessão.`,
+      );
     }
 
     throw new Error("O cardápio público do iFood não ficou disponível nessa sessão de navegação.");

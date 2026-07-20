@@ -5,7 +5,7 @@ import { scrapeIfoodPublicMenu } from "@/lib/ifood/public-menu-importer";
 import { checkRateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 type ImportFromPublicLinkPayload = {
   restaurantId?: string;
