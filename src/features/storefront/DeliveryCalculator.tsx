@@ -209,17 +209,23 @@ export function DeliveryCalculator({
       )}
 
       {deliveryInfo && deliveryInfo.valid && deliveryInfo.addressValidated && (
-        <div role="status" aria-live="polite" className="mt-4 rounded-[18px] border border-emerald-200 bg-emerald-50 p-3.5 sm:mt-5 sm:rounded-[22px] sm:p-4">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="font-black text-emerald-800">Taxa e prazo estimados</p>
-              <p className="mt-1 text-sm text-emerald-700">Distância aproximada: {deliveryInfo.distance} km</p>
+        <div role="status" aria-live="polite" className="mt-4 min-w-0 rounded-[18px] border border-emerald-200 bg-emerald-50 p-3 sm:mt-5 sm:rounded-[22px] sm:p-4">
+          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2.5 sm:gap-4">
+            <div className="min-w-0">
+              <p className="text-sm font-black leading-5 text-emerald-800 sm:text-base">Taxa e prazo estimados</p>
+              <p className="mt-1 text-xs leading-4 text-emerald-700 sm:text-sm">
+                <span className="sm:hidden">{deliveryInfo.distance} km em linha reta</span>
+                <span className="hidden sm:inline">Distância aproximada: {deliveryInfo.distance} km</span>
+              </p>
             </div>
-            <div className="text-right">
-              <p className="text-lg font-black text-emerald-800">
+            <div className="shrink-0 text-right">
+              <p className="whitespace-nowrap text-base font-black leading-5 text-emerald-800 sm:text-lg">
                 {deliveryInfo.price === 0 ? "Grátis" : formatMoney(deliveryInfo.price)}
               </p>
-              <p className="text-sm text-emerald-700">Previsão: {deliveryInfo.time} min</p>
+              <p className="mt-1 whitespace-nowrap text-xs leading-4 text-emerald-700 sm:text-sm">
+                <span className="sm:hidden">{deliveryInfo.time} min</span>
+                <span className="hidden sm:inline">Previsão: {deliveryInfo.time} min</span>
+              </p>
             </div>
           </div>
         </div>

@@ -52,6 +52,13 @@ test("cart and delivery keep quantities and address actions unambiguous", () => 
   assert.match(deliveryCalculator, /savedAddr\.complement \|\| `Endereço \$\{index \+ 1\}`/);
 });
 
+test("delivery estimate fits narrow mobile cards without clipping", () => {
+  assert.match(deliveryCalculator, /grid-cols-\[minmax\(0,1fr\)_auto\]/);
+  assert.match(deliveryCalculator, /whitespace-nowrap text-base font-black/);
+  assert.match(deliveryCalculator, /\{deliveryInfo\.distance\} km em linha reta/);
+  assert.match(deliveryCalculator, /<span className="sm:hidden">\{deliveryInfo\.time\} min<\/span>/);
+});
+
 test("delivery address starts without a hardcoded city and resets CEP-derived fields", () => {
   assert.match(storefrontConstants, /city: "",\s+state: ""/);
   assert.doesNotMatch(storefrontConstants, /city: "S(?:Ã£|ã)o Paulo"/);
