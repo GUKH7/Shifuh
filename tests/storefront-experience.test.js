@@ -14,6 +14,11 @@ test("storefront presents status, estimate and starting delivery fee together", 
   assert.match(storefront, /min-h-10 max-w-\[75vw\].*rounded-full border/);
 });
 
+test("storefront keeps the page background neutral across restaurant brands", () => {
+  assert.match(storefront, /const pageBackground = "#f5f6f7"/);
+  assert.doesNotMatch(storefront, /const pageBackground = hexToRgba\(primaryColor/);
+});
+
 test("mobile cart separates order summary from its main action", () => {
   assert.match(storefront, /Sacola · \{cartQuantity\}/);
   assert.match(storefront, /Ver pedido <ArrowRight/);

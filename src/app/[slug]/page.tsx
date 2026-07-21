@@ -504,7 +504,7 @@ export default function StorePage() {
   };
 
   const contrastColor = storefrontTheme.contrast_color || "#1f2937";
-  const pageBackground = hexToRgba(primaryColor || "#ff5a1f", 0.07);
+  const pageBackground = "#f5f6f7";
   const brandTextColor = getContrastTextColor(primaryColor || "#ff5a1f");
   const heroBackground = `linear-gradient(135deg, ${primaryColor || "#ff5a1f"} 0%, ${contrastColor} 100%)`;
   const heroTitle =
