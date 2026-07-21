@@ -63,7 +63,7 @@ export function ProductPicker({
         className="flex max-h-[100dvh] min-h-0 w-full max-w-2xl flex-col overflow-hidden rounded-t-[24px] bg-[#fffdfa] sm:max-h-[88vh] sm:rounded-[24px]"
         style={{ height: "min(92dvh, 820px)" }}
       >
-        <div className="relative h-52 shrink-0 bg-[#f3f4f6] sm:h-72">
+        <div className="relative h-52 shrink-0 overflow-hidden rounded-t-[24px] bg-white sm:h-72">
           <button
             ref={initialFocusRef as React.RefObject<HTMLButtonElement>}
             onClick={onClose}
@@ -73,7 +73,7 @@ export function ProductPicker({
             <X size={20} />
           </button>
           {product.image_url ? (
-            <Image src={product.image_url} alt={product.name} fill sizes="(max-width: 640px) 100vw, 672px" className="object-contain p-3 sm:p-4" />
+            <Image src={product.image_url} alt={product.name} fill sizes="(max-width: 640px) 100vw, 672px" className="rounded-t-[24px] object-contain" />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-gray-300">
               <ShoppingBag size={42} />

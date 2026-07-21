@@ -13,7 +13,8 @@ test("storefront contains narrow mobile content instead of clipping product card
   assert.match(source, /catalog-section w-full min-w-0/);
   assert.match(source, /w-20 flex-shrink-0 min-\[380px\]:w-24/);
   assert.match(source, /\[overflow-wrap:anywhere\]/);
-  assert.match(source, /className="object-contain p-1\.5"/);
+  assert.match(source, /className="rounded-xl object-contain"/);
+  assert.doesNotMatch(source, /object-contain p-1\.5/);
 });
 
 test("category navigation scrolls inside the viewport and mobile toasts respect its gutters", () => {
