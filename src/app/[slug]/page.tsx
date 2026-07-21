@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Bike,
+  ArrowRight,
   Clock3,
   CreditCard,
   Loader2,
@@ -529,13 +529,19 @@ export default function StorePage() {
     storefrontTheme.show_banners && (banners.length > 0 || Boolean(restaurant?.image_url));
   const heroHeightClass =
     storefrontTheme.hero_style === "spotlight"
-      ? "h-[156px] sm:h-[240px]"
+      ? "h-[120px] sm:h-[240px]"
       : storefrontTheme.hero_style === "split"
-        ? "h-[148px] sm:h-[220px]"
-        : "h-[136px] sm:h-[200px]";
+        ? "h-[116px] sm:h-[220px]"
+        : "h-[108px] sm:h-[200px]";
   const totalProducts = products.length;
   const featuredProduct = products[0] || null;
   const hasFreeDelivery = deliveryTiers.some((tier: any) => Number(tier.price || 0) === 0);
+  const startingDeliveryFee = deliveryTiers.length > 0
+    ? Math.min(...deliveryTiers.map((tier: any) => Math.max(0, Number(tier.price) || 0)))
+    : 0;
+  const deliveryFeeLabel = hasFreeDelivery || deliveryTiers.length === 0
+    ? "Entrega grátis"
+    : `Entrega a partir de ${formatMoney(startingDeliveryFee)}`;
   const deliveryEstimate = formatDeliveryEstimate(deliveryTiers);
   const serviceRegion = formatServiceRegion(restaurant || {});
   const storeStatus = getStoreStatus(restaurant?.work_hours, storeClock);
@@ -701,7 +707,7 @@ export default function StorePage() {
                   )}
                 </div>
               )}
-              <div className="min-w-0 flex-1 pb-2 pt-6 sm:pt-8">
+              <div className="min-w-0 flex-1 pb-1 pt-5 sm:pb-2 sm:pt-8">
                 <div className="flex items-start justify-between gap-3">
                   <h1 className="truncate pr-2 text-[20px] font-black leading-tight tracking-tight text-gray-950 sm:text-[28px]">
                     {restaurant.name}
@@ -724,33 +730,19 @@ export default function StorePage() {
                     )}
                   </div>
                 </div>
-                <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[10px] font-medium text-gray-600 sm:mt-2.5 sm:text-sm">
-                  {storefrontTheme.show_reviews && (
-                    <span className="inline-flex items-center gap-1">
-                      <Star size={13} className="fill-yellow-400 text-yellow-400 sm:h-[15px] sm:w-[15px]" />
-                      {restaurant.rating_average ? Number(restaurant.rating_average).toFixed(1) : "Novo"}
-                    </span>
-                  )}
-                  <span className="inline-flex items-center gap-1">
-                    <Clock3 size={13} className="sm:h-[15px] sm:w-[15px]" />
-                    {deliveryEstimate}
-                  </span>
-                  <span className="inline-flex items-center gap-1">
-                    <Bike size={13} className="sm:h-[15px] sm:w-[15px]" />
-                    {deliveryTiers.length > 0 ? "Entrega por distância" : "Entrega grátis"}
-                  </span>
-                  <span className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-bold ${statusStyles}`}>
+                <div className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11px] font-bold text-gray-600 sm:mt-2.5 sm:text-sm">
+                  <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 ${statusStyles}`}>
                     <span className={`h-2 w-2 rounded-full ${statusDotStyles}`} />
                     {storeStatus.label}
                   </span>
+                  <span aria-hidden="true" className="text-gray-300">·</span>
+                  <span>{deliveryEstimate}</span>
+                  <span aria-hidden="true" className="text-gray-300">·</span>
+                  <span>{deliveryFeeLabel}</span>
                 </div>
               </div>
             </div>
-            <div className="mt-3 grid min-w-0 grid-cols-2 gap-x-3 gap-y-2 border-t border-gray-100 pt-3 text-[11px] font-medium text-gray-600 sm:grid-cols-3 sm:text-sm">
-              <span className="col-span-2 inline-flex min-w-0 items-center gap-1.5 sm:col-span-1">
-                <MapPin size={14} className="shrink-0 text-gray-400" />
-                <span className="truncate">{serviceRegion}</span>
-              </span>
+            <div className="mt-2 flex min-w-0 flex-wrap gap-x-4 gap-y-1.5 text-[11px] font-medium text-gray-500 sm:mt-3 sm:text-sm">
               <span className="inline-flex items-center gap-1.5">
                 <ShoppingBag size={14} className="shrink-0 text-gray-400" />
                 {minimumOrderAmount > 0
@@ -761,8 +753,14 @@ export default function StorePage() {
                 <CreditCard size={14} className="shrink-0 text-gray-400" />
                 Pix, cartão e dinheiro
               </span>
+              {storefrontTheme.show_reviews && (
+                <span className="inline-flex items-center gap-1.5">
+                  <Star size={14} className="fill-yellow-400 text-yellow-400" />
+                  {restaurant.rating_average ? Number(restaurant.rating_average).toFixed(1) : "Novo"}
+                </span>
+              )}
             </div>
-            <details className="group mt-3 border-t border-gray-100 pt-2">
+            <details className="group mt-2">
               <summary className="flex cursor-pointer list-none items-center justify-between py-2 text-xs font-bold text-gray-600 sm:text-sm">
                 <span>Informações da loja</span>
                 <ChevronDown size={16} className="transition-transform group-open:rotate-180" />
@@ -805,28 +803,20 @@ export default function StorePage() {
               </button>
             )}
           </div>
-          <div ref={categoryNavRef} className="flex w-full min-w-0 gap-1.5 overflow-x-auto overscroll-x-contain pb-0.5 [scrollbar-width:none] sm:gap-2 [&::-webkit-scrollbar]:hidden">
+          <div ref={categoryNavRef} className="flex w-full min-w-0 gap-2 overflow-x-auto overscroll-x-contain pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {displayedCategories.map((category) => (
               <button
                 key={category.id}
                 data-category-tab={category.id}
                 onClick={() => navigateToCategory(category.id)}
-                className={`max-w-[75vw] shrink-0 truncate whitespace-nowrap text-[11px] font-bold transition-colors sm:max-w-none sm:text-sm ${
-                  storefrontTheme.category_style === "pill"
-                    ? "rounded-full px-2.5 py-1.5 sm:px-3"
-                    : "border-b-2 px-1 pb-1"
-                } ${
+                className={`min-h-10 max-w-[75vw] shrink-0 truncate whitespace-nowrap rounded-full border px-3.5 py-2 text-xs font-bold transition-colors sm:max-w-none sm:text-sm ${
                   activeCategory === category.id
-                    ? "text-gray-950"
-                    : storefrontTheme.category_style === "pill"
-                      ? "bg-transparent text-gray-500"
-                      : "border-transparent text-gray-500"
+                    ? "border-transparent text-gray-950"
+                    : "border-gray-200 bg-white text-gray-600"
                 }`}
                 style={
                   activeCategory === category.id
-                    ? storefrontTheme.category_style === "pill"
-                      ? { backgroundColor: hexToRgba(primaryColor || "#ff5a1f", 0.14), color: primaryColor }
-                      : { borderColor: primaryColor, color: primaryColor }
+                    ? { backgroundColor: hexToRgba(primaryColor || "#ff5a1f", 0.14), color: primaryColor }
                     : undefined
                 }
               >
@@ -851,8 +841,8 @@ export default function StorePage() {
               if (categoryProducts.length === 0) return null;
 
               return (
-                <section key={category.id} id={`cat-${category.id}`} className="catalog-section w-full min-w-0 scroll-mt-24 overflow-hidden rounded-[18px] border border-gray-200 bg-white sm:rounded-[22px]">
-                  <div className="border-b border-gray-100 px-3 py-2.5 sm:px-5 sm:py-3">
+                <section key={category.id} id={`cat-${category.id}`} className="catalog-section w-full min-w-0 scroll-mt-24">
+                  <div className="px-1 pb-2 pt-1 sm:px-1 sm:pb-3">
                     <h2 className="break-words text-[15px] font-black text-gray-950 sm:text-[17px]">{category.name}</h2>
                     <p className="mt-0.5 text-[10px] font-medium text-gray-500 sm:text-[11px]">{categoryProducts.length} itens</p>
                   </div>
@@ -860,8 +850,8 @@ export default function StorePage() {
                   <div
                     className={
                       storefrontTheme.catalog_layout === "list"
-                        ? "divide-y divide-gray-100"
-                        : `divide-y divide-gray-100 sm:grid sm:gap-3 sm:divide-y-0 sm:p-4 ${catalogGridClass}`
+                        ? "space-y-2.5"
+                        : `space-y-2.5 sm:grid sm:gap-3 sm:space-y-0 ${catalogGridClass}`
                     }
                   >
                     {categoryProducts.map((product) => {
@@ -878,8 +868,8 @@ export default function StorePage() {
                           disabled={!product.is_active}
                           className={`group relative text-left transition-all ${product.is_active ? "hover:-translate-y-0.5" : "cursor-not-allowed"} ${
                             storefrontTheme.catalog_layout === "list"
-                              ? "flex w-full min-w-0 gap-3 overflow-hidden px-3 py-3.5 hover:bg-[#fafafa] min-[380px]:gap-4 sm:px-5 sm:py-4"
-                              : `flex w-full min-w-0 gap-3 overflow-hidden px-3 py-3.5 hover:bg-[#fafafa] min-[380px]:gap-4 sm:block sm:rounded-[20px] sm:p-3 ${cardTone}`
+                              ? "flex w-full min-w-0 gap-3 overflow-hidden rounded-2xl border border-white/80 bg-white px-4 py-4 shadow-[0_5px_18px_rgba(17,16,15,0.05)] hover:bg-[#fffdfa] min-[380px]:gap-4 sm:px-5 sm:py-5"
+                              : `flex w-full min-w-0 gap-3 overflow-hidden rounded-2xl px-4 py-4 hover:bg-[#fffdfa] min-[380px]:gap-4 sm:block sm:rounded-[20px] sm:p-3 ${cardTone}`
                           }`}
                         >
                           <div className={`min-w-0 flex-1 ${product.is_active ? "" : "opacity-55"}`}>
@@ -894,7 +884,7 @@ export default function StorePage() {
                             {!product.is_active && (
                               <p className="mt-2 text-xs font-bold text-gray-500">Temporariamente indisponível para pedidos.</p>
                             )}
-                            <div className="mt-3 border-t border-gray-100 pt-2.5">
+                            <div className="mt-3">
                               {hasPaidAddons && <span className="mr-1 text-[10px] font-bold text-gray-400">A partir de</span>}
                               <span className="text-[15px] font-black text-gray-950">{formatMoney(product.price)}</span>
                             </div>
@@ -908,7 +898,7 @@ export default function StorePage() {
                               <div className="flex h-full w-full items-center justify-center text-gray-300"><ShoppingBag size={28} /></div>
                             )}
                             {product.is_active && (
-                              <span className="absolute bottom-2 right-2 flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-sm" style={{ color: primaryColor }}><Plus size={15} /></span>
+                              <span className="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-[0_4px_12px_rgba(17,16,15,0.14)]" style={{ color: primaryColor }}><Plus size={17} /></span>
                             )}
                             {!product.is_active && <div className="absolute inset-0 bg-white/45" />}
                           </div>
@@ -994,29 +984,28 @@ export default function StorePage() {
       </main>
 
       {cart.length > 0 && !isCartOpen && (
-        <div className="fixed bottom-4 left-0 right-0 z-40 px-3 sm:px-6 lg:hidden">
+        <div className="fixed bottom-3 left-0 right-0 z-40 px-3 sm:bottom-4 sm:px-6 lg:hidden">
           <div className="mx-auto max-w-3xl">
             <button
               onClick={() => {
                 setStep("cart");
                 setIsCartOpen(true);
               }}
-              className="w-full rounded-[24px] px-5 py-4 text-white shadow-[0_18px_45px_rgba(17,16,15,0.18)]"
-              style={{ backgroundColor: primaryColor }}
+              className="w-full rounded-2xl border border-white/80 bg-[#fffdfa] p-2.5 text-gray-950 shadow-[0_14px_36px_rgba(17,16,15,0.16)]"
             >
               <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-black/15 text-sm font-black">
-                    {cartQuantity}
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: hexToRgba(primaryColor, 0.12), color: primaryColor }}>
+                    <ShoppingBag size={18} />
                   </div>
-                  <div className="text-left">
-                    <p className="text-xs font-bold uppercase tracking-[0.14em] text-white/70">
-                      Sacola
-                    </p>
-                    <p className="text-base font-black">Ver pedido</p>
+                  <div className="min-w-0 text-left">
+                    <p className="truncate text-sm font-black">Sacola · {cartQuantity} {cartQuantity === 1 ? "item" : "itens"}</p>
+                    <p className="text-sm font-bold text-gray-600">{formatMoney(cartSubtotal)}</p>
                   </div>
                 </div>
-                <p className="text-lg font-black">{formatMoney(cartSubtotal)}</p>
+                <span className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-xl px-3.5 text-xs font-black" style={{ backgroundColor: primaryColor, color: brandTextColor }}>
+                  Ver pedido <ArrowRight size={15} />
+                </span>
               </div>
             </button>
           </div>

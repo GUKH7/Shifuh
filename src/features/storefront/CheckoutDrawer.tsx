@@ -215,24 +215,22 @@ export function CheckoutDrawer({
               </h2>
             </div>
           </div>
-          <nav aria-label="Etapas do pedido" className="mt-4 grid grid-cols-3 gap-2">
+          <nav aria-label="Etapas do pedido" className="relative mt-3 grid grid-cols-3 gap-2">
+            <div className="absolute left-[16%] right-[16%] top-[5px] h-px bg-gray-200" aria-hidden="true" />
             {["Sacola", "Entrega", "Pagamento"].map((label, index) => {
               return (
-                <div key={label} className="min-w-0" aria-current={index === currentIndex ? "step" : undefined}>
-                  <div className="flex items-center gap-2">
+                <div key={label} className="relative z-[1] min-w-0 text-center" aria-current={index === currentIndex ? "step" : undefined}>
+                  <div className="flex flex-col items-center gap-1.5">
                     <span
-                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-black"
+                      className="h-2.5 w-2.5 shrink-0 rounded-full ring-4 ring-[#faf5ef]"
                       style={index <= currentIndex
-                        ? { backgroundColor: primaryColor, color: brandTextColor }
-                        : { backgroundColor: "#e5e7eb", color: "#6b7280" }}
-                    >
-                      {index + 1}
-                    </span>
+                        ? { backgroundColor: primaryColor }
+                        : { backgroundColor: "#d1d5db" }}
+                    />
                     <span className={`truncate text-[11px] font-bold sm:text-xs ${index === currentIndex ? "text-gray-950" : "text-gray-500"}`}>
                       {label}
                     </span>
                   </div>
-                  <div className={`mt-2 h-1 rounded-full ${index <= currentIndex ? "bg-[var(--brand)]" : "bg-gray-200"}`} />
                 </div>
               );
             })}
@@ -635,35 +633,55 @@ export function CheckoutDrawer({
           )}
 
           {step === "address" && (
-            <button
-              onClick={continueToPayment}
-              disabled={calculatingFee || deliveryInfo?.valid === false}
-              className="w-full rounded-2xl px-5 py-3.5 text-sm font-black disabled:opacity-50 sm:py-4 sm:text-base"
-              style={{ backgroundColor: primaryColor, color: brandTextColor }}
-            >
-              {calculatingFee
-                ? "Calculando entrega..."
-                : deliveryInfo?.valid === false
-                  ? "Endereço fora da área de entrega"
-                  : !deliveryInfo?.addressValidated
-                    ? "Calcule a entrega para continuar"
-                  : "Ir para pagamento"}
-            </button>
+            <div>
+              {deliveryInfo?.addressValidated && (
+                <div className="mb-3 flex items-end justify-between gap-4 px-1">
+                  <div>
+                    <p className="text-[11px] font-bold uppercase text-gray-400">Entrega estimada</p>
+                    <p className="text-xs text-gray-500">{deliveryInfo.time} min · {deliveryInfo.distance} km aprox.</p>
+                  </div>
+                  <strong className="text-xl text-gray-950">{formatMoney(feeValue)}</strong>
+                </div>
+              )}
+              <button
+                onClick={continueToPayment}
+                disabled={calculatingFee || deliveryInfo?.valid === false}
+                className="w-full rounded-2xl px-5 py-3.5 text-sm font-black disabled:opacity-50 sm:py-4 sm:text-base"
+                style={{ backgroundColor: primaryColor, color: brandTextColor }}
+              >
+                {calculatingFee
+                  ? "Calculando entrega..."
+                  : deliveryInfo?.valid === false
+                    ? "Endereço fora da área de entrega"
+                    : !deliveryInfo?.addressValidated
+                      ? "Calcule a entrega para continuar"
+                      : "Ir para pagamento"}
+              </button>
+            </div>
           )}
 
           {step === "payment" && (
-            <button
-              onClick={submitOrder}
-              disabled={isSubmitting || !minimumReached || storeClosedWithoutScheduling}
-              className="w-full rounded-2xl px-5 py-3.5 text-sm font-black disabled:opacity-60 sm:py-4 sm:text-base"
-              style={{ backgroundColor: primaryColor, color: brandTextColor }}
-            >
-              {isSubmitting
-                ? "Enviando pedido..."
-                : scheduleMissing
-                  ? "Escolha o horário do pedido"
-                  : `Confirmar pedido (${formatMoney(finalTotal)})`}
-            </button>
+            <div>
+              <div className="mb-3 flex items-end justify-between gap-4 px-1">
+                <div>
+                  <p className="text-[11px] font-bold uppercase text-gray-400">Total do pedido</p>
+                  <p className="text-xs text-gray-500">Itens e entrega incluídos</p>
+                </div>
+                <strong className="text-xl text-gray-950">{formatMoney(finalTotal)}</strong>
+              </div>
+              <button
+                onClick={submitOrder}
+                disabled={isSubmitting || !minimumReached || storeClosedWithoutScheduling}
+                className="w-full rounded-2xl px-5 py-3.5 text-sm font-black disabled:opacity-60 sm:py-4 sm:text-base"
+                style={{ backgroundColor: primaryColor, color: brandTextColor }}
+              >
+                {isSubmitting
+                  ? "Enviando pedido..."
+                  : scheduleMissing
+                    ? "Escolha o horário do pedido"
+                    : "Confirmar pedido"}
+              </button>
+            </div>
           )}
         </footer>
       </div>

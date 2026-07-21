@@ -100,7 +100,7 @@ export function OrderTrackingClient({ orderId, token }: Props) {
 
   const statusDetails = order ? ORDER_STATUS_DETAILS[order.status] : null;
   const delayedConfirmation = Boolean(
-    order?.status === "pending" && now - new Date(order.createdAt).getTime() >= 2 * 60_000,
+    order?.status === "pending" && now - new Date(order.createdAt).getTime() >= 5 * 60_000,
   );
   const payment = order
     ? paymentMethodDetails[order.paymentMethod as StorefrontPaymentMethod]
@@ -184,9 +184,9 @@ export function OrderTrackingClient({ orderId, token }: Props) {
 
           {delayedConfirmation && (
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-              <p className="font-black text-amber-950">A confirmação está demorando um pouco</p>
+              <p className="font-black text-amber-950">A loja ainda está analisando seu pedido</p>
               <p className="mt-1 text-sm leading-6 text-amber-900">
-                Seu pedido foi registrado. Atualize o status e, se a espera continuar, fale com a loja.
+                Seu pedido está registrado com segurança. Você pode atualizar o status ou falar com a loja.
               </p>
             </div>
           )}
