@@ -27,6 +27,9 @@ test("mobile cart separates order summary from its main action", () => {
 
 test("checkout keeps compact progress and totals visible in the footer", () => {
   assert.match(checkout, /Etapas do pedido/);
+  assert.match(checkout, /className="mt-3 flex w-full gap-1\.5 sm:gap-2"/);
+  assert.match(checkout, /min-w-0 flex-1 rounded-xl border/);
+  assert.doesNotMatch(checkout, /Etapas do pedido" className="[^"]*grid-cols-3/);
   assert.match(checkout, /Sacola", icon: ShoppingBag/);
   assert.match(checkout, /isComplete \? <Check/);
   assert.match(checkout, /isCurrent \? "Agora" : isComplete \? "Concluída" : "Próxima"/);

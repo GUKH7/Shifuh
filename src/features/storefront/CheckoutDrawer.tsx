@@ -215,7 +215,7 @@ export function CheckoutDrawer({
               </h2>
             </div>
           </div>
-          <nav aria-label="Etapas do pedido" className="mt-3 grid grid-cols-3 gap-1.5 sm:gap-2">
+          <nav aria-label="Etapas do pedido" className="mt-3 flex w-full gap-1.5 sm:gap-2">
             {[
               { label: "Sacola", icon: ShoppingBag },
               { label: "Entrega", icon: MapPin },
@@ -227,7 +227,7 @@ export function CheckoutDrawer({
               return (
                 <div
                   key={label}
-                  className={`min-w-0 rounded-xl border px-2 py-2 transition-colors sm:px-3 ${
+                  className={`min-w-0 flex-1 rounded-xl border px-2 py-2 transition-colors sm:px-3 ${
                     isCurrent
                       ? "bg-white shadow-[0_4px_14px_rgba(17,16,15,0.06)]"
                       : isComplete
