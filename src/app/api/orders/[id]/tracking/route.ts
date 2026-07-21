@@ -38,14 +38,18 @@ async function loadTrackingResponse(id: string) {
   const { data: order, error } = await admin
     .from("orders")
     .select(
-      "id, restaurant_id, display_number, customer_name, customer_phone, address, subtotal, delivery_fee, discount, total, status, payment_method, change_for, scheduled_for, created_at, updated_at",
+      "id, restaurant_id, display_number, customer_name, customer_phone, address, subtotal, delivery_fee, discount, total, status, payment_method, change_for, scheduled_for, cancellation_reason, created_at, updated_at",
     )
     .eq("id", id)
     .maybeSingle();
 
   if (error || !order) return null;
 
-  const [{ data: items, error: itemsError }, { data: restaurant, error: restaurantError }] =
+  const [
+    { data: items, error: itemsError },
+    { data: restaurant, error: restaurantError },
+    { data: history, error: historyError },
+  ] =
     await Promise.all([
       admin
         .from("order_items")
@@ -56,9 +60,14 @@ async function loadTrackingResponse(id: string) {
         .select("name, slug, phone, whatsapp_number, primary_color, delivery_tiers")
         .eq("id", order.restaurant_id)
         .maybeSingle(),
+      admin
+        .from("order_status_history")
+        .select("status, changed_at")
+        .eq("order_id", order.id)
+        .order("changed_at", { ascending: true }),
     ]);
 
-  if (itemsError || restaurantError || !restaurant) return null;
+  if (itemsError || restaurantError || historyError || !restaurant) return null;
 
   const rawAddress = isRecord(order.address) ? order.address : {};
   const distance = Number(rawAddress.distance);
@@ -75,6 +84,11 @@ async function loadTrackingResponse(id: string) {
     status: normalizePublicOrderStatus(order.status),
     createdAt: order.created_at,
     updatedAt: order.updated_at,
+    statusHistory: (history || []).map((entry) => ({
+      status: normalizePublicOrderStatus(entry.status),
+      changedAt: entry.changed_at,
+    })),
+    cancellationReason: order.cancellation_reason || null,
     scheduledFor: order.scheduled_for,
     deliveryTime,
     customerName: order.customer_name,

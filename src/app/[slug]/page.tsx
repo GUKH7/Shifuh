@@ -74,7 +74,7 @@ export default function StorePage() {
   const [calculatingFee, setCalculatingFee] = useState(false);
   const [deliveryInfo, setDeliveryInfo] = useState<DeliveryInfo | null>(null);
   const [deliveryError, setDeliveryError] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<StorefrontPaymentMethod>("pix");
+  const [paymentMethod, setPaymentMethod] = useState<StorefrontPaymentMethod | "">("");
   const [changeFor, setChangeFor] = useState("");
   const [cashNeedsChange, setCashNeedsChange] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");

@@ -414,6 +414,7 @@ async function upsertLocalOrderFromIfood(
         external_order_id: event.orderId,
         external_display_id: displayNumberText || null,
         is_test: Boolean(details.isTest),
+        cancellation_reason: nextStatus === "canceled" ? cancellation?.reason || "Cancelado pelo iFood" : null,
         external_payload: {
           ...existingPayload,
           ...(details as Json as Record<string, unknown>),

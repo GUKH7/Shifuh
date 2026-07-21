@@ -27,11 +27,11 @@ import type { OrderTrackingResponse } from "@/features/storefront/types";
 type Props = { orderId: string; token: string };
 
 const TRACKING_STEPS = [
-  { label: "Recebido", icon: ShoppingBag },
-  { label: "Aceito", icon: Store },
-  { label: "Em rota", icon: Bike },
-  { label: "Concluído", icon: Check },
-];
+  { label: "Recebido", icon: ShoppingBag, status: "pending" },
+  { label: "Aceito", icon: Store, status: "preparing" },
+  { label: "Em rota", icon: Bike, status: "delivering" },
+  { label: "Concluído", icon: Check, status: "done" },
+] as const;
 
 function formatDateTime(value: string) {
   return new Intl.DateTimeFormat("pt-BR", {
@@ -113,6 +113,10 @@ export function OrderTrackingClient({ orderId, token }: Props) {
     const message = `Olá! Gostaria de falar sobre o pedido #${order.displayNumber}.`;
     return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
   }, [order]);
+  const statusTimeByName = useMemo(() => {
+    const entries = order?.statusHistory || [];
+    return new Map(entries.map((entry) => [entry.status, entry.changedAt]));
+  }, [order]);
 
   const copyLink = async () => {
     try {
@@ -126,8 +130,8 @@ export function OrderTrackingClient({ orderId, token }: Props) {
 
   if (loading) {
     return (
-      <main className="min-h-screen animate-pulse bg-[#f6f1ea] px-4 py-8 sm:py-12">
-        <div className="mx-auto max-w-3xl overflow-hidden rounded-3xl border border-[#eadfd5] bg-white">
+      <main className="min-h-screen animate-pulse bg-[#f5f6f7] px-4 py-8 sm:py-12">
+        <div className="mx-auto max-w-3xl overflow-hidden rounded-3xl border border-gray-200 bg-white">
           <div className="h-44 bg-gray-100" />
           <div className="space-y-5 p-5 sm:p-8">
             <div className="h-20 rounded-2xl bg-gray-100" />
@@ -140,8 +144,8 @@ export function OrderTrackingClient({ orderId, token }: Props) {
 
   if (!order) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#f6f1ea] px-4 py-10">
-        <section className="w-full max-w-lg rounded-3xl border border-[#eadfd5] bg-white p-7 text-center sm:p-10">
+      <main className="flex min-h-screen items-center justify-center bg-[#f5f6f7] px-4 py-10">
+        <section className="w-full max-w-lg rounded-3xl border border-gray-200 bg-white p-7 text-center sm:p-10">
           <AlertCircle className="mx-auto text-rose-500" size={44} />
           <h1 className="mt-5 text-2xl font-black text-gray-950">Pedido não encontrado</h1>
           <p className="mt-3 leading-7 text-gray-600">{error}</p>
@@ -158,8 +162,8 @@ export function OrderTrackingClient({ orderId, token }: Props) {
   }
 
   return (
-    <main className="min-h-screen bg-[#f6f1ea] px-3 py-4 sm:px-6 sm:py-10">
-      <div className="mx-auto max-w-3xl overflow-hidden rounded-3xl border border-[#eadfd5] bg-white shadow-[0_20px_50px_rgba(41,30,20,0.08)]">
+    <main className="min-h-screen bg-[#f5f6f7] px-3 py-4 sm:px-6 sm:py-10">
+      <div className="mx-auto max-w-3xl overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-[0_20px_50px_rgba(17,24,39,0.07)]">
         <header className="px-5 py-7 text-center sm:px-8 sm:py-9" style={{ backgroundColor: `${primaryColor}12` }}>
           <p className="text-sm font-bold text-gray-600">{order.restaurant.name}</p>
           <p className="mt-5 text-xs font-black uppercase text-gray-500">Pedido</p>
@@ -191,25 +195,47 @@ export function OrderTrackingClient({ orderId, token }: Props) {
             </div>
           )}
 
+          {order.status === "canceled" && (
+            <section className="rounded-2xl border border-rose-200 bg-rose-50 p-4" aria-label="Informações do cancelamento">
+              <p className="font-black text-rose-950">Pedido cancelado</p>
+              <p className="mt-2 text-sm leading-6 text-rose-900">
+                <strong>Motivo:</strong> {order.cancellationReason || "A loja não informou um motivo específico."}
+              </p>
+              <p className="mt-2 text-sm leading-6 text-rose-800">
+                Se precisar de ajuda ou quiser refazer o pedido, fale diretamente com a loja pelos canais abaixo.
+              </p>
+            </section>
+          )}
+
           {order.status !== "canceled" && (
             <section aria-label="Etapas do pedido">
               <div className="grid grid-cols-4 gap-1">
                 {TRACKING_STEPS.map((step, index) => {
                   const Icon = step.icon;
-                  const reached = index <= (statusDetails?.step ?? 0);
+                  const currentStep = statusDetails?.step ?? 0;
+                  const isComplete = index < currentStep;
+                  const isCurrent = index === currentStep;
+                  const changedAt = statusTimeByName.get(step.status);
                   return (
                     <div key={step.label} className="min-w-0 text-center">
                       <div
-                        className="mx-auto flex h-10 w-10 items-center justify-center rounded-full border"
-                        style={reached
-                          ? { backgroundColor: primaryColor, borderColor: primaryColor, color: buttonTextColor }
-                          : { borderColor: "#d1d5db", color: "#9ca3af" }}
+                        className={`mx-auto flex h-10 w-10 items-center justify-center rounded-full border ${isComplete ? "border-emerald-600 bg-emerald-600 text-white" : ""}`}
+                        style={isCurrent
+                          ? { backgroundColor: primaryColor, borderColor: primaryColor, color: buttonTextColor, boxShadow: `0 0 0 4px ${primaryColor}20` }
+                          : !isComplete
+                            ? { borderColor: "#d1d5db", color: "#9ca3af" }
+                            : undefined}
                       >
-                        <Icon size={18} />
+                        {isComplete ? <Check size={18} strokeWidth={3} /> : <Icon size={18} />}
                       </div>
-                      <p className={`mt-2 text-[11px] font-bold sm:text-xs ${reached ? "text-gray-900" : "text-gray-400"}`}>
+                      <p className={`mt-2 text-[11px] font-bold sm:text-xs ${isCurrent ? "text-gray-950" : isComplete ? "text-emerald-700" : "text-gray-400"}`}>
                         {step.label}
                       </p>
+                      {changedAt && (
+                        <time dateTime={changedAt} className="mt-1 block text-[9px] font-medium text-gray-500 sm:text-[10px]">
+                          {formatDateTime(changedAt)}
+                        </time>
+                      )}
                     </div>
                   );
                 })}
@@ -217,12 +243,12 @@ export function OrderTrackingClient({ orderId, token }: Props) {
             </section>
           )}
 
-          <section className="border-t border-[#eee5dd] pt-6">
+          <section className="border-t border-gray-200 pt-6">
             <div className="flex items-center gap-2">
               <ReceiptText size={20} style={{ color: primaryColor }} />
               <h2 className="text-lg font-black text-gray-950">Resumo do pedido</h2>
             </div>
-            <div className="mt-4 divide-y divide-[#f0e8e1]">
+            <div className="mt-4 divide-y divide-gray-100">
               {order.items.map((item, index) => (
                 <div key={`${item.productName}-${index}`} className="flex gap-4 py-3 first:pt-0">
                   <span className="font-black text-gray-900">{item.quantity}x</span>
@@ -237,7 +263,7 @@ export function OrderTrackingClient({ orderId, token }: Props) {
                 </div>
               ))}
             </div>
-            <div className="mt-3 space-y-2 border-t border-[#eee5dd] pt-4 text-sm">
+            <div className="mt-3 space-y-2 border-t border-gray-200 pt-4 text-sm">
               <div className="flex justify-between text-gray-600"><span>Subtotal</span><span>{formatMoney(order.subtotal)}</span></div>
               <div className="flex justify-between text-gray-600"><span>Entrega</span><span>{formatMoney(order.deliveryFee)}</span></div>
               {order.discount > 0 && <div className="flex justify-between text-emerald-700"><span>Desconto</span><span>-{formatMoney(order.discount)}</span></div>}
@@ -245,7 +271,7 @@ export function OrderTrackingClient({ orderId, token }: Props) {
             </div>
           </section>
 
-          <section className="grid gap-5 border-t border-[#eee5dd] pt-6 sm:grid-cols-2">
+          <section className="grid gap-5 border-t border-gray-200 pt-6 sm:grid-cols-2">
             <div>
               <div className="flex items-center gap-2 text-gray-950"><MapPin size={19} style={{ color: primaryColor }} /><h2 className="font-black">Entrega</h2></div>
               <p className="mt-3 text-sm font-bold leading-6 text-gray-800">
@@ -268,7 +294,7 @@ export function OrderTrackingClient({ orderId, token }: Props) {
             </div>
           </section>
 
-          <footer className="border-t border-[#eee5dd] pt-6">
+          <footer className="border-t border-gray-200 pt-6">
             <div className="grid gap-3 sm:grid-cols-2">
               <button
                 type="button"

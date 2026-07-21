@@ -85,6 +85,23 @@ test("tracking delays the reassurance notice for five minutes", () => {
   assert.match(tracking, /Seu pedido está registrado com segurança/);
 });
 
+test("payment requires a conscious choice and keeps coupon details collapsed", () => {
+  assert.match(storefront, /useState<StorefrontPaymentMethod \| "">\(""\)/);
+  assert.match(checkout, /Tenho um cupom/);
+  assert.match(checkout, /aria-expanded=\{isCouponOpen\}/);
+  assert.match(checkout, /Todas as formas disponíveis são pagas diretamente ao receber o pedido/);
+  assert.match(checkout, /paymentMethod \? paymentMethodDetails\[paymentMethod\]\.label/);
+  assert.match(checkout, /bg-\[#f5f6f7\]/);
+});
+
+test("tracking distinguishes completed, current and future stages", () => {
+  assert.match(tracking, /const isComplete = index < currentStep/);
+  assert.match(tracking, /const isCurrent = index === currentStep/);
+  assert.match(tracking, /statusTimeByName\.get\(step\.status\)/);
+  assert.match(tracking, /order\.cancellationReason/);
+  assert.match(tracking, /bg-\[#f5f6f7\]/);
+});
+
 test("large catalogs stay compact and use trustworthy merchandising", () => {
   assert.match(storefront, /getBestSellerProductId\(customerProducts\)/);
   assert.match(storefront, /categoryProducts\.slice\(0, 12\)/);

@@ -179,3 +179,40 @@ test("permite atualizar status sem notificar cliente", async () => {
   assert.equal(body.notification.skipped, true);
   assert.equal(sendCalled, false);
 });
+
+test("exige motivo ao cancelar e inclui a orientação na mensagem", async () => {
+  const state = baseState();
+  const sentMessages = [];
+  const { PATCH } = loadRoute(state, {
+    "@/lib/whatsapp-bot": {
+      sendWhatsappMessage: async (payload) => {
+        sentMessages.push(payload);
+        return { ok: true, skipped: false };
+      },
+    },
+  });
+
+  const invalidResponse = await PATCH(
+    new Request("http://local.test/api/orders/order-1/status", {
+      method: "PATCH",
+      body: JSON.stringify({ status: "canceled" }),
+    }),
+    { params: Promise.resolve({ id: "order-1" }) },
+  );
+  assert.equal(invalidResponse.status, 400);
+
+  const response = await PATCH(
+    new Request("http://local.test/api/orders/order-1/status", {
+      method: "PATCH",
+      body: JSON.stringify({ status: "canceled", cancellationReason: "Item indisponível" }),
+    }),
+    { params: Promise.resolve({ id: "order-1" }) },
+  );
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(state.orderUpdates[0].payload, {
+    status: "canceled",
+    cancellation_reason: "Item indisponível",
+  });
+  assert.match(sentMessages[0].message, /Motivo: Item indisponível/);
+});

@@ -134,6 +134,11 @@ export async function POST(request: Request) {
         reason,
       );
 
+      await admin
+        .from("orders")
+        .update({ cancellation_reason: reason })
+        .eq("id", order.id);
+
       return NextResponse.json({ ok: true, cancellation });
     }
 

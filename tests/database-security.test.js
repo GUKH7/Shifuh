@@ -62,3 +62,15 @@ test("storefront orders use a restaurant-scoped idempotency key", () => {
   assert.match(idempotencyMigration, /when unique_violation[\s\S]+idempotency_key = normalized_idempotency_key/i);
   assert.match(idempotencyMigration, /grant execute on function public\.create_storefront_order_transaction[\s\S]+to service_role;/i);
 });
+
+test("order status history remains server-only and records transitions", () => {
+  const historyMigration = fs.readFileSync(
+    path.join(__dirname, "..", "supabase", "migrations", "20260721171535_order_status_history.sql"),
+    "utf8",
+  );
+  assert.match(historyMigration, /alter table public\.order_status_history enable row level security/i);
+  assert.match(historyMigration, /revoke all on table public\.order_status_history from public, anon, authenticated/i);
+  assert.match(historyMigration, /grant select, insert, update, delete on table public\.order_status_history to service_role/i);
+  assert.match(historyMigration, /after insert or update of status on public\.orders/i);
+  assert.match(historyMigration, /set search_path = ''/i);
+});

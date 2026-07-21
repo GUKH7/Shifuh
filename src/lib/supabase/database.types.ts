@@ -222,6 +222,7 @@ export interface Database {
             external_payload: Json | null;
             scheduled_for: string | null;
             idempotency_key: string | null;
+            cancellation_reason: string | null;
             created_at: string;
             updated_at: string;
           };
@@ -248,6 +249,7 @@ export interface Database {
             external_payload?: Json | null;
             scheduled_for?: string | null;
             idempotency_key?: string | null;
+            cancellation_reason?: string | null;
             created_at?: string;
             updated_at?: string;
           };
@@ -274,6 +276,7 @@ export interface Database {
             external_payload?: Json | null;
             scheduled_for?: string | null;
             idempotency_key?: string | null;
+            cancellation_reason?: string | null;
             created_at?: string;
             updated_at?: string;
           };
@@ -309,6 +312,27 @@ export interface Database {
           observation?: string | null;
           addons?: Json | null;
           created_at?: string;
+        };
+        Relationships: [];
+      };
+      order_status_history: {
+        Row: {
+          id: string;
+          order_id: string;
+          status: string;
+          changed_at: string;
+        };
+        Insert: {
+          id?: string;
+          order_id: string;
+          status: string;
+          changed_at?: string;
+        };
+        Update: {
+          id?: string;
+          order_id?: string;
+          status?: string;
+          changed_at?: string;
         };
         Relationships: [];
       };

@@ -53,6 +53,7 @@ const state = {
     payment_method: "pix",
     change_for: null,
     scheduled_for: null,
+    cancellation_reason: null,
     created_at: "2026-07-20T10:00:00.000Z",
     updated_at: "2026-07-20T10:02:00.000Z",
   },
@@ -65,6 +66,10 @@ const state = {
     primary_color: "#ff5a1f",
     delivery_tiers: [{ max_km: 5, price: 5, time: 35 }],
   },
+  history: [
+    { status: "pending", changed_at: "2026-07-20T10:00:00.000Z" },
+    { status: "preparing", changed_at: "2026-07-20T10:02:00.000Z" },
+  ],
 };
 
 class QueryBuilder {
@@ -73,6 +78,7 @@ class QueryBuilder {
   }
   select() { return this; }
   eq() { return this; }
+  order() { return this; }
   maybeSingle() {
     state.queries += 1;
     if (this.table === "orders") return Promise.resolve({ data: state.order, error: null });
@@ -83,7 +89,9 @@ class QueryBuilder {
     state.queries += 1;
     const result = this.table === "order_items"
       ? { data: state.items, error: null }
-      : { data: null, error: null };
+      : this.table === "order_status_history"
+        ? { data: state.history, error: null }
+        : { data: null, error: null };
     return Promise.resolve(result).then(resolve, reject);
   }
 }
@@ -135,6 +143,11 @@ test("consulta pedido pelo link assinado sem expor telefone", async () => {
   assert.equal(body.deliveryTime, 35);
   assert.equal(body.customerPhone, undefined);
   assert.equal(body.restaurant.slug, "loja-teste");
+  assert.deepEqual(body.statusHistory, [
+    { status: "pending", changedAt: "2026-07-20T10:00:00.000Z" },
+    { status: "preparing", changedAt: "2026-07-20T10:02:00.000Z" },
+  ]);
+  assert.equal(body.cancellationReason, null);
   assert.equal(response.headers.get("Cache-Control"), "private, no-store, max-age=0");
 });
 

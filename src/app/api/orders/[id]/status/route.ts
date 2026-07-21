@@ -42,6 +42,7 @@ function buildStatusMessage(order: {
   display_number?: number | null;
   customer_name: string;
   status: OrderStatus;
+  cancellation_reason?: string | null;
   restaurant?: { name?: string | null } | null;
 }) {
   const storeName = order.restaurant?.name || "a loja";
@@ -51,6 +52,9 @@ function buildStatusMessage(order: {
   return [
     `Olá, ${order.customer_name}!`,
     `Seu pedido #${displayNumber} está ${statusLabel}.`,
+    ...(order.status === "canceled" && order.cancellation_reason
+      ? [`Motivo: ${order.cancellation_reason}`]
+      : []),
     `Atenciosamente, ${storeName}.`,
   ].join("\n");
 }
@@ -66,11 +70,23 @@ export async function PATCH(request: Request, context: Params) {
       return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
     }
 
-    const body = (await request.json()) as { status?: OrderStatus; notifyCustomer?: boolean };
+    const body = (await request.json()) as {
+      status?: OrderStatus;
+      notifyCustomer?: boolean;
+      cancellationReason?: string;
+    };
     const nextStatus = body.status;
+    const cancellationReason = body.cancellationReason?.trim() || "";
 
     if (!nextStatus || !ALLOWED_STATUSES.includes(nextStatus)) {
       return NextResponse.json({ error: "Status inválido." }, { status: 400 });
+    }
+
+    if (nextStatus === "canceled" && cancellationReason.length < 3) {
+      return NextResponse.json(
+        { error: "Informe ao cliente o motivo do cancelamento." },
+        { status: 400 },
+      );
     }
 
     const { id } = await context.params;
@@ -97,7 +113,9 @@ export async function PATCH(request: Request, context: Params) {
 
     const { error: updateError } = await supabase
       .from("orders")
-      .update({ status: nextStatus })
+      .update(nextStatus === "canceled"
+        ? { status: nextStatus, cancellation_reason: cancellationReason }
+        : { status: nextStatus })
       .eq("id", order.id);
 
     if (updateError) {
@@ -110,6 +128,7 @@ export async function PATCH(request: Request, context: Params) {
     const updatedOrder = {
       ...order,
       status: nextStatus,
+      cancellation_reason: nextStatus === "canceled" ? cancellationReason : null,
       restaurant,
     };
     let notification = {

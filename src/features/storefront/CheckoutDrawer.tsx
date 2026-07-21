@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { ArrowRight, Banknote, Check, CheckCircle2, ChevronLeft, CreditCard, Loader2, MapPin, Minus, Pencil, Plus, QrCode, ShoppingBag, Ticket, Trash2 } from "lucide-react";
+import { ArrowRight, Banknote, Check, CheckCircle2, ChevronDown, ChevronLeft, CreditCard, Loader2, MapPin, Minus, Pencil, Plus, QrCode, ShoppingBag, Ticket, Trash2 } from "lucide-react";
 import { formatMoney, getContrastTextColor } from "./format";
 import { DeliveryCalculator } from "./DeliveryCalculator";
 import type { CartItem, CheckoutAddress, CheckoutStep, DeliveryInfo, OrderResponse } from "./types";
@@ -39,7 +39,7 @@ type CheckoutDrawerProps = {
   discountAmount: number;
   feeValue: number;
   finalTotal: number;
-  paymentMethod: StorefrontPaymentMethod;
+  paymentMethod: StorefrontPaymentMethod | "";
   changeFor: string;
   cashNeedsChange: boolean;
   checkoutError: string;
@@ -145,6 +145,7 @@ export function CheckoutDrawer({
 }: CheckoutDrawerProps) {
   const [addressAttempted, setAddressAttempted] = useState(false);
   const [paymentAttempted, setPaymentAttempted] = useState(false);
+  const [isCouponOpen, setIsCouponOpen] = useState(false);
   const { dialogRef, initialFocusRef } = useAccessibleDialog(isOpen, onClose);
 
   useEffect(() => {
@@ -191,7 +192,7 @@ export function CheckoutDrawer({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#f6f1ea]">
+    <div className="fixed inset-0 z-50 bg-[#f5f6f7]">
       <div
         ref={dialogRef}
         role="dialog"
@@ -203,7 +204,7 @@ export function CheckoutDrawer({
         <div className="absolute h-px w-px overflow-hidden whitespace-nowrap [clip:rect(0,0,0,0)]" role="status" aria-live="polite">
           Etapa atual: {step === "cart" ? "sacola" : step === "address" ? "entrega" : step === "payment" ? "pagamento" : "confirmação"}.
         </div>
-        <header className="safe-area-top sticky top-0 z-10 border-b border-[var(--line)] bg-[#faf5ef]/95 px-4 py-3 backdrop-blur sm:px-6 sm:py-4">
+        <header className="safe-area-top sticky top-0 z-10 border-b border-gray-200 bg-[#f5f6f7]/95 px-4 py-3 backdrop-blur sm:px-6 sm:py-4">
           <div className="flex items-center gap-4">
             {isSuccess ? (
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
@@ -502,8 +503,12 @@ export function CheckoutDrawer({
                   <div className="rounded-2xl bg-[#faf8f5] p-3.5">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="font-black text-gray-900">{paymentMethodDetails[paymentMethod].label}</p>
-                        <p className="mt-1 text-xs text-gray-500">{paymentMethodDetails[paymentMethod].timing}</p>
+                        <p className="font-black text-gray-900">
+                          {paymentMethod ? paymentMethodDetails[paymentMethod].label : "Forma de pagamento pendente"}
+                        </p>
+                        <p className="mt-1 text-xs text-gray-500">
+                          {paymentMethod ? paymentMethodDetails[paymentMethod].timing : "Escolha uma forma abaixo para continuar."}
+                        </p>
                         {paymentMethod === "cash" && cashNeedsChange && changeFor && (
                           <p className="mt-1 text-xs font-bold text-gray-700">Troco para {changeFor}</p>
                         )}
@@ -529,12 +534,23 @@ export function CheckoutDrawer({
                 </div>
               </div>
               <div className="surface-card rounded-[20px] p-4 sm:rounded-[24px] sm:p-5">
-                <div className="flex items-center gap-2">
-                  <Ticket size={18} className="text-[var(--brand)]" />
-                  <h3 className="text-lg font-black text-gray-950">Cupom</h3>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsCouponOpen((current) => !current)}
+                  className="flex w-full items-center justify-between gap-3 text-left"
+                  aria-expanded={isCouponOpen}
+                  aria-controls="checkout-coupon-content"
+                >
+                  <span className="flex items-center gap-2">
+                    <Ticket size={18} className="text-[var(--brand)]" />
+                    <span className="text-base font-black text-gray-950">
+                      {appliedCoupon ? `Cupom ${appliedCoupon.code} aplicado` : "Tenho um cupom"}
+                    </span>
+                  </span>
+                  <ChevronDown size={18} className={`shrink-0 text-gray-400 transition-transform ${isCouponOpen ? "rotate-180" : ""}`} />
+                </button>
 
-                <div className="mt-4 flex gap-2">
+                {(isCouponOpen || appliedCoupon) && <div id="checkout-coupon-content" className="mt-4 flex gap-2">
                   <input
                     value={couponCode}
                     onChange={(event) => onCouponCodeChange(event.target.value)}
@@ -555,15 +571,19 @@ export function CheckoutDrawer({
                       {verifyingCoupon ? <Loader2 className="animate-spin" size={16} /> : "Aplicar"}
                     </button>
                   )}
-                </div>
+                </div>}
 
                 {appliedCoupon && <p className="mt-3 text-sm font-bold text-emerald-600">Cupom aplicado com sucesso.</p>}
-                {couponError && <p role="alert" className="mt-3 text-xs font-bold text-rose-600">{couponError}</p>}
+                {(isCouponOpen || appliedCoupon) && couponError && <p role="alert" className="mt-3 text-xs font-bold text-rose-600">{couponError}</p>}
               </div>
 
               <div id="checkout-payment" className="surface-card scroll-mt-4 rounded-[20px] p-4 sm:rounded-[24px] sm:p-5">
                 <h3 className="text-lg font-black text-gray-950">Pagamento</h3>
-                <p className="mt-1 text-sm text-gray-500">Escolha como prefere pagar ao receber o pedido.</p>
+                <div className="mt-3 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3">
+                  <p className="text-sm font-black text-blue-950">Pagamento na entrega</p>
+                  <p className="mt-1 text-xs leading-5 text-blue-800">Todas as formas disponíveis são pagas diretamente ao receber o pedido.</p>
+                </div>
+                <p className="mt-4 text-sm text-gray-500">Escolha conscientemente como prefere pagar.</p>
                 <div className="mt-4 space-y-3">
                   {(["pix", "credit", "debit", "cash"] as StorefrontPaymentMethod[]).map((value) => {
                     const method = paymentMethodDetails[value];

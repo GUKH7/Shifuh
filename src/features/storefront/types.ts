@@ -77,6 +77,11 @@ export interface OrderTrackingResponse {
   status: PublicOrderStatus;
   createdAt: string;
   updatedAt: string;
+  statusHistory: Array<{
+    status: PublicOrderStatus;
+    changedAt: string;
+  }>;
+  cancellationReason: string | null;
   scheduledFor: string | null;
   deliveryTime: number;
   customerName: string;

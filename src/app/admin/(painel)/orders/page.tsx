@@ -119,6 +119,14 @@ const STAT_CARDS: Array<{
   { id: "canceled", title: "Cancelados", tone: "bg-red-50 text-red-600" },
 ];
 
+const LOCAL_CANCELLATION_REASONS: IfoodCancellationReason[] = [
+  { code: "ITEM_UNAVAILABLE", description: "Um ou mais itens ficaram indisponíveis" },
+  { code: "DELIVERY_UNAVAILABLE", description: "Não foi possível realizar a entrega" },
+  { code: "STORE_OPERATION", description: "A loja não conseguirá atender o pedido" },
+  { code: "CUSTOMER_REQUEST", description: "Cancelamento solicitado pelo cliente" },
+  { code: "OTHER", description: "Outro motivo" },
+];
+
 function getCustomerInitials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "CL";
@@ -190,6 +198,7 @@ export default function OrdersPage() {
   const [lastSeenOrderId, setLastSeenOrderId] = useState("");
   const [expandedOrders, setExpandedOrders] = useState<string[]>([]);
   const [busyIfoodAction, setBusyIfoodAction] = useState("");
+  const [statusUpdatingOrderId, setStatusUpdatingOrderId] = useState("");
   const [cancellationModalOrder, setCancellationModalOrder] = useState<Order | null>(null);
   const [cancellationReasons, setCancellationReasons] = useState<IfoodCancellationReason[]>([]);
   const [selectedCancellationCode, setSelectedCancellationCode] = useState("");
@@ -349,50 +358,65 @@ export default function OrdersPage() {
     }
   };
 
-  const updateStatus = async (order: Order, newStatus: OrderStatus) => {
+  const updateStatus = async (order: Order, newStatus: OrderStatus, cancellationReason = "") => {
+    setStatusUpdatingOrderId(order.id);
     setOrders((prev) =>
       prev.map((current) => (current.id === order.id ? { ...current, status: newStatus } : current)),
     );
 
-    const response = await fetch(`/api/orders/${order.id}/status`, {
-      method: "PATCH",
-      headers: {
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        status: newStatus,
-      }),
-    });
-    const result = await response.json().catch(() => ({}));
+    try {
+      const response = await fetch(`/api/orders/${order.id}/status`, {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          status: newStatus,
+          cancellationReason: newStatus === "canceled" ? cancellationReason : undefined,
+        }),
+      });
+      const result = await response.json().catch(() => ({}));
 
-    if (!response.ok) {
+      if (!response.ok) {
+        showToast({
+          title: "Não foi possível atualizar o pedido",
+          description: result.error || "Tente novamente em instantes.",
+          tone: "error",
+        });
+        void fetchOrders();
+        return false;
+      }
+
+      showToast({
+        title: "Status atualizado",
+        description: result.notification?.sent
+          ? `Pedido #${formatDisplayNumber(order)} agora está como ${getStatusLabel(newStatus).toLowerCase()} e o cliente foi avisado.`
+          : `Pedido #${formatDisplayNumber(order)} agora está como ${getStatusLabel(newStatus).toLowerCase()}.`,
+        tone: "success",
+      });
+
+      if (result.notification && !result.notification.sent && !result.notification.skipped) {
+        showToast({
+          title: "WhatsApp não enviado",
+          description: result.notification.error || "Confira a configuração da API do robô.",
+          tone: "error",
+        });
+      }
+
+      if (newStatus === "preparing" && restaurantConfig?.printer_auto_print) {
+        setTimeout(() => handlePrint({ ...order, status: newStatus }), 150);
+      }
+      return true;
+    } catch (error) {
       showToast({
         title: "Não foi possível atualizar o pedido",
-        description: result.error || "Tente novamente em instantes.",
+        description: getOperationalErrorMessage(error),
         tone: "error",
       });
       void fetchOrders();
-      return;
-    }
-
-    showToast({
-      title: "Status atualizado",
-      description: result.notification?.sent
-        ? `Pedido #${formatDisplayNumber(order)} agora esta como ${getStatusLabel(newStatus).toLowerCase()} e o cliente foi avisado.`
-        : `Pedido #${formatDisplayNumber(order)} agora esta como ${getStatusLabel(newStatus).toLowerCase()}.`,
-      tone: "success",
-    });
-
-    if (result.notification && !result.notification.sent && !result.notification.skipped) {
-      showToast({
-        title: "WhatsApp não enviado",
-        description: result.notification.error || "Confira a configuração da API do robô.",
-        tone: "error",
-      });
-    }
-
-    if (newStatus === "preparing" && restaurantConfig?.printer_auto_print) {
-      setTimeout(() => handlePrint({ ...order, status: newStatus }), 150);
+      return false;
+    } finally {
+      setStatusUpdatingOrderId("");
     }
   };
 
@@ -512,6 +536,14 @@ export default function OrdersPage() {
     setCancellationReasonText(firstReason.description);
   };
 
+  const handleRequestLocalCancellation = (order: Order) => {
+    const firstReason = LOCAL_CANCELLATION_REASONS[0];
+    setCancellationModalOrder(order);
+    setCancellationReasons(LOCAL_CANCELLATION_REASONS);
+    setSelectedCancellationCode(firstReason.code);
+    setCancellationReasonText(firstReason.description);
+  };
+
   const handleSelectCancellationReason = (code: string) => {
     const reason = cancellationReasons.find((item) => item.code === code);
     setSelectedCancellationCode(code);
@@ -525,8 +557,18 @@ export default function OrdersPage() {
     setCancellationReasonText("");
   };
 
-  const submitIfoodCancellation = async () => {
+  const submitCancellation = async () => {
     if (!cancellationModalOrder || !selectedCancellationCode || !cancellationReasonText.trim()) return;
+
+    if (!isIfoodOrder(cancellationModalOrder)) {
+      const updated = await updateStatus(
+        cancellationModalOrder,
+        "canceled",
+        cancellationReasonText.trim(),
+      );
+      if (updated) closeCancellationModal();
+      return;
+    }
 
     const result = await runIfoodAction(cancellationModalOrder, "request_cancellation", {
       cancellationCode: selectedCancellationCode,
@@ -755,7 +797,9 @@ export default function OrdersPage() {
                   Pedido #{formatDisplayNumber(cancellationModalOrder)}
                 </h2>
                 <p className="mt-1 text-sm text-gray-500">
-                  Selecione o motivo retornado pelo iFood e confirme a solicitação.
+                  {isIfoodOrder(cancellationModalOrder)
+                    ? "Selecione o motivo retornado pelo iFood e confirme a solicitação."
+                    : "Informe por que a loja não poderá atender. Essa mensagem será apresentada ao cliente."}
                 </p>
               </div>
               <button
@@ -784,7 +828,7 @@ export default function OrdersPage() {
             </select>
 
             <label className="mt-4 block text-sm font-bold text-gray-700" htmlFor="ifood-cancel-text">
-              Texto enviado ao iFood
+              {isIfoodOrder(cancellationModalOrder) ? "Texto enviado ao iFood" : "Mensagem para o cliente"}
             </label>
             <textarea
               id="ifood-cancel-text"
@@ -804,17 +848,20 @@ export default function OrdersPage() {
               </button>
               <button
                 type="button"
-                onClick={submitIfoodCancellation}
+                onClick={submitCancellation}
                 disabled={
                   !selectedCancellationCode ||
                   !cancellationReasonText.trim() ||
-                  busyIfoodAction === `${cancellationModalOrder.id}:request_cancellation`
+                  busyIfoodAction === `${cancellationModalOrder.id}:request_cancellation` ||
+                  statusUpdatingOrderId === cancellationModalOrder.id
                 }
                 className="rounded-2xl bg-red-600 px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {busyIfoodAction === `${cancellationModalOrder.id}:request_cancellation`
+                {busyIfoodAction === `${cancellationModalOrder.id}:request_cancellation` || statusUpdatingOrderId === cancellationModalOrder.id
                   ? "Enviando..."
-                  : "Solicitar cancelamento"}
+                  : isIfoodOrder(cancellationModalOrder)
+                    ? "Solicitar cancelamento"
+                    : "Confirmar cancelamento"}
               </button>
             </div>
           </div>
@@ -1237,7 +1284,7 @@ export default function OrdersPage() {
                                 <button
                                   type="button"
                                   onClick={() => void handlePrimaryAction(order)}
-                                  disabled={busyIfoodAction.startsWith(`${order.id}:`)}
+                                  disabled={busyIfoodAction.startsWith(`${order.id}:`) || statusUpdatingOrderId === order.id}
                                   className="brand-gradient w-full rounded-2xl px-4 py-3 text-sm font-black text-white disabled:opacity-60"
                                 >
                                   {busyIfoodAction.startsWith(`${order.id}:`) ? "Enviando..." : primaryActionLabel}
@@ -1250,10 +1297,10 @@ export default function OrdersPage() {
                                   onClick={() =>
                                     isIfoodOrder(order)
                                       ? handleRequestIfoodCancellation(order)
-                                      : updateStatus(order, "canceled")
+                                      : handleRequestLocalCancellation(order)
                                   }
                                   className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-600"
-                                  disabled={busyIfoodAction.startsWith(`${order.id}:`)}
+                                  disabled={busyIfoodAction.startsWith(`${order.id}:`) || statusUpdatingOrderId === order.id}
                                 >
                                   Solicitar cancelamento
                                 </button>
