@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { CartItem, Product } from "./types";
+import { toggleAddonSelection } from "./product-options";
 
 export function useCart(storageKey: string) {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -67,15 +68,8 @@ export function useCart(storageKey: string) {
   const toggleAddon = (groupId: string, option: any, group: any) => {
     setAddonSelections((prev) => {
       const current = prev[groupId] || [];
-      const exists = current.some((item) => item.name === option.name);
-
-      if (exists) {
-        return { ...prev, [groupId]: current.filter((item) => item.name !== option.name) };
-      }
-
-      if (group.max_options > 0 && current.length >= group.max_options) return prev;
-
-      return { ...prev, [groupId]: [...current, option] };
+      const next = toggleAddonSelection(current, option, group);
+      return next === current ? prev : { ...prev, [groupId]: next };
     });
   };
 

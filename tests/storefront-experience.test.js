@@ -33,6 +33,15 @@ test("product modal preserves a stable image area on mobile", () => {
   assert.match(productPicker, /className="object-contain p-3 sm:p-4"/);
 });
 
+test("product options use clear rules and accessible controls", () => {
+  assert.match(productPicker, /getAddonSelectionInstruction\(group\)/);
+  assert.match(productPicker, /type=\{isSingleChoice \? "radio" : "checkbox"\}/);
+  assert.match(productPicker, /aria-label=\{`Diminuir quantidade de \$\{product\.name\}`\}/);
+  assert.match(productPicker, /aria-label=\{`Aumentar quantidade de \$\{product\.name\}`\}/);
+  assert.match(productPicker, /Adicionar observação/);
+  assert.match(productPicker, /aria-expanded=\{!isCollapsed\}/);
+});
+
 test("delivery address starts without a hardcoded city and resets CEP-derived fields", () => {
   assert.match(storefrontConstants, /city: "",\s+state: ""/);
   assert.doesNotMatch(storefrontConstants, /city: "S(?:Ã£|ã)o Paulo"/);
