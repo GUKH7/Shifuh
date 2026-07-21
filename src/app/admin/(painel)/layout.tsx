@@ -109,7 +109,7 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
     <div className="min-h-screen bg-[#fbf7f2] text-gray-950">
       <AdminSidebar isCollapsed={isCollapsed} toggleSidebar={toggleSidebar} />
       <div
-        className={`transition-all duration-300 ${isCollapsed ? "ml-16" : "ml-56"}`}
+        className={`min-w-0 max-w-[calc(100vw_-_var(--admin-sidebar-width))] transition-all duration-300 ${isCollapsed ? "ml-16" : "ml-56"}`}
         style={{ "--admin-sidebar-width": isCollapsed ? "4rem" : "14rem" } as React.CSSProperties}
       >
         <header className="sticky top-0 z-40 bg-[#fbf7f2]/95 backdrop-blur">
@@ -165,7 +165,7 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
             </div>
           </div>
         </header>
-        <main className="px-6 py-5">{children}</main>
+        <main className="min-w-0 overflow-x-hidden px-6 py-5">{children}</main>
       </div>
     </div>
   );

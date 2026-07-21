@@ -390,7 +390,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl pb-20">
+    <div className="mx-auto w-full min-w-0 max-w-6xl pb-20">
       <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h1 className="text-3xl font-black tracking-tight text-gray-950">Cardápios</h1>
@@ -404,8 +404,8 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
-          <div className="relative min-w-[280px]">
+        <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row lg:w-auto">
+          <div className="relative w-full min-w-0 sm:min-w-[240px] lg:w-[280px]">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
             <input
               type="text"
@@ -448,8 +448,8 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <div className="space-y-5">
+      <div className="grid min-w-0 gap-6 2xl:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
+        <div className="min-w-0 space-y-5">
           <div className="surface-card rounded-[26px] p-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
@@ -506,7 +506,7 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          <div className="space-y-5">
+          <div className="min-w-0 space-y-5">
             {filteredCategories.length === 0 ? (
               <div className="surface-card flex min-h-[420px] flex-col items-center justify-center rounded-[26px] px-6 text-center">
                 <p className="text-lg font-black text-gray-950">Nada encontrado</p>
@@ -534,11 +534,11 @@ export default function AdminDashboard() {
                     onDragStart={() => handleDragStart(index)}
                     onDragOver={(e) => handleDragOver(e, index)}
                     onDragEnd={handleDragEnd}
-                    className={`surface-card overflow-hidden rounded-[26px] ${
+                    className={`surface-card w-full min-w-0 overflow-hidden rounded-[26px] ${
                       draggedCategoryIndex === index ? "opacity-50" : ""
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-4 border-b border-[var(--line)] bg-white px-5 py-4">
+                    <div className="flex min-w-0 items-center justify-between gap-4 border-b border-[var(--line)] bg-white px-5 py-4">
                       <div className="flex min-w-0 flex-1 items-center gap-3">
                         <button className="rounded-xl bg-[#fbf7f2] p-2 text-gray-400">
                           <GripVertical size={18} />
@@ -568,10 +568,10 @@ export default function AdminDashboard() {
                         ) : (
                           <button
                             onClick={() => toggleCategory(category.id)}
-                            className="flex min-w-0 items-center gap-3 text-left"
+                            className="flex min-w-0 flex-1 items-center gap-3 text-left"
                           >
-                            <div>
-                              <p className="text-lg font-black text-gray-950">{category.name}</p>
+                            <div className="min-w-0">
+                              <p className="break-words text-lg font-black text-gray-950">{category.name}</p>
                               <p className="text-xs font-medium text-gray-400">
                                 {category.categoryProducts.length} itens
                               </p>
@@ -581,7 +581,7 @@ export default function AdminDashboard() {
                       </div>
 
                       {!isEditing && (
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-shrink-0 items-center gap-2">
                           <button
                             onClick={() => startEditingCat(category)}
                             className="rounded-xl p-2 text-gray-400 hover:bg-[#fbf7f2] hover:text-[var(--brand)]"
@@ -608,7 +608,7 @@ export default function AdminDashboard() {
                       <div className="divide-y divide-[var(--line)] bg-[#fffdfa]">
                         {category.categoryProducts.length > 0 ? (
                           category.categoryProducts.map((product: any) => (
-                            <div key={product.id} className="group flex items-center gap-4 px-5 py-4">
+                            <div key={product.id} className="group flex min-w-0 flex-wrap items-center gap-4 px-5 py-4 sm:flex-nowrap">
                               <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-2xl border border-[var(--line)] bg-[#fbf7f2]">
                                 {product.image_url ? (
                                   <img
@@ -645,7 +645,7 @@ export default function AdminDashboard() {
                                 </p>
                               </div>
 
-                              <div className="flex items-center gap-2 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100">
+                              <div className="ml-20 flex flex-shrink-0 items-center gap-2 opacity-100 transition-opacity sm:ml-0 md:opacity-0 md:group-hover:opacity-100">
                                 <button
                                   onClick={() => handleEditProduct(product)}
                                   className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-xs font-bold text-gray-600"
@@ -686,7 +686,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        <aside className="surface-card sticky top-28 h-fit rounded-[26px] p-5">
+        <aside className="surface-card min-w-0 h-fit rounded-[26px] p-5 2xl:sticky 2xl:top-28">
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-gray-400">
             Pré-visualização
           </p>
@@ -705,7 +705,7 @@ export default function AdminDashboard() {
                 {filteredCategories.slice(0, 3).map((category) => (
                   <span
                     key={category.id}
-                    className="rounded-full bg-[#fff0e8] px-3 py-1.5 text-xs font-bold text-[var(--brand)]"
+                    className="max-w-full break-words rounded-full bg-[#fff0e8] px-3 py-1.5 text-xs font-bold text-[var(--brand)]"
                   >
                     {category.name}
                   </span>
@@ -719,7 +719,7 @@ export default function AdminDashboard() {
               ) : (
                 <div className="space-y-3">
                   {previewItems.slice(0, 4).map((item) => (
-                    <div key={item.id} className="rounded-2xl border border-[var(--line)] bg-white p-4">
+                    <div key={item.id} className="min-w-0 rounded-2xl border border-[var(--line)] bg-white p-4">
                       <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-gray-400">
                         {item.categoryName}
                       </p>
