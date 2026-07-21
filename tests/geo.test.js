@@ -87,3 +87,39 @@ test("nao aceita fallback de CEP incompativel com a cidade informada", async () 
     global.fetch = originalFetch;
   }
 });
+
+test("usa geocodificador alternativo quando o principal bloqueia o servidor", async () => {
+  const { getCoordinates } = loadGeoModule();
+  const originalFetch = global.fetch;
+  const requestedUrls = [];
+
+  global.fetch = async (url) => {
+    requestedUrls.push(String(url));
+    if (String(url).includes("nominatim")) return { ok: false, status: 429 };
+    return {
+      ok: true,
+      json: async () => ({
+        features: [{
+          properties: { city: "Suzano", state: "São Paulo", postcode: "08675-238" },
+          geometry: { coordinates: [-46.3121159, -23.5517116] },
+        }],
+      }),
+    };
+  };
+
+  try {
+    const coordinates = await getCoordinates({
+      postalCode: "08675238",
+      street: "Rua Baruel",
+      number: "1050",
+      neighborhood: "Jardim Paulista",
+      city: "Suzano",
+      state: "SP",
+    });
+
+    assert.deepEqual(coordinates, { lat: -23.5517116, lon: -46.3121159 });
+    assert.ok(requestedUrls.some((url) => url.includes("photon.komoot.io")));
+  } finally {
+    global.fetch = originalFetch;
+  }
+});

@@ -65,13 +65,48 @@ type NominatimResult = {
     town?: string;
     village?: string;
     municipality?: string;
+    city_district?: string;
+    county?: string;
+    state_district?: string;
     state?: string;
     "ISO3166-2-lvl4"?: string;
   };
 };
 
+type PhotonResult = {
+  geometry?: { coordinates?: [number, number] };
+  properties?: {
+    city?: string;
+    district?: string;
+    county?: string;
+    state?: string;
+    postcode?: string;
+  };
+};
+
+const coordinateCache = new Map<string, { lat: number; lon: number; expiresAt: number }>();
+const GEOCODING_CACHE_TTL_MS = 30 * 60 * 1000;
+const GEOCODING_USER_AGENT = "GestorDelivery/1.0 (+https://gestor-delivery-tau.vercel.app)";
+
+const BRAZILIAN_STATE_NAMES: Record<string, string> = {
+  AC: "acre", AL: "alagoas", AP: "amapa", AM: "amazonas", BA: "bahia", CE: "ceara",
+  DF: "distrito federal", ES: "espirito santo", GO: "goias", MA: "maranhao", MT: "mato grosso",
+  MS: "mato grosso do sul", MG: "minas gerais", PA: "para", PB: "paraiba", PR: "parana",
+  PE: "pernambuco", PI: "piaui", RJ: "rio de janeiro", RN: "rio grande do norte",
+  RS: "rio grande do sul", RO: "rondonia", RR: "roraima", SC: "santa catarina",
+  SP: "sao paulo", SE: "sergipe", TO: "tocantins",
+};
+
 function normalizeComparable(value?: string) {
   return normalizeAddress(value || "").toLowerCase();
+}
+
+function matchesExpectedState(resultState: string | undefined, resultCode: string | undefined, expectedState: string) {
+  const normalizedExpected = normalizeComparable(expectedState);
+  if (!normalizedExpected) return true;
+
+  const expectedName = BRAZILIAN_STATE_NAMES[expectedState.toUpperCase()] || normalizedExpected;
+  return normalizeComparable(resultState) === expectedName || normalizeComparable(resultCode) === normalizedExpected;
 }
 
 function matchesExpectedLocation(result: NominatimResult, expected: GeocodingAddress) {
@@ -81,14 +116,24 @@ function matchesExpectedLocation(result: NominatimResult, expected: GeocodingAdd
     result.address?.city ||
       result.address?.town ||
       result.address?.village ||
-      result.address?.municipality,
+      result.address?.municipality ||
+      result.address?.city_district ||
+      result.address?.county ||
+      result.address?.state_district,
   );
-  const resultState = normalizeComparable(result.address?.state);
-  const resultStateCode = normalizeComparable(result.address?.["ISO3166-2-lvl4"]?.split("-").pop());
 
   if (expectedCity && resultCity !== expectedCity) return false;
-  if (expectedState && resultState !== expectedState && resultStateCode !== expectedState) return false;
+  if (!matchesExpectedState(result.address?.state, result.address?.["ISO3166-2-lvl4"]?.split("-").pop(), expectedState)) return false;
   return true;
+}
+
+function matchesExpectedPhotonLocation(result: PhotonResult, expected: GeocodingAddress) {
+  const expectedCity = normalizeComparable(expected.city);
+  const resultCity = normalizeComparable(
+    result.properties?.city || result.properties?.district || result.properties?.county,
+  );
+  if (expectedCity && resultCity !== expectedCity) return false;
+  return matchesExpectedState(result.properties?.state, undefined, expected.state || "");
 }
 
 function buildStructuredAttempts(address: GeocodingAddress) {
@@ -130,39 +175,59 @@ export async function getCoordinates(address: string | GeocodingAddress) {
   const rawAddress = typeof address === "string" ? address : Object.values(address).join(", ");
   const postalCode = structured?.postalCode?.replace(/\D/g, "") || extractPostalCode(rawAddress);
   const attempts = structured ? buildStructuredAttempts(structured) : buildAddressAttempts(rawAddress);
+  const cacheKey = normalizeComparable(`${rawAddress}|${postalCode || ""}`);
+  const cached = coordinateCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return { lat: cached.lat, lon: cached.lon };
+
+  const remember = (lat: number, lon: number) => {
+    const coordinates = { lat, lon };
+    coordinateCache.set(cacheKey, { ...coordinates, expiresAt: Date.now() + GEOCODING_CACHE_TTL_MS });
+    if (coordinateCache.size > 200) coordinateCache.delete(coordinateCache.keys().next().value as string);
+    return coordinates;
+  };
+
+  let nominatimUnavailable = false;
 
   for (const attempt of attempts) {
     try {
       const query = encodeURIComponent(attempt);
-      const url = `https://nominatim.openstreetmap.org/search?format=json&countrycodes=br&addressdetails=1&limit=1&q=${query}`;
+      const url = `https://nominatim.openstreetmap.org/search?format=json&countrycodes=br&addressdetails=1&limit=5&q=${query}`;
       const res = await fetch(url, {
         headers: {
           "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+          "User-Agent": GEOCODING_USER_AGENT,
         },
+        signal: AbortSignal.timeout(4500),
       });
 
-      if (!res.ok) continue;
+      if (!res.ok) {
+        if (res.status === 403 || res.status === 429 || res.status >= 500) {
+          nominatimUnavailable = true;
+          break;
+        }
+        continue;
+      }
 
       const data = (await res.json()) as NominatimResult[];
       const match = structured
         ? data.find((result) => matchesExpectedLocation(result, structured))
         : data[0];
       if (match?.lat && match?.lon) {
-        return {
-          lat: parseFloat(match.lat),
-          lon: parseFloat(match.lon),
-        };
+        return remember(parseFloat(match.lat), parseFloat(match.lon));
       }
     } catch (error) {
       console.error("Erro GPS:", error);
+      nominatimUnavailable = true;
+      break;
     }
   }
 
-  if (postalCode) {
+  if (postalCode && !nominatimUnavailable) {
     try {
       const postalUrl = `https://nominatim.openstreetmap.org/search?format=json&countrycodes=br&addressdetails=1&postalcode=${postalCode}&limit=5`;
       const postalRes = await fetch(postalUrl, {
-        headers: { "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8" },
+        headers: { "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8", "User-Agent": GEOCODING_USER_AGENT },
+        signal: AbortSignal.timeout(4500),
       });
       if (postalRes.ok) {
         const postalData = (await postalRes.json()) as NominatimResult[];
@@ -170,11 +235,33 @@ export async function getCoordinates(address: string | GeocodingAddress) {
           ? postalData.find((result) => matchesExpectedLocation(result, structured))
           : postalData[0];
         if (match?.lat && match?.lon) {
-          return { lat: parseFloat(match.lat), lon: parseFloat(match.lon) };
+          return remember(parseFloat(match.lat), parseFloat(match.lon));
         }
       }
     } catch (error) {
       console.error("Erro GPS CEP:", error);
+    }
+  }
+
+  for (const attempt of attempts.slice(0, 2)) {
+    try {
+      const photonUrl = `https://photon.komoot.io/api/?limit=5&q=${encodeURIComponent(attempt)}`;
+      const photonRes = await fetch(photonUrl, {
+        headers: { "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8", "User-Agent": GEOCODING_USER_AGENT },
+        signal: AbortSignal.timeout(4500),
+      });
+      if (!photonRes.ok) continue;
+
+      const photonData = (await photonRes.json()) as { features?: PhotonResult[] };
+      const match = photonData.features?.find((result) =>
+        structured ? matchesExpectedPhotonLocation(result, structured) : true,
+      );
+      const coordinates = match?.geometry?.coordinates;
+      if (coordinates && Number.isFinite(coordinates[0]) && Number.isFinite(coordinates[1])) {
+        return remember(coordinates[1], coordinates[0]);
+      }
+    } catch (error) {
+      console.error("Erro GPS alternativo:", error);
     }
   }
 
