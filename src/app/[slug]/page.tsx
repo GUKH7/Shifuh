@@ -620,7 +620,7 @@ export default function StorePage() {
   }
 
   return (
-    <div className="min-h-screen pb-28 text-gray-950" style={{ backgroundColor: pageBackground }}>
+    <div className="min-h-screen w-full min-w-0 overflow-x-hidden pb-28 text-gray-950" style={{ backgroundColor: pageBackground }}>
       <section className="bg-white">
         <div className="mx-auto w-full max-w-5xl px-0 pb-3 sm:px-4 sm:pb-5">
           <div className="relative overflow-hidden rounded-b-[18px] sm:rounded-[28px]">
@@ -730,7 +730,7 @@ export default function StorePage() {
                 </div>
               </div>
             </div>
-            <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-gray-100 pt-3 text-[11px] font-medium text-gray-600 sm:grid-cols-3 sm:text-sm">
+            <div className="mt-3 grid min-w-0 grid-cols-2 gap-x-3 gap-y-2 border-t border-gray-100 pt-3 text-[11px] font-medium text-gray-600 sm:grid-cols-3 sm:text-sm">
               <span className="col-span-2 inline-flex min-w-0 items-center gap-1.5 sm:col-span-1">
                 <MapPin size={14} className="shrink-0 text-gray-400" />
                 <span className="truncate">{serviceRegion}</span>
@@ -773,15 +773,15 @@ export default function StorePage() {
         </div>
       </section>
 
-      <div className="sticky top-0 z-30 border-b border-gray-200 bg-white">
-        <div className="mx-auto w-full max-w-5xl px-2.5 py-2 sm:px-6">
+      <div className="sticky top-0 z-30 w-full min-w-0 overflow-hidden border-b border-gray-200 bg-white">
+        <div className="mx-auto w-full min-w-0 max-w-5xl px-2.5 py-2 sm:px-6">
           <div className="mb-2 flex h-9 items-center gap-2 rounded-xl border border-gray-200 bg-[#f7f7f7] px-3 sm:h-10 sm:mb-2.5 sm:gap-2.5 sm:px-3.5">
             <Search size={16} className="text-gray-400" />
             <input
               value={menuSearch}
               onChange={(e) => setMenuSearch(e.target.value)}
               placeholder="Buscar no cardápio"
-              className="w-full bg-transparent text-[12px] font-medium outline-none placeholder:text-gray-400 sm:text-sm"
+              className="min-w-0 flex-1 bg-transparent text-[12px] font-medium outline-none placeholder:text-gray-400 sm:text-sm"
             />
             {menuSearch && (
               <button onClick={() => setMenuSearch("")} className="text-gray-400">
@@ -789,7 +789,7 @@ export default function StorePage() {
               </button>
             )}
           </div>
-          <div className="flex gap-1.5 overflow-x-auto pb-0.5 sm:gap-2">
+          <div className="flex w-full min-w-0 gap-1.5 overflow-x-auto overscroll-x-contain pb-0.5 [scrollbar-width:none] sm:gap-2 [&::-webkit-scrollbar]:hidden">
             {displayedCategories.map((category) => (
               <button
                 key={category.id}
@@ -798,7 +798,7 @@ export default function StorePage() {
                   setActiveCategory(category.id);
                   document.getElementById(`cat-${category.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
                 }}
-                className={`whitespace-nowrap text-[11px] font-bold transition-colors sm:text-sm ${
+                className={`max-w-[75vw] shrink-0 truncate whitespace-nowrap text-[11px] font-bold transition-colors sm:max-w-none sm:text-sm ${
                   storefrontTheme.category_style === "pill"
                     ? "rounded-full px-2.5 py-1.5 sm:px-3"
                     : "border-b-2 px-1 pb-1"
@@ -824,9 +824,9 @@ export default function StorePage() {
         </div>
       </div>
 
-      <main className="mx-auto w-full max-w-5xl px-2.5 py-3 sm:px-6 sm:py-5">
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
-          <div className="space-y-4">
+      <main className="mx-auto w-full min-w-0 max-w-5xl px-2.5 py-3 sm:px-6 sm:py-5">
+        <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
+          <div className="min-w-0 space-y-4">
             {menuSearch && (
               <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-700">
                 {visibleProducts.length} resultado(s) para &quot;{menuSearch}&quot;
@@ -838,9 +838,9 @@ export default function StorePage() {
               if (categoryProducts.length === 0) return null;
 
               return (
-                <section key={category.id} id={`cat-${category.id}`} className="catalog-section scroll-mt-24 overflow-hidden rounded-[18px] border border-gray-200 bg-white sm:rounded-[22px]">
+                <section key={category.id} id={`cat-${category.id}`} className="catalog-section w-full min-w-0 scroll-mt-24 overflow-hidden rounded-[18px] border border-gray-200 bg-white sm:rounded-[22px]">
                   <div className="border-b border-gray-100 px-3 py-2.5 sm:px-5 sm:py-3">
-                    <h2 className="text-[15px] font-black text-gray-950 sm:text-[17px]">{category.name}</h2>
+                    <h2 className="break-words text-[15px] font-black text-gray-950 sm:text-[17px]">{category.name}</h2>
                     <p className="mt-0.5 text-[10px] font-medium text-gray-500 sm:text-[11px]">{categoryProducts.length} itens</p>
                   </div>
 
@@ -865,8 +865,8 @@ export default function StorePage() {
                           disabled={!product.is_active}
                           className={`group relative text-left transition-all ${product.is_active ? "hover:-translate-y-0.5" : "cursor-not-allowed"} ${
                             storefrontTheme.catalog_layout === "list"
-                              ? "flex w-full gap-4 px-3 py-4 hover:bg-[#fafafa] sm:px-5"
-                              : `flex w-full gap-4 px-3 py-4 hover:bg-[#fafafa] sm:block sm:rounded-[20px] sm:p-3 ${cardTone}`
+                              ? "flex w-full min-w-0 gap-3 overflow-hidden px-3 py-3.5 hover:bg-[#fafafa] min-[380px]:gap-4 sm:px-5 sm:py-4"
+                              : `flex w-full min-w-0 gap-3 overflow-hidden px-3 py-3.5 hover:bg-[#fafafa] min-[380px]:gap-4 sm:block sm:rounded-[20px] sm:p-3 ${cardTone}`
                           }`}
                         >
                           <div className={`min-w-0 flex-1 ${product.is_active ? "" : "opacity-55"}`}>
@@ -876,8 +876,8 @@ export default function StorePage() {
                               {product.is_vegetarian && <span className="rounded-md bg-emerald-50 px-2 py-1 text-[9px] font-black uppercase text-emerald-700">Vegetariano</span>}
                               {product.is_best_seller && <span className="rounded-md bg-amber-50 px-2 py-1 text-[9px] font-black uppercase text-amber-800">Mais pedido</span>}
                             </div>
-                            <h3 className="text-[14px] font-black leading-snug text-gray-950 sm:text-[16px]">{product.name}</h3>
-                            <p className="mt-1.5 line-clamp-2 text-[12px] leading-5 text-gray-500 sm:text-[13px]">{product.description}</p>
+                            <h3 className="break-words text-[14px] font-black leading-snug text-gray-950 [overflow-wrap:anywhere] sm:text-[16px]">{product.name}</h3>
+                            <p className="mt-1.5 line-clamp-2 break-words text-[12px] leading-5 text-gray-500 [overflow-wrap:anywhere] sm:text-[13px]">{product.description}</p>
                             {!product.is_active && (
                               <p className="mt-2 text-xs font-bold text-gray-500">Temporariamente indisponível para pedidos.</p>
                             )}
@@ -887,10 +887,10 @@ export default function StorePage() {
                             </div>
                           </div>
                           <div className={`relative aspect-[4/3] overflow-hidden rounded-xl bg-gray-100 ${
-                            storefrontTheme.catalog_layout === "list" ? "w-[112px] flex-shrink-0 sm:w-36" : "w-[112px] flex-shrink-0 sm:mt-3 sm:w-full"
+                            storefrontTheme.catalog_layout === "list" ? "w-20 flex-shrink-0 min-[380px]:w-24 sm:w-36" : "w-20 flex-shrink-0 min-[380px]:w-24 sm:mt-3 sm:w-full"
                           }`}>
                             {product.image_url ? (
-                              <Image src={product.image_url} alt={product.name} fill sizes="(max-width: 640px) 112px, (max-width: 1280px) 33vw, 320px" className="object-cover" />
+                              <Image src={product.image_url} alt={product.name} fill sizes="(max-width: 379px) 80px, (max-width: 640px) 96px, (max-width: 1280px) 33vw, 320px" className="object-cover" />
                             ) : (
                               <div className="flex h-full w-full items-center justify-center text-gray-300"><ShoppingBag size={28} /></div>
                             )}
