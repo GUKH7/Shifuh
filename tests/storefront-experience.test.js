@@ -27,7 +27,9 @@ test("mobile cart separates order summary from its main action", () => {
 
 test("checkout keeps compact progress and totals visible in the footer", () => {
   assert.match(checkout, /Etapas do pedido/);
-  assert.match(checkout, /h-2\.5 w-2\.5 shrink-0 rounded-full/);
+  assert.match(checkout, /Sacola", icon: ShoppingBag/);
+  assert.match(checkout, /isComplete \? <Check/);
+  assert.match(checkout, /isCurrent \? "Agora" : isComplete \? "Concluída" : "Próxima"/);
   assert.match(checkout, /Entrega estimada/);
   assert.match(checkout, /Total do pedido/);
 });

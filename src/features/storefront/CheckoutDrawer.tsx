@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { Banknote, ChevronLeft, CreditCard, Loader2, Minus, Pencil, Plus, QrCode, Ticket, Trash2 } from "lucide-react";
+import { Banknote, Check, ChevronLeft, CreditCard, Loader2, MapPin, Minus, Pencil, Plus, QrCode, ShoppingBag, Ticket, Trash2 } from "lucide-react";
 import { formatMoney, getContrastTextColor } from "./format";
 import { DeliveryCalculator } from "./DeliveryCalculator";
 import type { CartItem, CheckoutAddress, CheckoutStep, DeliveryInfo } from "./types";
@@ -215,20 +215,44 @@ export function CheckoutDrawer({
               </h2>
             </div>
           </div>
-          <nav aria-label="Etapas do pedido" className="relative mt-3 grid grid-cols-3 gap-2">
-            <div className="absolute left-[16%] right-[16%] top-[5px] h-px bg-gray-200" aria-hidden="true" />
-            {["Sacola", "Entrega", "Pagamento"].map((label, index) => {
+          <nav aria-label="Etapas do pedido" className="mt-3 grid grid-cols-3 gap-1.5 sm:gap-2">
+            {[
+              { label: "Sacola", icon: ShoppingBag },
+              { label: "Entrega", icon: MapPin },
+              { label: "Pagamento", icon: CreditCard },
+            ].map(({ label, icon: StepIcon }, index) => {
+              const isComplete = index < currentIndex;
+              const isCurrent = index === currentIndex;
+
               return (
-                <div key={label} className="relative z-[1] min-w-0 text-center" aria-current={index === currentIndex ? "step" : undefined}>
-                  <div className="flex flex-col items-center gap-1.5">
+                <div
+                  key={label}
+                  className={`min-w-0 rounded-xl border px-2 py-2 transition-colors sm:px-3 ${
+                    isCurrent
+                      ? "bg-white shadow-[0_4px_14px_rgba(17,16,15,0.06)]"
+                      : isComplete
+                        ? "border-gray-200 bg-white/70"
+                        : "border-transparent bg-black/[0.025]"
+                  }`}
+                  style={isCurrent ? { borderColor: primaryColor } : undefined}
+                  aria-current={isCurrent ? "step" : undefined}
+                >
+                  <div className="flex min-w-0 items-center gap-2">
                     <span
-                      className="h-2.5 w-2.5 shrink-0 rounded-full ring-4 ring-[#faf5ef]"
-                      style={index <= currentIndex
-                        ? { backgroundColor: primaryColor }
-                        : { backgroundColor: "#d1d5db" }}
-                    />
-                    <span className={`truncate text-[11px] font-bold sm:text-xs ${index === currentIndex ? "text-gray-950" : "text-gray-500"}`}>
-                      {label}
+                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
+                        isCurrent ? "" : isComplete ? "bg-emerald-50 text-emerald-700" : "bg-white text-gray-400"
+                      }`}
+                      style={isCurrent ? { backgroundColor: `${primaryColor}18`, color: primaryColor } : undefined}
+                    >
+                      {isComplete ? <Check size={15} strokeWidth={3} /> : <StepIcon size={15} />}
+                    </span>
+                    <span className="min-w-0 text-left">
+                      <strong className={`block truncate text-[11px] leading-tight sm:text-xs ${isCurrent ? "text-gray-950" : "text-gray-600"}`}>
+                        {label}
+                      </strong>
+                      <small className={`mt-0.5 block truncate text-[9px] font-bold leading-tight sm:text-[10px] ${isCurrent ? "" : "text-gray-400"}`} style={isCurrent ? { color: primaryColor } : undefined}>
+                        {isCurrent ? "Agora" : isComplete ? "Concluída" : "Próxima"}
+                      </small>
                     </span>
                   </div>
                 </div>
