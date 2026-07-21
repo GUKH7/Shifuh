@@ -51,3 +51,14 @@ test("storefront order RPC keeps operational rules server-only", () => {
   assert.match(operationalRules, /revoke all on function public\.create_storefront_order_transaction[\s\S]+from public, anon, authenticated;/i);
   assert.match(operationalRules, /grant execute on function public\.create_storefront_order_transaction[\s\S]+to service_role;/i);
 });
+
+test("storefront orders use a restaurant-scoped idempotency key", () => {
+  const idempotencyMigration = fs.readFileSync(
+    path.join(__dirname, "..", "supabase", "migrations", "20260721162914_add_order_idempotency.sql"),
+    "utf8",
+  );
+  assert.match(idempotencyMigration, /orders_restaurant_idempotency_key_unique/i);
+  assert.match(idempotencyMigration, /on public\.orders \(restaurant_id, idempotency_key\)/i);
+  assert.match(idempotencyMigration, /when unique_violation[\s\S]+idempotency_key = normalized_idempotency_key/i);
+  assert.match(idempotencyMigration, /grant execute on function public\.create_storefront_order_transaction[\s\S]+to service_role;/i);
+});

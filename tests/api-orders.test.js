@@ -1,5 +1,6 @@
 const assert = require("node:assert/strict");
 const Module = require("node:module");
+const { randomUUID } = require("node:crypto");
 const path = require("node:path");
 const test = require("node:test");
 const ts = require("typescript");
@@ -180,6 +181,16 @@ function createSupabaseMock(role = "public") {
         return { data: null, error: mockState.createOrderError };
       }
 
+      const existingOrder = mockState.orders.find(
+        (order) => order.restaurant_id === args.p_restaurant_id && order.idempotency_key === args.p_idempotency_key,
+      );
+      if (existingOrder) {
+        return {
+          data: [{ order_id: existingOrder.id, display_number: existingOrder.display_number }],
+          error: null,
+        };
+      }
+
       mockState.rpcCounter += 1;
       const orderId = `order-${mockState.rpcCounter}`;
       const displayNumber = mockState.rpcCounter;
@@ -200,6 +211,7 @@ function createSupabaseMock(role = "public") {
         change_for: args.p_change_for,
         coupon_code: args.p_coupon_code,
         scheduled_for: args.p_scheduled_for,
+        idempotency_key: args.p_idempotency_key,
         display_number: displayNumber,
       });
       mockState.orderItems.push(
@@ -365,7 +377,7 @@ async function postOrderWithHeaders(payload, headers = {}) {
     new Request("http://localhost/api/orders", {
       method: "POST",
       body: JSON.stringify(payload),
-      headers: { "content-type": "application/json", ...headers },
+      headers: { "content-type": "application/json", "idempotency-key": randomUUID(), ...headers },
     }),
   );
 }
@@ -631,6 +643,28 @@ test("reserva display_number via RPC em pedidos concorrentes", async () => {
     mockState.orders.map((order) => order.display_number),
     [1, 2, 3, 4, 5],
   );
+});
+
+test("reutiliza o mesmo pedido quando a tentativa e repetida", async () => {
+  resetRateLimitForTests();
+  mockState = baseState();
+  const idempotencyKey = randomUUID();
+
+  const [firstResponse, repeatedResponse] = await Promise.all([
+    postOrderWithHeaders(createPayload(), { "idempotency-key": idempotencyKey }),
+    postOrderWithHeaders(createPayload(), { "idempotency-key": idempotencyKey }),
+  ]);
+  const [firstBody, repeatedBody] = await Promise.all([
+    readJson(firstResponse),
+    readJson(repeatedResponse),
+  ]);
+
+  assert.equal(firstResponse.status, 200);
+  assert.equal(repeatedResponse.status, 200);
+  assert.equal(firstBody.orderId, repeatedBody.orderId);
+  assert.equal(firstBody.displayNumber, repeatedBody.displayNumber);
+  assert.equal(mockState.orders.length, 1);
+  assert.equal(mockState.orders[0].idempotency_key, idempotencyKey);
 });
 
 test("nao grava pedido nem itens quando a RPC transacional falha", async () => {

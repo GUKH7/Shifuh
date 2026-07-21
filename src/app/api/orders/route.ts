@@ -72,6 +72,8 @@ function parseNumber(value: unknown) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+const IDEMPOTENCY_KEY_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 function resolveAddonSelection(selectedAddons: CheckoutAddon[], productAddons: unknown) {
   if (!Array.isArray(selectedAddons) || selectedAddons.length === 0) {
     return {
@@ -153,6 +155,14 @@ export async function POST(request: Request) {
 
     if (rateLimitResponse) {
       return rateLimitResponse;
+    }
+
+    const idempotencyKey = request.headers.get("idempotency-key")?.trim().toLowerCase() || "";
+    if (!IDEMPOTENCY_KEY_PATTERN.test(idempotencyKey)) {
+      return NextResponse.json(
+        { code: "INVALID_IDEMPOTENCY_KEY", error: "Inicie uma nova tentativa de pedido." },
+        { status: 400 },
+      );
     }
 
     const body = (await request.json()) as CheckoutPayload;
@@ -505,6 +515,7 @@ export async function POST(request: Request) {
         p_user_id: user?.id || null,
         p_scheduled_for: scheduledFor?.toISOString() || null,
         p_save_customer: true,
+        p_idempotency_key: idempotencyKey,
       },
     );
     const createdOrder = normalizeCreatedOrderResult(createdOrderData as CreatedOrderResult);

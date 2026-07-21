@@ -221,6 +221,7 @@ export interface Database {
             is_test: boolean;
             external_payload: Json | null;
             scheduled_for: string | null;
+            idempotency_key: string | null;
             created_at: string;
             updated_at: string;
           };
@@ -246,6 +247,7 @@ export interface Database {
             is_test?: boolean;
             external_payload?: Json | null;
             scheduled_for?: string | null;
+            idempotency_key?: string | null;
             created_at?: string;
             updated_at?: string;
           };
@@ -271,6 +273,7 @@ export interface Database {
             is_test?: boolean;
             external_payload?: Json | null;
             scheduled_for?: string | null;
+            idempotency_key?: string | null;
             created_at?: string;
             updated_at?: string;
           };
@@ -640,6 +643,7 @@ export interface Database {
           p_user_id: string | null;
           p_scheduled_for: string | null;
           p_save_customer: boolean;
+          p_idempotency_key: string;
         };
         Returns: Array<{
           order_id: string;

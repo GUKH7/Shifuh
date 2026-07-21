@@ -2,10 +2,10 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { Banknote, Check, ChevronLeft, CreditCard, Loader2, MapPin, Minus, Pencil, Plus, QrCode, ShoppingBag, Ticket, Trash2 } from "lucide-react";
+import { ArrowRight, Banknote, Check, CheckCircle2, ChevronLeft, CreditCard, Loader2, MapPin, Minus, Pencil, Plus, QrCode, ShoppingBag, Ticket, Trash2 } from "lucide-react";
 import { formatMoney, getContrastTextColor } from "./format";
 import { DeliveryCalculator } from "./DeliveryCalculator";
-import type { CartItem, CheckoutAddress, CheckoutStep, DeliveryInfo } from "./types";
+import type { CartItem, CheckoutAddress, CheckoutStep, DeliveryInfo, OrderResponse } from "./types";
 import type { StoreStatus } from "./store-summary";
 import {
   formatCurrencyInput,
@@ -43,6 +43,7 @@ type CheckoutDrawerProps = {
   changeFor: string;
   cashNeedsChange: boolean;
   checkoutError: string;
+  completedOrder: OrderResponse | null;
   couponError: string;
   isSubmitting: boolean;
   saveAddress: boolean;
@@ -76,6 +77,8 @@ type CheckoutDrawerProps = {
   onSaveAddressChange: (value: boolean) => void;
   onScheduledForChange: (value: string) => void;
   onPlaceOrder: () => void;
+  onTrackOrder: () => void;
+  onFinishOrder: () => void;
 };
 
 export function CheckoutDrawer({
@@ -103,6 +106,7 @@ export function CheckoutDrawer({
   changeFor,
   cashNeedsChange,
   checkoutError,
+  completedOrder,
   couponError,
   isSubmitting,
   saveAddress,
@@ -136,6 +140,8 @@ export function CheckoutDrawer({
   onSaveAddressChange,
   onScheduledForChange,
   onPlaceOrder,
+  onTrackOrder,
+  onFinishOrder,
 }: CheckoutDrawerProps) {
   const [addressAttempted, setAddressAttempted] = useState(false);
   const [paymentAttempted, setPaymentAttempted] = useState(false);
@@ -148,7 +154,8 @@ export function CheckoutDrawer({
 
   if (!isOpen) return null;
   const brandTextColor = getContrastTextColor(primaryColor);
-  const currentIndex = step === "cart" ? 0 : step === "address" ? 1 : 2;
+  const currentIndex = step === "cart" ? 0 : step === "address" ? 1 : step === "payment" ? 2 : 3;
+  const isSuccess = step === "success" && Boolean(completedOrder);
   const missingMinimum = Math.max(0, minimumOrderAmount - cartSubtotal);
   const minimumReached = missingMinimum <= 0;
   const storeClosedWithoutScheduling = storeStatus.tone === "closed" && !scheduledOrdersEnabled;
@@ -193,25 +200,31 @@ export function CheckoutDrawer({
         className="mx-auto flex h-[100dvh] min-h-0 w-full max-w-2xl flex-col overflow-hidden overscroll-none"
       >
         <div className="absolute h-px w-px overflow-hidden whitespace-nowrap [clip:rect(0,0,0,0)]" role="status" aria-live="polite">
-          Etapa atual: {step === "cart" ? "sacola" : step === "address" ? "entrega" : "pagamento"}.
+          Etapa atual: {step === "cart" ? "sacola" : step === "address" ? "entrega" : step === "payment" ? "pagamento" : "confirmação"}.
         </div>
         <header className="safe-area-top sticky top-0 z-10 border-b border-[var(--line)] bg-[#faf5ef]/95 px-4 py-3 backdrop-blur sm:px-6 sm:py-4">
           <div className="flex items-center gap-4">
-            <button
-              onClick={() => {
-                if (step === "cart") onClose();
-                else if (step === "payment") onBackToAddress();
-                else onBackToCart();
-              }}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--line)] bg-white text-gray-700"
-              aria-label={step === "cart" ? "Fechar sacola" : "Voltar para a etapa anterior"}
-            >
-              <ChevronLeft size={18} />
-            </button>
+            {isSuccess ? (
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                <Check size={20} strokeWidth={3} />
+              </span>
+            ) : (
+              <button
+                onClick={() => {
+                  if (step === "cart") onClose();
+                  else if (step === "payment") onBackToAddress();
+                  else onBackToCart();
+                }}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--line)] bg-white text-gray-700"
+                aria-label={step === "cart" ? "Fechar sacola" : "Voltar para a etapa anterior"}
+              >
+                <ChevronLeft size={18} />
+              </button>
+            )}
             <div>
-              <p className="text-[11px] font-bold uppercase text-gray-400">Finalizar pedido</p>
+              <p className="text-[11px] font-bold uppercase text-gray-400">{isSuccess ? "Pedido recebido" : "Finalizar pedido"}</p>
               <h2 id="checkout-step-title" ref={initialFocusRef as React.RefObject<HTMLHeadingElement>} tabIndex={-1} className="text-xl font-black text-gray-950 outline-none sm:text-2xl">
-                {step === "cart" ? "Sua sacola" : step === "address" ? "Entrega" : "Pagamento"}
+                {step === "cart" ? "Sua sacola" : step === "address" ? "Entrega" : step === "payment" ? "Pagamento" : "Pedido confirmado"}
               </h2>
             </div>
           </div>
@@ -629,6 +642,49 @@ export function CheckoutDrawer({
               )}
             </div>
           )}
+
+          {isSuccess && completedOrder && (
+            <div className="space-y-4" role="status" aria-live="polite">
+              <section className="surface-card rounded-[24px] px-5 py-7 text-center sm:px-8 sm:py-9">
+                <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                  <CheckCircle2 size={34} strokeWidth={2.5} />
+                </span>
+                <p className="mt-5 text-sm font-bold text-emerald-700">Recebemos seu pedido</p>
+                <h3 className="mt-1 text-3xl font-black text-gray-950">
+                  Pedido #{completedOrder.displayNumber || completedOrder.orderId.slice(0, 8)}
+                </h3>
+                <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-gray-500">
+                  A loja já recebeu a solicitação. Você poderá acompanhar cada mudança de status mesmo sem depender do WhatsApp.
+                </p>
+              </section>
+
+              <section className="surface-card rounded-[20px] p-4 sm:rounded-[24px] sm:p-5">
+                <h3 className="text-lg font-black text-gray-950">Resumo do pedido</h3>
+                <div className="mt-4 space-y-3 text-sm text-gray-600">
+                  <div className="flex justify-between gap-4">
+                    <span>Total</span>
+                    <strong className="text-base text-gray-950">{formatMoney(completedOrder.total)}</strong>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <span>Pagamento</span>
+                    <strong className="text-right text-gray-950">
+                      {paymentMethodDetails[completedOrder.paymentMethod as StorefrontPaymentMethod]?.label || completedOrder.paymentMethod}
+                    </strong>
+                  </div>
+                  <div className="border-t border-[var(--line)] pt-3">
+                    <p className="font-black text-gray-950">Entrega</p>
+                    <p className="mt-1">{completedOrder.address.street}, {completedOrder.address.number}{completedOrder.address.complement ? `, ${completedOrder.address.complement}` : ""}</p>
+                    <p>{completedOrder.address.neighborhood} · {completedOrder.address.city}/{completedOrder.address.state}</p>
+                    <p className="mt-2 text-xs font-bold text-emerald-700">Previsão aproximada: {completedOrder.deliveryTime} min</p>
+                  </div>
+                </div>
+              </section>
+
+              <p className="px-3 text-center text-xs leading-5 text-gray-500">
+                O acesso a este pedido foi salvo neste dispositivo para sua segurança.
+              </p>
+            </div>
+          )}
         </div>
 
         <footer className="border-t border-[var(--line)] bg-white px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 shadow-[0_-8px_24px_rgba(17,16,15,0.06)] sm:px-6 sm:py-4">
@@ -704,6 +760,22 @@ export function CheckoutDrawer({
                   : scheduleMissing
                     ? "Escolha o horário do pedido"
                     : "Confirmar pedido"}
+              </button>
+            </div>
+          )}
+
+          {isSuccess && (
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={onTrackOrder}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-3.5 text-sm font-black sm:py-4 sm:text-base"
+                style={{ backgroundColor: primaryColor, color: brandTextColor }}
+              >
+                Acompanhar pedido <ArrowRight size={18} />
+              </button>
+              <button type="button" onClick={onFinishOrder} className="w-full py-2 text-sm font-bold text-gray-500">
+                Voltar ao cardápio
               </button>
             </div>
           )}

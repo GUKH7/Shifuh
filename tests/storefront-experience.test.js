@@ -52,6 +52,15 @@ test("checkout keeps compact progress and totals visible in the footer", () => {
   assert.match(checkout, /Total do pedido/);
 });
 
+test("checkout confirms and persists an order before leaving the storefront", () => {
+  assert.match(storefront, /"Idempotency-Key": idempotencyKey/);
+  assert.match(storefront, /gestor-delivery:last-order:/);
+  assert.match(storefront, /setStep\("success"\)/);
+  assert.doesNotMatch(storefront, /clearCart\(\);\s+setAppliedCoupon[\s\S]{0,180}router\.replace\(completedOrder\.trackingPath\)/);
+  assert.match(checkout, /Pedido #\{completedOrder\.displayNumber/);
+  assert.match(checkout, /Acompanhar pedido <ArrowRight/);
+});
+
 test("tracking delays the reassurance notice for five minutes", () => {
   assert.match(tracking, />= 5 \* 60_000/);
   assert.match(tracking, /Seu pedido está registrado com segurança/);

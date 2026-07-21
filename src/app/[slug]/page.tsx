@@ -75,6 +75,8 @@ export default function StorePage() {
   const [checkoutError, setCheckoutError] = useState("");
   const [couponError, setCouponError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [completedOrder, setCompletedOrder] = useState<OrderResponse | null>(null);
+  const orderAttemptKeyRef = useRef<string | null>(null);
   const [saveAddress, setSaveAddress] = useState(false);
   const [scheduledFor, setScheduledFor] = useState("");
 
@@ -402,12 +404,15 @@ export default function StorePage() {
     }
 
     setIsSubmitting(true);
+    const idempotencyKey = orderAttemptKeyRef.current || crypto.randomUUID();
+    orderAttemptKeyRef.current = idempotencyKey;
 
     try {
       const response = await fetch("/api/orders", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Idempotency-Key": idempotencyKey,
         },
         body: JSON.stringify({
           restaurantId: restaurant.id,
@@ -461,12 +466,19 @@ export default function StorePage() {
 
       const completedOrder = result as OrderResponse;
       markCompleted();
-      clearCart();
-      setAppliedCoupon(null);
-      setScheduledFor("");
-      setSaveAddress(false);
       setCheckoutError("");
-      router.replace(completedOrder.trackingPath);
+      setCompletedOrder(completedOrder);
+      window.localStorage.setItem(
+        `gestor-delivery:last-order:${slug || restaurant.id}`,
+        JSON.stringify({
+          orderId: completedOrder.orderId,
+          displayNumber: completedOrder.displayNumber,
+          trackingPath: completedOrder.trackingPath,
+          trackingUrl: completedOrder.trackingUrl,
+          savedAt: new Date().toISOString(),
+        }),
+      );
+      setStep("success");
     } catch (error: any) {
       trackError("order_request_failed");
       setCheckoutError(getFriendlyStorefrontError("order"));
@@ -478,6 +490,29 @@ export default function StorePage() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const finishCompletedOrder = () => {
+    clearCart();
+    setAppliedCoupon(null);
+    setCouponCode("");
+    setScheduledFor("");
+    setSaveAddress(false);
+    setCompletedOrder(null);
+    orderAttemptKeyRef.current = null;
+  };
+
+  const handleTrackCompletedOrder = () => {
+    if (!completedOrder) return;
+    const trackingPath = completedOrder.trackingPath;
+    finishCompletedOrder();
+    router.replace(trackingPath);
+  };
+
+  const handleFinishCompletedOrder = () => {
+    finishCompletedOrder();
+    setStep("cart");
+    setIsCartOpen(false);
   };
 
   const selectSavedAddress = async (savedAddr: any) => {
@@ -1051,6 +1086,7 @@ export default function StorePage() {
         changeFor={changeFor}
         cashNeedsChange={cashNeedsChange}
         checkoutError={checkoutError}
+        completedOrder={completedOrder}
         couponError={couponError}
         isSubmitting={isSubmitting}
         saveAddress={saveAddress}
@@ -1096,6 +1132,8 @@ export default function StorePage() {
         onSaveAddressChange={setSaveAddress}
         onScheduledForChange={(value) => { setScheduledFor(value); setCheckoutError(""); }}
         onPlaceOrder={handlePlaceOrder}
+        onTrackOrder={handleTrackCompletedOrder}
+        onFinishOrder={handleFinishCompletedOrder}
       />
     </div>
   );
