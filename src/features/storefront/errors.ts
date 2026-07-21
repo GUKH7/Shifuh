@@ -19,6 +19,8 @@ export function getOrderApiErrorMessage(code?: string) {
     INVALID_SCHEDULE: "Escolha uma data e um horário dentro do funcionamento da loja.",
     INVALID_PAYMENT_METHOD: "Escolha uma forma de pagamento para continuar.",
     INVALID_CHANGE_FOR: "Confira o valor informado para o troco.",
+    ITEM_UNAVAILABLE: "Um item ficou indisponível e foi retirado da sacola. Confira o novo total antes de confirmar.",
+    PRODUCT_VALIDATION_UNAVAILABLE: "Não conseguimos conferir os itens agora. Sua sacola foi mantida; tente novamente.",
     INCOMPLETE_ADDRESS: "Complete CEP, rua, número, bairro, cidade e UF.",
     ADDRESS_NOT_FOUND: "Não localizamos este endereço. Confira os campos e tente novamente.",
     OUTSIDE_DELIVERY_AREA: "Este endereço está fora da área atendida pela loja.",

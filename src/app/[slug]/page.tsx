@@ -182,6 +182,7 @@ export default function StorePage() {
     calculateProductTotal,
     addToCart,
     removeFromCart,
+    setCart,
     clearCart,
     cartQuantity,
     updateCartItemQuantity,
@@ -453,6 +454,25 @@ export default function StorePage() {
       if (!response.ok) {
         const message = getOrderApiErrorMessage(result?.code);
         trackError(String(result?.code || "order_rejected").toLowerCase());
+
+        if (result?.code === "ITEM_UNAVAILABLE" && Array.isArray(result.unavailableProductIds)) {
+          const unavailableIds = new Set(
+            result.unavailableProductIds.filter((id: unknown): id is string => typeof id === "string"),
+          );
+          setCart((current) => current.filter((item) => !unavailableIds.has(item.product.id)));
+          orderAttemptKeyRef.current = null;
+          setAppliedCoupon(null);
+          setCouponCode("");
+          setStep("cart");
+          setCheckoutError(message);
+          showToast({
+            title: "Sacola atualizada",
+            description: message,
+            tone: "error",
+          });
+          return;
+        }
+
         setCheckoutError(message);
         if (["INCOMPLETE_ADDRESS", "ADDRESS_NOT_FOUND", "OUTSIDE_DELIVERY_AREA", "DELIVERY_CALCULATION_UNAVAILABLE"].includes(result?.code)) {
           if (result?.code === "OUTSIDE_DELIVERY_AREA") {

@@ -288,12 +288,31 @@ export async function POST(request: Request) {
 
     if (productsError || !products) {
       return NextResponse.json(
-      { error: "Não foi possível validar os produtos." },
-        { status: 400 },
+        {
+          code: "PRODUCT_VALIDATION_UNAVAILABLE",
+          error: "Não foi possível conferir os itens agora. Tente novamente.",
+        },
+        { status: 503 },
       );
     }
 
     const productsById = new Map(products.map((product) => [product.id, product]));
+    const unavailableProductIds = [...new Set(productIds)].filter((productId) => {
+      const product = productsById.get(productId);
+      return !product || !product.is_active;
+    });
+
+    if (unavailableProductIds.length > 0) {
+      return NextResponse.json(
+        {
+          code: "ITEM_UNAVAILABLE",
+          error: "Um ou mais itens da sacola não estão mais disponíveis.",
+          unavailableProductIds,
+        },
+        { status: 409 },
+      );
+    }
+
     const normalizedItems: Array<{
       product_name: string;
       quantity: number;
@@ -309,12 +328,9 @@ export async function POST(request: Request) {
       const quantity = Math.max(1, Math.floor(Number(item.quantity) || 1));
       const product = productsById.get(item.productId);
 
-      if (!product || !product.is_active) {
-        return NextResponse.json(
-      { error: "Um dos itens do carrinho não está mais disponível." },
-          { status: 400 },
-        );
-      }
+      // Products are checked together above so every unavailable line from a
+      // persisted cart can be removed in a single retry.
+      if (!product) continue;
 
       const { normalized, addonTotal } = resolveAddonSelection(
         Array.isArray(item.selectedAddons) ? item.selectedAddons : [],

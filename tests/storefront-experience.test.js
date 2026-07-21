@@ -80,6 +80,13 @@ test("checkout confirms and persists an order before leaving the storefront", ()
   assert.match(checkout, /Acompanhar pedido <ArrowRight/);
 });
 
+test("checkout recovers from products removed after the cart was saved", () => {
+  assert.match(storefront, /result\?\.code === "ITEM_UNAVAILABLE"/);
+  assert.match(storefront, /setCart\(\(current\) => current\.filter/);
+  assert.match(storefront, /orderAttemptKeyRef\.current = null/);
+  assert.match(storefront, /title: "Sacola atualizada"/);
+});
+
 test("tracking delays the reassurance notice for five minutes", () => {
   assert.match(tracking, />= 5 \* 60_000/);
   assert.match(tracking, /Seu pedido está registrado com segurança/);

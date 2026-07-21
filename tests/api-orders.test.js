@@ -439,8 +439,26 @@ test("bloqueia produto inativo", async () => {
   const response = await postOrder(createPayload());
   const body = await readJson(response);
 
-  assert.equal(response.status, 400);
-  assert.match(body.error, /não está mais disponível/i);
+  assert.equal(response.status, 409);
+  assert.equal(body.code, "ITEM_UNAVAILABLE");
+  assert.deepEqual(body.unavailableProductIds, ["product-1"]);
+  assert.equal(mockState.orders.length, 0);
+});
+
+test("informa todos os produtos removidos de uma sacola persistida", async () => {
+  mockState = baseState();
+
+  const response = await postOrder(createPayload({
+    cart: [
+      { productId: "product-1", quantity: 1 },
+      { productId: "product-removed", quantity: 1 },
+    ],
+  }));
+  const body = await readJson(response);
+
+  assert.equal(response.status, 409);
+  assert.equal(body.code, "ITEM_UNAVAILABLE");
+  assert.deepEqual(body.unavailableProductIds, ["product-removed"]);
   assert.equal(mockState.orders.length, 0);
 });
 
