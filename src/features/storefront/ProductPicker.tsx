@@ -65,7 +65,7 @@ export function ProductPicker({
             <X size={20} />
           </button>
           {product.image_url ? (
-            <Image src={product.image_url} alt={product.name} fill sizes="(max-width: 640px) 100vw, 672px" className="object-cover" />
+            <Image src={product.image_url} alt={product.name} fill sizes="(max-width: 640px) 100vw, 672px" className="object-contain p-3 sm:p-4" />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-gray-300">
               <ShoppingBag size={42} />

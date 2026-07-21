@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Bike,
   Clock3,
@@ -60,6 +60,7 @@ export default function StorePage() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [menuSearch, setMenuSearch] = useState("");
   const [storeClock, setStoreClock] = useState(() => new Date());
+  const categoryNavRef = useRef<HTMLDivElement>(null);
 
   const [step, setStep] = useState<CheckoutStep>("cart");
   const [customerName, setCustomerName] = useState("");
@@ -128,10 +129,25 @@ export default function StorePage() {
 
   useEffect(() => {
     if (!activeCategory) return;
-    document
-      .querySelector(`[data-category-tab="${activeCategory}"]`)
-      ?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    const container = categoryNavRef.current;
+    const tab = container?.querySelector<HTMLElement>(`[data-category-tab="${activeCategory}"]`);
+    if (!container || !tab) return;
+
+    container.scrollTo({
+      left: Math.max(0, tab.offsetLeft - (container.clientWidth - tab.offsetWidth) / 2),
+      behavior: "smooth",
+    });
   }, [activeCategory]);
+
+  const navigateToCategory = useCallback((categoryId: string) => {
+    const section = document.getElementById(`cat-${categoryId}`);
+    if (!section) return;
+
+    setActiveCategory(categoryId);
+    const stickyNavigationHeight = categoryNavRef.current?.parentElement?.offsetHeight || 88;
+    const targetTop = section.getBoundingClientRect().top + window.scrollY - stickyNavigationHeight - 8;
+    window.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
+  }, [setActiveCategory]);
 
   const {
     selectedProduct,
@@ -789,15 +805,12 @@ export default function StorePage() {
               </button>
             )}
           </div>
-          <div className="flex w-full min-w-0 gap-1.5 overflow-x-auto overscroll-x-contain pb-0.5 [scrollbar-width:none] sm:gap-2 [&::-webkit-scrollbar]:hidden">
+          <div ref={categoryNavRef} className="flex w-full min-w-0 gap-1.5 overflow-x-auto overscroll-x-contain pb-0.5 [scrollbar-width:none] sm:gap-2 [&::-webkit-scrollbar]:hidden">
             {displayedCategories.map((category) => (
               <button
                 key={category.id}
                 data-category-tab={category.id}
-                onClick={() => {
-                  setActiveCategory(category.id);
-                  document.getElementById(`cat-${category.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
-                }}
+                onClick={() => navigateToCategory(category.id)}
                 className={`max-w-[75vw] shrink-0 truncate whitespace-nowrap text-[11px] font-bold transition-colors sm:max-w-none sm:text-sm ${
                   storefrontTheme.category_style === "pill"
                     ? "rounded-full px-2.5 py-1.5 sm:px-3"
@@ -890,7 +903,7 @@ export default function StorePage() {
                             storefrontTheme.catalog_layout === "list" ? "w-20 flex-shrink-0 min-[380px]:w-24 sm:w-36" : "w-20 flex-shrink-0 min-[380px]:w-24 sm:mt-3 sm:w-full"
                           }`}>
                             {product.image_url ? (
-                              <Image src={product.image_url} alt={product.name} fill sizes="(max-width: 379px) 80px, (max-width: 640px) 96px, (max-width: 1280px) 33vw, 320px" className="object-cover" />
+                              <Image src={product.image_url} alt={product.name} fill sizes="(max-width: 379px) 80px, (max-width: 640px) 96px, (max-width: 1280px) 33vw, 320px" className="object-contain p-1.5" />
                             ) : (
                               <div className="flex h-full w-full items-center justify-center text-gray-300"><ShoppingBag size={28} /></div>
                             )}

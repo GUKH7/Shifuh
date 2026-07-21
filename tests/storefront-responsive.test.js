@@ -13,6 +13,7 @@ test("storefront contains narrow mobile content instead of clipping product card
   assert.match(source, /catalog-section w-full min-w-0/);
   assert.match(source, /w-20 flex-shrink-0 min-\[380px\]:w-24/);
   assert.match(source, /\[overflow-wrap:anywhere\]/);
+  assert.match(source, /className="object-contain p-1\.5"/);
 });
 
 test("category navigation scrolls inside the viewport and mobile toasts respect its gutters", () => {
@@ -22,4 +23,13 @@ test("category navigation scrolls inside the viewport and mobile toasts respect 
   assert.match(storefront, /overflow-x-auto overscroll-x-contain/);
   assert.match(storefront, /max-w-\[75vw\] shrink-0 truncate/);
   assert.match(toast, /left-3 right-3 top-3/);
+});
+
+test("category navigation keeps horizontal and vertical scrolling independent", () => {
+  const storefront = fs.readFileSync(storefrontPath, "utf8");
+
+  assert.match(storefront, /categoryNavRef\.current/);
+  assert.match(storefront, /container\.scrollTo\(\{/);
+  assert.match(storefront, /window\.scrollTo\(\{ top: Math\.max\(0, targetTop\)/);
+  assert.doesNotMatch(storefront, /cat-\$\{category\.id\}`\)\?\.scrollIntoView/);
 });

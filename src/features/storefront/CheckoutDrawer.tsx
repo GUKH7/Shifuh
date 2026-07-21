@@ -274,7 +274,7 @@ export function CheckoutDrawer({
                 <article key={item.internalId} className="surface-card rounded-[16px] p-3.5 sm:rounded-[20px] sm:p-5">
                   <div className="flex items-start gap-3">
                     {item.product.image_url && (
-                      <Image src={item.product.image_url} alt="" width={80} height={80} sizes="80px" className="h-16 w-16 shrink-0 rounded-xl object-cover sm:h-20 sm:w-20" />
+                      <Image src={item.product.image_url} alt="" width={80} height={80} sizes="80px" className="h-16 w-16 shrink-0 rounded-xl bg-[#f3ede5] object-contain p-1 sm:h-20 sm:w-20" />
                     )}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-3">
