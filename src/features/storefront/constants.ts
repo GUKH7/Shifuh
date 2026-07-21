@@ -20,7 +20,7 @@ export const EMPTY_ADDRESS: CheckoutAddress = {
   street: "",
   number: "",
   neighborhood: "",
-  city: "São Paulo",
-  state: "SP",
+  city: "",
+  state: "",
   complement: "",
 };

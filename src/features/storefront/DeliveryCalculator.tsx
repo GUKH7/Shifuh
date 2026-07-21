@@ -41,6 +41,23 @@ export function DeliveryCalculator({
   onRetryDelivery,
 }: DeliveryCalculatorProps) {
   const canCalculate = isCompleteCheckoutAddress(address);
+  const handleCepChange = (value: string) => {
+    const cep = formatCep(value);
+    const cepChanged = cep !== address.cep;
+
+    onAddressChange({
+      ...address,
+      cep,
+      ...(cepChanged
+        ? {
+            street: "",
+            neighborhood: "",
+            city: "",
+            state: "",
+          }
+        : {}),
+    });
+  };
 
   return (
     <div className="surface-card rounded-[24px] p-5">
@@ -101,7 +118,7 @@ export function DeliveryCalculator({
               <input
                 id="delivery-cep"
                 value={address.cep}
-                onChange={(event) => onAddressChange({ ...address, cep: formatCep(event.target.value) })}
+                onChange={(event) => handleCepChange(event.target.value)}
                 onBlur={onBlurCep}
                 placeholder="00000-000"
                 inputMode="numeric"
