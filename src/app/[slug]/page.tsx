@@ -212,7 +212,7 @@ export default function StorePage() {
       const clientCoords = await getCoordinates({
         postalCode: addressData.cep,
         street: addressData.street,
-        number: addressData.number,
+        number: addressData.number === "S/N" ? undefined : addressData.number,
         neighborhood: addressData.neighborhood,
         city: addressData.city,
         state: addressData.state,

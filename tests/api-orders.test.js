@@ -54,6 +54,7 @@ function baseState(overrides = {}) {
     createOrderError: null,
     distance: 2,
     deliveryFeeResult: null,
+    lastClientCoordinatesRequest: null,
     ...overrides,
   };
 }
@@ -286,6 +287,7 @@ function loadOrdersRoute() {
               ? { lat: -23.55, lon: -46.63 }
               : mockState.restaurantCoordinates;
           }
+          mockState.lastClientCoordinatesRequest = address;
           return mockState.clientCoordinates === undefined
             ? { lat: -23.56, lon: -46.64 }
             : mockState.clientCoordinates;
@@ -406,6 +408,18 @@ test("ignora preço adulterado no cliente e usa o preço do banco", async () => 
   assert.equal(mockState.orders[0].subtotal, 40);
   assert.equal(mockState.adminRpcCalls, 1);
   assert.equal(mockState.publicRpcCalls, 0);
+});
+
+test("aceita endereço sem número sem enviar S/N para a geocodificação", async () => {
+  mockState = baseState();
+
+  const response = await postOrder(createPayload({
+    address: { ...createPayload().address, number: "S/N" },
+  }));
+
+  assert.equal(response.status, 200);
+  assert.equal(mockState.lastClientCoordinatesRequest.number, undefined);
+  assert.equal(mockState.orders[0].address.number, "S/N");
 });
 
 test("bloqueia produto inativo", async () => {

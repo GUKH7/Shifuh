@@ -42,6 +42,16 @@ test("product options use clear rules and accessible controls", () => {
   assert.match(productPicker, /aria-expanded=\{!isCollapsed\}/);
 });
 
+test("cart and delivery keep quantities and address actions unambiguous", () => {
+  assert.match(checkout, /cart\.reduce\(\(total, item\) => total \+ item\.quantity, 0\)/);
+  assert.match(checkout, />Complementos</);
+  assert.match(deliveryCalculator, /Buscar CEP/);
+  assert.match(deliveryCalculator, /Sem número/);
+  assert.match(checkout, /use “Calcular taxa e prazo” acima/);
+  assert.doesNotMatch(checkout, />Calcule a entrega para continuar</);
+  assert.match(deliveryCalculator, /savedAddr\.complement \|\| `Endereço \$\{index \+ 1\}`/);
+});
+
 test("delivery address starts without a hardcoded city and resets CEP-derived fields", () => {
   assert.match(storefrontConstants, /city: "",\s+state: ""/);
   assert.doesNotMatch(storefrontConstants, /city: "S(?:Ã£|ã)o Paulo"/);

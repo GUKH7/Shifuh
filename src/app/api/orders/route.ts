@@ -431,7 +431,7 @@ export async function POST(request: Request) {
     const clientCoords = await getCoordinates({
       postalCode: address.cep,
       street: address.street,
-      number: address.number,
+      number: address.number === "S/N" ? undefined : address.number,
       neighborhood: address.neighborhood,
       city: address.city,
       state: address.state,

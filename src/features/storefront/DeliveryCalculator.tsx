@@ -75,8 +75,11 @@ export function DeliveryCalculator({
 
       {savedAddresses.length > 0 && (
         <div className="mt-4 space-y-2">
-          {savedAddresses.map((savedAddr) => {
-            const isSelected = usingSavedAddress && address.street === savedAddr.street;
+          {savedAddresses.map((savedAddr, index) => {
+            const isSelected = usingSavedAddress && address.street === savedAddr.street && address.number === savedAddr.number;
+            const savedLabel = savedAddr.label && savedAddr.label !== "Endereço"
+              ? savedAddr.label
+              : savedAddr.complement || `Endereço ${index + 1}`;
             return (
               <button
                 key={savedAddr.id}
@@ -91,13 +94,17 @@ export function DeliveryCalculator({
                     : { borderColor: "var(--line)" }
                 }
               >
-                <div>
-                  <p className="font-bold text-gray-900">
+                <div className="min-w-0">
+                  <p className="text-xs font-black uppercase text-gray-500">{savedLabel}</p>
+                  <p className="mt-1 truncate font-bold text-gray-900">
                     {savedAddr.street}, {savedAddr.number}
                   </p>
                   <p className="mt-1 text-sm text-gray-500">
-                    {savedAddr.neighborhood} - {savedAddr.city}
+                    {savedAddr.neighborhood} - {savedAddr.city}/{savedAddr.state}
                   </p>
+                  {savedAddr.complement && savedAddr.complement !== savedLabel && (
+                    <p className="mt-1 text-xs font-medium text-gray-500">{savedAddr.complement}</p>
+                  )}
                 </div>
                 {isSelected && <Check size={18} style={{ color: primaryColor }} />}
               </button>
@@ -112,14 +119,13 @@ export function DeliveryCalculator({
 
       {(!usingSavedAddress || savedAddresses.length === 0) && (
         <div className="mt-4 space-y-3">
-          <div className="grid items-end gap-2.5 sm:grid-cols-[1fr_64px]">
+          <div className="grid items-end gap-2.5 sm:grid-cols-[1fr_auto]">
             <label className="block text-xs font-bold text-gray-600">
               CEP
               <input
                 id="delivery-cep"
                 value={address.cep}
                 onChange={(event) => handleCepChange(event.target.value)}
-                onBlur={onBlurCep}
                 placeholder="00000-000"
                 inputMode="numeric"
                 autoComplete="postal-code"
@@ -129,13 +135,19 @@ export function DeliveryCalculator({
               />
               {fieldErrors?.cep && <span id="delivery-cep-error" role="alert" className="mt-1.5 block text-xs font-bold text-rose-600">{fieldErrors.cep}</span>}
             </label>
-            <div className="flex items-center justify-center rounded-2xl border border-[var(--line)] bg-white">
+            <button
+              type="button"
+              onClick={onBlurCep}
+              disabled={calculatingFee || address.cep.replace(/\D/g, "").length !== 8}
+              className="flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-[var(--line)] bg-white px-4 text-sm font-black text-gray-700 disabled:cursor-not-allowed disabled:opacity-45"
+            >
               {calculatingFee ? (
                 <Loader2 className="animate-spin text-[var(--brand)]" size={18} />
               ) : (
                 <Search className="text-gray-400" size={18} />
               )}
-            </div>
+              Buscar CEP
+            </button>
           </div>
 
           <div className="grid gap-2.5 sm:grid-cols-[1fr_140px]">
@@ -144,7 +156,17 @@ export function DeliveryCalculator({
               {fieldErrors?.street && <span id="delivery-street-error" role="alert" className="mt-1.5 block text-xs font-bold text-rose-600">{fieldErrors.street}</span>}
             </label>
             <label className="block text-xs font-bold text-gray-600">Número
-              <input id="delivery-number" value={address.number} onChange={(event) => onAddressChange({ ...address, number: event.target.value })} inputMode="text" aria-invalid={Boolean(fieldErrors?.number)} aria-describedby={fieldErrors?.number ? "delivery-number-error" : undefined} className="mt-1.5 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-normal text-gray-950 outline-none" />
+              <input id="delivery-number" value={address.number === "S/N" ? "" : address.number} onChange={(event) => onAddressChange({ ...address, number: event.target.value })} disabled={address.number === "S/N"} inputMode="text" aria-invalid={Boolean(fieldErrors?.number)} aria-describedby={fieldErrors?.number ? "delivery-number-error" : undefined} placeholder={address.number === "S/N" ? "Sem número" : undefined} className="mt-1.5 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-normal text-gray-950 outline-none disabled:bg-gray-50 disabled:text-gray-500" />
+              <span className="mt-2 flex items-center gap-2 font-medium text-gray-500">
+                <input
+                  type="checkbox"
+                  checked={address.number === "S/N"}
+                  onChange={(event) => onAddressChange({ ...address, number: event.target.checked ? "S/N" : "" })}
+                  className="h-4 w-4"
+                  style={{ accentColor: primaryColor }}
+                />
+                Sem número
+              </span>
               {fieldErrors?.number && <span id="delivery-number-error" role="alert" className="mt-1.5 block text-xs font-bold text-rose-600">{fieldErrors.number}</span>}
             </label>
           </div>
@@ -191,7 +213,7 @@ export function DeliveryCalculator({
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="font-black text-emerald-800">Taxa e prazo estimados</p>
-              <p className="mt-1 text-sm text-emerald-700">{deliveryInfo.distance} km aproximadamente, em linha reta</p>
+              <p className="mt-1 text-sm text-emerald-700">Distância aproximada: {deliveryInfo.distance} km</p>
             </div>
             <div className="text-right">
               <p className="text-lg font-black text-emerald-800">
@@ -209,7 +231,7 @@ export function DeliveryCalculator({
             <div>
               <p className="font-black text-amber-900">Estimativa pelo CEP</p>
               <p className="mt-1 text-sm leading-6 text-amber-800">
-                Aproximadamente {deliveryInfo.distance} km em linha reta. Complete o endereço para validar a entrega.
+                Aproximadamente {deliveryInfo.distance} km. Complete o endereço para validar a entrega.
               </p>
             </div>
             <div className="shrink-0 text-right">
@@ -228,7 +250,7 @@ export function DeliveryCalculator({
             {deliveryInfo.addressValidated ? "Endereço fora da área de entrega" : "CEP fora da área estimada"}
           </p>
           <p className="mt-1 text-sm leading-6 text-red-700">
-            A distância aproximada em linha reta é de {deliveryInfo.distance} km, além do limite atendido pela loja.
+            A distância aproximada é de {deliveryInfo.distance} km, além do limite atendido pela loja.
             Confira os campos. Se estiverem corretos, este endereço realmente não é atendido.
           </p>
         </div>

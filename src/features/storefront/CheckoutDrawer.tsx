@@ -154,6 +154,7 @@ export function CheckoutDrawer({
 
   if (!isOpen) return null;
   const brandTextColor = getContrastTextColor(primaryColor);
+  const cartQuantity = cart.reduce((total, item) => total + item.quantity, 0);
   const currentIndex = step === "cart" ? 0 : step === "address" ? 1 : step === "payment" ? 2 : 3;
   const isSuccess = step === "success" && Boolean(completedOrder);
   const missingMinimum = Math.max(0, minimumOrderAmount - cartSubtotal);
@@ -296,7 +297,7 @@ export function CheckoutDrawer({
           {step === "cart" && (
             <div className="space-y-3">
               <div className="flex items-center justify-between px-1">
-                <p className="text-sm font-black text-gray-950">{cart.length} {cart.length === 1 ? "item" : "itens"} na sacola</p>
+                <p className="text-sm font-black text-gray-950">{cartQuantity} {cartQuantity === 1 ? "item" : "itens"} na sacola</p>
                 <p className="text-sm font-black" style={{ color: primaryColor }}>{formatMoney(cartSubtotal)}</p>
               </div>
               {cart.length === 0 && (
@@ -326,9 +327,15 @@ export function CheckoutDrawer({
                         </button>
                       </div>
                       {item.selectedAddons.length > 0 && (
-                        <p className="mt-2 line-clamp-2 text-xs leading-5 text-gray-500 sm:text-sm">
-                          {item.selectedAddons.map((addon) => addon.name).join(", ")}
-                        </p>
+                        <div className="mt-2 rounded-xl bg-[#faf8f5] px-3 py-2 text-xs text-gray-600 sm:text-sm">
+                          <p className="mb-1 font-black text-gray-700">Complementos</p>
+                          {item.selectedAddons.map((addon, addonIndex) => (
+                            <p key={`${addon.groupId || "addon"}-${addon.name}-${addonIndex}`} className="flex justify-between gap-3 py-0.5">
+                              <span>+ {addon.name}</span>
+                              {Number(addon.price || 0) > 0 && <span>{formatMoney(Number(addon.price))}</span>}
+                            </p>
+                          ))}
+                        </div>
                       )}
                       {item.observation && <p className="mt-1 line-clamp-2 text-xs text-amber-700 sm:text-sm">Obs: {item.observation}</p>}
                       <div className="mt-3 flex items-center justify-between gap-3">
@@ -479,7 +486,7 @@ export function CheckoutDrawer({
                     <p>{address.neighborhood} · {address.city}/{address.state}</p>
                     {deliveryInfo?.valid && (
                       <p className="mt-2 text-xs font-bold text-emerald-700">
-                        {deliveryInfo.distance} km aproximadamente, em linha reta · previsão de {deliveryInfo.time} min
+                        {deliveryInfo.distance} km aproximadamente · previsão de {deliveryInfo.time} min
                       </p>
                     )}
                   </div>
@@ -723,20 +730,23 @@ export function CheckoutDrawer({
                   <strong className="text-xl text-gray-950">{formatMoney(feeValue)}</strong>
                 </div>
               )}
-              <button
-                onClick={continueToPayment}
-                disabled={calculatingFee || deliveryInfo?.valid === false}
-                className="w-full rounded-2xl px-5 py-3.5 text-sm font-black disabled:opacity-50 sm:py-4 sm:text-base"
-                style={{ backgroundColor: primaryColor, color: brandTextColor }}
-              >
-                {calculatingFee
-                  ? "Calculando entrega..."
-                  : deliveryInfo?.valid === false
-                    ? "Endereço fora da área de entrega"
-                    : !deliveryInfo?.addressValidated
-                      ? "Calcule a entrega para continuar"
-                      : "Ir para pagamento"}
-              </button>
+              {calculatingFee ? (
+                <p role="status" className="py-2 text-center text-sm font-bold text-gray-600">Calculando entrega...</p>
+              ) : deliveryInfo?.valid === false ? (
+                <p role="alert" className="py-2 text-center text-sm font-bold text-rose-700">Endereço fora da área de entrega</p>
+              ) : !deliveryInfo?.addressValidated ? (
+                <p className="py-2 text-center text-xs font-semibold text-gray-500">
+                  Preencha o endereço e use “Calcular taxa e prazo” acima.
+                </p>
+              ) : (
+                <button
+                  onClick={continueToPayment}
+                  className="w-full rounded-2xl px-5 py-3.5 text-sm font-black sm:py-4 sm:text-base"
+                  style={{ backgroundColor: primaryColor, color: brandTextColor }}
+                >
+                  Ir para pagamento
+                </button>
+              )}
             </div>
           )}
 
