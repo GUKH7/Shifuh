@@ -14,7 +14,7 @@ const tracking = fs.readFileSync(path.join(root, "src", "app", "acompanhar", "[i
 test("storefront presents status, estimate and starting delivery fee together", () => {
   assert.match(storefront, /deliveryFeeLabel/);
   assert.match(storefront, /Entrega a partir de/);
-  assert.match(storefront, /min-h-10 max-w-\[75vw\].*rounded-full border/);
+  assert.match(storefront, /max-w-\[75vw\].*rounded-full border/);
 });
 
 test("storefront keeps the page background neutral across restaurant brands", () => {
@@ -64,4 +64,16 @@ test("checkout confirms and persists an order before leaving the storefront", ()
 test("tracking delays the reassurance notice for five minutes", () => {
   assert.match(tracking, />= 5 \* 60_000/);
   assert.match(tracking, /Seu pedido está registrado com segurança/);
+});
+
+test("large catalogs stay compact and use trustworthy merchandising", () => {
+  assert.match(storefront, /getBestSellerProductId\(customerProducts\)/);
+  assert.match(storefront, /categoryProducts\.slice\(0, 12\)/);
+  assert.match(storefront, /Ver mais \$\{hiddenProductCount\} produtos/);
+  assert.match(storefront, /data-catalog-nav/);
+  assert.match(storefront, /isCatalogNavCompact/);
+  assert.match(storefront, /rating_count \|\| 0/);
+  assert.doesNotMatch(storefront, /rating_average \? Number\(restaurant\.rating_average\)\.toFixed\(1\) : "Novo"/);
+  assert.match(storefront, />Sem foto</);
+  assert.match(storefront, /aria-label="Minha conta"/);
 });

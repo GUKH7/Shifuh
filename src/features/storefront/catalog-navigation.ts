@@ -4,6 +4,11 @@ type SearchableProduct = {
   addons?: unknown;
 };
 
+type SellableProduct = {
+  id: string;
+  sold_quantity?: number | null;
+};
+
 export function normalizeCatalogText(value: unknown) {
   return String(value || "")
     .normalize("NFD")
@@ -44,4 +49,15 @@ export function productMatchesSearch(product: SearchableProduct, search: string)
     [product.name, product.description, collectAddonText(product.addons)].filter(Boolean).join(" "),
   );
   return searchableText.includes(term);
+}
+
+export function getBestSellerProductId(products: SellableProduct[], minimumSales = 3) {
+  const leader = products.reduce<SellableProduct | null>((current, product) => {
+    if (!current) return product;
+    return Number(product.sold_quantity || 0) > Number(current.sold_quantity || 0)
+      ? product
+      : current;
+  }, null);
+
+  return leader && Number(leader.sold_quantity || 0) >= minimumSales ? leader.id : null;
 }

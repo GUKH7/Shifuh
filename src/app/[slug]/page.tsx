@@ -5,6 +5,7 @@ import {
   ArrowRight,
   Clock3,
   CreditCard,
+  ImageIcon,
   Loader2,
   MapPin,
   Minus,
@@ -15,6 +16,7 @@ import {
   X,
   ChevronDown,
   Phone,
+  UserRound,
 } from "lucide-react";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
@@ -25,6 +27,7 @@ import { ProductPicker } from "@/features/storefront/ProductPicker";
 import { EMPTY_ADDRESS } from "@/features/storefront/constants";
 import { formatMoney, getContrastTextColor, hexToRgba } from "@/features/storefront/format";
 import {
+  getBestSellerProductId,
   isHomologationCategory,
   productMatchesSearch,
 } from "@/features/storefront/catalog-navigation";
@@ -59,6 +62,8 @@ export default function StorePage() {
   const [usingSavedAddress, setUsingSavedAddress] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [menuSearch, setMenuSearch] = useState("");
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(() => new Set());
+  const [isCatalogNavCompact, setIsCatalogNavCompact] = useState(false);
   const [storeClock, setStoreClock] = useState(() => new Date());
   const categoryNavRef = useRef<HTMLDivElement>(null);
 
@@ -90,6 +95,13 @@ export default function StorePage() {
   useEffect(() => {
     const timer = window.setInterval(() => setStoreClock(new Date()), 60_000);
     return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const updateCatalogNavDensity = () => setIsCatalogNavCompact(window.scrollY > 240);
+    updateCatalogNavDensity();
+    window.addEventListener("scroll", updateCatalogNavDensity, { passive: true });
+    return () => window.removeEventListener("scroll", updateCatalogNavDensity);
   }, []);
 
   const handleCustomerLoaded = useCallback((profile: { name: string; phone: string }) => {
@@ -146,8 +158,10 @@ export default function StorePage() {
     if (!section) return;
 
     setActiveCategory(categoryId);
-    const stickyNavigationHeight = categoryNavRef.current?.parentElement?.offsetHeight || 88;
-    const targetTop = section.getBoundingClientRect().top + window.scrollY - stickyNavigationHeight - 8;
+    const stickyNavigationHeight = (
+      categoryNavRef.current?.closest("[data-catalog-nav]") as HTMLElement | null
+    )?.offsetHeight || 88;
+    const targetTop = section.getBoundingClientRect().top + window.scrollY - stickyNavigationHeight - 16;
     window.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
   }, [setActiveCategory]);
 
@@ -608,6 +622,7 @@ export default function StorePage() {
   );
   const customerCategoryIds = new Set(customerCategories.map((category) => category.id));
   const customerProducts = products.filter((product) => customerCategoryIds.has(product.category_id));
+  const bestSellerProductId = getBestSellerProductId(customerProducts);
   const visibleProducts = customerProducts.filter((product) => productMatchesSearch(product, menuSearch));
   const displayedCategories = customerCategories.filter((category) =>
     visibleProducts.some((product) => product.category_id === category.id),
@@ -677,7 +692,7 @@ export default function StorePage() {
   }
 
   return (
-    <div className="min-h-screen w-full min-w-0 overflow-x-hidden pb-28 text-gray-950" style={{ backgroundColor: pageBackground }}>
+    <div className="min-h-screen w-full min-w-0 overflow-x-clip pb-28 text-gray-950" style={{ backgroundColor: pageBackground }}>
       <section className="bg-white">
         <div className="mx-auto w-full max-w-5xl px-0 pb-3 sm:px-4 sm:pb-5">
           <div className="relative overflow-hidden rounded-b-[18px] sm:rounded-[28px]">
@@ -751,16 +766,20 @@ export default function StorePage() {
                     {currentUser ? (
                       <button
                         onClick={() => router.push("/minha-conta")}
-                        className="rounded-full border border-gray-200 px-3 py-1.5 text-[11px] font-bold text-gray-700"
+                        className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                        aria-label="Minha conta"
+                        title="Minha conta"
                       >
-                        Minha conta
+                        <UserRound size={17} />
                       </button>
                     ) : (
                       <button
                         onClick={() => router.push(`/auth?returnUrl=${encodeURIComponent(pathname)}`)}
-                        className="rounded-full border border-gray-200 px-3 py-1.5 text-[11px] font-bold text-gray-700"
+                        className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                        aria-label="Entrar na conta"
+                        title="Entrar"
                       >
-                        Entrar
+                        <UserRound size={17} />
                       </button>
                     )}
                   </div>
@@ -788,10 +807,10 @@ export default function StorePage() {
                 <CreditCard size={14} className="shrink-0 text-gray-400" />
                 Pix, cartão e dinheiro
               </span>
-              {storefrontTheme.show_reviews && (
+              {storefrontTheme.show_reviews && Number(restaurant.rating_count || 0) > 0 && Number(restaurant.rating_average || 0) > 0 && (
                 <span className="inline-flex items-center gap-1.5">
                   <Star size={14} className="fill-yellow-400 text-yellow-400" />
-                  {restaurant.rating_average ? Number(restaurant.rating_average).toFixed(1) : "Novo"}
+                  {Number(restaurant.rating_average).toFixed(1)}
                 </span>
               )}
             </div>
@@ -822,9 +841,9 @@ export default function StorePage() {
         </div>
       </section>
 
-      <div className="sticky top-0 z-30 w-full min-w-0 overflow-hidden border-b border-gray-200 bg-white">
-        <div className="mx-auto w-full min-w-0 max-w-5xl px-2.5 py-2 sm:px-6">
-          <div className="mb-2 flex h-9 items-center gap-2 rounded-xl border border-gray-200 bg-[#f7f7f7] px-3 sm:h-10 sm:mb-2.5 sm:gap-2.5 sm:px-3.5">
+      <div data-catalog-nav className="sticky top-0 z-30 w-full min-w-0 overflow-hidden border-b border-gray-200 bg-white transition-[padding,box-shadow] duration-200">
+        <div className={`mx-auto w-full min-w-0 max-w-5xl px-2.5 transition-all duration-200 sm:px-6 ${isCatalogNavCompact ? "py-1 shadow-[0_5px_16px_rgba(17,16,15,0.05)]" : "py-2"}`}>
+          <div className={`flex items-center gap-2 rounded-xl border border-gray-200 bg-[#f7f7f7] px-3 transition-all duration-200 sm:gap-2.5 sm:px-3.5 ${isCatalogNavCompact ? "mb-1 h-8" : "mb-2 h-9 sm:mb-2.5 sm:h-10"}`}>
             <Search size={16} className="text-gray-400" />
             <input
               value={menuSearch}
@@ -843,8 +862,9 @@ export default function StorePage() {
               <button
                 key={category.id}
                 data-category-tab={category.id}
+                aria-current={activeCategory === category.id ? "true" : undefined}
                 onClick={() => navigateToCategory(category.id)}
-                className={`min-h-10 max-w-[75vw] shrink-0 truncate whitespace-nowrap rounded-full border px-3.5 py-2 text-xs font-bold transition-colors sm:max-w-none sm:text-sm ${
+                className={`max-w-[75vw] shrink-0 truncate whitespace-nowrap rounded-full border px-3.5 text-xs font-bold transition-all duration-200 sm:max-w-none sm:text-sm ${isCatalogNavCompact ? "min-h-8 py-1.5" : "min-h-10 py-2"} ${
                   activeCategory === category.id
                     ? "border-transparent text-gray-950"
                     : "border-gray-200 bg-white text-gray-600"
@@ -873,10 +893,15 @@ export default function StorePage() {
 
             {displayedCategories.map((category) => {
               const categoryProducts = visibleProducts.filter((product) => product.category_id === category.id);
+              const isExpanded = expandedCategories.has(category.id);
+              const visibleCategoryProducts = menuSearch || isExpanded
+                ? categoryProducts
+                : categoryProducts.slice(0, 12);
+              const hiddenProductCount = categoryProducts.length - visibleCategoryProducts.length;
               if (categoryProducts.length === 0) return null;
 
               return (
-                <section key={category.id} id={`cat-${category.id}`} className="catalog-section w-full min-w-0 scroll-mt-24">
+                <section key={category.id} id={`cat-${category.id}`} data-category-section className="catalog-section w-full min-w-0 scroll-mt-28">
                   <div className="px-1 pb-2 pt-1 sm:px-1 sm:pb-3">
                     <h2 className="break-words text-[15px] font-black text-gray-950 sm:text-[17px]">{category.name}</h2>
                     <p className="mt-0.5 text-[10px] font-medium text-gray-500 sm:text-[11px]">{categoryProducts.length} itens</p>
@@ -889,7 +914,7 @@ export default function StorePage() {
                         : `space-y-2.5 sm:grid sm:gap-3 sm:space-y-0 ${catalogGridClass}`
                     }
                   >
-                    {categoryProducts.map((product) => {
+                    {visibleCategoryProducts.map((product) => {
                       const hasPaidAddons = product.addons?.some((group: any) =>
                         Array.isArray(group?.options)
                           ? group.options.some((option: any) => Number(option?.price) > 0)
@@ -899,6 +924,7 @@ export default function StorePage() {
                       return (
                         <button
                           key={product.id}
+                          data-product-card
                           onClick={() => product.is_active && openProduct(product)}
                           disabled={!product.is_active}
                           className={`group relative text-left transition-all ${product.is_active ? "hover:-translate-y-0.5" : "cursor-not-allowed"} ${
@@ -912,15 +938,15 @@ export default function StorePage() {
                               {!product.is_active && <span className="rounded-md bg-gray-200 px-2 py-1 text-[9px] font-black uppercase text-gray-600">Indisponível</span>}
                               {product.is_promotional && <span className="rounded-md bg-rose-50 px-2 py-1 text-[9px] font-black uppercase text-rose-700">Promoção</span>}
                               {product.is_vegetarian && <span className="rounded-md bg-emerald-50 px-2 py-1 text-[9px] font-black uppercase text-emerald-700">Vegetariano</span>}
-                              {product.is_best_seller && <span className="rounded-md bg-amber-50 px-2 py-1 text-[9px] font-black uppercase text-amber-800">Mais pedido</span>}
+                              {product.id === bestSellerProductId && <span className="rounded-md bg-amber-50 px-2 py-1 text-[9px] font-black uppercase text-amber-800">Mais pedido</span>}
                             </div>
                             <h3 className="break-words text-[14px] font-black leading-snug text-gray-950 [overflow-wrap:anywhere] sm:text-[16px]">{product.name}</h3>
                             <p className="mt-1.5 line-clamp-2 break-words text-[12px] leading-5 text-gray-500 [overflow-wrap:anywhere] sm:text-[13px]">{product.description}</p>
                             {!product.is_active && (
                               <p className="mt-2 text-xs font-bold text-gray-500">Temporariamente indisponível para pedidos.</p>
                             )}
-                            <div className="mt-3">
-                              {hasPaidAddons && <span className="mr-1 text-[10px] font-bold text-gray-400">A partir de</span>}
+                            <div className="mt-3 flex flex-wrap items-baseline gap-x-1 gap-y-0.5">
+                              {hasPaidAddons && <span className="text-[10px] font-bold leading-none text-gray-400">A partir de</span>}
                               <span className="text-[15px] font-black text-gray-950">{formatMoney(product.price)}</span>
                             </div>
                           </div>
@@ -930,7 +956,10 @@ export default function StorePage() {
                             {product.image_url ? (
                               <Image src={product.image_url} alt={product.name} fill sizes="(max-width: 379px) 80px, (max-width: 640px) 96px, (max-width: 1280px) 33vw, 320px" className="object-contain p-1.5" />
                             ) : (
-                              <div className="flex h-full w-full items-center justify-center text-gray-300"><ShoppingBag size={28} /></div>
+                              <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-gradient-to-br from-gray-50 to-gray-100 text-gray-400">
+                                <ImageIcon size={24} strokeWidth={1.7} />
+                                <span className="text-[9px] font-bold uppercase">Sem foto</span>
+                              </div>
                             )}
                             {product.is_active && (
                               <span className="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-[0_4px_12px_rgba(17,16,15,0.14)]" style={{ color: primaryColor }}><Plus size={17} /></span>
@@ -941,6 +970,20 @@ export default function StorePage() {
                       );
                     })}
                   </div>
+                  {!menuSearch && categoryProducts.length > 12 && (
+                    <button
+                      type="button"
+                      onClick={() => setExpandedCategories((current) => {
+                        const next = new Set(current);
+                        if (next.has(category.id)) next.delete(category.id);
+                        else next.add(category.id);
+                        return next;
+                      })}
+                      className="mt-3 flex w-full items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-3 text-xs font-black text-gray-700 transition-colors hover:bg-gray-50"
+                    >
+                      {isExpanded ? "Mostrar menos" : `Ver mais ${hiddenProductCount} produtos`}
+                    </button>
+                  )}
                 </section>
               );
             })}
