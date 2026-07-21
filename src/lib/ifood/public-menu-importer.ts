@@ -14,6 +14,7 @@ type ScrapedMenuSection = {
     price: number;
     imageUrl: string | null;
     addons: ImportedAddonGroup[];
+    needsAddonDetails?: boolean;
   }>;
 };
 
@@ -122,6 +123,8 @@ function normalizeStateMenu(menu: unknown): ScrapedMenuSection[] {
             String(itemRecord.id || itemRecord.code || "").trim() ||
             `${title}-${name}`.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
+          const addons = normalizeIfoodAddonGroups(itemRecord, itemId);
+
           return {
             id: itemId,
             name,
@@ -131,7 +134,11 @@ function normalizeStateMenu(menu: unknown): ScrapedMenuSection[] {
                 : null,
             price: parseMoneyFromText(String(itemRecord.unitPrice ?? itemRecord.price ?? "")),
             imageUrl: logoUrl,
-            addons: normalizeIfoodAddonGroups(itemRecord, itemId),
+            addons,
+            needsAddonDetails:
+              addons.length === 0 &&
+              (itemRecord.needChoices === true ||
+                Number(itemRecord.unitMinPrice || 0) > Number(itemRecord.unitPrice || 0)),
           };
         })
         .filter(Boolean) as ScrapedMenuItem[];

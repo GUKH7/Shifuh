@@ -166,6 +166,47 @@ export function normalizeIfoodAddonGroups(
   );
 }
 
+export function parseIfoodItemAddonResponse(payloadText: string, itemId: string) {
+  const trimmedPayload = payloadText.trim();
+  if (!trimmedPayload.startsWith("{") && !trimmedPayload.startsWith("[")) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(trimmedPayload) as JsonRecord;
+    const data = parsed.data as JsonRecord | undefined;
+    const nestedData = data?.data as JsonRecord | undefined;
+    const menus = data?.menu ?? parsed.menu ?? nestedData?.menu ?? [];
+    if (!Array.isArray(menus)) return [];
+
+    for (const menu of menus) {
+      if (!menu || typeof menu !== "object") continue;
+      const menuRecord = menu as JsonRecord;
+      const items = Array.isArray(menuRecord.itens)
+        ? menuRecord.itens
+        : Array.isArray(menuRecord.items)
+          ? menuRecord.items
+          : [];
+      const matchingItem =
+        items.find((item) => {
+          if (!item || typeof item !== "object") return false;
+          const itemRecord = item as JsonRecord;
+          return [itemRecord.id, itemRecord.code].some(
+            (value) => String(value || "") === itemId,
+          );
+        }) || items[0];
+
+      if (matchingItem) {
+        return normalizeIfoodAddonGroups(matchingItem, itemId);
+      }
+    }
+  } catch {
+    return [];
+  }
+
+  return [];
+}
+
 export type IfoodPublicStoreData = {
   sourceUrl: string;
   merchantUuid: string;
@@ -198,9 +239,64 @@ export type IfoodPublicStoreData = {
       price: number;
       imageUrl: string | null;
       addons: ImportedAddonGroup[];
+      needsAddonDetails?: boolean;
     }>;
   }>;
 };
+
+async function fetchIfoodItemAddons(merchantUuid: string, itemId: string, sourceUrl: string) {
+  const response = await fetch(
+    `https://www.ifood.com.br/site-api/v1/merchants/restaurant/${encodeURIComponent(merchantUuid)}/items/${encodeURIComponent(itemId)}`,
+    {
+      headers: {
+        "user-agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
+        "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+        accept: "application/json,text/plain,*/*",
+        referer: sourceUrl,
+      },
+      signal: AbortSignal.timeout(6_000),
+      cache: "no-store",
+    },
+  );
+
+  if (!response.ok) return [];
+  return parseIfoodItemAddonResponse(await response.text(), itemId);
+}
+
+export async function hydrateIfoodPublicMenuAddons(
+  menuSections: IfoodPublicStoreData["menuSections"],
+  merchantUuid: string,
+  sourceUrl: string,
+) {
+  const hydratedSections = menuSections.map((section) => ({
+    ...section,
+    items: section.items.map((item) => ({ ...item, addons: [...(item.addons || [])] })),
+  }));
+  const pendingItems = hydratedSections.flatMap((section) =>
+    section.items.filter((item) => item.needsAddonDetails && item.addons.length === 0),
+  );
+
+  let nextItemIndex = 0;
+  const workerCount = Math.min(6, pendingItems.length);
+
+  await Promise.all(
+    Array.from({ length: workerCount }, async () => {
+      while (nextItemIndex < pendingItems.length) {
+        const item = pendingItems[nextItemIndex];
+        nextItemIndex += 1;
+
+        try {
+          item.addons = await fetchIfoodItemAddons(merchantUuid, item.id, sourceUrl);
+        } catch {
+          item.addons = [];
+        }
+      }
+    }),
+  );
+
+  return hydratedSections;
+}
 
 function safeJsonParse<T>(value: string): T | null {
   try {
@@ -348,6 +444,8 @@ function collectMenuSections(node: unknown, seen = new Set<string>()) {
               normalizeText(itemRecord.id) ||
               `${sectionId}-item-${index + 1}`;
 
+            const addons = normalizeIfoodAddonGroups(itemRecord, itemId);
+
             return {
               id: itemId,
               name,
@@ -356,7 +454,11 @@ function collectMenuSections(node: unknown, seen = new Set<string>()) {
                 normalizeText(itemRecord.description),
               price: normalizeMoney(rawPrice),
               imageUrl,
-              addons: normalizeIfoodAddonGroups(itemRecord, itemId),
+              addons,
+              needsAddonDetails:
+                addons.length === 0 &&
+                (itemRecord.needChoices === true ||
+                  Number(itemRecord.unitMinPrice || 0) > Number(itemRecord.unitPrice || 0)),
             };
           })
           .filter(Boolean) as IfoodPublicStoreData["menuSections"][number]["items"];
@@ -413,8 +515,8 @@ export function parseIfoodPublicStorePage(html: string, sourceUrl: string) {
   const restaurantState = findRestaurantState(nextData);
   const jsonLd = parseJsonLdRestaurant(html);
   const merchantUuid =
-    normalizeText(restaurantState?.uuid) ||
-    extractMerchantUuidFromIfoodUrl(sourceUrl);
+    extractMerchantUuidFromIfoodUrl(sourceUrl) ||
+    normalizeText(restaurantState?.uuid);
 
   if (!merchantUuid) {
     throw new Error("Não foi possível identificar a loja nesse link público do iFood.");

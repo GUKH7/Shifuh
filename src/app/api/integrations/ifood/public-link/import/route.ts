@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
-import { fetchIfoodPublicStoreData } from "@/lib/ifood/public-page";
+import {
+  fetchIfoodPublicStoreData,
+  hydrateIfoodPublicMenuAddons,
+} from "@/lib/ifood/public-page";
 import { scrapeIfoodPublicMenu } from "@/lib/ifood/public-menu-importer";
 import { checkRateLimit } from "@/lib/rate-limit";
 
@@ -106,6 +109,12 @@ export async function POST(request: Request) {
         console.error("Fallback headless do iFood falhou:", error);
       }
     }
+
+    importedMenuSections = await hydrateIfoodPublicMenuAddons(
+      importedMenuSections,
+      imported.merchantUuid,
+      publicUrl,
+    );
 
     if (importStoreProfile) {
       const restaurantUpdate = buildRestaurantUpdate(ownedRestaurant, imported);

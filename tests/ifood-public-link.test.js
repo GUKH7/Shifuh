@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
+  hydrateIfoodPublicMenuAddons,
   isValidIfoodPublicUrl,
   normalizeIfoodAddonGroups,
+  parseIfoodItemAddonResponse,
   parseIfoodPublicStorePage,
 } from "../src/lib/ifood/public-page.ts";
 
@@ -88,7 +90,125 @@ test("extrai loja, categoria e produto do HTML público do iFood", () => {
         ],
       },
     ],
+    needsAddonDetails: false,
   });
+});
+
+test("extrai complementos da resposta de detalhe do produto", () => {
+  const itemId = "item-with-choices";
+  const payload = JSON.stringify({
+    code: "00",
+    data: {
+      menu: [
+        {
+          itens: [
+            {
+              id: itemId,
+              choices: [
+                {
+                  code: "group-1",
+                  name: "Escolha os acompanhamentos",
+                  min: 1,
+                  max: 2,
+                  garnishItens: [
+                    { code: "rice", description: "Arroz", unitPrice: 0 },
+                    { code: "fries", description: "Batata frita", unitPrice: 4.5 },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  });
+
+  assert.deepEqual(parseIfoodItemAddonResponse(payload, itemId), [
+    {
+      id: "group-1",
+      title: "Escolha os acompanhamentos",
+      required: true,
+      min_options: 1,
+      max_options: 2,
+      options: [
+        { id: "rice", name: "Arroz", price: 0 },
+        { id: "fries", name: "Batata frita", price: 4.5 },
+      ],
+    },
+  ]);
+});
+
+test("consulta detalhes somente para produtos que sinalizam escolhas", async () => {
+  const originalFetch = globalThis.fetch;
+  const requestedUrls = [];
+  globalThis.fetch = async (url) => {
+    requestedUrls.push(String(url));
+    return new Response(
+      JSON.stringify({
+        data: {
+          menu: [
+            {
+              itens: [
+                {
+                  id: "meal-1",
+                  choices: [
+                    {
+                      code: "sides",
+                      name: "Acompanhamentos",
+                      min: 0,
+                      max: 1,
+                      garnishItens: [{ code: "egg", description: "Ovo", unitPrice: 2 }],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    );
+  };
+
+  try {
+    const hydrated = await hydrateIfoodPublicMenuAddons(
+      [
+        {
+          id: "lunch",
+          name: "Almoço",
+          items: [
+            {
+              id: "meal-1",
+              name: "Prato feito",
+              description: null,
+              price: 20,
+              imageUrl: null,
+              addons: [],
+              needsAddonDetails: true,
+            },
+            {
+              id: "drink-1",
+              name: "Refrigerante",
+              description: null,
+              price: 5,
+              imageUrl: null,
+              addons: [],
+              needsAddonDetails: false,
+            },
+          ],
+        },
+      ],
+      merchantUuid,
+      publicUrl,
+    );
+
+    assert.equal(requestedUrls.length, 1);
+    assert.match(requestedUrls[0], new RegExp(`/items/meal-1$`));
+    assert.equal(hydrated[0].items[0].addons[0].options[0].name, "Ovo");
+    assert.deepEqual(hydrated[0].items[1].addons, []);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("normaliza complementos no formato optionGroups do catalogo publico", async () => {
