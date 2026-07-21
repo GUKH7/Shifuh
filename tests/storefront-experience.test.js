@@ -29,12 +29,14 @@ test("mobile cart separates order summary from its main action", () => {
 });
 
 test("product modal preserves a stable image area on mobile", () => {
-  assert.match(productPicker, /relative h-52 shrink-0 overflow-hidden rounded-t-\[24px\] bg-white sm:h-72/);
-  assert.match(productPicker, /className="rounded-t-\[24px\] object-contain"/);
+  assert.match(productPicker, /relative flex h-52 shrink-0 items-center justify-center bg-white/);
+  assert.match(productPicker, /h-full max-w-full aspect-square overflow-hidden rounded-2xl/);
+  assert.match(productPicker, /className="object-cover"/);
 });
 
 test("product photos have rounded corners without a decorative frame", () => {
-  assert.match(storefront, /className="rounded-xl object-contain"/);
+  assert.match(storefront, /relative aspect-square overflow-hidden rounded-xl/);
+  assert.match(storefront, /className="object-cover"/);
   assert.doesNotMatch(storefront, /rounded-xl bg-gray-100/);
   assert.doesNotMatch(storefront, /object-contain p-1\.5/);
   assert.doesNotMatch(productPicker, /object-contain p-3 sm:p-4/);

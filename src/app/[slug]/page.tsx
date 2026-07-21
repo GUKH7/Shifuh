@@ -970,11 +970,11 @@ export default function StorePage() {
                               <span className="text-[15px] font-black text-gray-950">{formatMoney(product.price)}</span>
                             </div>
                           </div>
-                          <div className={`relative aspect-[4/3] overflow-hidden rounded-xl ${
+                          <div className={`relative aspect-square overflow-hidden rounded-xl ${
                             storefrontTheme.catalog_layout === "list" ? "w-20 flex-shrink-0 min-[380px]:w-24 sm:w-36" : "w-20 flex-shrink-0 min-[380px]:w-24 sm:mt-3 sm:w-full"
                           }`}>
                             {product.image_url ? (
-                              <Image src={product.image_url} alt={product.name} fill sizes="(max-width: 379px) 80px, (max-width: 640px) 96px, (max-width: 1280px) 33vw, 320px" className="rounded-xl object-contain" />
+                              <Image src={product.image_url} alt={product.name} fill sizes="(max-width: 379px) 80px, (max-width: 640px) 96px, (max-width: 1280px) 33vw, 320px" className="object-cover" />
                             ) : (
                               <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-gradient-to-br from-gray-50 to-gray-100 text-gray-400">
                                 <ImageIcon size={24} strokeWidth={1.7} />
