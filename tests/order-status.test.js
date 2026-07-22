@@ -21,9 +21,10 @@ function compileTs(filePath) {
 }
 
 class QueryBuilder {
-  constructor(table, state) {
+  constructor(table, state, role) {
     this.table = table;
     this.state = state;
+    this.role = role;
     this.filters = [];
     this.payload = null;
   }
@@ -59,6 +60,13 @@ class QueryBuilder {
 
   then(resolve, reject) {
     if (this.table === "orders" && this.payload) {
+      if (this.role !== "admin") {
+        return Promise.resolve({
+          data: null,
+          error: { message: "permission denied for table order_status_history" },
+        }).then(resolve, reject);
+      }
+
       this.state.orderUpdates.push({
         payload: this.payload,
         filters: this.filters,
@@ -69,12 +77,12 @@ class QueryBuilder {
   }
 }
 
-function createSupabaseMock(state) {
+function createSupabaseMock(state, role) {
   return {
     auth: {
       getUser: async () => ({ data: { user: state.user || null }, error: null }),
     },
-    from: (table) => new QueryBuilder(table, state),
+    from: (table) => new QueryBuilder(table, state, role),
   };
 }
 
@@ -92,7 +100,10 @@ function loadRoute(state, aliases = {}) {
     }
 
     if (request === "@/lib/supabase/server") {
-      return { createClient: async () => createSupabaseMock(state) };
+      return {
+        createClient: async () => createSupabaseMock(state, "authenticated"),
+        createAdminClient: () => createSupabaseMock(state, "admin"),
+      };
     }
 
     return originalLoad.call(this, request, parent, isMain);

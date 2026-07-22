@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { sendWhatsappMessage } from "@/lib/whatsapp-bot";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient, createClient } from "@/lib/supabase/server";
 
 type OrderStatus = "pending" | "preparing" | "delivering" | "done" | "canceled";
 
@@ -111,7 +111,8 @@ export async function PATCH(request: Request, context: Params) {
       return NextResponse.json({ error: "Acesso negado ao pedido." }, { status: 403 });
     }
 
-    const { error: updateError } = await supabase
+    const admin = createAdminClient();
+    const { error: updateError } = await admin
       .from("orders")
       .update(nextStatus === "canceled"
         ? { status: nextStatus, cancellation_reason: cancellationReason }
