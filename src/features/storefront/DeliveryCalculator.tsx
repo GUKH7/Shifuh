@@ -1,6 +1,7 @@
 "use client";
 
-import { Check, Info, Loader2, MapPin, Search } from "lucide-react";
+import { Check, ChevronDown, Info, Loader2, MapPin, Search } from "lucide-react";
+import { useState } from "react";
 import { formatMoney } from "./format";
 import type { CheckoutAddress, DeliveryInfo } from "./types";
 import { formatCep, isCompleteCheckoutAddress } from "./checkout-format";
@@ -40,6 +41,17 @@ export function DeliveryCalculator({
   onUseAnotherAddress,
   onRetryDelivery,
 }: DeliveryCalculatorProps) {
+  const [postalCodeLookupOpen, setPostalCodeLookupOpen] = useState(false);
+  const [searchingPostalCode, setSearchingPostalCode] = useState(false);
+  const [postalCodeError, setPostalCodeError] = useState("");
+  const [postalCodeCandidates, setPostalCodeCandidates] = useState<Array<{
+    cep: string;
+    street: string;
+    neighborhood: string;
+    city: string;
+    state: string;
+    complement?: string;
+  }>>([]);
   const canCalculate = isCompleteCheckoutAddress(address);
   const handleCepChange = (value: string) => {
     const cep = formatCep(value);
@@ -57,6 +69,46 @@ export function DeliveryCalculator({
           }
         : {}),
     });
+  };
+
+  const searchPostalCode = async () => {
+    setSearchingPostalCode(true);
+    setPostalCodeError("");
+    setPostalCodeCandidates([]);
+
+    try {
+      const response = await fetch("/api/storefront/postal-code", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(address),
+      });
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok || !Array.isArray(result.candidates)) {
+        setPostalCodeError(result.error || "Não foi possível buscar o CEP agora.");
+        return;
+      }
+
+      setPostalCodeCandidates(result.candidates);
+    } catch {
+      setPostalCodeError("Não foi possível buscar o CEP agora. Tente novamente.");
+    } finally {
+      setSearchingPostalCode(false);
+    }
+  };
+
+  const selectPostalCode = (candidate: (typeof postalCodeCandidates)[number]) => {
+    onAddressChange({
+      ...address,
+      cep: formatCep(candidate.cep),
+      street: candidate.street,
+      neighborhood: candidate.neighborhood,
+      city: candidate.city,
+      state: candidate.state,
+    });
+    setPostalCodeLookupOpen(false);
+    setPostalCodeCandidates([]);
+    setPostalCodeError("");
   };
 
   return (
@@ -150,6 +202,27 @@ export function DeliveryCalculator({
             </button>
           </div>
 
+          <button
+            type="button"
+            onClick={() => {
+              setPostalCodeLookupOpen((current) => !current);
+              setPostalCodeError("");
+              setPostalCodeCandidates([]);
+            }}
+            className="inline-flex items-center gap-1.5 text-sm font-black"
+            style={{ color: primaryColor }}
+            aria-expanded={postalCodeLookupOpen}
+          >
+            Não sei meu CEP
+            <ChevronDown size={16} className={`transition-transform ${postalCodeLookupOpen ? "rotate-180" : ""}`} />
+          </button>
+
+          {postalCodeLookupOpen && (
+            <div className="rounded-2xl border border-blue-100 bg-blue-50 px-3.5 py-3 text-xs leading-5 text-blue-800">
+              Preencha rua, número, bairro, cidade e UF abaixo. Depois, toque em <strong>Encontrar meu CEP</strong>.
+            </div>
+          )}
+
           <div className="grid gap-2.5 sm:grid-cols-[1fr_140px]">
             <label className="block text-xs font-bold text-gray-600">Rua
               <input id="delivery-street" value={address.street} onChange={(event) => onAddressChange({ ...address, street: event.target.value })} autoComplete="address-line1" aria-invalid={Boolean(fieldErrors?.street)} aria-describedby={fieldErrors?.street ? "delivery-street-error" : undefined} className="mt-1.5 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-normal text-gray-950 outline-none" />
@@ -186,6 +259,47 @@ export function DeliveryCalculator({
               {fieldErrors?.state && <span id="delivery-state-error" role="alert" className="mt-1.5 block text-xs font-bold text-rose-600">{fieldErrors.state}</span>}
             </label>
           </div>
+
+          {postalCodeLookupOpen && (
+            <div className="space-y-2.5">
+              <button
+                type="button"
+                onClick={searchPostalCode}
+                disabled={searchingPostalCode}
+                className="flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border border-[var(--line)] bg-white px-4 text-sm font-black text-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {searchingPostalCode ? <Loader2 className="animate-spin" size={18} /> : <Search size={18} />}
+                {searchingPostalCode ? "Buscando CEP..." : "Encontrar meu CEP"}
+              </button>
+
+              {postalCodeError && (
+                <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs font-bold leading-5 text-rose-700">
+                  {postalCodeError}
+                </p>
+              )}
+
+              {postalCodeCandidates.length > 0 && (
+                <div role="list" aria-label="CEPs encontrados" className="space-y-2">
+                  <p className="text-xs font-black text-gray-700">Selecione o endereço correto:</p>
+                  {postalCodeCandidates.map((candidate) => (
+                    <button
+                      key={`${candidate.cep}-${candidate.neighborhood}`}
+                      type="button"
+                      role="listitem"
+                      onClick={() => selectPostalCode(candidate)}
+                      className="flex w-full items-center justify-between gap-3 rounded-xl border border-[var(--line)] bg-white px-3 py-3 text-left"
+                    >
+                      <span className="min-w-0">
+                        <strong className="block text-sm text-gray-900">{candidate.street}</strong>
+                        <span className="mt-1 block text-xs text-gray-500">{candidate.neighborhood} · {candidate.city}/{candidate.state}</span>
+                      </span>
+                      <span className="shrink-0 text-sm font-black" style={{ color: primaryColor }}>{formatCep(candidate.cep)}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           <label className="block text-xs font-bold text-gray-600">Complemento <span className="font-normal text-gray-400">(opcional)</span>
             <input value={address.complement} onChange={(event) => onAddressChange({ ...address, complement: event.target.value })} placeholder="Apartamento, bloco ou referência" autoComplete="address-line2" className="mt-1.5 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-normal text-gray-950 outline-none" />

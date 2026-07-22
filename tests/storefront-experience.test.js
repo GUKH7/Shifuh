@@ -61,6 +61,13 @@ test("cart and delivery keep quantities and address actions unambiguous", () => 
   assert.match(deliveryCalculator, /savedAddr\.complement \|\| `Endereço \$\{index \+ 1\}`/);
 });
 
+test("delivery can find a postal code from the full address", () => {
+  assert.match(deliveryCalculator, /Não sei meu CEP/);
+  assert.match(deliveryCalculator, /\/api\/storefront\/postal-code/);
+  assert.match(deliveryCalculator, /Encontrar meu CEP/);
+  assert.match(deliveryCalculator, /Selecione o endereço correto:/);
+});
+
 test("delivery estimate fits narrow mobile cards without clipping", () => {
   assert.match(deliveryCalculator, /grid-cols-\[minmax\(0,1fr\)_auto\]/);
   assert.match(deliveryCalculator, /whitespace-nowrap text-base font-black/);
