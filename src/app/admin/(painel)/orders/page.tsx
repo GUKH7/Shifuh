@@ -112,13 +112,6 @@ const LOCAL_CANCELLATION_REASONS: IfoodCancellationReason[] = [
   { code: "OTHER", description: "Outro motivo" },
 ];
 
-function getCustomerInitials(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "CL";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
-}
-
 function getRelativeOrderTime(dateStr: string) {
   const minutes = Math.max(0, Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000));
   if (minutes < 1) return "Agora há pouco";
@@ -992,13 +985,13 @@ export default function OrdersPage() {
           </div>
 
           <div className="overflow-hidden rounded-[18px] border border-[var(--line)] bg-white shadow-sm">
-            <div className="hidden grid-cols-[96px_145px_100px_64px_78px_120px_104px_80px_145px] items-center gap-2 border-b border-[var(--line)] bg-[#fffdfa] px-4 py-3 text-[10px] font-black uppercase tracking-[0.06em] text-gray-400 xl:grid">
+            <div className="hidden grid-cols-[96px_145px_100px_64px_78px_120px_104px_80px_145px] items-center gap-2 border-b border-[var(--line)] bg-[#fffdfa] px-4 py-3 text-center text-[10px] font-black uppercase tracking-[0.06em] text-gray-400 xl:grid">
               <span>Pedido</span>
               <span>Cliente</span>
               <span>Canal</span>
               <span>Itens</span>
               <span>Valor</span>
-              <span className="whitespace-nowrap">Método de pagamento</span>
+              <span className="leading-tight">Método de<br />pagamento</span>
               <span>Status</span>
               <span>Horário</span>
               <span className="text-center">Ações</span>
@@ -1037,70 +1030,65 @@ export default function OrdersPage() {
                   return (
                     <div key={order.id} className={order.status === "pending" ? "bg-orange-50/25" : "bg-white"}>
                       <div className="grid gap-4 px-5 py-4 xl:grid-cols-[96px_145px_100px_64px_78px_120px_104px_80px_145px] xl:items-center xl:gap-2 xl:px-4">
-                        <div>
-                          <p className="font-black text-gray-950">#{formatDisplayNumber(order)}</p>
-                          <p className="mt-1 text-xs font-medium text-gray-500">
+                        <div className="text-center">
+                          <p className="text-sm font-black text-gray-950">#{formatDisplayNumber(order)}</p>
+                          <p className="mt-1 text-[11px] font-medium text-gray-500">
                             {formatDate(order.created_at)}, {formatTime(order.created_at)}
                           </p>
                           {order.scheduled_for && (
-                            <span className="mt-2 inline-flex rounded-full bg-amber-100 px-2 py-1 text-[11px] font-black text-amber-800">
+                            <span className="mt-2 inline-flex rounded-full bg-amber-100 px-2 py-1 text-[10px] font-black text-amber-800">
                               Agendado {formatDateTime(order.scheduled_for)}
                             </span>
                           )}
                         </div>
 
-                        <div className="flex min-w-0 items-center gap-3">
-                          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-50 text-sm font-black text-orange-700">
-                            {getCustomerInitials(order.customer_name)}
-                          </span>
-                          <div className="min-w-0">
-                            <p className="truncate font-bold text-gray-950">{order.customer_name}</p>
-                            <p className="mt-1 text-xs font-medium text-gray-500">{order.customer_phone}</p>
-                          </div>
+                        <div className="min-w-0 text-center">
+                          <p className="truncate text-sm font-bold text-gray-950">{order.customer_name}</p>
+                          <p className="mt-1 truncate text-[11px] font-medium text-gray-500">{order.customer_phone}</p>
                         </div>
 
-                        <div className="flex items-center gap-3">
-                          <span className={`inline-flex h-9 w-9 items-center justify-center rounded-xl ${
+                        <div className="flex items-center justify-center gap-2">
+                          <span className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${
                             isIfoodOrder(order) ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-600"
                           }`}>
-                            {isIfoodOrder(order) ? <Store size={17} /> : <ClipboardList size={17} />}
+                            {isIfoodOrder(order) ? <Store size={15} /> : <ClipboardList size={15} />}
                           </span>
                           <div>
-                            <p className="text-sm font-black text-gray-950">{channelLabel}</p>
-                            <p className="text-xs font-medium text-gray-500">{getFulfillmentLabel(order)}</p>
+                            <p className="text-xs font-black text-gray-950">{channelLabel}</p>
+                            <p className="text-[10px] font-medium text-gray-500">{getFulfillmentLabel(order)}</p>
                           </div>
                         </div>
 
-                        <div>
-                          <p className="font-black text-gray-950">
+                        <div className="text-center">
+                          <p className="text-sm font-black text-gray-950">
                             {order.items.length} {order.items.length === 1 ? "item" : "itens"}
                           </p>
                           <button
                             type="button"
                             onClick={() => toggleExpandedOrder(order)}
-                            className="mt-1 text-xs font-black text-[var(--brand)]"
+                            className="mt-1 text-[11px] font-black text-[var(--brand)]"
                           >
                             Ver detalhes
                           </button>
                         </div>
 
-                        <div>
-                          <p className="font-black text-gray-950">{formatPrice(Number(order.total || 0))}</p>
+                        <div className="text-center">
+                          <p className="text-sm font-black text-gray-950">{formatPrice(Number(order.total || 0))}</p>
                         </div>
 
-                        <div className="min-w-0">
-                          <p className="break-words text-sm font-bold leading-5 text-gray-700">
+                        <div className="min-w-0 text-center">
+                          <p className="break-words text-xs font-bold leading-4 text-gray-700">
                             {paymentText || "Não informado"}
                           </p>
                         </div>
 
-                        <div>
+                        <div className="flex justify-center">
                           <OrderStatusBadge status={order.status} className="font-black" />
                         </div>
 
-                        <div>
-                          <p className="text-sm font-black text-gray-950">{getRelativeOrderTime(order.created_at)}</p>
-                          <p className="mt-1 text-xs font-medium text-gray-500">{formatTime(order.created_at)}</p>
+                        <div className="text-center">
+                          <p className="text-xs font-black text-gray-950">{getRelativeOrderTime(order.created_at)}</p>
+                          <p className="mt-1 text-[11px] font-medium text-gray-500">{formatTime(order.created_at)}</p>
                         </div>
 
                         <div className="flex items-center gap-1 xl:justify-center">

@@ -18,12 +18,21 @@ test("payment methods are translated into Portuguese", () => {
 });
 
 test("orders table separates value and payment using one aligned grid", () => {
-  assert.match(page, /<span>Valor<\/span>\s+<span className="whitespace-nowrap">Método de pagamento<\/span>/);
+  assert.match(page, /<span>Valor<\/span>\s+<span className="leading-tight">Método de<br \/>pagamento<\/span>/);
   assert.equal((page.match(new RegExp(tableGrid.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g")) || []).length, 2);
   assert.match(page, /<span className="text-center">Ações<\/span>/);
   assert.match(page, /xl:justify-center/);
   assert.match(page, /overflow-hidden rounded-\[18px\]/);
   assert.doesNotMatch(page, /min-w-\[1280px\]/);
+});
+
+test("order rows omit customer avatars and center content under every heading", () => {
+  assert.doesNotMatch(page, /getCustomerInitials/);
+  assert.match(page, /px-4 py-3 text-center text-\[10px\]/);
+  assert.match(page, /min-w-0 text-center/);
+  assert.match(page, /flex items-center justify-center gap-2/);
+  assert.match(page, /<div className="flex justify-center">\s+<OrderStatusBadge/);
+  assert.match(page, /<div className="text-center">\s+<p className="text-xs font-black text-gray-950">\{getRelativeOrderTime/);
 });
 
 test("order actions use compact labels without losing accessible names", () => {
