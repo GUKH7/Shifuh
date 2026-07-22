@@ -125,10 +125,11 @@ test("tracking distinguishes completed, current and future stages", () => {
   assert.match(tracking, /bg-\[#f5f6f7\]/);
 });
 
-test("large catalogs stay compact and use trustworthy merchandising", () => {
+test("large catalogs show every product without expansion controls", () => {
   assert.match(storefront, /getBestSellerProductId\(customerProducts\)/);
-  assert.match(storefront, /categoryProducts\.slice\(0, 12\)/);
-  assert.match(storefront, /Ver mais \$\{hiddenProductCount\} produtos/);
+  assert.match(storefront, /categoryProducts\.map\(\(product\) =>/);
+  assert.doesNotMatch(storefront, /categoryProducts\.slice\(0, 12\)/);
+  assert.doesNotMatch(storefront, /Mostrar menos|Ver mais \$\{hiddenProductCount\} produtos/);
   assert.match(storefront, /data-catalog-nav/);
   assert.match(storefront, /isCatalogNavCompact/);
   assert.match(storefront, /rating_count \|\| 0/);

@@ -62,7 +62,6 @@ export default function StorePage() {
   const [usingSavedAddress, setUsingSavedAddress] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [menuSearch, setMenuSearch] = useState("");
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(() => new Set());
   const [isCatalogNavCompact, setIsCatalogNavCompact] = useState(false);
   const [storeClock, setStoreClock] = useState(() => new Date());
   const categoryNavRef = useRef<HTMLDivElement>(null);
@@ -913,11 +912,6 @@ export default function StorePage() {
 
             {displayedCategories.map((category) => {
               const categoryProducts = visibleProducts.filter((product) => product.category_id === category.id);
-              const isExpanded = expandedCategories.has(category.id);
-              const visibleCategoryProducts = menuSearch || isExpanded
-                ? categoryProducts
-                : categoryProducts.slice(0, 12);
-              const hiddenProductCount = categoryProducts.length - visibleCategoryProducts.length;
               if (categoryProducts.length === 0) return null;
 
               return (
@@ -934,7 +928,7 @@ export default function StorePage() {
                         : `space-y-2.5 sm:grid sm:gap-3 sm:space-y-0 ${catalogGridClass}`
                     }
                   >
-                    {visibleCategoryProducts.map((product) => {
+                    {categoryProducts.map((product) => {
                       const hasPaidAddons = product.addons?.some((group: any) =>
                         Array.isArray(group?.options)
                           ? group.options.some((option: any) => Number(option?.price) > 0)
@@ -990,20 +984,6 @@ export default function StorePage() {
                       );
                     })}
                   </div>
-                  {!menuSearch && categoryProducts.length > 12 && (
-                    <button
-                      type="button"
-                      onClick={() => setExpandedCategories((current) => {
-                        const next = new Set(current);
-                        if (next.has(category.id)) next.delete(category.id);
-                        else next.add(category.id);
-                        return next;
-                      })}
-                      className="mt-3 flex w-full items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-3 text-xs font-black text-gray-700 transition-colors hover:bg-gray-50"
-                    >
-                      {isExpanded ? "Mostrar menos" : `Ver mais ${hiddenProductCount} produtos`}
-                    </button>
-                  )}
                 </section>
               );
             })}
