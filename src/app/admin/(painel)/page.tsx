@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { getCurrentRestaurant } from "@/lib/supabase/restaurant";
 import { PERIOD_OPTIONS, PeriodKey, isWithinPeriod } from "@/lib/admin-period";
+import { LiveStatusDot } from "@/components/ui/live-status-dot";
 
 type OrderRow = {
   id: string;
@@ -211,6 +212,7 @@ export default function AdminHomePage() {
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full bg-[var(--brand-soft)] px-3 py-1 text-xs font-bold text-[var(--brand)]">
+              <LiveStatusDot />
               Dashboard em tempo real
             </div>
             <h2 className="mt-4 text-2xl font-black text-gray-950">
@@ -296,7 +298,7 @@ export default function AdminHomePage() {
           <h3 className="text-xl font-black text-gray-950">Pulso da loja</h3>
           <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
             <div className="flex items-center gap-3">
-              <span className="h-3 w-3 rounded-full bg-emerald-500" />
+              <LiveStatusDot />
               <p className="font-bold text-emerald-800">Loja em operação</p>
             </div>
             <p className="mt-2 text-sm leading-6 text-emerald-700">
