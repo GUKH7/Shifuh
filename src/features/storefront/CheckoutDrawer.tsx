@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { ArrowRight, Banknote, Check, CheckCircle2, ChevronDown, ChevronLeft, CreditCard, Loader2, MapPin, Minus, Pencil, Plus, QrCode, ShoppingBag, Ticket, Trash2 } from "lucide-react";
 import { formatMoney, getContrastTextColor } from "./format";
 import { DeliveryCalculator } from "./DeliveryCalculator";
-import type { CartItem, CheckoutAddress, CheckoutStep, DeliveryInfo, OrderResponse } from "./types";
+import type { CartItem, CheckoutAddress, CheckoutStep, DeliveryInfo, FulfillmentType, OrderResponse } from "./types";
 import type { StoreStatus } from "./store-summary";
 import {
   formatCurrencyInput,
@@ -49,6 +49,9 @@ type CheckoutDrawerProps = {
   storeStatus: StoreStatus;
   minimumOrderAmount: number;
   scheduledOrdersEnabled: boolean;
+  pickupEnabled: boolean;
+  fulfillmentType: FulfillmentType;
+  pickupAddress: string;
   minimumScheduleValue: string;
   scheduledFor: string;
   onClose: () => void;
@@ -73,6 +76,7 @@ type CheckoutDrawerProps = {
   onChangeForChange: (value: string) => void;
   onCashNeedsChange: (value: boolean) => void;
   onScheduledForChange: (value: string) => void;
+  onFulfillmentTypeChange: (value: FulfillmentType) => void;
   onPlaceOrder: () => void;
   onTrackOrder: () => void;
   onFinishOrder: () => void;
@@ -109,6 +113,9 @@ export function CheckoutDrawer({
   storeStatus,
   minimumOrderAmount,
   scheduledOrdersEnabled,
+  pickupEnabled,
+  fulfillmentType,
+  pickupAddress,
   minimumScheduleValue,
   scheduledFor,
   onClose,
@@ -133,6 +140,7 @@ export function CheckoutDrawer({
   onChangeForChange,
   onCashNeedsChange,
   onScheduledForChange,
+  onFulfillmentTypeChange,
   onPlaceOrder,
   onTrackOrder,
   onFinishOrder,
@@ -158,11 +166,12 @@ export function CheckoutDrawer({
   const scheduleRequired = storeStatus.tone === "closed" && scheduledOrdersEnabled;
   const scheduleMissing = scheduleRequired && !scheduledFor;
   const addressFieldErrors = getCheckoutAddressErrors(address);
-  const deliveryReady = Boolean(deliveryInfo?.valid && deliveryInfo.addressValidated);
+  const isPickup = fulfillmentType === "pickup";
+  const deliveryReady = isPickup || Boolean(deliveryInfo?.valid && deliveryInfo.addressValidated);
   const addressErrors = {
     customerName: customerName.trim().length >= 2 ? "" : "Informe seu nome.",
     customerPhone: isValidPhone(customerPhone) ? "" : "Informe um celular válido com DDD.",
-    ...addressFieldErrors,
+    ...(isPickup ? {} : addressFieldErrors),
     delivery: deliveryReady || deliveryInfo || deliveryError
       ? ""
       : "Calcule a taxa e o prazo da entrega antes de continuar.",
@@ -352,6 +361,30 @@ export function CheckoutDrawer({
 
           {step === "address" && (
             <div className="space-y-4">
+              {pickupEnabled && (
+                <div className="surface-card rounded-[20px] p-4 sm:rounded-[24px] sm:p-5">
+                  <h3 className="text-lg font-black text-gray-950">Como você quer receber?</h3>
+                  <div className="mt-3 grid grid-cols-2 gap-2" role="radiogroup" aria-label="Forma de recebimento">
+                    {(["delivery", "pickup"] as FulfillmentType[]).map((value) => {
+                      const selected = fulfillmentType === value;
+                      const Icon = value === "delivery" ? MapPin : ShoppingBag;
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          role="radio"
+                          aria-checked={selected}
+                          onClick={() => onFulfillmentTypeChange(value)}
+                          className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border bg-white px-3 text-sm font-black"
+                          style={selected ? { borderColor: primaryColor, color: primaryColor, backgroundColor: `${primaryColor}0D` } : undefined}
+                        >
+                          <Icon size={17} /> {value === "delivery" ? "Entrega" : "Retirada"}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               <div className="surface-card rounded-[20px] p-4 sm:rounded-[24px] sm:p-5">
                 <h3 className="text-lg font-black text-gray-950">Seus dados</h3>
                 <div className="mt-4 space-y-3">
@@ -391,7 +424,7 @@ export function CheckoutDrawer({
                 </div>
               </div>
 
-              <DeliveryCalculator
+              {!isPickup ? <DeliveryCalculator
                 primaryColor={primaryColor}
                 savedAddresses={savedAddresses}
                 usingSavedAddress={usingSavedAddress}
@@ -407,8 +440,19 @@ export function CheckoutDrawer({
                 onRetryDelivery={onRetryDelivery}
                 onSelectSavedAddress={onSelectSavedAddress}
                 onUseAnotherAddress={onUseAnotherAddress}
-              />
-              {!usingSavedAddress && (
+              /> : (
+                <div className="surface-card rounded-[20px] p-4 sm:rounded-[24px] sm:p-5">
+                  <div className="flex items-start gap-3">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700"><ShoppingBag size={18} /></span>
+                    <div>
+                      <h3 className="font-black text-gray-950">Retirada na loja</h3>
+                      <p className="mt-1 text-sm leading-5 text-gray-600">{pickupAddress || "O endereço será confirmado pela loja."}</p>
+                      <p className="mt-2 text-xs font-bold text-emerald-700">Sem taxa de entrega</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {!isPickup && !usingSavedAddress && (
                 <p className="rounded-2xl border border-[var(--line)] bg-white p-4 text-sm leading-6 text-gray-600">
                   <strong className="block text-gray-900">Seus dados serão lembrados</strong>
                   Nas próximas compras neste aparelho, nome, telefone e endereço serão preenchidos automaticamente.
@@ -463,15 +507,21 @@ export function CheckoutDrawer({
                 <div className="mt-4 space-y-3 text-sm text-gray-600">
                   <div className="rounded-2xl bg-[#faf8f5] p-3.5">
                     <div className="flex items-start justify-between gap-3">
-                      <p className="font-black text-gray-900">Entrega</p>
+                      <p className="font-black text-gray-900">{isPickup ? "Retirada na loja" : "Entrega"}</p>
                       <button type="button" onClick={() => onStepChange("address")} className="text-xs font-black" style={{ color: primaryColor }}>
                         Editar
                       </button>
                     </div>
                     <p className="mt-2 font-bold text-gray-900">{customerName} · {customerPhone}</p>
-                    <p className="mt-1">{address.street}, {address.number}{address.complement ? `, ${address.complement}` : ""}</p>
-                    <p>{address.neighborhood} · {address.city}/{address.state}</p>
-                    {deliveryInfo?.valid && (
+                    {isPickup ? (
+                      <p className="mt-1">{pickupAddress}</p>
+                    ) : (
+                      <>
+                        <p className="mt-1">{address.street}, {address.number}{address.complement ? `, ${address.complement}` : ""}</p>
+                        <p>{address.neighborhood} · {address.city}/{address.state}</p>
+                      </>
+                    )}
+                    {!isPickup && deliveryInfo?.valid && (
                       <p className="mt-2 text-xs font-bold text-emerald-700">
                         {deliveryInfo.distance} km aproximadamente · previsão de {deliveryInfo.time} min
                       </p>
@@ -511,7 +561,7 @@ export function CheckoutDrawer({
                   </div>
                   <div className="border-t border-[var(--line)] pt-3">
                     <div className="flex justify-between py-1"><span>Subtotal</span><span>{formatMoney(cartSubtotal)}</span></div>
-                    <div className="flex justify-between py-1"><span>Entrega</span><span>{formatMoney(feeValue)}</span></div>
+                    <div className="flex justify-between py-1"><span>{isPickup ? "Retirada" : "Entrega"}</span><span>{isPickup ? "Grátis" : formatMoney(feeValue)}</span></div>
                     {discountAmount > 0 && <div className="flex justify-between py-1 font-bold text-emerald-600"><span>Desconto</span><span>- {formatMoney(discountAmount)}</span></div>}
                     <div className="mt-2 flex justify-between border-t border-[var(--line)] pt-3 text-lg font-black text-gray-950">
                       <span>Total</span><span>{formatMoney(finalTotal)}</span>
@@ -706,7 +756,7 @@ export function CheckoutDrawer({
               <div className="mb-3 flex items-end justify-between gap-4 px-1">
                 <div>
                   <p className="text-[11px] font-bold uppercase text-gray-400">Subtotal</p>
-                  <p className="text-xs text-gray-500">Entrega calculada na próxima etapa</p>
+                  <p className="text-xs text-gray-500">{pickupEnabled ? "Escolha entrega ou retirada na próxima etapa" : "Entrega calculada na próxima etapa"}</p>
                 </div>
                 <strong className="text-xl text-gray-950">{formatMoney(cartSubtotal)}</strong>
               </div>
@@ -720,20 +770,20 @@ export function CheckoutDrawer({
                   ? "Loja fechada no momento"
                   : !minimumReached
                     ? `Adicione mais ${formatMoney(missingMinimum)}`
-                    : "Continuar para entrega"}
+                    : pickupEnabled ? "Escolher recebimento" : "Continuar para entrega"}
               </button>
             </div>
           )}
 
           {step === "address" && (
             <div>
-              {deliveryInfo?.addressValidated && (
+              {deliveryReady && (
                 <div className="mb-3 px-1">
                   <div className="grid grid-cols-[1fr_auto] gap-x-5 gap-y-1 text-xs">
                     <span className="text-gray-500">Valor dos produtos</span>
                     <strong className="text-right text-gray-950">{formatMoney(cartSubtotal)}</strong>
-                    <span className="text-gray-500">Frete</span>
-                    <strong className="text-right text-gray-950">{formatMoney(feeValue)}</strong>
+                    <span className="text-gray-500">{isPickup ? "Retirada" : "Frete"}</span>
+                    <strong className="text-right text-gray-950">{isPickup ? "Grátis" : formatMoney(feeValue)}</strong>
                     {discountAmount > 0 && (
                       <>
                         <span className="text-emerald-700">Desconto</span>
@@ -743,14 +793,22 @@ export function CheckoutDrawer({
                   </div>
                   <div className="mt-2 flex items-end justify-between gap-4 border-t border-[var(--line)] pt-2">
                     <div className="min-w-0">
-                      <p className="text-[11px] font-bold uppercase text-gray-400">Total com entrega</p>
-                      <p className="truncate text-[11px] text-gray-500">Previsão de {deliveryInfo.time} min · {deliveryInfo.distance} km aprox.</p>
+                      <p className="text-[11px] font-bold uppercase text-gray-400">Total do pedido</p>
+                      <p className="truncate text-[11px] text-gray-500">{isPickup ? "Retirada no endereço da loja" : `Previsão de ${deliveryInfo?.time} min · ${deliveryInfo?.distance} km aprox.`}</p>
                     </div>
                     <strong className="shrink-0 text-xl text-gray-950">{formatMoney(finalTotal)}</strong>
                   </div>
                 </div>
               )}
-              {calculatingFee ? (
+              {isPickup ? (
+                <button
+                  onClick={continueToPayment}
+                  className="w-full rounded-2xl px-5 py-3.5 text-sm font-black sm:py-4 sm:text-base"
+                  style={{ backgroundColor: primaryColor, color: brandTextColor }}
+                >
+                  Ir para pagamento
+                </button>
+              ) : calculatingFee ? (
                 <p role="status" className="py-2 text-center text-sm font-bold text-gray-600">Calculando entrega...</p>
               ) : deliveryInfo?.valid === false ? (
                 <p role="alert" className="py-2 text-center text-sm font-bold text-rose-700">Endereço fora da área de entrega</p>
@@ -775,7 +833,7 @@ export function CheckoutDrawer({
               <div className="mb-3 flex items-end justify-between gap-4 px-1">
                 <div>
                   <p className="text-[11px] font-bold uppercase text-gray-400">Total do pedido</p>
-                  <p className="text-xs text-gray-500">Itens e entrega incluídos</p>
+                  <p className="text-xs text-gray-500">{isPickup ? "Retirada sem taxa" : "Itens e entrega incluídos"}</p>
                 </div>
                 <strong className="text-xl text-gray-950">{formatMoney(finalTotal)}</strong>
               </div>

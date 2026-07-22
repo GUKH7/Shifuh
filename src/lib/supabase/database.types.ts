@@ -35,6 +35,7 @@ export interface Database {
           delivery_tiers: Json | null;
           work_hours: Json | null;
           minimum_order_amount: number;
+          pickup_enabled: boolean;
           scheduled_orders_enabled: boolean;
           scheduled_order_lead_minutes: number;
           printer_width: number | null;
@@ -72,6 +73,7 @@ export interface Database {
           delivery_tiers?: Json | null;
           work_hours?: Json | null;
           minimum_order_amount?: number;
+          pickup_enabled?: boolean;
           scheduled_orders_enabled?: boolean;
           scheduled_order_lead_minutes?: number;
           printer_width?: number | null;
@@ -109,6 +111,7 @@ export interface Database {
           delivery_tiers?: Json | null;
           work_hours?: Json | null;
           minimum_order_amount?: number;
+          pickup_enabled?: boolean;
           scheduled_orders_enabled?: boolean;
           scheduled_order_lead_minutes?: number;
           printer_width?: number | null;
@@ -643,6 +646,7 @@ export interface Database {
           rating_average: number | null;
           rating_count: number | null;
           minimum_order_amount: number;
+          pickup_enabled: boolean;
           scheduled_orders_enabled: boolean;
           scheduled_order_lead_minutes: number;
         };

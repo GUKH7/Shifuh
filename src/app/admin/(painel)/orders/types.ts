@@ -1,6 +1,7 @@
 export type JsonObject = Record<string, unknown>;
 
 export type OrderAddress = {
+  fulfillment_type?: "delivery" | "pickup" | null;
   street?: string | null;
   number?: string | null;
   neighborhood?: string | null;

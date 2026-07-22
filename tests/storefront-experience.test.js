@@ -91,11 +91,11 @@ test("checkout keeps compact progress and totals visible in the footer", () => {
   assert.match(checkout, /isComplete \? <Check/);
   assert.match(checkout, /isCurrent \? "Agora" : isComplete \? "Concluída" : "Próxima"/);
   assert.match(checkout, /Valor dos produtos/);
-  assert.match(checkout, />Frete</);
-  assert.match(checkout, /Total com entrega/);
-  assert.match(checkout, /Previsão de \{deliveryInfo\.time\} min/);
+  assert.match(checkout, /isPickup \? "Retirada" : "Frete"/);
+  assert.match(checkout, /Total do pedido/);
+  assert.match(checkout, /Previsão de \$\{deliveryInfo\?\.time\} min/);
   assert.match(checkout, /\{formatMoney\(cartSubtotal\)\}/);
-  assert.match(checkout, /\{formatMoney\(feeValue\)\}/);
+  assert.match(checkout, /isPickup \? "Grátis" : formatMoney\(feeValue\)/);
   assert.match(checkout, /\{formatMoney\(finalTotal\)\}/);
   assert.match(checkout, /Total do pedido/);
 });

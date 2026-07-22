@@ -128,13 +128,19 @@ function getChannelLabel(order: Order) {
 }
 
 function getFulfillmentLabel(order: Order) {
+  if (order.address?.fulfillment_type === "pickup") return "Retirada";
   return formatIfoodOrderType(order) === "Retirada" ? "Retirada" : "Delivery";
+}
+
+function isPickupOrder(order: Order) {
+  return order.address?.fulfillment_type === "pickup" ||
+    (isIfoodOrder(order) && String(getIfoodMeta(order).orderType).toUpperCase() === "TAKEOUT");
 }
 
 function getPrimaryActionLabel(order: Order) {
   if (order.status === "pending") return "Aceitar pedido";
   if (order.status === "preparing") {
-    return isIfoodOrder(order) && String(getIfoodMeta(order).orderType).toUpperCase() === "TAKEOUT"
+    return isPickupOrder(order)
       ? "Pronto para retirada"
       : "Despachar pedido";
   }
@@ -145,7 +151,7 @@ function getPrimaryActionLabel(order: Order) {
 function getCompactPrimaryActionLabel(order: Order) {
   if (order.status === "pending") return "Aceitar";
   if (order.status === "preparing") {
-    return isIfoodOrder(order) && String(getIfoodMeta(order).orderType).toUpperCase() === "TAKEOUT"
+    return isPickupOrder(order)
       ? "Pronto"
       : "Despachar";
   }
@@ -492,6 +498,8 @@ export default function OrdersPage() {
     if (order.status === "preparing") {
       if (isIfoodOrder(order) && String(getIfoodMeta(order).orderType).toUpperCase() === "TAKEOUT") {
         await runIfoodAction(order, "ready_to_pickup");
+      } else if (order.address?.fulfillment_type === "pickup") {
+        await updateStatus(order, "done");
       } else if (isIfoodOrder(order)) {
         await runIfoodAction(order, "dispatch");
       } else {

@@ -23,6 +23,7 @@ function restaurant(closed = false) {
     delivery_tiers: [{ distance: 5, price: 5, time: 30 }],
     storefront_theme: { show_banners: false, show_logo: false },
     minimum_order_amount: 0,
+    pickup_enabled: false,
     scheduled_orders_enabled: false,
     banners: [],
   };

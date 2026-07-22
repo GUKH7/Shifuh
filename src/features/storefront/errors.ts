@@ -25,6 +25,7 @@ export function getOrderApiErrorMessage(code?: string) {
     ADDRESS_NOT_FOUND: "Não localizamos este endereço. Confira os campos e tente novamente.",
     OUTSIDE_DELIVERY_AREA: "Este endereço está fora da área atendida pela loja.",
     DELIVERY_CALCULATION_UNAVAILABLE: "Não conseguimos recalcular a entrega agora. Seus dados foram mantidos; tente novamente.",
+    PICKUP_DISABLED: "Esta loja não oferece retirada no local. Escolha a entrega para continuar.",
     ORDER_CREATION_FAILED: "Não conseguimos registrar o pedido. Sua sacola foi mantida para você tentar novamente.",
   };
 

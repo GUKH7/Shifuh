@@ -123,3 +123,4 @@ export interface StorefrontTheme {
 }
 
 export type CheckoutStep = "cart" | "address" | "payment" | "success";
+export type FulfillmentType = "delivery" | "pickup";

@@ -46,6 +46,7 @@ type CheckoutPayload = {
   usingSavedAddress?: boolean;
   saveAddress?: boolean;
   scheduledFor?: string | null;
+  fulfillmentType?: "delivery" | "pickup";
 };
 
 function roundMoney(value: number) {
@@ -170,6 +171,7 @@ export async function POST(request: Request) {
     const address = normalizeAddress(body.address);
     const cart = Array.isArray(body.cart) ? body.cart : [];
     const paymentMethod = isStorefrontPaymentMethod(body.paymentMethod) ? body.paymentMethod : null;
+    const fulfillmentType = body.fulfillmentType === "pickup" ? "pickup" : "delivery";
 
     if (!body.restaurantId) {
     return NextResponse.json({ error: "Loja inválida." }, { status: 400 });
@@ -184,7 +186,7 @@ export async function POST(request: Request) {
     if (!/^\d{10,11}$/.test(phoneDigits)) {
       return NextResponse.json({ error: "Informe um telefone válido com DDD." }, { status: 400 });
     }
-    if (!/^\d{8}$/.test(cepDigits)) {
+    if (fulfillmentType === "delivery" && !/^\d{8}$/.test(cepDigits)) {
       return NextResponse.json({ error: "Informe um CEP válido." }, { status: 400 });
     }
 
@@ -192,7 +194,7 @@ export async function POST(request: Request) {
     const invalidAddressFields = Object.entries(addressErrors)
       .filter(([, message]) => Boolean(message))
       .map(([field]) => field);
-    if (invalidAddressFields.length > 0) {
+    if (fulfillmentType === "delivery" && invalidAddressFields.length > 0) {
       return NextResponse.json(
         {
           code: "INCOMPLETE_ADDRESS",
@@ -223,13 +225,20 @@ export async function POST(request: Request) {
     const { data: restaurant, error: restaurantError } = await adminSupabase
       .from("restaurants")
       .select(
-        "id, name, phone, whatsapp_number, latitude, longitude, address_zip, address_street, address_number, address_neighborhood, address_city, address_state, delivery_tiers, work_hours, minimum_order_amount, scheduled_orders_enabled, scheduled_order_lead_minutes",
+        "id, name, phone, whatsapp_number, latitude, longitude, address_zip, address_street, address_number, address_neighborhood, address_city, address_state, delivery_tiers, work_hours, minimum_order_amount, scheduled_orders_enabled, scheduled_order_lead_minutes, pickup_enabled",
       )
       .eq("id", body.restaurantId)
       .maybeSingle();
 
     if (restaurantError || !restaurant) {
     return NextResponse.json({ error: "Loja não encontrada." }, { status: 404 });
+    }
+
+    if (fulfillmentType === "pickup" && !restaurant.pickup_enabled) {
+      return NextResponse.json(
+        { code: "PICKUP_DISABLED", error: "Esta loja não oferece retirada no local." },
+        { status: 400 },
+      );
     }
 
     const now = new Date();
@@ -417,13 +426,13 @@ export async function POST(request: Request) {
     let deliveryDistance: number | null = null;
     const tiers = Array.isArray(restaurant.delivery_tiers) ? restaurant.delivery_tiers : [];
 
-    let restaurantCoords =
-      restaurant.latitude !== null && restaurant.longitude !== null
-        ? { lat: Number(restaurant.latitude), lon: Number(restaurant.longitude) }
-        : null;
+    if (fulfillmentType === "delivery") {
+      let restaurantCoords =
+        restaurant.latitude !== null && restaurant.longitude !== null
+          ? { lat: Number(restaurant.latitude), lon: Number(restaurant.longitude) }
+          : null;
 
-    if (!restaurantCoords) {
-      if (restaurant.address_street && restaurant.address_city && restaurant.address_state) {
+      if (!restaurantCoords && restaurant.address_street && restaurant.address_city && restaurant.address_state) {
         restaurantCoords = await getCoordinates({
           postalCode: restaurant.address_zip || undefined,
           street: restaurant.address_street || undefined,
@@ -433,60 +442,44 @@ export async function POST(request: Request) {
           state: restaurant.address_state || undefined,
         });
       }
+
+      if (!restaurantCoords) {
+        return NextResponse.json(
+          { code: "DELIVERY_CALCULATION_UNAVAILABLE", error: "A loja não conseguiu calcular a entrega agora. Tente novamente." },
+          { status: 503 },
+        );
+      }
+
+      const clientCoords = await getCoordinates({
+        postalCode: address.cep,
+        street: address.street,
+        number: address.number === "S/N" ? undefined : address.number,
+        neighborhood: address.neighborhood,
+        city: address.city,
+        state: address.state,
+      });
+
+      if (!clientCoords) {
+        return NextResponse.json(
+          { code: "ADDRESS_NOT_FOUND", error: "Não foi possível localizar o endereço informado." },
+          { status: 422 },
+        );
+      }
+
+      const distance = calculateDistance(restaurantCoords.lat, restaurantCoords.lon, clientCoords.lat, clientCoords.lon);
+      const fee = calculateDeliveryFee(distance, tiers);
+      deliveryDistance = distance;
+      deliveryTime = fee.time;
+
+      if (!fee.valid && tiers.length > 0) {
+        return NextResponse.json(
+          { code: "OUTSIDE_DELIVERY_AREA", error: "O endereço informado está fora da área de entrega.", distance },
+          { status: 422 },
+        );
+      }
+
+      deliveryFee = roundMoney(fee.price);
     }
-
-    if (!restaurantCoords) {
-      return NextResponse.json(
-        {
-          code: "DELIVERY_CALCULATION_UNAVAILABLE",
-          error: "A loja não conseguiu calcular a entrega agora. Tente novamente.",
-        },
-        { status: 503 },
-      );
-    }
-
-    const clientCoords = await getCoordinates({
-      postalCode: address.cep,
-      street: address.street,
-      number: address.number === "S/N" ? undefined : address.number,
-      neighborhood: address.neighborhood,
-      city: address.city,
-      state: address.state,
-    });
-
-    if (!clientCoords) {
-      return NextResponse.json(
-        {
-          code: "ADDRESS_NOT_FOUND",
-          error: "Não foi possível localizar o endereço informado.",
-        },
-        { status: 422 },
-      );
-    }
-
-    const distance = calculateDistance(
-      restaurantCoords.lat,
-      restaurantCoords.lon,
-      clientCoords.lat,
-      clientCoords.lon,
-    );
-    const fee = calculateDeliveryFee(distance, tiers);
-
-    deliveryDistance = distance;
-    deliveryTime = fee.time;
-
-    if (!fee.valid && tiers.length > 0) {
-      return NextResponse.json(
-        {
-          code: "OUTSIDE_DELIVERY_AREA",
-          error: "O endereço informado está fora da área de entrega.",
-          distance,
-        },
-        { status: 422 },
-      );
-    }
-
-    deliveryFee = roundMoney(fee.price);
 
     const total = roundMoney(subtotal + deliveryFee - discount);
     let normalizedChangeFor: string | null = null;
@@ -502,10 +495,19 @@ export async function POST(request: Request) {
       normalizedChangeFor = changeAmount.toFixed(2);
     }
     const orderAddress = {
-      ...address,
+      ...(fulfillmentType === "pickup" ? {
+        cep: restaurant.address_zip || "",
+        street: restaurant.address_street || "Retirada na loja",
+        number: restaurant.address_number || "S/N",
+        neighborhood: restaurant.address_neighborhood || "",
+        city: restaurant.address_city || "",
+        state: restaurant.address_state || "",
+        complement: "",
+      } : address),
+      fulfillment_type: fulfillmentType,
       distance: deliveryDistance,
-      delivery_calculated: true,
-      distance_method: "straight_line",
+      delivery_calculated: fulfillmentType === "delivery",
+      distance_method: fulfillmentType === "delivery" ? "straight_line" : null,
     };
     const transactionItems = normalizedItems.map((item) => ({
       product_name: item.product_name,
@@ -605,6 +607,7 @@ export async function POST(request: Request) {
       paymentMethod,
       changeFor: normalizedChangeFor,
       scheduledFor: scheduledFor?.toISOString() || null,
+      fulfillmentType,
       address,
       items: normalizedItems,
     });

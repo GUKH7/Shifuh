@@ -89,6 +89,7 @@ export default function SettingsPage() {
     close_time: "23:00",
   });
   const [minimumOrderAmount, setMinimumOrderAmount] = useState(0);
+  const [pickupEnabled, setPickupEnabled] = useState(false);
   const [scheduledOrdersEnabled, setScheduledOrdersEnabled] = useState(false);
   const [scheduledOrderLeadMinutes, setScheduledOrderLeadMinutes] = useState(60);
   const [printerWidth, setPrinterWidth] = useState(80);
@@ -212,6 +213,7 @@ export default function SettingsPage() {
         setSharedSchedule(sharedTimes);
         setScheduleMode(hasDifferentOpenHours ? "individual" : "shared");
         setMinimumOrderAmount(Number(data.minimum_order_amount) || 0);
+        setPickupEnabled(Boolean(data.pickup_enabled));
         setScheduledOrdersEnabled(Boolean(data.scheduled_orders_enabled));
         setScheduledOrderLeadMinutes(Math.max(30, Number(data.scheduled_order_lead_minutes) || 60));
         setPrinterWidth(data.printer_width || 80);
@@ -358,6 +360,7 @@ export default function SettingsPage() {
         delivery_tiers: sortedTiers,
         work_hours: normalizedSchedule,
         minimum_order_amount: Math.max(0, minimumOrderAmount),
+        pickup_enabled: pickupEnabled,
         scheduled_orders_enabled: scheduledOrdersEnabled,
         scheduled_order_lead_minutes: Math.max(30, scheduledOrderLeadMinutes),
         address_zip: address.zip,
@@ -1940,6 +1943,23 @@ export default function SettingsPage() {
               </div>
               <p className="text-xs text-gray-500">Use zero para não exigir valor mínimo.</p>
             </label>
+
+            <div className="rounded-2xl border border-[var(--line)] bg-white p-4">
+              <label className="flex cursor-pointer items-start justify-between gap-4">
+                <span>
+                  <span className="block text-sm font-bold text-gray-900">Permitir retirada na loja</span>
+                  <span className="mt-1 block text-xs leading-5 text-gray-500">
+                    O cliente poderá escolher retirar o pedido no endereço da loja, sem taxa de entrega.
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={pickupEnabled}
+                  onChange={(event) => setPickupEnabled(event.target.checked)}
+                  className="mt-1 h-5 w-5 accent-[var(--brand)]"
+                />
+              </label>
+            </div>
 
             <div className="rounded-2xl border border-[var(--line)] bg-white p-4">
               <label className="flex cursor-pointer items-start justify-between gap-4">

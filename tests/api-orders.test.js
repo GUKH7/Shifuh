@@ -30,6 +30,7 @@ function baseState(overrides = {}) {
       delivery_tiers: [{ max_km: 5, price: 7, time: 35 }],
       work_hours: [],
       minimum_order_amount: 0,
+      pickup_enabled: false,
       scheduled_orders_enabled: false,
       scheduled_order_lead_minutes: 60,
     },
@@ -427,6 +428,36 @@ test("aceita endereço sem número sem enviar S/N para a geocodificação", asyn
   assert.equal(response.status, 200);
   assert.equal(mockState.lastClientCoordinatesRequest.number, undefined);
   assert.equal(mockState.orders[0].address.number, "S/N");
+});
+
+test("bloqueia retirada quando a loja não habilitou a opção", async () => {
+  resetRateLimitForTests();
+  mockState = baseState();
+
+  const response = await postOrder(createPayload({ fulfillmentType: "pickup", address: {} }));
+  const body = await readJson(response);
+
+  assert.equal(response.status, 400);
+  assert.equal(body.code, "PICKUP_DISABLED");
+  assert.equal(mockState.orders.length, 0);
+});
+
+test("cria retirada sem exigir endereço do cliente ou calcular frete", async () => {
+  resetRateLimitForTests();
+  mockState = baseState({
+    restaurant: { ...baseState().restaurant, pickup_enabled: true },
+  });
+
+  const response = await postOrder(createPayload({ fulfillmentType: "pickup", address: {} }));
+  const body = await readJson(response);
+
+  assert.equal(response.status, 200);
+  assert.equal(body.fulfillmentType, "pickup");
+  assert.equal(body.deliveryFee, 0);
+  assert.equal(body.total, 20);
+  assert.equal(mockState.lastClientCoordinatesRequest, null);
+  assert.equal(mockState.orders[0].address.fulfillment_type, "pickup");
+  assert.equal(mockState.orders[0].address.street, "Rua da Loja");
 });
 
 test("bloqueia produto inativo", async () => {

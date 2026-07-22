@@ -37,7 +37,7 @@ import {
   formatTodayHours,
   getStoreStatus,
 } from "@/features/storefront/store-summary";
-import type { CheckoutStep, DeliveryInfo, OrderResponse } from "@/features/storefront/types";
+import type { CheckoutStep, DeliveryInfo, FulfillmentType, OrderResponse } from "@/features/storefront/types";
 import { useCart } from "@/features/storefront/use-cart";
 import { useStorefront } from "@/features/storefront/use-storefront";
 import { useCheckoutAnalytics } from "@/features/storefront/use-checkout-analytics";
@@ -82,6 +82,7 @@ export default function StorePage() {
   const [completedOrder, setCompletedOrder] = useState<OrderResponse | null>(null);
   const orderAttemptKeyRef = useRef<string | null>(null);
   const [scheduledFor, setScheduledFor] = useState("");
+  const [fulfillmentType, setFulfillmentType] = useState<FulfillmentType>("delivery");
 
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<{
@@ -275,8 +276,9 @@ export default function StorePage() {
     }
   };
 
-  const feeValue = deliveryInfo?.valid ? deliveryInfo.price : 0;
-  const hasAddressMinimum = isCompleteCheckoutAddress(address);
+  const isPickup = fulfillmentType === "pickup";
+  const feeValue = isPickup ? 0 : deliveryInfo?.valid ? deliveryInfo.price : 0;
+  const hasAddressMinimum = isPickup || isCompleteCheckoutAddress(address);
   const handleAddressChange = (nextAddress: typeof EMPTY_ADDRESS) => {
     const deliveryAddressChanged =
       nextAddress.cep !== address.cep ||
@@ -350,10 +352,10 @@ export default function StorePage() {
 
   const handlePlaceOrder = async () => {
     setCheckoutError("");
-    if (!customerName || !customerPhone || !address.street || !address.number) {
+    if (!customerName || !customerPhone || (!isPickup && (!address.street || !address.number))) {
       showToast({
         title: "Dados incompletos",
-        description: "Preencha nome, WhatsApp e endereço para continuar.",
+        description: isPickup ? "Preencha nome e WhatsApp para continuar." : "Preencha nome, WhatsApp e endereço para continuar.",
         tone: "error",
       });
       return;
@@ -362,11 +364,11 @@ export default function StorePage() {
       showToast({ title: "WhatsApp inválido", description: "Informe um telefone com DDD.", tone: "error" });
       return;
     }
-    if (!isValidCep(address.cep)) {
+    if (!isPickup && !isValidCep(address.cep)) {
       showToast({ title: "CEP inválido", description: "Informe os 8 números do CEP.", tone: "error" });
       return;
     }
-    if (!hasAddressMinimum) {
+    if (!isPickup && !hasAddressMinimum) {
       showToast({
         title: "Endereço incompleto",
         description: "Complete CEP, rua, número, bairro, cidade e UF.",
@@ -374,7 +376,7 @@ export default function StorePage() {
       });
       return;
     }
-    if (!deliveryInfo?.valid || !deliveryInfo.addressValidated) {
+    if (!isPickup && (!deliveryInfo?.valid || !deliveryInfo.addressValidated)) {
       setStep("address");
       setDeliveryError("Calcule novamente a taxa e o prazo para continuar.");
       showToast({
@@ -432,6 +434,7 @@ export default function StorePage() {
           customerName,
           customerPhone: onlyDigits(customerPhone),
           address,
+          fulfillmentType,
           paymentMethod,
           changeFor: paymentMethod === "cash" && cashNeedsChange ? changeFor : "",
           couponCode: appliedCoupon?.code || null,
@@ -612,6 +615,7 @@ export default function StorePage() {
   const storeStatus = getStoreStatus(restaurant?.work_hours, storeClock);
   const minimumOrderAmount = Math.max(0, Number(restaurant?.minimum_order_amount) || 0);
   const scheduledOrdersEnabled = Boolean(restaurant?.scheduled_orders_enabled);
+  const pickupEnabled = Boolean(restaurant?.pickup_enabled);
   const scheduledOrderLeadMinutes = Math.max(
     30,
     Number(restaurant?.scheduled_order_lead_minutes) || 60,
@@ -1132,6 +1136,9 @@ export default function StorePage() {
         storeStatus={storeStatus}
         minimumOrderAmount={minimumOrderAmount}
         scheduledOrdersEnabled={scheduledOrdersEnabled}
+        pickupEnabled={pickupEnabled}
+        fulfillmentType={fulfillmentType}
+        pickupAddress={[restaurant?.address_street, restaurant?.address_number, restaurant?.address_neighborhood, restaurant?.address_city, restaurant?.address_state].filter(Boolean).join(", ")}
         minimumScheduleValue={minimumScheduleValue}
         scheduledFor={scheduledFor}
         onClose={() => setIsCartOpen(false)}
@@ -1168,6 +1175,12 @@ export default function StorePage() {
         onChangeForChange={(value) => { setChangeFor(value); setCheckoutError(""); }}
         onCashNeedsChange={(value) => { setCashNeedsChange(value); setCheckoutError(""); }}
         onScheduledForChange={(value) => { setScheduledFor(value); setCheckoutError(""); }}
+        onFulfillmentTypeChange={(value) => {
+          setFulfillmentType(value);
+          setCheckoutError("");
+          setDeliveryError("");
+          if (value === "pickup") setDeliveryInfo(null);
+        }}
         onPlaceOrder={handlePlaceOrder}
         onTrackOrder={handleTrackCompletedOrder}
         onFinishOrder={handleFinishCompletedOrder}

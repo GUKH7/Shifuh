@@ -63,9 +63,27 @@ test("storefront orders use a restaurant-scoped idempotency key", () => {
   assert.match(idempotencyMigration, /grant execute on function public\.create_storefront_order_transaction[\s\S]+to service_role;/i);
 });
 
+test("pickup is opt-in and exposed without leaking private restaurant data", () => {
+  const pickupMigration = fs.readFileSync(
+    path.join(__dirname, "..", "supabase", "migrations", "20260722184429_add_store_pickup_option.sql"),
+    "utf8",
+  );
+  assert.match(pickupMigration, /pickup_enabled boolean not null default false/i);
+  assert.match(pickupMigration, /security_invoker\s*=\s*true/i);
+  assert.match(pickupMigration, /revoke all on public\.public_restaurants from public/i);
+
+  const enforcementMigration = fs.readFileSync(
+    path.join(__dirname, "..", "supabase", "migrations", "20260722190029_enforce_pickup_in_order_transaction.sql"),
+    "utf8",
+  );
+  assert.match(enforcementMigration, /before insert or update of restaurant_id, address/i);
+  assert.match(enforcementMigration, /pickup_enabled = true/i);
+  assert.match(enforcementMigration, /pickup is disabled for this restaurant/i);
+});
+
 test("order status history remains server-only and records transitions", () => {
   const historyMigration = fs.readFileSync(
-    path.join(__dirname, "..", "supabase", "migrations", "20260721171535_order_status_history.sql"),
+    path.join(__dirname, "..", "supabase", "migrations", "20260721171924_order_status_history.sql"),
     "utf8",
   );
   assert.match(historyMigration, /alter table public\.order_status_history enable row level security/i);
