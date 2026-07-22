@@ -1112,6 +1112,14 @@ export default function OrdersPage() {
                           >
                             <Eye size={16} />
                           </button>
+                          <button
+                            type="button"
+                            onClick={() => handlePrint(order)}
+                            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--line)] bg-white text-gray-600 hover:border-orange-200 hover:text-[var(--brand)]"
+                            aria-label="Imprimir pedido"
+                          >
+                            <Printer size={16} />
+                          </button>
                           {primaryActionLabel && (
                             <button
                               type="button"
@@ -1123,14 +1131,6 @@ export default function OrdersPage() {
                               {busyIfoodAction.startsWith(`${order.id}:`) ? "..." : compactPrimaryActionLabel}
                             </button>
                           )}
-                          <button
-                            type="button"
-                            onClick={() => handlePrint(order)}
-                            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--line)] bg-white text-gray-600 hover:border-orange-200 hover:text-[var(--brand)]"
-                            aria-label="Imprimir pedido"
-                          >
-                            <Printer size={16} />
-                          </button>
                         </div>
                       </div>
 

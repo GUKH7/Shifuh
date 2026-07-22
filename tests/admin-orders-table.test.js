@@ -32,4 +32,8 @@ test("order actions use compact labels without losing accessible names", () => {
   assert.match(page, /if \(order\.status === "delivering"\) return "Concluir"/);
   assert.match(page, /aria-label=\{primaryActionLabel\}/);
   assert.match(page, /h-9 w-9 shrink-0/);
+  assert.match(
+    page,
+    /aria-label="Ver detalhes do pedido"[\s\S]*aria-label="Imprimir pedido"[\s\S]*aria-label=\{primaryActionLabel\}/,
+  );
 });
