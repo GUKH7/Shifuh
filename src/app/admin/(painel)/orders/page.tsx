@@ -980,16 +980,17 @@ export default function OrdersPage() {
             ))}
           </div>
 
-          <div className="overflow-hidden rounded-[18px] border border-[var(--line)] bg-white shadow-sm">
-            <div className="hidden grid-cols-[140px_1.45fr_1.05fr_0.8fr_0.95fr_1fr_0.95fr_190px] gap-4 border-b border-[var(--line)] bg-[#fffdfa] px-6 py-4 text-xs font-black uppercase tracking-[0.12em] text-gray-400 xl:grid">
+          <div className="overflow-x-auto rounded-[18px] border border-[var(--line)] bg-white shadow-sm">
+            <div className="hidden min-w-[1280px] grid-cols-[120px_1.25fr_0.9fr_0.65fr_0.85fr_1fr_0.9fr_0.85fr_190px] items-center gap-4 border-b border-[var(--line)] bg-[#fffdfa] px-6 py-4 text-xs font-black uppercase tracking-[0.12em] text-gray-400 xl:grid">
               <span>Pedido</span>
               <span>Cliente</span>
               <span>Canal</span>
               <span>Itens</span>
               <span>Valor</span>
+              <span>Método de pagamento</span>
               <span>Status</span>
               <span>Horário</span>
-              <span>Ações</span>
+              <span className="text-center">Ações</span>
             </div>
 
             {filteredOrders.length === 0 ? (
@@ -1023,7 +1024,7 @@ export default function OrdersPage() {
 
                   return (
                     <div key={order.id} className={order.status === "pending" ? "bg-orange-50/25" : "bg-white"}>
-                      <div className="grid gap-4 px-5 py-4 xl:grid-cols-[140px_1.45fr_1.05fr_0.8fr_0.95fr_1fr_0.95fr_190px] xl:items-center xl:px-6">
+                      <div className="grid gap-4 px-5 py-4 xl:min-w-[1280px] xl:grid-cols-[120px_1.25fr_0.9fr_0.65fr_0.85fr_1fr_0.9fr_0.85fr_190px] xl:items-center xl:px-6">
                         <div>
                           <p className="font-black text-gray-950">#{formatDisplayNumber(order)}</p>
                           <p className="mt-1 text-xs font-medium text-gray-500">
@@ -1073,8 +1074,11 @@ export default function OrdersPage() {
 
                         <div>
                           <p className="font-black text-gray-950">{formatPrice(Number(order.total || 0))}</p>
-                          <p className="mt-1 text-xs font-bold text-emerald-600">
-                            {paymentText || order.payment_method || "Pagamento pendente"}
+                        </div>
+
+                        <div className="min-w-0">
+                          <p className="break-words text-sm font-bold leading-5 text-gray-700">
+                            {paymentText || "Não informado"}
                           </p>
                         </div>
 
@@ -1087,7 +1091,7 @@ export default function OrdersPage() {
                           <p className="mt-1 text-xs font-medium text-gray-500">{formatTime(order.created_at)}</p>
                         </div>
 
-                        <div className="flex items-center gap-2 xl:justify-end">
+                        <div className="flex items-center gap-2 xl:justify-center">
                           <button
                             type="button"
                             onClick={() => toggleExpandedOrder(order)}

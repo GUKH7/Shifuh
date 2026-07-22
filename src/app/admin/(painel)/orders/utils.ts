@@ -193,9 +193,32 @@ export function formatIfoodPayment(order: Order) {
     payment.methodType || order.payment_method || "não informado",
     payment.methodName,
     payment.cardBrand,
-  ].filter(Boolean);
+  ]
+    .filter(Boolean)
+    .map((part) => formatPaymentTerm(String(part)));
 
   return parts.join(" / ");
+}
+
+export function formatPaymentTerm(value: string) {
+  const normalized = value.trim().toUpperCase().replace(/[ -]+/g, "_");
+  const translations: Record<string, string> = {
+    CASH: "Dinheiro",
+    DINHEIRO: "Dinheiro",
+    CREDIT: "Crédito",
+    CREDIT_CARD: "Crédito",
+    CREDITO: "Crédito",
+    DEBIT: "Débito",
+    DEBIT_CARD: "Débito",
+    DEBITO: "Débito",
+    PIX: "Pix",
+    ONLINE: "Online",
+    OFFLINE: "Na entrega",
+    PENDING: "Pendente",
+    NAO_INFORMADO: "Não informado",
+  };
+
+  return translations[normalized] || value;
 }
 
 export function getIfoodCancellation(order: Order) {
