@@ -728,12 +728,26 @@ export function CheckoutDrawer({
           {step === "address" && (
             <div>
               {deliveryInfo?.addressValidated && (
-                <div className="mb-3 flex items-end justify-between gap-4 px-1">
-                  <div>
-                    <p className="text-[11px] font-bold uppercase text-gray-400">Entrega estimada</p>
-                    <p className="text-xs text-gray-500">{deliveryInfo.time} min · {deliveryInfo.distance} km aprox.</p>
+                <div className="mb-3 px-1">
+                  <div className="grid grid-cols-[1fr_auto] gap-x-5 gap-y-1 text-xs">
+                    <span className="text-gray-500">Valor dos produtos</span>
+                    <strong className="text-right text-gray-950">{formatMoney(cartSubtotal)}</strong>
+                    <span className="text-gray-500">Frete</span>
+                    <strong className="text-right text-gray-950">{formatMoney(feeValue)}</strong>
+                    {discountAmount > 0 && (
+                      <>
+                        <span className="text-emerald-700">Desconto</span>
+                        <strong className="text-right text-emerald-700">- {formatMoney(discountAmount)}</strong>
+                      </>
+                    )}
                   </div>
-                  <strong className="text-xl text-gray-950">{formatMoney(feeValue)}</strong>
+                  <div className="mt-2 flex items-end justify-between gap-4 border-t border-[var(--line)] pt-2">
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-bold uppercase text-gray-400">Total com entrega</p>
+                      <p className="truncate text-[11px] text-gray-500">Previsão de {deliveryInfo.time} min · {deliveryInfo.distance} km aprox.</p>
+                    </div>
+                    <strong className="shrink-0 text-xl text-gray-950">{formatMoney(finalTotal)}</strong>
+                  </div>
                 </div>
               )}
               {calculatingFee ? (
