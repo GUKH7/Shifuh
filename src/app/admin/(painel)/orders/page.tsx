@@ -1063,13 +1063,6 @@ export default function OrdersPage() {
                           <p className="text-sm font-black text-gray-950">
                             {order.items.length} {order.items.length === 1 ? "item" : "itens"}
                           </p>
-                          <button
-                            type="button"
-                            onClick={() => toggleExpandedOrder(order)}
-                            className="mt-1 text-[11px] font-black text-[var(--brand)]"
-                          >
-                            Ver detalhes
-                          </button>
                         </div>
 
                         <div className="text-center">
@@ -1092,22 +1085,6 @@ export default function OrdersPage() {
                         </div>
 
                         <div className="flex items-center gap-1 xl:justify-center">
-                          <button
-                            type="button"
-                            onClick={() => toggleExpandedOrder(order)}
-                            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--line)] bg-white text-gray-600 hover:border-orange-200 hover:text-[var(--brand)]"
-                            aria-label="Ver detalhes do pedido"
-                          >
-                            <Eye size={16} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handlePrint(order)}
-                            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--line)] bg-white text-gray-600 hover:border-orange-200 hover:text-[var(--brand)]"
-                            aria-label="Imprimir pedido"
-                          >
-                            <Printer size={16} />
-                          </button>
                           {primaryActionLabel && (
                             <button
                               type="button"
@@ -1119,6 +1096,23 @@ export default function OrdersPage() {
                               {busyIfoodAction.startsWith(`${order.id}:`) ? "..." : compactPrimaryActionLabel}
                             </button>
                           )}
+                          <button
+                            type="button"
+                            onClick={() => handlePrint(order)}
+                            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--line)] bg-white text-gray-600 hover:border-orange-200 hover:text-[var(--brand)]"
+                            aria-label="Imprimir pedido"
+                          >
+                            <Printer size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => toggleExpandedOrder(order)}
+                            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--line)] bg-white text-gray-600 hover:border-orange-200 hover:text-[var(--brand)]"
+                            aria-label="Ver detalhes do pedido"
+                            title="Ver detalhes"
+                          >
+                            <Eye size={16} />
+                          </button>
                         </div>
                       </div>
 

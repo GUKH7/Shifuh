@@ -43,6 +43,14 @@ test("order actions use compact labels without losing accessible names", () => {
   assert.match(page, /h-9 w-9 shrink-0/);
   assert.match(
     page,
-    /aria-label="Ver detalhes do pedido"[\s\S]*aria-label="Imprimir pedido"[\s\S]*aria-label=\{primaryActionLabel\}/,
+    /aria-label=\{primaryActionLabel\}[\s\S]*aria-label="Imprimir pedido"[\s\S]*aria-label="Ver detalhes do pedido"/,
+  );
+});
+
+test("details action stays at the far right without a duplicate items link", () => {
+  assert.doesNotMatch(page, />\s*Ver detalhes\s*<\/button>/);
+  assert.match(
+    page,
+    /aria-label="Imprimir pedido"[\s\S]*aria-label="Ver detalhes do pedido"/,
   );
 });
