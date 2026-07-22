@@ -1,4 +1,5 @@
 import type { IfoodBenefit, IfoodCancellationReason, JsonObject, Order, OrderAddon } from "./types";
+import { getOrderStatusLabel } from "@/lib/order-status";
 
 export const STATUS_FILTERS = [
   { id: "all", label: "Todos" },
@@ -93,38 +94,8 @@ export function playNewOrderChime() {
   }
 }
 
-export function getStatusClasses(status: Order["status"]) {
-  switch (status) {
-    case "pending":
-      return "bg-[#fff4dc] text-[#a56b00]";
-    case "preparing":
-      return "bg-[#fff2ea] text-[var(--brand)]";
-    case "delivering":
-      return "bg-[#eef5ff] text-[#2266d2]";
-    case "done":
-      return "bg-emerald-100 text-emerald-700";
-    case "canceled":
-      return "bg-red-100 text-red-700";
-    default:
-      return "bg-gray-100 text-gray-700";
-  }
-}
-
 export function getStatusLabel(status: Order["status"]) {
-  switch (status) {
-    case "pending":
-      return "Confirmado";
-    case "preparing":
-      return "Em preparo";
-    case "delivering":
-      return "Em rota";
-    case "done":
-      return "Concluído";
-    case "canceled":
-      return "Cancelado";
-    default:
-      return status;
-  }
+  return getOrderStatusLabel(status);
 }
 
 export function getIfoodMeta(order: Order) {

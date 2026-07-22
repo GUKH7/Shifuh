@@ -5,6 +5,7 @@ import { createBrowserClient } from "@supabase/ssr"
 import { useRouter } from "next/navigation"
 import { User, MapPin, ShoppingBag, LogOut, Loader2, Star, Home, ArrowLeft } from "lucide-react"
 import ReviewModal from "@/components/review-modal"
+import { OrderStatusBadge } from "@/components/ui/order-status-badge"
 
 export default function MyAccountPage() {
   const router = useRouter()
@@ -171,7 +172,7 @@ export default function MyAccountPage() {
                                         </div>
                                         <div><h3 className="font-bold text-gray-800">{order.restaurants?.name || "Loja"}</h3><p className="text-xs text-gray-500">Pedido #{order.id.slice(0,4)} • {formatDate(order.created_at)}</p></div>
                                     </div>
-                                    <span className={`px-2 py-1 rounded text-xs font-bold ${order.status === 'done' ? 'bg-green-100 text-green-700' : order.status === 'canceled' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>{order.status === 'done' ? 'Concluído' : order.status === 'canceled' ? 'Cancelado' : 'Em Andamento'}</span>
+                                    <OrderStatusBadge status={order.status} />
                                 </div>
                                 <div className="space-y-1 mb-4 border-l-2 border-gray-100 pl-3">
                                     {order.order_items?.map((item: any, i: number) => <p key={i} className="text-sm text-gray-600"><span className="font-bold text-gray-900">{item.quantity}x</span> {item.product_name}</p>)}

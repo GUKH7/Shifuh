@@ -23,17 +23,15 @@ function formatDisplayNumber(order: { display_number?: number | null; id: string
 function getStatusLabel(status: OrderStatus) {
   switch (status) {
     case "pending":
-      return "confirmado";
+      return "pendente";
     case "preparing":
       return "em preparo";
     case "delivering":
-      return "em rota para entrega";
+      return "em rota";
     case "done":
       return "concluído";
     case "canceled":
       return "cancelado";
-    default:
-      return status;
   }
 }
 

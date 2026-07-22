@@ -15,6 +15,8 @@ import {
 import { getCurrentRestaurant } from "@/lib/supabase/restaurant";
 import { PERIOD_OPTIONS, PeriodKey, isWithinPeriod } from "@/lib/admin-period";
 import { useToast } from "@/components/ui/toast-provider";
+import { OrderStatusBadge } from "@/components/ui/order-status-badge";
+import { getOrderStatusLabel } from "@/lib/order-status";
 
 type HistoryOrder = {
   id: string;
@@ -88,35 +90,7 @@ function getDayLabel(date: string) {
 }
 
 function getStatusLabel(status: HistoryOrder["status"]) {
-  switch (status) {
-    case "pending":
-      return "Confirmado";
-    case "preparing":
-      return "Em preparo";
-    case "delivering":
-      return "Em rota";
-    case "done":
-      return "Concluído";
-    case "canceled":
-      return "Cancelado";
-    default:
-      return status;
-  }
-}
-
-function getStatusClasses(status: HistoryOrder["status"]) {
-  switch (status) {
-    case "done":
-      return "bg-emerald-100 text-emerald-700";
-    case "canceled":
-      return "bg-red-100 text-red-700";
-    case "preparing":
-      return "bg-amber-100 text-amber-700";
-    case "delivering":
-      return "bg-blue-100 text-blue-700";
-    default:
-      return "bg-gray-100 text-gray-700";
-  }
+  return getOrderStatusLabel(status);
 }
 
 function exportExcel(rows: HistoryOrder[]) {
@@ -479,11 +453,7 @@ export default function HistoryPage() {
                         <p className="mt-1 text-xs text-gray-400">{order.customer_phone}</p>
                       </div>
                       <div>
-                        <span
-                          className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${getStatusClasses(order.status)}`}
-                        >
-                          {getStatusLabel(order.status)}
-                        </span>
+                        <OrderStatusBadge status={order.status} />
                       </div>
                       <div className="font-semibold text-gray-950">
                         {formatMoney(Number(order.total || 0))}

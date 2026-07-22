@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { getCurrentRestaurant } from "@/lib/supabase/restaurant";
 import { useToast } from "@/components/ui/toast-provider";
+import { OrderStatusBadge } from "@/components/ui/order-status-badge";
 import { OrdersSkeleton } from "./OrdersSkeleton";
 import type { IfoodCancellationReason, IfoodEventAudit, Order, OrderItem } from "./types";
 import {
@@ -72,39 +73,21 @@ type IfoodAction =
   | "request_cancellation";
 
 const STATUS_META: Record<OrderStatus, {
-  label: string;
-  dot: string;
-  badge: string;
   icon: ReactNode;
 }> = {
   pending: {
-    label: "Pendente",
-    dot: "bg-orange-500",
-    badge: "border-orange-200 bg-orange-50 text-orange-700",
     icon: <ShoppingBag size={18} />,
   },
   preparing: {
-    label: "Em preparo",
-    dot: "bg-blue-500",
-    badge: "border-blue-200 bg-blue-50 text-blue-700",
     icon: <Package size={18} />,
   },
   delivering: {
-    label: "Em rota",
-    dot: "bg-violet-500",
-    badge: "border-violet-200 bg-violet-50 text-violet-700",
     icon: <Bike size={18} />,
   },
   done: {
-    label: "Concluído",
-    dot: "bg-emerald-500",
-    badge: "border-emerald-200 bg-emerald-50 text-emerald-700",
     icon: <CheckCircle2 size={18} />,
   },
   canceled: {
-    label: "Cancelado",
-    dot: "bg-red-500",
-    badge: "border-red-200 bg-red-50 text-red-700",
     icon: <XCircle size={18} />,
   },
 };
@@ -1096,10 +1079,7 @@ export default function OrdersPage() {
                         </div>
 
                         <div>
-                          <span className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-black ${statusMeta.badge}`}>
-                            <span className={`h-2 w-2 rounded-full ${statusMeta.dot}`} />
-                            {statusMeta.label}
-                          </span>
+                          <OrderStatusBadge status={order.status} size="medium" className="font-black" />
                         </div>
 
                         <div>
