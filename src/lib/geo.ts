@@ -61,6 +61,11 @@ type NominatimResult = {
   lat?: string;
   lon?: string;
   address?: {
+    road?: string;
+    pedestrian?: string;
+    postcode?: string;
+    quarter?: string;
+    suburb?: string;
     city?: string;
     town?: string;
     village?: string;
@@ -76,6 +81,8 @@ type NominatimResult = {
 type PhotonResult = {
   geometry?: { coordinates?: [number, number] };
   properties?: {
+    name?: string;
+    street?: string;
     city?: string;
     district?: string;
     county?: string;
@@ -99,6 +106,17 @@ const BRAZILIAN_STATE_NAMES: Record<string, string> = {
 
 function normalizeComparable(value?: string) {
   return normalizeAddress(value || "").toLowerCase();
+}
+
+function normalizePostalCode(value?: string) {
+  return (value || "").replace(/\D/g, "");
+}
+
+function looselyMatches(value: string | undefined, expected: string | undefined) {
+  const normalizedValue = normalizeComparable(value);
+  const normalizedExpected = normalizeComparable(expected);
+  if (!normalizedValue || !normalizedExpected) return false;
+  return normalizedValue.includes(normalizedExpected) || normalizedExpected.includes(normalizedValue);
 }
 
 function matchesExpectedState(resultState: string | undefined, resultCode: string | undefined, expectedState: string) {
@@ -134,6 +152,24 @@ function matchesExpectedPhotonLocation(result: PhotonResult, expected: Geocoding
   );
   if (expectedCity && resultCity !== expectedCity) return false;
   return matchesExpectedState(result.properties?.state, undefined, expected.state || "");
+}
+
+function matchesExpectedNominatimAddress(result: NominatimResult, expected: GeocodingAddress) {
+  const expectedPostalCode = normalizePostalCode(expected.postalCode);
+  const resultPostalCode = normalizePostalCode(result.address?.postcode);
+  const resultStreet = result.address?.road || result.address?.pedestrian;
+
+  if (expectedPostalCode && resultPostalCode) return resultPostalCode === expectedPostalCode;
+  return looselyMatches(resultStreet, expected.street);
+}
+
+function matchesExpectedPhotonAddress(result: PhotonResult, expected: GeocodingAddress) {
+  const expectedPostalCode = normalizePostalCode(expected.postalCode);
+  const resultPostalCode = normalizePostalCode(result.properties?.postcode);
+  const resultStreet = result.properties?.street || result.properties?.name;
+
+  if (expectedPostalCode && resultPostalCode) return resultPostalCode === expectedPostalCode;
+  return looselyMatches(resultStreet, expected.street);
 }
 
 function buildStructuredAttempts(address: GeocodingAddress) {
@@ -175,6 +211,10 @@ export async function getCoordinates(address: string | GeocodingAddress) {
   const rawAddress = typeof address === "string" ? address : Object.values(address).join(", ");
   const postalCode = structured?.postalCode?.replace(/\D/g, "") || extractPostalCode(rawAddress);
   const attempts = structured ? buildStructuredAttempts(structured) : buildAddressAttempts(rawAddress);
+  const preciseAttempts = structured?.street
+    ? attempts.filter((attempt) => looselyMatches(attempt, structured.street))
+    : attempts;
+  const broadAttempts = attempts.filter((attempt) => !preciseAttempts.includes(attempt));
   const cacheKey = normalizeComparable(`${rawAddress}|${postalCode || ""}`);
   const cached = coordinateCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return { lat: cached.lat, lon: cached.lon };
@@ -188,7 +228,7 @@ export async function getCoordinates(address: string | GeocodingAddress) {
 
   let nominatimUnavailable = false;
 
-  for (const attempt of attempts) {
+  for (const attempt of preciseAttempts) {
     try {
       const query = encodeURIComponent(attempt);
       const url = `https://nominatim.openstreetmap.org/search?format=json&countrycodes=br&addressdetails=1&limit=5&q=${query}`;
@@ -210,7 +250,11 @@ export async function getCoordinates(address: string | GeocodingAddress) {
 
       const data = (await res.json()) as NominatimResult[];
       const match = structured
-        ? data.find((result) => matchesExpectedLocation(result, structured))
+        ? data.find(
+            (result) =>
+              matchesExpectedLocation(result, structured) &&
+              matchesExpectedNominatimAddress(result, structured),
+          )
         : data[0];
       if (match?.lat && match?.lon) {
         return remember(parseFloat(match.lat), parseFloat(match.lon));
@@ -243,7 +287,32 @@ export async function getCoordinates(address: string | GeocodingAddress) {
     }
   }
 
-  for (const attempt of attempts.slice(0, 2)) {
+  if (!nominatimUnavailable) {
+    for (const attempt of broadAttempts) {
+      try {
+        const query = encodeURIComponent(attempt);
+        const url = `https://nominatim.openstreetmap.org/search?format=json&countrycodes=br&addressdetails=1&limit=5&q=${query}`;
+        const res = await fetch(url, {
+          headers: {
+            "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+            "User-Agent": GEOCODING_USER_AGENT,
+          },
+          signal: AbortSignal.timeout(4500),
+        });
+        if (!res.ok) continue;
+
+        const data = (await res.json()) as NominatimResult[];
+        const match = structured
+          ? data.find((result) => matchesExpectedLocation(result, structured))
+          : data[0];
+        if (match?.lat && match?.lon) return remember(parseFloat(match.lat), parseFloat(match.lon));
+      } catch (error) {
+        console.error("Erro GPS aproximado:", error);
+      }
+    }
+  }
+
+  for (const attempt of preciseAttempts.slice(0, 2)) {
     try {
       const photonUrl = `https://photon.komoot.io/api/?limit=5&q=${encodeURIComponent(attempt)}`;
       const photonRes = await fetch(photonUrl, {
@@ -254,7 +323,10 @@ export async function getCoordinates(address: string | GeocodingAddress) {
 
       const photonData = (await photonRes.json()) as { features?: PhotonResult[] };
       const match = photonData.features?.find((result) =>
-        structured ? matchesExpectedPhotonLocation(result, structured) : true,
+        structured
+          ? matchesExpectedPhotonLocation(result, structured) &&
+            matchesExpectedPhotonAddress(result, structured)
+          : true,
       );
       const coordinates = match?.geometry?.coordinates;
       if (coordinates && Number.isFinite(coordinates[0]) && Number.isFinite(coordinates[1])) {

@@ -123,3 +123,89 @@ test("usa geocodificador alternativo quando o principal bloqueia o servidor", as
     global.fetch = originalFetch;
   }
 });
+
+test("rejeita rua homonima com CEP diferente no geocodificador alternativo", async () => {
+  const { getCoordinates } = loadGeoModule();
+  const originalFetch = global.fetch;
+
+  global.fetch = async (url) => {
+    if (String(url).includes("nominatim")) return { ok: false, status: 429 };
+    return {
+      ok: true,
+      json: async () => ({
+        features: [{
+          properties: {
+            name: "Rua Parana",
+            city: "Suzano",
+            state: "Sao Paulo",
+            postcode: "08600-000",
+          },
+          geometry: { coordinates: [-46.2501, -23.5901] },
+        }],
+      }),
+    };
+  };
+
+  try {
+    const coordinates = await getCoordinates({
+      postalCode: "08675-238",
+      street: "Rua Parana",
+      number: "217",
+      neighborhood: "Jardim Paulista",
+      city: "Suzano",
+      state: "SP",
+    });
+
+    assert.equal(coordinates, null);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test("prioriza o CEP antes de aceitar coordenada aproximada do bairro", async () => {
+  const { getCoordinates } = loadGeoModule();
+  const originalFetch = global.fetch;
+  const requestedUrls = [];
+
+  global.fetch = async (url) => {
+    const requestedUrl = String(url);
+    requestedUrls.push(requestedUrl);
+    if (requestedUrl.includes("postalcode=")) {
+      return {
+        ok: true,
+        json: async () => [{
+          lat: "-23.5517116",
+          lon: "-46.3121159",
+          address: {
+            city: "Suzano",
+            state: "Sao Paulo",
+            postcode: "08675-238",
+            "ISO3166-2-lvl4": "BR-SP",
+          },
+        }],
+      };
+    }
+    return { ok: true, json: async () => [] };
+  };
+
+  try {
+    const coordinates = await getCoordinates({
+      postalCode: "08675-238",
+      street: "Rua Parana",
+      number: "217",
+      neighborhood: "Jardim Paulista",
+      city: "Suzano",
+      state: "SP",
+    });
+
+    assert.deepEqual(coordinates, { lat: -23.5517116, lon: -46.3121159 });
+    const postalRequestIndex = requestedUrls.findIndex((url) => url.includes("postalcode="));
+    const broadRequestIndex = requestedUrls.findIndex((url) =>
+      decodeURIComponent(url).includes("q=Jardim Paulista, Suzano"),
+    );
+    assert.ok(postalRequestIndex >= 0);
+    assert.ok(broadRequestIndex === -1 || postalRequestIndex < broadRequestIndex);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
