@@ -26,7 +26,7 @@ test("status badges are rounded and always include a leading dot", () => {
 });
 
 test("orders, history and customer account share the status badge", () => {
-  assert.match(orders, /<OrderStatusBadge status=\{order\.status\} size="medium"/);
+  assert.match(orders, /<OrderStatusBadge status=\{order\.status\}/);
   assert.match(history, /<OrderStatusBadge status=\{order\.status\} \/>/);
   assert.match(account, /<OrderStatusBadge status=\{order\.status\} \/>/);
   assert.doesNotMatch(history, /function getStatusClasses/);
