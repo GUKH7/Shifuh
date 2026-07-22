@@ -18,3 +18,13 @@ test("client table header and rows remain vertically aligned", () => {
   const escaped = grid.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   assert.equal((clients.match(new RegExp(escaped, "g")) || []).length, 2);
 });
+
+test("client history preserves, searches and exports unique addresses", () => {
+  assert.match(clients, /addresses: string\[\]/);
+  assert.match(clients, /addresses: address \? \[address\] : \[\]/);
+  assert.match(clients, /!current\.addresses\.includes\(address\)/);
+  assert.match(clients, /client\.addresses\.some\(\(address\) => address\.toLowerCase\(\)\.includes\(term\)\)/);
+  assert.match(clients, /client\.addresses\.join\(" \| "\)/);
+  assert.match(clients, /Ver mais \{client\.addresses\.length - 1\}/);
+  assert.match(clients, /client\.addresses\.slice\(1\)\.map/);
+});

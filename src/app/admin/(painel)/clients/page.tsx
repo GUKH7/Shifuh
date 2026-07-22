@@ -22,7 +22,7 @@ type Client = {
   totalSpent: number;
   orderCount: number;
   lastOrderDate: string;
-  address: string;
+  addresses: string[];
 };
 
 const PAGE_SIZE = 10;
@@ -38,6 +38,18 @@ function formatDate(date: string) {
   return new Date(date).toLocaleDateString("pt-BR");
 }
 
+function formatClientAddress(address: any) {
+  if (!address?.street) return null;
+
+  const street = `${address.street}, ${address.number || "S/N"}`;
+  const district = address.neighborhood || "Bairro não informado";
+  const city = [address.city, address.state].filter(Boolean).join("/");
+  const complement = address.complement ? ` · ${address.complement}` : "";
+  const cep = address.cep ? ` · CEP ${address.cep}` : "";
+
+  return `${street} - ${district}${city ? ` - ${city}` : ""}${complement}${cep}`;
+}
+
 function exportClients(rows: Client[]) {
   const header = ["Cliente", "Telefone", "Pedidos", "Total gasto", "Última compra", "Endereço"];
   const lines = rows.map((client) => [
@@ -46,7 +58,7 @@ function exportClients(rows: Client[]) {
     client.orderCount,
     client.totalSpent.toFixed(2),
     formatDate(client.lastOrderDate),
-    client.address,
+    client.addresses.join(" | "),
   ]);
 
   const worksheet = [header, ...lines]
@@ -137,9 +149,7 @@ export default function ClientsPage() {
         if (!phone) return;
 
         const current = grouped.get(phone);
-        const address = order.address
-          ? `${order.address.street || "Rua não informada"}, ${order.address.number || "S/N"} - ${order.address.neighborhood || "Sem bairro"}`
-          : "Retirada";
+        const address = formatClientAddress(order.address);
 
         if (!current) {
           grouped.set(phone, {
@@ -148,7 +158,7 @@ export default function ClientsPage() {
             totalSpent: Number(order.total || 0),
             orderCount: 1,
             lastOrderDate: order.created_at,
-            address,
+            addresses: address ? [address] : [],
           });
           return;
         }
@@ -157,6 +167,9 @@ export default function ClientsPage() {
           ...current,
           totalSpent: current.totalSpent + Number(order.total || 0),
           orderCount: current.orderCount + 1,
+          addresses: address && !current.addresses.includes(address)
+            ? [...current.addresses, address]
+            : current.addresses,
         });
       });
 
@@ -176,7 +189,8 @@ export default function ClientsPage() {
     return clients.filter(
       (client) =>
         client.name.toLowerCase().includes(term) ||
-        client.phone.toLowerCase().includes(term),
+        client.phone.toLowerCase().includes(term) ||
+        client.addresses.some((address) => address.toLowerCase().includes(term)),
     );
   }, [clients, search]);
 
@@ -276,7 +290,25 @@ export default function ClientsPage() {
                 <div key={client.phone} className="grid grid-cols-[1.3fr_1fr_120px_160px_140px_110px] items-center gap-4 px-6 py-5 text-sm text-gray-700">
                   <div>
                     <p className="font-bold text-gray-950">{client.name}</p>
-                    <p className="mt-1 text-xs text-gray-400">{client.address}</p>
+                    {client.addresses.length > 0 ? (
+                      <div className="mt-1 text-xs text-gray-500">
+                        <p className="line-clamp-2">{client.addresses[0]}</p>
+                        {client.addresses.length > 1 && (
+                          <details className="mt-2">
+                            <summary className="cursor-pointer font-bold text-[var(--brand)]">
+                              Ver mais {client.addresses.length - 1} {client.addresses.length === 2 ? "endereço" : "endereços"}
+                            </summary>
+                            <ul className="mt-2 space-y-2 border-l-2 border-orange-100 pl-3 text-gray-500">
+                              {client.addresses.slice(1).map((address) => (
+                                <li key={address}>{address}</li>
+                              ))}
+                            </ul>
+                          </details>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="mt-1 text-xs text-gray-400">Pedido para retirada</p>
+                    )}
                   </div>
                   <div className="inline-flex w-fit items-center gap-2 rounded-xl bg-[#f8f3ec] px-3 py-2 text-sm font-semibold text-gray-700">
                     <Phone size={14} />
