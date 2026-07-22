@@ -47,7 +47,20 @@ export function useStorefront({ slug, onCustomerLoaded, onMissingStore }: UseSto
         data: { user },
       } = await supabase.auth.getUser();
 
-      if (!mounted || !user) return;
+      if (!mounted) return;
+
+      if (!user) {
+        try {
+          const response = await fetch("/api/customer/profile", { credentials: "same-origin" });
+          const payload = await response.json();
+          if (!mounted || !payload?.customer) return;
+          onCustomerLoaded?.(payload.customer);
+          setSavedAddresses(Array.isArray(payload.addresses) ? payload.addresses : []);
+        } catch {
+          // The checkout remains usable when remembered customer data is unavailable.
+        }
+        return;
+      }
 
       setCurrentUser(user);
 

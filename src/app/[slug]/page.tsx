@@ -81,7 +81,6 @@ export default function StorePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [completedOrder, setCompletedOrder] = useState<OrderResponse | null>(null);
   const orderAttemptKeyRef = useRef<string | null>(null);
-  const [saveAddress, setSaveAddress] = useState(false);
   const [scheduledFor, setScheduledFor] = useState("");
 
   const [couponCode, setCouponCode] = useState("");
@@ -437,7 +436,6 @@ export default function StorePage() {
           changeFor: paymentMethod === "cash" && cashNeedsChange ? changeFor : "",
           couponCode: appliedCoupon?.code || null,
           usingSavedAddress,
-          saveAddress,
           scheduledFor: scheduledFor ? new Date(scheduledFor).toISOString() : null,
           cart: cart.map((item) => ({
             productId: item.product.id,
@@ -530,7 +528,6 @@ export default function StorePage() {
     setAppliedCoupon(null);
     setCouponCode("");
     setScheduledFor("");
-    setSaveAddress(false);
     setCompletedOrder(null);
     orderAttemptKeyRef.current = null;
   };
@@ -1132,8 +1129,6 @@ export default function StorePage() {
         completedOrder={completedOrder}
         couponError={couponError}
         isSubmitting={isSubmitting}
-        saveAddress={saveAddress}
-        canSaveAddress={Boolean(currentUser)}
         storeStatus={storeStatus}
         minimumOrderAmount={minimumOrderAmount}
         scheduledOrdersEnabled={scheduledOrdersEnabled}
@@ -1172,7 +1167,6 @@ export default function StorePage() {
         onPaymentMethodChange={(value) => { setPaymentMethod(value); setCheckoutError(""); }}
         onChangeForChange={(value) => { setChangeFor(value); setCheckoutError(""); }}
         onCashNeedsChange={(value) => { setCashNeedsChange(value); setCheckoutError(""); }}
-        onSaveAddressChange={setSaveAddress}
         onScheduledForChange={(value) => { setScheduledFor(value); setCheckoutError(""); }}
         onPlaceOrder={handlePlaceOrder}
         onTrackOrder={handleTrackCompletedOrder}

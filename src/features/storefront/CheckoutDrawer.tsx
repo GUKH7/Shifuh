@@ -46,8 +46,6 @@ type CheckoutDrawerProps = {
   completedOrder: OrderResponse | null;
   couponError: string;
   isSubmitting: boolean;
-  saveAddress: boolean;
-  canSaveAddress: boolean;
   storeStatus: StoreStatus;
   minimumOrderAmount: number;
   scheduledOrdersEnabled: boolean;
@@ -74,7 +72,6 @@ type CheckoutDrawerProps = {
   onPaymentMethodChange: (value: StorefrontPaymentMethod) => void;
   onChangeForChange: (value: string) => void;
   onCashNeedsChange: (value: boolean) => void;
-  onSaveAddressChange: (value: boolean) => void;
   onScheduledForChange: (value: string) => void;
   onPlaceOrder: () => void;
   onTrackOrder: () => void;
@@ -109,8 +106,6 @@ export function CheckoutDrawer({
   completedOrder,
   couponError,
   isSubmitting,
-  saveAddress,
-  canSaveAddress,
   storeStatus,
   minimumOrderAmount,
   scheduledOrdersEnabled,
@@ -137,7 +132,6 @@ export function CheckoutDrawer({
   onPaymentMethodChange,
   onChangeForChange,
   onCashNeedsChange,
-  onSaveAddressChange,
   onScheduledForChange,
   onPlaceOrder,
   onTrackOrder,
@@ -414,19 +408,11 @@ export function CheckoutDrawer({
                 onSelectSavedAddress={onSelectSavedAddress}
                 onUseAnotherAddress={onUseAnotherAddress}
               />
-              {canSaveAddress && !usingSavedAddress && (
-                <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-[var(--line)] bg-white p-4 text-sm text-gray-700">
-                  <input
-                    type="checkbox"
-                    checked={saveAddress}
-                    onChange={(event) => onSaveAddressChange(event.target.checked)}
-                    className="mt-0.5 h-4 w-4 accent-[var(--brand)]"
-                  />
-                  <span>
-                    <strong className="block text-gray-900">Salvar este endereço</strong>
-                    Use somente nos próximos pedidos desta conta.
-                  </span>
-                </label>
+              {!usingSavedAddress && (
+                <p className="rounded-2xl border border-[var(--line)] bg-white p-4 text-sm leading-6 text-gray-600">
+                  <strong className="block text-gray-900">Seus dados serão lembrados</strong>
+                  Nas próximas compras neste aparelho, nome, telefone e endereço serão preenchidos automaticamente.
+                </p>
               )}
             </div>
           )}

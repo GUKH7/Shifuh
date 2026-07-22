@@ -4,6 +4,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { getStoreStatus } from "@/features/storefront/store-summary";
 import { createOrderTrackingToken } from "@/lib/order-tracking";
+import { CUSTOMER_SESSION_COOKIE, ensureCustomerAccount } from "@/lib/customer-account";
 import {
   getCheckoutAddressErrors,
   getChangeForError,
@@ -571,13 +572,25 @@ export async function POST(request: Request) {
             complement: address.complement,
           });
         }
+
       } catch (profileError) {
         console.error("Falha ao sincronizar perfil/endereço do cliente:", profileError);
       }
     }
 
+    let customerSession: Awaited<ReturnType<typeof ensureCustomerAccount>> = null;
+    try {
+      customerSession = await ensureCustomerAccount(adminSupabase as any, {
+        name: body.customerName.trim(),
+        phone: phoneDigits,
+        address,
+        authenticatedUserId: user?.id || null,
+      });
+    } catch (customerAccountError) {
+      console.error("Falha ao criar conta automatica do cliente:", customerAccountError);
+    }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       orderId,
       displayNumber,
       trackingPath,
@@ -595,6 +608,17 @@ export async function POST(request: Request) {
       address,
       items: normalizedItems,
     });
+    if (customerSession) {
+      response.cookies.set(CUSTOMER_SESSION_COOKIE, customerSession.token, {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        expires: customerSession.expiresAt,
+        maxAge: customerSession.maxAge,
+      });
+    }
+    return response;
   } catch (error) {
     console.error("Erro ao criar pedido:", error);
     return NextResponse.json({ error: "Erro interno ao finalizar pedido." }, { status: 500 });

@@ -320,6 +320,13 @@ function loadOrdersRoute() {
       return trackingModule.exports;
     }
 
+    if (request === "@/lib/customer-account") {
+      return {
+        CUSTOMER_SESSION_COOKIE: "gestor_customer_session",
+        ensureCustomerAccount: async () => null,
+      };
+    }
+
     if (request === "@/features/storefront/store-summary") {
       const summaryPath = path.join(__dirname, "..", "src", "features", "storefront", "store-summary.ts");
       const summarySource = fs.readFileSync(summaryPath, "utf8");
