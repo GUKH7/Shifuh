@@ -382,9 +382,11 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center text-sm font-semibold text-gray-500">
-        <Loader2 className="mr-2 animate-spin text-[var(--brand)]" size={18} />
-        Carregando cardápio...
+      <div className="flex min-h-[calc(100dvh-7.5rem)] items-center justify-center" role="status" aria-live="polite">
+        <div className="flex items-center gap-2 text-sm font-semibold text-gray-500">
+          <Loader2 className="animate-spin text-[var(--brand)]" size={18} />
+          Carregando cardápio...
+        </div>
       </div>
     );
   }
@@ -406,13 +408,15 @@ export default function AdminDashboard() {
 
         <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row lg:w-auto">
           <div className="relative w-full min-w-0 sm:min-w-[240px] lg:w-[280px]">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+            <span className="pointer-events-none absolute inset-y-0 left-0 flex w-11 items-center justify-center text-gray-400" aria-hidden="true">
+              <Search size={16} />
+            </span>
             <input
               type="text"
               placeholder="Buscar item ou categoria"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full rounded-2xl border border-[var(--line)] bg-white py-3 pl-11 pr-4 text-sm outline-none transition-colors focus:border-[var(--brand)]"
+              className="h-12 w-full rounded-2xl border border-[var(--line)] bg-white pl-11 pr-4 text-sm outline-none transition-colors focus:border-[var(--brand)]"
             />
           </div>
 
