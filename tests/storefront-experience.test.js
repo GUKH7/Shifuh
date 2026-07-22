@@ -30,7 +30,7 @@ test("mobile cart separates order summary from its main action", () => {
 
 test("product modal preserves a stable image area on mobile", () => {
   assert.match(productPicker, /relative flex h-52 shrink-0 items-center justify-center bg-white/);
-  assert.match(productPicker, /h-full max-w-full aspect-square overflow-hidden rounded-2xl/);
+  assert.match(productPicker, /relative size-44 shrink-0 overflow-hidden rounded-2xl sm:size-64/);
   assert.match(productPicker, /className="object-cover"/);
 });
 

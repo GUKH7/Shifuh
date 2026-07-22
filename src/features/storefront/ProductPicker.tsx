@@ -73,8 +73,8 @@ export function ProductPicker({
             <X size={20} />
           </button>
           {product.image_url ? (
-            <div className="relative h-full max-w-full aspect-square overflow-hidden rounded-2xl">
-              <Image src={product.image_url} alt={product.name} fill sizes="(max-width: 640px) 208px, 288px" className="object-cover" />
+            <div className="relative size-44 shrink-0 overflow-hidden rounded-2xl sm:size-64">
+              <Image src={product.image_url} alt={product.name} fill sizes="(max-width: 640px) 176px, 256px" className="object-cover" />
             </div>
           ) : (
             <div className="flex h-full w-full items-center justify-center text-gray-300">
