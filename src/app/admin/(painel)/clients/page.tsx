@@ -257,12 +257,12 @@ export default function ClientsPage() {
         </div>
 
         <div className="mt-6 overflow-hidden rounded-[24px] border border-[var(--line)] bg-white">
-          <div className="grid grid-cols-[1.3fr_1fr_120px_160px_140px_110px] gap-4 border-b border-[var(--line)] px-6 py-4 text-xs font-bold uppercase tracking-[0.16em] text-gray-400">
+          <div className="grid grid-cols-[1.3fr_1fr_120px_160px_140px_110px] items-center gap-4 border-b border-[var(--line)] px-6 py-4 text-xs font-bold uppercase tracking-[0.16em] text-gray-400">
             <span>Cliente</span>
             <span>Contato</span>
             <span>Pedidos</span>
             <span>Total gasto</span>
-            <span className="whitespace-nowrap">Última compra</span>
+            <span className="justify-self-center whitespace-nowrap text-center">Última compra</span>
             <span className="whitespace-nowrap text-right">Ação</span>
           </div>
 
@@ -273,7 +273,7 @@ export default function ClientsPage() {
               </div>
             ) : (
               paginatedClients.map((client) => (
-                <div key={client.phone} className="grid grid-cols-[1.3fr_1fr_120px_160px_140px_110px] gap-4 px-6 py-5 text-sm text-gray-700">
+                <div key={client.phone} className="grid grid-cols-[1.3fr_1fr_120px_160px_140px_110px] items-center gap-4 px-6 py-5 text-sm text-gray-700">
                   <div>
                     <p className="font-bold text-gray-950">{client.name}</p>
                     <p className="mt-1 text-xs text-gray-400">{client.address}</p>
@@ -290,7 +290,7 @@ export default function ClientsPage() {
                     <Wallet size={14} />
                     {formatMoney(client.totalSpent)}
                   </div>
-                  <div className="font-semibold text-gray-600">{formatDate(client.lastOrderDate)}</div>
+                  <div className="justify-self-center text-center font-semibold text-gray-600">{formatDate(client.lastOrderDate)}</div>
                   <div className="text-right">
                     <button
                       onClick={() => window.open(`https://wa.me/${client.phone.replace(/\D/g, "")}`, "_blank")}
