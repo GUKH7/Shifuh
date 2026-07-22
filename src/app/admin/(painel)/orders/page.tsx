@@ -38,7 +38,9 @@ import {
   formatIfoodTiming,
   formatPrice,
   formatTime,
+  calculateCashChange,
   getAddonLabel,
+  getAddonPrice,
   getIfoodBenefitAmount,
   getIfoodBenefitLabel,
   getIfoodCancellation,
@@ -598,6 +600,9 @@ export default function OrdersPage() {
       .filter(Boolean)
       .join(" - ");
     const addressZip = order.address?.zip ? `CEP: ${order.address.zip}` : "";
+    const paymentLabel = formatIfoodPayment(order);
+    const isCashPayment = /dinheiro|cash/i.test(`${order.payment_method} ${paymentLabel}`);
+    const cashChange = isCashPayment ? calculateCashChange(order.change_for, order.total) : null;
     const itemsHtml = order.items
       .map(
         (item) => `
@@ -608,7 +613,18 @@ export default function OrdersPage() {
           </div>
           ${
             item.addons?.length
-              ? `<div style="margin-top:4px;color:#444;">Adicionais: ${item.addons.map((addon) => getAddonLabel(addon)).join(", ")}</div>`
+              ? `<div style="margin-top:4px;color:#444;">
+                  <div style="font-weight:${fontWeight};">Complementos</div>
+                  ${item.addons
+                    .map((addon) => {
+                      const addonPrice = getAddonPrice(addon);
+                      return `<div class="flex addon">
+                        <span>+ ${getAddonLabel(addon)}</span>
+                        ${addonPrice > 0 ? `<span>+ ${formatPrice(addonPrice)}${Number(item.quantity || 0) > 1 ? " cada" : ""}</span>` : ""}
+                      </div>`;
+                    })
+                    .join("")}
+                </div>`
               : ""
           }
           ${
@@ -632,6 +648,9 @@ export default function OrdersPage() {
           .center { text-align:center; }
           .muted { color:#555; }
           .title { font-size:${fontSize + 2}px; font-weight:${fontWeight}; }
+          .addon { gap:8px; font-size:${Math.max(fontSize - 1, 9)}px; }
+          .addon span:first-child { flex:1; }
+          .addon span:last-child { white-space:nowrap; }
         </style>
       </head>
       <body>
@@ -643,7 +662,15 @@ export default function OrdersPage() {
         <div><strong>Cliente:</strong> ${order.customer_name}</div>
         <div><strong>Telefone:</strong> ${order.customer_phone}</div>
         <div><strong>Status:</strong> ${getStatusLabel(order.status)}</div>
-        <div><strong>Pagamento:</strong> ${order.payment_method}${order.change_for ? ` | Troco para R$ ${order.change_for}` : ""}</div>
+        <div><strong>Pagamento:</strong> ${paymentLabel}</div>
+        ${
+          isCashPayment
+            ? cashChange
+              ? `<div class="flex"><span>Valor recebido</span><strong>${formatPrice(cashChange.received)}</strong></div>
+                 <div class="flex title"><span>Troco</span><strong>${formatPrice(cashChange.change)}</strong></div>`
+              : `<div><strong>Troco:</strong> Sem troco</div>`
+            : ""
+        }
         <div class="line"></div>
         <div><strong>${formatIfoodOrderType(order) === "Retirada" ? "Retirada" : "Entrega"}</strong></div>
         <div>${addressLineOne}</div>

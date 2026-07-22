@@ -14,6 +14,7 @@ export type OrderAddon = {
   name?: string | null;
   title?: string | null;
   description?: string | null;
+  price?: number | string | null;
 };
 
 export type OrderItem = {

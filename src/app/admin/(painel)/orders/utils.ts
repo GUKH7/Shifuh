@@ -169,6 +169,38 @@ export function getAddonLabel(addon: OrderAddon) {
   return addon.name || addon.title || addon.description || "Complemento";
 }
 
+export function getAddonPrice(addon: OrderAddon) {
+  const price = Number(addon.price);
+  return Number.isFinite(price) && price > 0 ? price : 0;
+}
+
+export function parseMoneyAmount(value: number | string | null | undefined) {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (!value) return null;
+
+  const normalized = value
+    .trim()
+    .replace(/R\$\s?/gi, "")
+    .replace(/\s/g, "")
+    .replace(/\.(?=\d{3}(?:\D|$))/g, "")
+    .replace(",", ".");
+  const amount = Number(normalized);
+
+  return Number.isFinite(amount) ? amount : null;
+}
+
+export function calculateCashChange(changeFor: number | string | null | undefined, total: number) {
+  const received = parseMoneyAmount(changeFor);
+  const normalizedTotal = Number(total);
+
+  if (received === null || !Number.isFinite(normalizedTotal) || received < normalizedTotal) return null;
+
+  return {
+    received,
+    change: Math.round((received - normalizedTotal) * 100) / 100,
+  };
+}
+
 export function getIfoodBenefitLabel(benefit: IfoodBenefit) {
   return (
     benefit.target ||
