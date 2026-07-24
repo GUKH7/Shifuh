@@ -45,7 +45,14 @@ export async function GET(request: Request) {
   });
 }
 
-export async function DELETE() {
+export async function DELETE(request: Request) {
+  const rateLimitResponse = checkRateLimit(request, {
+    keyPrefix: "public:customer:profile:delete",
+    limit: 10,
+    windowMs: 60_000,
+  });
+  if (rateLimitResponse) return rateLimitResponse;
+
   const cookieStore = await cookies();
   const token = cookieStore.get(CUSTOMER_SESSION_COOKIE)?.value;
   if (token) {
@@ -55,6 +62,7 @@ export async function DELETE() {
       .delete()
       .eq("token_hash", hashCustomerSessionToken(token));
   }
+
   const response = NextResponse.json({ success: true });
   response.cookies.delete(CUSTOMER_SESSION_COOKIE);
   return response;
