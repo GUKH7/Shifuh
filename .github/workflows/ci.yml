@@ -8,7 +8,10 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   validate:
@@ -24,33 +27,29 @@ jobs:
       WHATSAPP_BOT_API_TOKEN: ci-placeholder-token
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
-      - run: npm ci --ignore-scripts
-      - run: npm run audit:service-role
-      - name: Full test diagnostic
-        id: tests
-        continue-on-error: true
-        shell: bash
-        run: |
-          set -o pipefail
-          npm test 2>&1 | tee test-output.txt
-      - name: Publish full test diagnostic
-        if: ${{ steps.tests.outcome == 'failure' && github.event_name == 'pull_request' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          {
-            echo "## Diagnóstico temporário da suíte completa"
-            echo
-            echo '```text'
-            tail -n 70 test-output.txt
-            echo '```'
-          } > test-comment.md
-          gh pr comment "${{ github.event.pull_request.number }}" --body-file test-comment.md
-      - name: Enforce tests
-        if: ${{ steps.tests.outcome == 'failure' }}
-        run: exit 1
+
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Audit service role usage
+        run: npm run audit:service-role
+
+      - name: Test
+        run: npm test
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
