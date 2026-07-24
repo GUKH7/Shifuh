@@ -42,10 +42,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           {
-            echo "## Diagnóstico final temporário"
+            echo "## Resumo da falha final"
             echo
             echo '```text'
-            tail -n 90 test-output.txt
+            grep -E '(^✖|^ℹ fail|Error:|AssertionError|ERR_)' test-output.txt | tail -n 30
             echo '```'
           } > comment.md
           gh pr comment "${{ github.event.pull_request.number }}" --body-file comment.md
