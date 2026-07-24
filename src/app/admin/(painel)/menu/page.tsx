@@ -51,6 +51,9 @@ export default function AdminDashboard() {
   const [ifoodMenuUrl, setIfoodMenuUrl] = useState("");
   const [importError, setImportError] = useState("");
   const [isImportingMenu, setIsImportingMenu] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState<any>(null);
+  const [isDeletingCategory, setIsDeletingCategory] = useState(false);
+  const [deleteCategoryError, setDeleteCategoryError] = useState("");
 
   const router = useRouter();
   const { showToast } = useToast();
@@ -274,10 +277,53 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleDeleteCategory = async (id: string) => {
-    if (!confirm("Tem certeza de que deseja apagar esta categoria?")) return;
-    await supabase.from("categories").delete().eq("id", id);
-    setCategories(categories.filter((category) => category.id !== id));
+  const handleOpenDeleteCategory = (category: any) => {
+    setDeleteCategoryError("");
+    setCategoryToDelete(category);
+  };
+
+  const handleCloseDeleteCategory = () => {
+    if (isDeletingCategory) return;
+    setDeleteCategoryError("");
+    setCategoryToDelete(null);
+  };
+
+  const handleConfirmDeleteCategory = async () => {
+    if (!categoryToDelete?.id || isDeletingCategory) return;
+
+    setIsDeletingCategory(true);
+    setDeleteCategoryError("");
+
+    try {
+      const { error } = await supabase
+        .from("categories")
+        .delete()
+        .eq("id", categoryToDelete.id);
+
+      if (error) throw error;
+
+      setCategories((current) =>
+        current.filter((category) => category.id !== categoryToDelete.id),
+      );
+      setProducts((current) =>
+        current.filter((product) => product.category_id !== categoryToDelete.id),
+      );
+      showToast({
+        title: "Categoria excluída",
+        description: `${categoryToDelete.name} foi removida do cardápio.`,
+        tone: "success",
+      });
+      setCategoryToDelete(null);
+    } catch (error) {
+      console.error("Erro ao excluir categoria:", error);
+      setDeleteCategoryError(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível excluir a categoria agora.",
+      );
+    } finally {
+      setIsDeletingCategory(false);
+    }
   };
 
   const startEditingCat = (category: any) => {
@@ -593,7 +639,7 @@ export default function AdminDashboard() {
                             <Edit3 size={16} />
                           </button>
                           <button
-                            onClick={() => handleDeleteCategory(category.id)}
+                            onClick={() => handleOpenDeleteCategory(category)}
                             className="rounded-xl p-2 text-gray-400 hover:bg-[#fff0e8] hover:text-[var(--brand)]"
                           >
                             <Trash2 size={16} />
@@ -859,6 +905,96 @@ export default function AdminDashboard() {
                     <Import size={16} />
                   )}
                   {isImportingMenu ? "Importando cardápio..." : "Importar cardápio"}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {categoryToDelete && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) handleCloseDeleteCategory();
+          }}
+        >
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="delete-category-title"
+            aria-describedby="delete-category-description"
+            className="w-full max-w-md overflow-hidden rounded-[28px] border border-red-100 bg-[#fffdfa] shadow-[0_30px_90px_rgba(17,16,15,0.24)]"
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-red-100 bg-white px-6 py-5">
+              <div className="flex items-start gap-3">
+                <span className="inline-flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-red-50 text-red-600">
+                  <Trash2 size={21} />
+                </span>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-red-600">
+                    Ação permanente
+                  </p>
+                  <h2 id="delete-category-title" className="mt-1 text-2xl font-black tracking-tight text-gray-950">
+                    Excluir categoria?
+                  </h2>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleCloseDeleteCategory}
+                disabled={isDeletingCategory}
+                aria-label="Fechar confirmação de exclusão"
+                className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[#fbf7f2] text-gray-500 transition-colors hover:bg-[#f1ebe3] disabled:opacity-50"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-4 px-6 py-5">
+              <p id="delete-category-description" className="text-sm leading-6 text-gray-600">
+                A categoria <strong className="font-bold text-gray-950">“{categoryToDelete.name}”</strong> será removida permanentemente. Esta ação não pode ser desfeita.
+              </p>
+
+              {Number(categoryToDelete.categoryProducts?.length || 0) > 0 && (
+                <div className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
+                  <AlertCircle size={17} className="mt-0.5 flex-shrink-0" />
+                  <span>
+                    Esta categoria possui {categoryToDelete.categoryProducts.length} produto(s) vinculado(s).
+                  </span>
+                </div>
+              )}
+
+              {deleteCategoryError && (
+                <div role="alert" className="flex items-start gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-700">
+                  <AlertCircle size={17} className="mt-0.5 flex-shrink-0" />
+                  <span>{deleteCategoryError}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col-reverse gap-3 border-t border-[var(--line)] bg-white px-6 py-5 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={handleCloseDeleteCategory}
+                disabled={isDeletingCategory}
+                className="rounded-2xl border border-[var(--line)] bg-white px-5 py-3 text-sm font-bold text-gray-700 transition-colors hover:bg-[#fbf7f2] disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteCategory}
+                disabled={isDeletingCategory}
+                className="rounded-2xl bg-red-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <span className="inline-flex items-center gap-2">
+                  {isDeletingCategory ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <Trash2 size={16} />
+                  )}
+                  {isDeletingCategory ? "Excluindo..." : "Excluir categoria"}
                 </span>
               </button>
             </div>
