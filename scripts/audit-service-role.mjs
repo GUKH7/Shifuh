@@ -4,9 +4,14 @@ import path from "node:path";
 const ROOT = path.resolve("src");
 const PUBLIC_ROUTE_PATTERNS = [
   /src\/app\/api\/orders\/route\.ts$/,
+  /src\/app\/api\/orders\/\[id\]\/tracking\/route\.ts$/,
+  /src\/app\/api\/customer\/profile\/route\.ts$/,
+  /src\/app\/api\/storefront\/checkout-events\/route\.ts$/,
   /src\/app\/api\/health(?:\/.*)?\/route\.ts$/,
   /src\/app\/api\/integrations\/ifood\/.*public.*\/route\.ts$/,
 ];
+const CRON_ROUTE_PATTERN = /src\/app\/api\/cron\/.*\/route\.ts$/;
+const PLATFORM_ROUTE_PATTERN = /src\/app\/api\/platform\/.*\/route\.ts$/;
 
 async function walk(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -39,6 +44,8 @@ for (const file of files) {
   const filename = relative(file);
   const isRoute = /src\/app\/api\/.*\/route\.(?:ts|js)$/.test(filename);
   const isPublicRoute = PUBLIC_ROUTE_PATTERNS.some((pattern) => pattern.test(filename));
+  const isCronRoute = CRON_ROUTE_PATTERN.test(filename);
+  const isPlatformRoute = PLATFORM_ROUTE_PATTERN.test(filename);
   const authenticatesUser = hasAny(source, [
     /auth\.getUser\s*\(/,
     /getUser\s*\(/,
@@ -51,24 +58,38 @@ for (const file of files) {
     /p_restaurant_id\s*:/,
     /restaurant\.id/,
     /restaurantId/,
+    /order\.restaurant_id/,
   ]);
   const hasPublicProtection = hasAny(source, [
     /checkRateLimit\s*\(/,
-    /cron/i,
+    /verifyOrderTrackingToken\s*\(/,
+    /CUSTOMER_SESSION_COOKIE/,
+    /hashCustomerSessionToken\s*\(/,
     /authorization/i,
     /bearer/i,
     /secret/i,
   ]);
+  const hasCronProtection = /CRON_SECRET/.test(source) && /isAuthorized\s*\(/.test(source);
+  const hasPlatformProtection = authenticatesUser && /isPlatformAdminEmail\s*\(/.test(source);
 
   let classification = "library";
   let safe = true;
   const reasons = [];
 
   if (isRoute) {
-    if (isPublicRoute) {
+    if (isCronRoute) {
+      classification = "cron-route";
+      safe = hasCronProtection;
+      if (!hasCronProtection) reasons.push("rota cron sem validação explícita de CRON_SECRET");
+    } else if (isPlatformRoute) {
+      classification = "platform-admin-route";
+      safe = hasPlatformProtection;
+      if (!authenticatesUser) reasons.push("rota de plataforma sem autenticação detectável");
+      if (!/isPlatformAdminEmail\s*\(/.test(source)) reasons.push("rota de plataforma sem autorização de administrador");
+    } else if (isPublicRoute) {
       classification = "public-route";
       safe = hasPublicProtection && resolvesRestaurant;
-      if (!hasPublicProtection) reasons.push("rota pública sem rate limit, segredo ou autenticação equivalente");
+      if (!hasPublicProtection) reasons.push("rota pública sem rate limit, token, cookie ou segredo equivalente");
       if (!resolvesRestaurant) reasons.push("rota pública sem escopo explícito de restaurante");
     } else {
       classification = "authenticated-route";
