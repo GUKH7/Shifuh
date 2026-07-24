@@ -31,26 +31,26 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
       - run: npm run audit:service-role
-      - name: Health test diagnostic
-        id: health_test
+      - name: Full test diagnostic
+        id: tests
         continue-on-error: true
         shell: bash
         run: |
           set -o pipefail
-          node --test tests/health.test.js 2>&1 | tee health-test-output.txt
-      - name: Publish health test diagnostic
-        if: ${{ steps.health_test.outcome == 'failure' && github.event_name == 'pull_request' }}
+          npm test 2>&1 | tee test-output.txt
+      - name: Publish full test diagnostic
+        if: ${{ steps.tests.outcome == 'failure' && github.event_name == 'pull_request' }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           {
-            echo "## Diagnóstico isolado do health test"
+            echo "## Diagnóstico temporário da suíte completa"
             echo
             echo '```text'
-            cat health-test-output.txt
+            tail -n 70 test-output.txt
             echo '```'
-          } > health-test-comment.md
-          gh pr comment "${{ github.event.pull_request.number }}" --body-file health-test-comment.md
-      - name: Enforce health test
-        if: ${{ steps.health_test.outcome == 'failure' }}
+          } > test-comment.md
+          gh pr comment "${{ github.event.pull_request.number }}" --body-file test-comment.md
+      - name: Enforce tests
+        if: ${{ steps.tests.outcome == 'failure' }}
         run: exit 1
