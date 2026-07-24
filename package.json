@@ -9,11 +9,12 @@
     "test:e2e": "cross-env NEXT_DIST_DIR=.next-e2e next build && playwright test",
     "test:tenants": "node scripts/multi-tenant-check.mjs",
     "test:load": "node scripts/load-check.mjs",
+    "audit:service-role": "node scripts/audit-service-role.mjs",
     "ifood:worker": "node scripts/ifood-polling-worker.mjs",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "validate": "npm test && npm run lint && npm run typecheck && npm run build"
+    "validate": "npm run audit:service-role && npm test && npm run lint && npm run typecheck && npm run build"
   },
   "dependencies": {
     "@sparticuz/chromium": "^148.0.0",
