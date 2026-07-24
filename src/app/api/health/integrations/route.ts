@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { checkDatabase, settleHealthCheck } from "@/lib/health";
+import { checkWhatsapp, settleHealthCheck } from "@/lib/health";
 import { logOperationalEvent } from "@/lib/observability";
 
 export const dynamic = "force-dynamic";
@@ -8,36 +8,36 @@ export const runtime = "nodejs";
 export async function GET(request: Request) {
   const startedAt = Date.now();
   const requestId = request.headers.get("x-vercel-id") || crypto.randomUUID();
-  const database = await settleHealthCheck(checkDatabase);
-  const healthy = database.check.status === "healthy";
-  const durationMs = Date.now() - startedAt;
+  const whatsapp = await settleHealthCheck(checkWhatsapp);
+  const healthy = whatsapp.check.status === "healthy";
 
-  if (database.error) {
+  if (whatsapp.error) {
     logOperationalEvent("error", "health_check_dependency_failed", {
       requestId,
-      dependency: "database",
-      error: database.error,
+      dependency: "whatsapp",
+      error: whatsapp.error,
     });
   }
 
-  logOperationalEvent(healthy ? "info" : "warn", "health_check_completed", {
+  logOperationalEvent(healthy ? "info" : "warn", "integration_health_check_completed", {
     requestId,
     healthy,
-    durationMs,
-    databaseStatus: database.check.status,
+    durationMs: Date.now() - startedAt,
+    whatsappStatus: whatsapp.check.status,
+    whatsappConnection: whatsapp.check.connection,
   });
 
   return NextResponse.json(
     {
-      status: healthy ? "healthy" : "unavailable",
+      status: healthy ? "healthy" : "degraded",
       checkedAt: new Date().toISOString(),
-      durationMs,
+      durationMs: Date.now() - startedAt,
       checks: {
-        database: database.check,
+        whatsapp: whatsapp.check,
       },
     },
     {
-      status: healthy ? 200 : 503,
+      status: 200,
       headers: { "cache-control": "no-store" },
     },
   );

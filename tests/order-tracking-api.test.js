@@ -112,6 +112,9 @@ function loadRoute() {
     if (request === "@/lib/order-tracking") {
       return loadTsModule(path.join(root, "src", "lib", "order-tracking.ts"));
     }
+    if (request === "@/lib/api/validation") {
+      return loadTsModule(path.join(root, "src", "lib", "api", "validation.ts"));
+    }
     if (request === "@/features/storefront/order-tracking") {
       return loadTsModule(path.join(root, "src", "features", "storefront", "order-tracking.ts"));
     }

@@ -33,21 +33,23 @@ function loadRoute() {
       return { logOperationalEvent: () => {} };
     }
 
-    if (request === "@/lib/supabase/server") {
+    if (request === "@/lib/health") {
       return {
-        createAdminClient: () => ({
-          from: () => ({
-            select: async () => ({ data: null, error: databaseError }),
-          }),
-        }),
-      };
-    }
-
-    if (request === "@/lib/whatsapp-bot") {
-      return {
-        buildWhatsappBotHeaders: (init) => new Headers(init),
-        buildWhatsappBotUrl: () => "https://bot.example.test/status",
-        getWhatsappBotRequestSignal: () => undefined,
+        checkDatabase: async () => {
+          if (databaseError) throw databaseError;
+          return { status: "healthy", latencyMs: 1 };
+        },
+        settleHealthCheck: async (check) => {
+          const startedAt = Date.now();
+          try {
+            return { check: await check() };
+          } catch (error) {
+            return {
+              check: { status: "unavailable", latencyMs: Date.now() - startedAt },
+              error: error instanceof Error ? error.message : String(error),
+            };
+          }
+        },
       };
     }
 
@@ -65,29 +67,21 @@ function loadRoute() {
   }
 }
 
-test("retorna healthy quando banco e WhatsApp estao operacionais", async () => {
-  const originalFetch = global.fetch;
+test("retorna healthy quando o banco está operacional", async () => {
   databaseError = null;
-  global.fetch = async () => Response.json({ status: "conectado" });
 
-  try {
-    const { GET } = loadRoute();
-    const response = await GET(new Request("https://app.example.test/api/health"));
-    const payload = await response.json();
+  const { GET } = loadRoute();
+  const response = await GET(new Request("https://app.example.test/api/health"));
+  const payload = await response.json();
 
-    assert.equal(response.status, 200);
-    assert.equal(payload.status, "healthy");
-    assert.equal(payload.checks.database.status, "healthy");
-    assert.equal(payload.checks.whatsapp.status, "healthy");
-  } finally {
-    global.fetch = originalFetch;
-  }
+  assert.equal(response.status, 200);
+  assert.equal(payload.status, "healthy");
+  assert.equal(payload.checks.database.status, "healthy");
+  assert.equal("whatsapp" in payload.checks, false);
 });
 
-test("retorna degraded sem expor o erro interno da dependencia", async () => {
-  const originalFetch = global.fetch;
-  databaseError = { message: "segredo interno do banco" };
-  global.fetch = async () => Response.json({ status: "aguardando_qr" });
+test("retorna unavailable sem expor o erro interno do banco", async () => {
+  databaseError = new Error("segredo interno do banco");
 
   try {
     const { GET } = loadRoute();
@@ -96,12 +90,11 @@ test("retorna degraded sem expor o erro interno da dependencia", async () => {
     const serialized = JSON.stringify(payload);
 
     assert.equal(response.status, 503);
-    assert.equal(payload.status, "degraded");
+    assert.equal(payload.status, "unavailable");
     assert.equal(payload.checks.database.status, "unavailable");
-    assert.equal(payload.checks.whatsapp.status, "degraded");
+    assert.equal("whatsapp" in payload.checks, false);
     assert.equal(serialized.includes("segredo interno do banco"), false);
   } finally {
-    global.fetch = originalFetch;
     databaseError = null;
   }
 });

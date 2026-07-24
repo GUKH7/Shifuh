@@ -1,22 +1,23 @@
 {
-  "name": "meu-whatsmenu",
+  "name": "gestor-delivery",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "test": "node --test",
+    "test": "node --test --test-concurrency=1",
     "test:e2e": "cross-env NEXT_DIST_DIR=.next-e2e next build && playwright test",
     "test:tenants": "node scripts/multi-tenant-check.mjs",
     "test:load": "node scripts/load-check.mjs",
+    "audit:service-role": "node scripts/audit-service-role.mjs",
     "ifood:worker": "node scripts/ifood-polling-worker.mjs",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "validate": "npm run audit:service-role && npm test && npm run lint && npm run typecheck && npm run build"
   },
   "dependencies": {
     "@sparticuz/chromium": "^148.0.0",
-    "@supabase/auth-helpers-nextjs": "^0.15.0",
-    "@supabase/auth-helpers-react": "^0.15.0",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.94.0",
     "lucide-react": "^0.460.0",
