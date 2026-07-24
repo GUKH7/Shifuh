@@ -305,7 +305,7 @@ export default function SettingsPage() {
     setUploading(true);
     try {
       const croppedFile = await getCroppedImg(cropSource, croppedAreaPixels);
-    if (!croppedFile) throw new Error("Não foi possível recortar a imagem.");
+      if (!croppedFile) throw new Error("Não foi possível recortar a imagem.");
       const publicUrl = await uploadFile(croppedFile);
       if (cropTarget === "logo") {
         setLogoUrl(publicUrl);
@@ -322,7 +322,10 @@ export default function SettingsPage() {
       console.error(error);
       showToast({
         title: "Falha no upload da imagem",
-        description: "Tente novamente com outro arquivo.",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Tente novamente com outro arquivo.",
         tone: "error",
       });
     } finally {
@@ -1138,8 +1141,9 @@ export default function SettingsPage() {
                   </label>
                   <div className="rounded-2xl border border-dashed border-[var(--line)] bg-white px-4 py-3 text-sm text-gray-500">
                     <p className="font-bold text-gray-700">Banner recomendado</p>
-                    <p className="mt-1">Formato `PNG` ou `JPG`, proporção horizontal `3:1`.</p>
-                    <p className="mt-1">Tamanho ideal: `1500x500 px` ou maior.</p>
+                    <p className="mt-1">Formato `PNG`, `JPG` ou `WebP`, proporção horizontal `16:7`.</p>
+                    <p className="mt-1">Tamanho ideal: `1600x700 px` ou maior.</p>
+                    <p className="mt-1">Mantenha textos e elementos importantes na região central da imagem.</p>
                   </div>
                   <div className="space-y-2">
                     {banners.map((banner, index) => (
