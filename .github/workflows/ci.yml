@@ -8,7 +8,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -44,27 +43,7 @@ jobs:
         run: npm run audit:service-role
 
       - name: Test
-        id: tests
-        continue-on-error: true
-        run: npm test 2>&1 | tee test-output.txt
-
-      - name: Publish test failure
-        if: ${{ steps.tests.outcome == 'failure' && github.event_name == 'pull_request' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          {
-            echo "## Diagnóstico temporário dos testes"
-            echo
-            echo '```text'
-            tail -n 240 test-output.txt
-            echo '```'
-          } > test-comment.md
-          gh pr comment "${{ github.event.pull_request.number }}" --body-file test-comment.md
-
-      - name: Enforce tests
-        if: ${{ steps.tests.outcome == 'failure' }}
-        run: exit 1
+        run: npm test
 
       - name: Lint
         run: npm run lint
