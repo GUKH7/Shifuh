@@ -1,5 +1,5 @@
 {
-  "name": "meu-whatsmenu",
+  "name": "gestor-delivery",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -11,12 +11,12 @@
     "test:load": "node scripts/load-check.mjs",
     "ifood:worker": "node scripts/ifood-polling-worker.mjs",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "validate": "npm test && npm run lint && npm run typecheck && npm run build"
   },
   "dependencies": {
     "@sparticuz/chromium": "^148.0.0",
-    "@supabase/auth-helpers-nextjs": "^0.15.0",
-    "@supabase/auth-helpers-react": "^0.15.0",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.94.0",
     "lucide-react": "^0.460.0",
