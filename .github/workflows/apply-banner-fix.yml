@@ -1,0 +1,73 @@
+name: Apply banner fix
+
+on:
+  push:
+    branches:
+      - fix/banner-upload-and-proportion
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key
+      SUPABASE_SERVICE_ROLE_KEY: ci-placeholder-service-role-key
+      ORDER_TRACKING_SECRET: ci-placeholder-order-tracking-secret-with-32-characters
+      WHATSAPP_BOT_API_URL: http://127.0.0.1:3001
+      WHATSAPP_BOT_API_TOKEN: ci-placeholder-token
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/banner-upload-and-proportion
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Apply focused replacements
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/app/admin/(painel)/settings/page.tsx')
+          source = path.read_text(encoding='utf-8')
+
+          replacements = {
+              'Formato `PNG` ou `JPG`, proporção horizontal `3:1`.': 'Formato `PNG`, `JPG` ou `WebP`, proporção horizontal `16:7`.',
+              'Tamanho ideal: `1500x500 px` ou maior.': 'Tamanho ideal: `1600x700 px` ou maior.',
+              '                    <p className="mt-1">Tamanho ideal: `1600x700 px` ou maior.</p>': '                    <p className="mt-1">Tamanho ideal: `1600x700 px` ou maior.</p>\n                    <p className="mt-1">Mantenha textos e elementos importantes na região central da imagem.</p>',
+              '    if (!croppedFile) throw new Error("Não foi possível recortar a imagem.");': '      if (!croppedFile) throw new Error("Não foi possível recortar a imagem.");',
+              '        description: "Tente novamente com outro arquivo.",': '        description:\n          error instanceof Error\n            ? error.message\n            : "Tente novamente com outro arquivo.",',
+          }
+
+          for old, new in replacements.items():
+              if old not in source:
+                  raise SystemExit(f'Replacement target not found: {old}')
+              source = source.replace(old, new, 1)
+
+          path.write_text(source, encoding='utf-8')
+          PY
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Validate
+        run: npm run validate
+
+      - name: Commit final changes and remove temporary workflow
+        shell: bash
+        run: |
+          rm .github/workflows/apply-banner-fix.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/app/admin/\(painel\)/settings/page.tsx .github/workflows/apply-banner-fix.yml
+          git commit -m "fix: corrigir upload e proporção do banner"
+          git push origin HEAD:fix/banner-upload-and-proportion
