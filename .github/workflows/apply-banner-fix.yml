@@ -1,16 +1,16 @@
 name: Apply banner fix
 
 on:
-  push:
+  pull_request:
     branches:
-      - fix/banner-upload-and-proportion
+      - main
 
 permissions:
   contents: write
 
 jobs:
   apply:
-    if: github.actor != 'github-actions[bot]'
+    if: github.head_ref == 'fix/banner-upload-and-proportion' && github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
