@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import {
+  extractMerchantUuidFromIfoodUrl,
   fetchIfoodPublicStoreData,
   hydrateIfoodPublicMenuAddons,
 } from "@/lib/ifood/public-page";
@@ -93,12 +94,53 @@ export async function POST(request: Request) {
     }
 
     const admin = createAdminClient();
-    const imported = await fetchIfoodPublicStoreData(publicUrl);
+    const normalizedPublicUrl = new URL(publicUrl);
+    normalizedPublicUrl.search = "";
+    normalizedPublicUrl.hash = "";
+    const canonicalPublicUrl = normalizedPublicUrl.toString();
+
+    let imported: Awaited<ReturnType<typeof fetchIfoodPublicStoreData>>;
+
+    try {
+      imported = await fetchIfoodPublicStoreData(canonicalPublicUrl);
+    } catch (pageError) {
+      const merchantUuid = extractMerchantUuidFromIfoodUrl(canonicalPublicUrl);
+      if (!merchantUuid) throw pageError;
+
+      console.warn("Página pública do iFood bloqueada; tentando catálogo/navegador:", pageError);
+      const fallbackSections = await scrapeIfoodPublicMenu(canonicalPublicUrl);
+
+      imported = {
+        sourceUrl: canonicalPublicUrl,
+        merchantUuid,
+        slug: null,
+        shortId: null,
+        name: ownedRestaurant.name || null,
+        description: null,
+        phone: null,
+        coverUrl: null,
+        logoUrl: null,
+        address: {
+          street: ownedRestaurant.address_street || null,
+          number: ownedRestaurant.address_number || null,
+          neighborhood: ownedRestaurant.address_neighborhood || null,
+          city: ownedRestaurant.address_city || null,
+          state: ownedRestaurant.address_state || null,
+          zip: ownedRestaurant.address_zip || null,
+        },
+        location: {
+          latitude: ownedRestaurant.latitude ?? null,
+          longitude: ownedRestaurant.longitude ?? null,
+        },
+        menuSections: fallbackSections,
+      };
+    }
+
     let importedMenuSections = imported.menuSections;
 
     if (importedMenuSections.length === 0) {
       try {
-        importedMenuSections = await scrapeIfoodPublicMenu(publicUrl, {
+        importedMenuSections = await scrapeIfoodPublicMenu(canonicalPublicUrl, {
           street: imported.address.street,
           number: imported.address.number,
           neighborhood: imported.address.neighborhood,
@@ -108,6 +150,12 @@ export async function POST(request: Request) {
       } catch (error) {
         console.error("Fallback headless do iFood falhou:", error);
       }
+    }
+
+    if (importedMenuSections.length === 0) {
+      throw new Error(
+        "O iFood bloqueou a leitura automática ou não disponibilizou itens públicos para essa loja. Tente novamente em alguns minutos ou use a integração oficial do iFood.",
+      );
     }
 
     importedMenuSections = await hydrateIfoodPublicMenuAddons(
