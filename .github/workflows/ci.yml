@@ -41,50 +41,10 @@ jobs:
         run: npm ci --ignore-scripts
 
       - name: Audit service role usage
-        id: service_role_audit
-        continue-on-error: true
-        run: npm run audit:service-role 2>&1 | tee service-role-audit.txt
-
-      - name: Publish service role inventory
-        if: ${{ always() && github.event_name == 'pull_request' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          {
-            echo "## Inventário automático de service role"
-            echo
-            echo '```text'
-            cat service-role-audit.txt
-            echo '```'
-          } > service-role-comment.md
-          gh pr comment "${{ github.event.pull_request.number }}" --body-file service-role-comment.md
-
-      - name: Enforce service role audit
-        if: ${{ steps.service_role_audit.outcome == 'failure' }}
-        run: exit 1
+        run: npm run audit:service-role
 
       - name: Test
-        id: tests
-        continue-on-error: true
-        run: npm test 2>&1 | tee test-output.txt
-
-      - name: Publish test failure
-        if: ${{ always() && steps.tests.outcome == 'failure' && github.event_name == 'pull_request' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          {
-            echo "## Falha nos testes automatizados"
-            echo
-            echo '```text'
-            tail -n 180 test-output.txt
-            echo '```'
-          } > test-comment.md
-          gh pr comment "${{ github.event.pull_request.number }}" --body-file test-comment.md
-
-      - name: Enforce tests
-        if: ${{ steps.tests.outcome == 'failure' }}
-        run: exit 1
+        run: npm test
 
       - name: Lint
         run: npm run lint
