@@ -1,0 +1,47 @@
+name: Generate service role audit
+
+on:
+  push:
+    branches:
+      - agent/consolidar-fundacao-fase-1
+    paths:
+      - scripts/audit-service-role.mjs
+      - .github/workflows/generate-service-role-audit.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/consolidar-fundacao-fase-1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Generate report
+        run: |
+          mkdir -p docs/security
+          npm run audit:service-role > docs/security/service-role-audit.txt 2>&1 || true
+
+      - name: Commit report
+        run: |
+          if git diff --quiet -- docs/security/service-role-audit.txt; then
+            echo "Relatório sem alterações."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/security/service-role-audit.txt
+          git commit -m "docs: atualizar auditoria de service role"
+          git push
