@@ -8,9 +8,10 @@ const ts = require("typescript");
 const projectRoot = path.join(__dirname, "..");
 const utilsPath = path.join(projectRoot, "src", "app", "admin", "(painel)", "orders", "utils.ts");
 const pagePath = path.join(projectRoot, "src", "app", "admin", "(painel)", "orders", "page.tsx");
+const orderStatusPath = path.join(projectRoot, "src", "lib", "order-status.ts");
 
-function loadUtils() {
-  const source = fs.readFileSync(utilsPath, "utf8");
+function loadTsModule(filePath) {
+  const source = fs.readFileSync(filePath, "utf8");
   const compiled = ts.transpileModule(source, {
     compilerOptions: {
       esModuleInterop: true,
@@ -18,16 +19,34 @@ function loadUtils() {
       target: ts.ScriptTarget.ES2022,
     },
   }).outputText;
-  const loaded = new Module(utilsPath, module);
-  loaded.filename = utilsPath;
-  loaded.paths = Module._nodeModulePaths(path.dirname(utilsPath));
-  loaded._compile(compiled, utilsPath);
+  const loaded = new Module(filePath, module);
+  loaded.filename = filePath;
+  loaded.paths = Module._nodeModulePaths(path.dirname(filePath));
+  loaded._compile(compiled, filePath);
   return loaded.exports;
+}
+
+function loadUtils() {
+  const originalLoad = Module._load;
+
+  Module._load = function patchedLoad(request, parent, isMain) {
+    if (request === "@/lib/order-status") {
+      return loadTsModule(orderStatusPath);
+    }
+
+    return originalLoad.call(this, request, parent, isMain);
+  };
+
+  try {
+    return loadTsModule(utilsPath);
+  } finally {
+    Module._load = originalLoad;
+  }
 }
 
 const { calculateCashChange, getAddonPrice, parseMoneyAmount } = loadUtils();
 
-test("normaliza valores monetarios informados para troco", () => {
+test("normaliza valores monetários informados para troco", () => {
   assert.equal(parseMoneyAmount("R$ 100,00"), 100);
   assert.equal(parseMoneyAmount("1.250,50"), 1250.5);
   assert.equal(parseMoneyAmount("invalido"), null);
