@@ -60,7 +60,7 @@ jobs:
             echo "## Diagnóstico temporário dos testes"
             echo
             echo '```text'
-            tail -n 260 test-output.txt
+            grep -E -A 18 -B 5 'not ok|failureType:|AssertionError|ERR_ASSERTION|expected:|actual:' test-output.txt | tail -n 120 || tail -n 120 test-output.txt
             echo '```'
           } > test-comment.md
           gh pr comment "${{ github.event.pull_request.number }}" --body-file test-comment.md
