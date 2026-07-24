@@ -4,6 +4,11 @@ import { calculateDeliveryFee } from "@/lib/geo";
 import { verifyOrderTrackingToken } from "@/lib/order-tracking";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { createAdminClient } from "@/lib/supabase/server";
+import {
+  readJsonObject,
+  requiredString,
+  validationErrorResponse,
+} from "@/lib/api/validation";
 
 type Params = { params: Promise<{ id: string }> };
 type JsonRecord = Record<string, unknown>;
@@ -49,23 +54,22 @@ async function loadTrackingResponse(id: string) {
     { data: items, error: itemsError },
     { data: restaurant, error: restaurantError },
     { data: history, error: historyError },
-  ] =
-    await Promise.all([
-      admin
-        .from("order_items")
-        .select("product_name, quantity, price, observation, addons")
-        .eq("order_id", order.id),
-      admin
-        .from("restaurants")
-        .select("name, slug, phone, whatsapp_number, primary_color, delivery_tiers")
-        .eq("id", order.restaurant_id)
-        .maybeSingle(),
-      admin
-        .from("order_status_history")
-        .select("status, changed_at")
-        .eq("order_id", order.id)
-        .order("changed_at", { ascending: true }),
-    ]);
+  ] = await Promise.all([
+    admin
+      .from("order_items")
+      .select("product_name, quantity, price, observation, addons")
+      .eq("order_id", order.id),
+    admin
+      .from("restaurants")
+      .select("name, slug, phone, whatsapp_number, primary_color, delivery_tiers")
+      .eq("id", order.restaurant_id)
+      .maybeSingle(),
+    admin
+      .from("order_status_history")
+      .select("status, changed_at")
+      .eq("order_id", order.id)
+      .order("changed_at", { ascending: true }),
+  ]);
 
   if (itemsError || restaurantError || historyError || !restaurant) return null;
 
@@ -167,10 +171,14 @@ export async function POST(request: Request, context: Params) {
   if (rateLimitResponse) return rateLimitResponse;
 
   try {
-    const { phone } = (await request.json()) as { phone?: string };
-    const phoneDigits = String(phone || "").replace(/\D/g, "");
-    if (phoneDigits.length < 10) {
-      return NextResponse.json({ error: "Telefone inválido." }, { status: 400 });
+    const body = await readJsonObject(request);
+    const phone = requiredString(body, "phone", { minLength: 10, maxLength: 24 });
+    const phoneDigits = phone.replace(/\D/g, "");
+    if (!/^\d{10,11}$/.test(phoneDigits)) {
+      return NextResponse.json(
+        { code: "INVALID_PHONE", error: "Telefone inválido." },
+        { status: 400 },
+      );
     }
 
     const { id } = await context.params;
@@ -182,6 +190,9 @@ export async function POST(request: Request, context: Params) {
 
     return publicResponse(data);
   } catch (error) {
+    const validationResponse = validationErrorResponse(error);
+    if (validationResponse) return validationResponse;
+
     console.error("Erro ao acompanhar pedido:", error);
     return NextResponse.json(
       { error: "Não foi possível consultar o pedido agora." },
