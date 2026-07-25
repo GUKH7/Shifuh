@@ -1,0 +1,30 @@
+name: Apply admin visual polish
+
+on:
+  push:
+    branches:
+      - fix/admin-visual-alignment-round
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply controlled replacements
+        run: python scripts/apply-admin-visual-polish.py
+
+      - name: Commit generated changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Ajustar alinhamentos e badges do painel administrativo"
+          git push origin HEAD:fix/admin-visual-alignment-round
