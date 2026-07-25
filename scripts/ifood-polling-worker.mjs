@@ -1,7 +1,8 @@
 const appBaseUrl = process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL;
 const cronSecret = process.env.CRON_SECRET;
 const intervalMs = Number(process.env.IFOOD_POLLING_INTERVAL_MS || 30_000);
-const endpointPath = process.env.IFOOD_POLLING_ENDPOINT || "/api/cron/ifood/orders";
+const endpointPath =
+  process.env.IFOOD_POLLING_ENDPOINT || "/api/cron/ifood/resilient-orders";
 
 if (!appBaseUrl) {
   throw new Error("APP_BASE_URL is required. Example: https://gestor-delivery-tau.vercel.app");
