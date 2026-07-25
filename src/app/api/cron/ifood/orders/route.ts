@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
-import { syncIfoodOrdersForRestaurant } from "@/lib/ifood/order-sync";
+import { syncIfoodOrdersWithResilience } from "@/lib/ifood/order-sync-resilience";
 import { getIfoodMerchantStatus } from "@/lib/ifood/merchant";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
+
+const CRON_CONCURRENCY = 3;
 
 function isAuthorized(request: Request) {
   const secret = process.env.CRON_SECRET?.trim();
@@ -13,11 +15,54 @@ function isAuthorized(request: Request) {
   return request.headers.get("authorization") === `Bearer ${secret}`;
 }
 
+async function processIntegration(integration: {
+  restaurant_id: string | null;
+  merchant_id: string | null;
+  order_sync_enabled: boolean | null;
+}) {
+  if (!integration.restaurant_id || !integration.merchant_id) return null;
+
+  const startedAt = Date.now();
+
+  try {
+    const merchantStatus = await getIfoodMerchantStatus(integration.merchant_id);
+    const orderSummary = integration.order_sync_enabled
+      ? await syncIfoodOrdersWithResilience({
+          restaurantId: integration.restaurant_id,
+          merchantId: integration.merchant_id,
+          source: "cron",
+          maxAttempts: 3,
+        })
+      : null;
+
+    return {
+      restaurantId: integration.restaurant_id,
+      ok: true,
+      durationMs: Date.now() - startedAt,
+      merchantStatus,
+      orderSummary,
+    };
+  } catch (syncError) {
+    console.error(
+      `Erro no cron de pedidos iFood da loja ${integration.restaurant_id}:`,
+      syncError,
+    );
+
+    return {
+      restaurantId: integration.restaurant_id,
+      ok: false,
+      durationMs: Date.now() - startedAt,
+      error: syncError instanceof Error ? syncError.message : "Falha ao sincronizar.",
+    };
+  }
+}
+
 export async function GET(request: Request) {
   if (!isAuthorized(request)) {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
   }
 
+  const cronStartedAt = Date.now();
   const admin = createAdminClient();
   const { data: integrations, error } = await admin
     .from("ifood_integrations")
@@ -31,44 +76,27 @@ export async function GET(request: Request) {
     );
   }
 
-  const results = [];
+  const candidates = (integrations || []).filter(
+    (integration) => integration.restaurant_id && integration.merchant_id,
+  );
+  const results: Array<Awaited<ReturnType<typeof processIntegration>>> = [];
 
-  for (const integration of integrations || []) {
-    if (!integration.restaurant_id || !integration.merchant_id) continue;
-
-    try {
-      const merchantStatus = await getIfoodMerchantStatus(integration.merchant_id);
-      const orderSummary = integration.order_sync_enabled
-        ? await syncIfoodOrdersForRestaurant({
-            restaurantId: integration.restaurant_id,
-            merchantId: integration.merchant_id,
-            source: "cron",
-          })
-        : null;
-
-      results.push({
-        restaurantId: integration.restaurant_id,
-        ok: true,
-        merchantStatus,
-        orderSummary,
-      });
-    } catch (syncError) {
-      console.error(
-        `Erro no cron de pedidos iFood da loja ${integration.restaurant_id}:`,
-        syncError,
-      );
-
-      results.push({
-        restaurantId: integration.restaurant_id,
-        ok: false,
-        error: syncError instanceof Error ? syncError.message : "Falha ao sincronizar.",
-      });
-    }
+  for (let index = 0; index < candidates.length; index += CRON_CONCURRENCY) {
+    const batch = candidates.slice(index, index + CRON_CONCURRENCY);
+    const batchResults = await Promise.all(batch.map(processIntegration));
+    results.push(...batchResults);
   }
 
+  const validResults = results.filter(Boolean);
+  const failed = validResults.filter((result) => result && !result.ok).length;
+
   return NextResponse.json({
-    ok: results.every((result) => result.ok),
-    integrationsChecked: integrations?.length || 0,
-    results,
+    ok: failed === 0,
+    status: failed === 0 ? "success" : failed === validResults.length ? "error" : "partial_success",
+    durationMs: Date.now() - cronStartedAt,
+    integrationsChecked: candidates.length,
+    integrationsSucceeded: validResults.length - failed,
+    integrationsFailed: failed,
+    results: validResults,
   });
 }
