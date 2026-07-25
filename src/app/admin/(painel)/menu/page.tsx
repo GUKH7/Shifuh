@@ -454,7 +454,7 @@ export default function AdminDashboard() {
 
         <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row lg:w-auto">
           <div className="relative w-full min-w-0 sm:min-w-[240px] lg:w-[280px]">
-            <span className="pointer-events-none absolute inset-y-0 left-0 flex w-11 items-center justify-center text-gray-400" aria-hidden="true">
+            <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true">
               <Search size={16} />
             </span>
             <input
@@ -468,7 +468,7 @@ export default function AdminDashboard() {
 
           <button
             onClick={handleOpenImportModal}
-            className="rounded-2xl border border-[var(--line)] bg-white px-5 py-3 text-sm font-bold text-gray-700"
+            className="inline-flex h-10 items-center justify-center rounded-2xl border border-[var(--line)] bg-white px-4 text-sm font-bold text-gray-700"
           >
             <span className="inline-flex items-center gap-2">
               <Import size={16} />
@@ -478,7 +478,7 @@ export default function AdminDashboard() {
 
           <button
             onClick={handleOpenCategoryModal}
-            className="rounded-2xl border border-[var(--line)] bg-white px-5 py-3 text-sm font-bold text-gray-700"
+            className="inline-flex h-10 items-center justify-center rounded-2xl border border-[var(--line)] bg-white px-4 text-sm font-bold text-gray-700"
           >
             <span className="inline-flex items-center gap-2">
               <Plus size={16} />
@@ -488,7 +488,7 @@ export default function AdminDashboard() {
 
           <button
             onClick={handleOpenNewProduct}
-            className="brand-gradient rounded-2xl px-5 py-3 text-sm font-bold text-white"
+            className="brand-gradient inline-flex h-10 items-center justify-center rounded-2xl px-4 text-sm font-bold text-white"
           >
             <span className="inline-flex items-center gap-2">
               <Plus size={16} />
@@ -745,7 +745,7 @@ export default function AdminDashboard() {
             Uma leitura rápida da vitrine com base nas categorias e produtos visíveis agora.
           </p>
 
-          <div className="mt-5 overflow-hidden rounded-[28px] border border-[var(--line)] bg-[#fffdfa] shadow-[0_16px_36px_rgba(17,16,15,0.08)]">
+          <div className="mt-5 overflow-hidden rounded-[18px] border border-[var(--line)] bg-[#fffdfa] shadow-[0_16px_36px_rgba(17,16,15,0.08)]">
             <div className="bg-[#171311] px-4 py-5 text-white">
               <p className="text-lg font-black">{restaurant?.name || "Sua loja"}</p>
               <p className="mt-1 text-sm text-white/70">{categories.length} categorias ativas</p>

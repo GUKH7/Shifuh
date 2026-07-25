@@ -209,7 +209,7 @@ export default function AdminHomePage() {
       </div>
 
       <section className="surface-card rounded-[28px] p-6">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full bg-[var(--brand-soft)] px-3 py-1.5 text-xs font-bold text-[var(--brand)]">
               <LiveStatusDot className="text-current" />
@@ -295,7 +295,7 @@ export default function AdminHomePage() {
         </div>
 
         <div className="surface-card rounded-[28px] p-6">
-          <h3 className="text-xl font-black text-gray-950">Pulso da loja</h3>
+          <h3 className="text-xl font-black text-gray-950">Status da loja</h3>
           <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
             <div className="flex items-center gap-3">
               <LiveStatusDot />

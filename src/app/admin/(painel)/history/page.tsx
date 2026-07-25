@@ -405,7 +405,7 @@ export default function HistoryPage() {
         )}
 
         <div className="mt-8 overflow-hidden rounded-[24px] border border-[var(--line)] bg-white">
-          <div className="grid grid-cols-[88px_1.1fr_1fr_0.9fr_0.9fr_140px_132px] gap-4 border-b border-[var(--line)] px-6 py-4 text-xs font-bold uppercase tracking-[0.16em] text-gray-400">
+          <div className="grid grid-cols-[88px_1.1fr_1fr_minmax(118px,0.9fr)_0.9fr_140px_132px] gap-4 border-b border-[var(--line)] px-6 py-4 text-xs font-bold uppercase tracking-[0.16em] text-gray-400">
             <span className="whitespace-nowrap">Horário</span>
             <span>Pedido</span>
             <span>Cliente</span>
@@ -441,7 +441,7 @@ export default function HistoryPage() {
                   {group.orders.map((order) => (
                     <div
                       key={order.id}
-                      className="grid grid-cols-[88px_1.1fr_1fr_0.9fr_0.9fr_140px_132px] gap-4 px-6 py-5 text-sm text-gray-700"
+                      className="grid grid-cols-[88px_1.1fr_1fr_minmax(118px,0.9fr)_0.9fr_140px_132px] gap-4 px-6 py-5 text-sm text-gray-700"
                     >
                       <div className="font-bold text-gray-950">{formatHour(order.created_at)}</div>
                       <div>
@@ -453,7 +453,7 @@ export default function HistoryPage() {
                         <p className="mt-1 text-xs text-gray-400">{order.customer_phone}</p>
                       </div>
                       <div>
-                        <OrderStatusBadge status={order.status} />
+                        <OrderStatusBadge status={order.status} className="whitespace-nowrap" />
                       </div>
                       <div className="font-semibold text-gray-950">
                         {formatMoney(Number(order.total || 0))}
