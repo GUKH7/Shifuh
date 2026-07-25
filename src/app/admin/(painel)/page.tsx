@@ -211,8 +211,8 @@ export default function AdminHomePage() {
       <section className="surface-card rounded-[28px] p-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-[var(--brand-soft)] px-3 py-1 text-xs font-bold text-[var(--brand)]">
-              <LiveStatusDot />
+            <div className="inline-flex items-center gap-2 rounded-full bg-[var(--brand-soft)] px-3 py-1.5 text-xs font-bold text-[var(--brand)]">
+              <LiveStatusDot className="text-current" />
               Dashboard em tempo real
             </div>
             <h2 className="mt-4 text-2xl font-black text-gray-950">
