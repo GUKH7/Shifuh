@@ -1,0 +1,45 @@
+[
+  {
+    "id": "evt-confirmed-late",
+    "code": "CFM",
+    "fullCode": "CONFIRMED",
+    "orderId": "order-001",
+    "merchantId": "merchant-test",
+    "createdAt": "2026-07-25T12:02:00.000Z",
+    "metadata": { "group": "ORDER_STATUS" }
+  },
+  {
+    "id": "evt-placed",
+    "code": "PLC",
+    "fullCode": "PLACED",
+    "orderId": "order-001",
+    "merchantId": "merchant-test",
+    "createdAt": "2026-07-25T12:00:00.000Z",
+    "metadata": { "group": "ORDER_STATUS" }
+  },
+  {
+    "id": "evt-confirmed-late",
+    "code": "CFM",
+    "fullCode": "CONFIRMED",
+    "orderId": "order-001",
+    "merchantId": "merchant-test",
+    "createdAt": "2026-07-25T12:02:00.000Z",
+    "metadata": { "group": "ORDER_STATUS" }
+  },
+  {
+    "id": "evt-scheduled",
+    "code": "PLC",
+    "fullCode": "PLACED",
+    "orderId": "order-002",
+    "merchantId": "merchant-test",
+    "createdAt": "2026-07-25T12:01:00.000Z",
+    "metadata": {
+      "group": "ORDER_STATUS",
+      "orderTiming": "SCHEDULED",
+      "schedule": {
+        "deliveryDateTimeStart": "2026-07-25T15:00:00.000Z",
+        "deliveryDateTimeEnd": "2026-07-25T15:30:00.000Z"
+      }
+    }
+  }
+]
