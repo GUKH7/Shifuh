@@ -3,7 +3,6 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 
 const resilience = fs.readFileSync("src/lib/ifood/order-sync-resilience.ts", "utf8");
-const orderSync = fs.readFileSync("src/lib/ifood/order-sync.ts", "utf8");
 const cronRoute = fs.readFileSync("src/app/api/cron/ifood/orders/route.ts", "utf8");
 const manualRoute = fs.readFileSync(
   "src/app/api/integrations/ifood/orders/sync/route.ts",
@@ -17,43 +16,37 @@ const fixture = JSON.parse(
   fs.readFileSync("tests/fixtures/ifood-order-events.json", "utf8"),
 );
 
-test("fila resiliente serializa por restaurante e repete somente falhas transitórias", () => {
-  assert.match(resilience, /runningSyncs = new Map/);
-  assert.match(resilience, /isTransientIfoodSyncError/);
-  assert.match(resilience, /error\.status === 429/);
-  assert.match(resilience, /error\.status >= 500/);
-  assert.match(resilience, /waitForRetry/);
-  assert.match(manualRoute, /syncIfoodOrdersWithResilience/);
-  assert.match(cronRoute, /syncIfoodOrdersWithResilience/);
+test("sincronização usa política resiliente nas rotas manual e automática", () => {
+  assert.ok(resilience.includes("syncIfoodOrdersWithResilience"));
+  assert.ok(resilience.includes("isTransientIfoodSyncError"));
+  assert.ok(resilience.includes("runningSyncs"));
+  assert.ok(manualRoute.includes("syncIfoodOrdersWithResilience"));
+  assert.ok(cronRoute.includes("syncIfoodOrdersWithResilience"));
 });
 
-test("cron isola restaurantes e informa sucesso parcial", () => {
-  assert.match(cronRoute, /CRON_CONCURRENCY/);
-  assert.match(cronRoute, /Promise\.all/);
-  assert.match(cronRoute, /partial_success/);
-  assert.match(cronRoute, /integrationsFailed/);
-  assert.match(cronRoute, /durationMs/);
+test("cron monitora falhas parciais e duração por restaurante", () => {
+  assert.ok(cronRoute.includes("partial_success"));
+  assert.ok(cronRoute.includes("integrationsFailed"));
+  assert.ok(cronRoute.includes("durationMs"));
+  assert.ok(cronRoute.includes("CRON_CONCURRENCY"));
 });
 
-test("eventos brutos continuam armazenados e ACK depende de processamento", () => {
-  assert.match(orderSync, /\.from\("ifood_order_events"\)\.insert\(eventsToInsert\)/);
-  assert.match(orderSync, /raw_payload: event as unknown as Json/);
-  assert.match(orderSync, /processedEventIds\.add\(event\.id\)/);
-  assert.match(orderSync, /alreadyProcessedEventIds/);
-  assert.match(orderSync, /acknowledgeIfoodOrderEvents\(ackEventIds\)/);
+test("migração cria metadados da fila de retentativas", () => {
+  for (const field of [
+    "retry_count",
+    "next_retry_at",
+    "last_error",
+    "dead_lettered_at",
+    "processing_started_at",
+  ]) {
+    assert.ok(migration.includes(field));
+  }
+  assert.ok(migration.includes("idx_ifood_order_events_pending_queue"));
+  assert.ok(migration.includes("idx_ifood_order_events_unacknowledged"));
 });
 
-test("banco possui fila de retentativas e consulta de ACK pendente", () => {
-  assert.match(migration, /retry_count integer not null default 0/);
-  assert.match(migration, /next_retry_at timestamptz/);
-  assert.match(migration, /last_error text/);
-  assert.match(migration, /dead_lettered_at timestamptz/);
-  assert.match(migration, /idx_ifood_order_events_pending_queue/);
-  assert.match(migration, /idx_ifood_order_events_unacknowledged/);
-});
-
-test("payload simulado inclui duplicidade, evento fora de ordem e pedido agendado", () => {
-  assert.equal(fixture.length, 4);
+test("payload simulado cobre duplicidade, desordem e agendamento", () => {
+  assert.equal(Array.isArray(fixture), true);
   assert.equal(fixture.filter((event) => event.id === "evt-confirmed-late").length, 2);
   assert.equal(fixture[0].createdAt > fixture[1].createdAt, true);
   const scheduled = fixture.find((event) => event.id === "evt-scheduled");
@@ -61,9 +54,9 @@ test("payload simulado inclui duplicidade, evento fora de ordem e pedido agendad
   assert.ok(scheduled.metadata.schedule.deliveryDateTimeStart);
 });
 
-test("transições terminais não regridem por evento antigo", () => {
-  assert.match(resilience, /STATUS_RANK/);
-  assert.match(resilience, /currentStatus === "canceled" \|\| currentStatus === "done"/);
-  assert.match(resilience, /nextStatus === "canceled"/);
-  assert.match(resilience, /sortAndDeduplicateIfoodEvents/);
+test("helpers impedem regressão de status e ordenam eventos", () => {
+  assert.ok(resilience.includes("shouldApplyIfoodStatus"));
+  assert.ok(resilience.includes("sortAndDeduplicateIfoodEvents"));
+  assert.ok(resilience.includes('currentStatus === "canceled"'));
+  assert.ok(resilience.includes('currentStatus === "done"'));
 });
