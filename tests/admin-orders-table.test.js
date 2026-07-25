@@ -18,7 +18,8 @@ test("payment methods are translated into Portuguese", () => {
 });
 
 test("orders table separates value and payment using one aligned grid", () => {
-  assert.match(page, /<span>Valor<\/span>\s+<span className="leading-tight">Método de<br \/>pagamento<\/span>/);
+  assert.match(page, /<span>Valor<\/span>\s+<span className="whitespace-nowrap">Método de pagamento<\/span>/);
+  assert.doesNotMatch(page, /Método de<br \/>pagamento/);
   assert.equal((page.match(new RegExp(tableGrid.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g")) || []).length, 2);
   assert.match(page, /<span className="text-center">Ações<\/span>/);
   assert.match(page, /xl:justify-center/);
