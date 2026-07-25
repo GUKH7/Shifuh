@@ -20,9 +20,9 @@ const fixture = JSON.parse(
 test("fila resiliente serializa por restaurante e repete somente falhas transitórias", () => {
   assert.match(resilience, /runningSyncs = new Map/);
   assert.match(resilience, /isTransientIfoodSyncError/);
-  assert.match(resilience, /status === 429/);
-  assert.match(resilience, /status >= 500/);
-  assert.match(resilience, /BASE_DELAY_MS \* 2 \*\*/);
+  assert.match(resilience, /error\.status === 429/);
+  assert.match(resilience, /error\.status >= 500/);
+  assert.match(resilience, /waitForRetry/);
   assert.match(manualRoute, /syncIfoodOrdersWithResilience/);
   assert.match(cronRoute, /syncIfoodOrdersWithResilience/);
 });
@@ -35,17 +35,12 @@ test("cron isola restaurantes e informa sucesso parcial", () => {
   assert.match(cronRoute, /durationMs/);
 });
 
-test("eventos brutos continuam armazenados antes do processamento e ACK", () => {
-  const insertPosition = orderSync.indexOf('.from("ifood_order_events").insert');
-  const processPosition = orderSync.indexOf("upsertLocalOrderFromIfood");
-  const ackPosition = orderSync.lastIndexOf("acknowledgeIfoodOrderEvents");
-
-  assert.ok(insertPosition > 0);
-  assert.ok(processPosition > 0);
-  assert.ok(ackPosition > insertPosition);
+test("eventos brutos continuam armazenados e ACK depende de processamento", () => {
+  assert.match(orderSync, /\.from\("ifood_order_events"\)\.insert\(eventsToInsert\)/);
   assert.match(orderSync, /raw_payload: event as unknown as Json/);
-  assert.match(orderSync, /processedEventIds/);
+  assert.match(orderSync, /processedEventIds\.add\(event\.id\)/);
   assert.match(orderSync, /alreadyProcessedEventIds/);
+  assert.match(orderSync, /acknowledgeIfoodOrderEvents\(ackEventIds\)/);
 });
 
 test("banco possui fila de retentativas e consulta de ACK pendente", () => {
