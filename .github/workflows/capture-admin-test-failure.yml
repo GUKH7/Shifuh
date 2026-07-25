@@ -1,0 +1,39 @@
+name: Capture admin test failure
+
+on:
+  push:
+    branches:
+      - fix/admin-visual-alignment-round
+
+permissions:
+  contents: write
+
+jobs:
+  capture:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Capture test output
+        run: |
+          set +e
+          npm test > admin-test-output.txt 2>&1
+          status=$?
+          tail -n 300 admin-test-output.txt > admin-test-output.tail.txt
+          mv admin-test-output.tail.txt admin-test-output.txt
+          echo "TEST_EXIT_CODE=$status" >> admin-test-output.txt
+          rm .github/workflows/capture-admin-test-failure.yml
+      - name: Commit diagnostic output
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Registrar saída temporária dos testes administrativos"
+          git push origin HEAD:fix/admin-visual-alignment-round
