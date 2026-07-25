@@ -26,6 +26,7 @@ import {
 import { getCurrentRestaurant } from "@/lib/supabase/restaurant";
 import { useToast } from "@/components/ui/toast-provider";
 import { OrderStatusBadge } from "@/components/ui/order-status-badge";
+import { LiveStatusDot } from "@/components/ui/live-status-dot";
 import { OrdersSkeleton } from "./OrdersSkeleton";
 import type { IfoodCancellationReason, IfoodEventAudit, Order, OrderItem } from "./types";
 import {
@@ -905,7 +906,7 @@ export default function OrdersPage() {
               <ChevronDown size={16} className="text-gray-400" />
             </div>
             <div className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-black text-emerald-700">
-              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              <LiveStatusDot />
               Loja aberta
             </div>
           </div>
@@ -999,7 +1000,7 @@ export default function OrdersPage() {
               <span>Canal</span>
               <span>Itens</span>
               <span>Valor</span>
-              <span className="leading-tight">Método de<br />pagamento</span>
+              <span className="whitespace-nowrap">Método de pagamento</span>
               <span>Status</span>
               <span>Horário</span>
               <span className="text-center">Ações</span>
