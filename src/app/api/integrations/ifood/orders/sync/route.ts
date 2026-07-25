@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { IfoodApiError } from "@/lib/ifood/orders";
-import { syncIfoodOrdersForRestaurant } from "@/lib/ifood/order-sync";
+import { syncIfoodOrdersWithResilience } from "@/lib/ifood/order-sync-resilience";
 
 type SyncPayload = {
   restaurantId?: string;
@@ -50,10 +50,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const summary = await syncIfoodOrdersForRestaurant({
+    const summary = await syncIfoodOrdersWithResilience({
       restaurantId,
       merchantId: integration.merchant_id,
       source: "manual",
+      maxAttempts: 3,
     });
 
     await admin
