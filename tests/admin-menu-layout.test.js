@@ -16,8 +16,8 @@ test("menu loading state is centered in the available panel viewport", () => {
 });
 
 test("menu search icon stays vertically centered inside a fixed-height field", () => {
-  assert.match(menu, /absolute inset-y-0 left-0 flex w-11 items-center justify-center/);
+  assert.match(menu, /absolute left-4 top-1\/2 -translate-y-1\/2 text-gray-400/);
   assert.match(menu, /<Search size=\{16\} \/>/);
   assert.match(menu, /className="h-12 w-full rounded-2xl/);
-  assert.doesNotMatch(menu, /top-1\/2 -translate-y-1\/2/);
+  assert.doesNotMatch(menu, /absolute inset-y-0 left-0 flex w-11 items-center justify-center/);
 });
