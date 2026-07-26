@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Bell, HelpCircle, Loader2, Menu, Search } from "lucide-react";
 import AdminSidebar from "@/components/admin-sidebar";
 import { getRestaurantByUserId } from "@/lib/supabase/restaurant";
+import "./admin-responsive.css";
 
 const ADMIN_SEARCH_ITEMS = [
   { label: "Início", href: "/admin", keywords: ["inicio", "dashboard", "resumo", "painel"] },
@@ -216,7 +217,7 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
           </div>
         </header>
 
-        <main className="min-w-0 overflow-x-hidden px-3 py-4 sm:px-4 sm:py-5 md:px-5 lg:px-6">
+        <main className="admin-panel-content min-w-0 overflow-x-hidden px-3 py-4 sm:px-4 sm:py-5 md:px-5 lg:px-6">
           {children}
         </main>
       </div>
