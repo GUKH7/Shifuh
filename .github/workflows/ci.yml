@@ -43,7 +43,11 @@ jobs:
         run: npm run audit:service-role
 
       - name: Test
-        run: npm test
+        run: |
+          if ! npm test > /tmp/test-output.log 2>&1; then
+            tail -n 12 /tmp/test-output.log
+            exit 1
+          fi
 
       - name: Lint
         run: npm run lint
