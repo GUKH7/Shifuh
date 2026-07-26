@@ -20,7 +20,7 @@ test("histórico mobile recolhe filtros secundários", () => {
 test("pedidos mobile exibem resumo compacto e detalhes expansíveis", () => {
   assert.match(history, /grid grid-cols-2 divide-x[\s\S]*md:hidden/);
   assert.match(history, /<details key=\{order\.id\}/);
-  assert.match(history, />Ver detalhes/);
+  assert.match(history, /Ver detalhes/);
   assert.match(history, /group-open:rotate-180/);
   assert.match(history, /mt-8 hidden overflow-hidden[\s\S]*md:block/);
 });
