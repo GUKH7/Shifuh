@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, HelpCircle, Loader2, Search } from "lucide-react";
+import { Bell, HelpCircle, Loader2, Menu, Search } from "lucide-react";
 import AdminSidebar from "@/components/admin-sidebar";
 import { getRestaurantByUserId } from "@/lib/supabase/restaurant";
+import "./admin-responsive.css";
 
 const ADMIN_SEARCH_ITEMS = [
   { label: "Início", href: "/admin", keywords: ["inicio", "dashboard", "resumo", "painel"] },
@@ -20,6 +21,7 @@ const ADMIN_SEARCH_ITEMS = [
 
 export default function AdminPanelLayout({ children }: { children: React.ReactNode }) {
   const [isCollapsed, setIsCollapsed] = useState(true);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isGuardLoading, setIsGuardLoading] = useState(true);
   const [panelSearch, setPanelSearch] = useState("");
   const router = useRouter();
@@ -35,6 +37,21 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
       setIsCollapsed(savedState === "true");
     }
   }, []);
+
+  useEffect(() => {
+    setIsMobileSidebarOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!isMobileSidebarOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isMobileSidebarOpen]);
 
   useEffect(() => {
     let isMounted = true;
@@ -106,17 +123,43 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
   }
 
   return (
-    <div className="min-h-screen bg-[#fbf7f2] text-gray-950">
-      <AdminSidebar isCollapsed={isCollapsed} toggleSidebar={toggleSidebar} />
+    <div className="min-h-screen overflow-x-hidden bg-[#fbf7f2] text-gray-950">
+      <AdminSidebar
+        isCollapsed={isCollapsed}
+        isMobileOpen={isMobileSidebarOpen}
+        toggleSidebar={toggleSidebar}
+        closeMobileSidebar={() => setIsMobileSidebarOpen(false)}
+      />
+
+      {isMobileSidebarOpen && (
+        <button
+          type="button"
+          aria-label="Fechar menu lateral"
+          onClick={() => setIsMobileSidebarOpen(false)}
+          className="fixed inset-0 z-40 bg-black/35 backdrop-blur-[1px] lg:hidden"
+        />
+      )}
+
       <div
-        className={`min-w-0 max-w-[calc(100vw_-_var(--admin-sidebar-width))] transition-all duration-300 ${isCollapsed ? "ml-16" : "ml-56"}`}
+        className={`w-full min-w-0 transition-all duration-300 lg:max-w-[calc(100vw_-_var(--admin-sidebar-width))] ${
+          isCollapsed ? "lg:ml-16" : "lg:ml-56"
+        }`}
         style={{ "--admin-sidebar-width": isCollapsed ? "4rem" : "14rem" } as React.CSSProperties}
       >
-        <header className="sticky top-0 z-40 bg-[#fbf7f2]/95 backdrop-blur">
-          <div className="flex h-20 items-center justify-between px-6">
-            <div className="relative w-full max-w-lg">
-              <div className="flex items-center gap-2.5 rounded-xl border border-[var(--line)] bg-white px-4 py-2.5">
-                <Search size={17} className="text-gray-400" />
+        <header className="sticky top-0 z-30 bg-[#fbf7f2]/95 backdrop-blur">
+          <div className="flex min-h-16 items-center gap-2 px-3 py-2 sm:h-20 sm:gap-3 sm:px-4 sm:py-0 lg:px-6">
+            <button
+              type="button"
+              onClick={() => setIsMobileSidebarOpen(true)}
+              aria-label="Abrir menu lateral"
+              className="surface-card inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-gray-600 lg:hidden"
+            >
+              <Menu size={19} />
+            </button>
+
+            <div className="relative min-w-0 flex-1 sm:max-w-lg">
+              <div className="flex items-center gap-2.5 rounded-xl border border-[var(--line)] bg-white px-3 py-2.5 sm:px-4">
+                <Search size={17} className="shrink-0 text-gray-400" />
                 <input
                   value={panelSearch}
                   onChange={(event) => setPanelSearch(event.target.value)}
@@ -127,12 +170,12 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
                     }
                   }}
                   placeholder="Pesquisar no painel"
-                  className="w-full bg-transparent text-sm text-gray-700 outline-none placeholder:text-gray-500"
+                  className="min-w-0 w-full bg-transparent text-sm text-gray-700 outline-none placeholder:text-gray-500"
                 />
               </div>
 
               {panelSearch.trim().length > 0 && (
-                <div className="absolute left-0 right-0 top-[calc(100%+10px)] overflow-hidden rounded-2xl border border-[var(--line)] bg-white shadow-[0_18px_40px_rgba(17,16,15,0.08)]">
+                <div className="absolute left-0 right-0 top-[calc(100%+10px)] z-50 overflow-hidden rounded-2xl border border-[var(--line)] bg-white shadow-[0_18px_40px_rgba(17,16,15,0.08)]">
                   {searchResults.length > 0 ? (
                     <div className="py-2">
                       {searchResults.map((item) => (
@@ -155,17 +198,28 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
               )}
             </div>
 
-            <div className="ml-5 flex items-center gap-2.5">
-              <button className="surface-card rounded-xl p-2.5 text-gray-500">
+            <div className="flex shrink-0 items-center gap-2 sm:gap-2.5">
+              <button
+                type="button"
+                aria-label="Ajuda"
+                className="surface-card hidden rounded-xl p-2.5 text-gray-500 sm:inline-flex"
+              >
                 <HelpCircle size={17} />
               </button>
-              <button className="surface-card rounded-xl p-2.5 text-gray-500">
+              <button
+                type="button"
+                aria-label="Notificações"
+                className="surface-card inline-flex rounded-xl p-2.5 text-gray-500"
+              >
                 <Bell size={17} />
               </button>
             </div>
           </div>
         </header>
-        <main className="min-w-0 overflow-x-hidden px-6 py-5">{children}</main>
+
+        <main className="admin-panel-content min-w-0 overflow-x-hidden px-3 py-4 sm:px-4 sm:py-5 md:px-5 lg:px-6">
+          {children}
+        </main>
       </div>
     </div>
   );
