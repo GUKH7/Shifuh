@@ -9,20 +9,25 @@ const history = fs.readFileSync(
   "utf8",
 );
 
-test("histórico mobile recolhe filtros secundários", () => {
+test("histórico recolhe filtros secundários em todos os breakpoints", () => {
   assert.match(history, /isMobileFiltersOpen/);
   assert.match(history, /aria-expanded=\{isMobileFiltersOpen\}/);
   assert.match(history, />Filtros<\/span>/);
   assert.match(history, /<select[\s\S]*value=\{filter\}/);
   assert.match(history, /<select[\s\S]*value=\{period\}/);
+  assert.doesNotMatch(history, /hidden flex-wrap gap-2 md:flex/);
 });
 
-test("pedidos mobile exibem resumo compacto e detalhes expansíveis", () => {
-  assert.match(history, /grid grid-cols-2 divide-x[\s\S]*md:hidden/);
+test("pedidos usam resumo compacto e detalhes expansíveis no mobile e desktop", () => {
+  assert.match(history, /grid grid-cols-2 divide-x/);
   assert.match(history, /<details key=\{order\.id\}/);
   assert.match(history, /Ver detalhes/);
   assert.match(history, /group-open:rotate-180/);
-  assert.match(history, /mt-8 hidden overflow-hidden[\s\S]*md:block/);
+  assert.match(
+    history,
+    /lg:grid-cols-\[minmax\(180px,0\.85fr\)_minmax\(190px,1fr\)_auto_auto\]/,
+  );
+  assert.doesNotMatch(history, /grid-cols-\[88px_1\.1fr_1fr/);
 });
 
 test("exportação ocupa apenas um botão compacto no celular", () => {
