@@ -109,6 +109,7 @@ function exportExcel(rows: HistoryOrder[]) {
     "Desconto",
     "Total",
   ];
+
   const lines = rows.map((order) => [
     formatDate(order.created_at),
     formatHour(order.created_at),
@@ -150,9 +151,10 @@ function HistorySkeleton() {
       </div>
       <div className="surface-card rounded-[28px] p-6">
         <div className="h-12 rounded-2xl bg-white" />
-        <div className="mt-6 space-y-3">
-          {Array.from({ length: 6 }).map((_, index) => (
-            <div key={index} className="h-16 rounded-2xl bg-white" />
+        <div className="mt-4 h-20 rounded-2xl bg-white" />
+        <div className="mt-4 space-y-3">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <div key={index} className="h-20 rounded-2xl bg-white" />
           ))}
         </div>
       </div>
@@ -188,6 +190,7 @@ export default function HistoryPage() {
     try {
       const { restaurant, user } = await getCurrentRestaurant(supabase);
       if (!user) return router.push("/admin/login");
+
       if (!restaurant) {
         setErrorMsg("Não foi possível localizar a loja.");
         return;
@@ -227,6 +230,7 @@ export default function HistoryPage() {
               start: customStartDate,
               end: customEndDate,
             });
+
       const matchesFilter =
         filter === "all"
           ? true
@@ -319,7 +323,7 @@ export default function HistoryPage() {
         description: "O identificador completo foi copiado para a área de transferência.",
         tone: "success",
       });
-    } catch (error) {
+    } catch {
       showToast({
         title: "Não foi possível copiar",
         description: "Tente novamente em alguns segundos.",
@@ -332,7 +336,7 @@ export default function HistoryPage() {
     if (visibleOrders.length <= PAGE_SIZE) return null;
 
     return (
-      <div className="flex flex-col gap-3 border-t border-[var(--line)] px-4 py-4 text-sm text-gray-500 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      <div className="flex flex-col gap-3 border-t border-[var(--line)] px-4 py-4 text-sm text-gray-500 sm:flex-row sm:items-center sm:justify-between sm:px-5">
         <p>
           Página {page} de {totalPages}
         </p>
@@ -376,12 +380,15 @@ export default function HistoryPage() {
             <History size={22} />
           </div>
           <div className="min-w-0">
-            <h1 className="text-2xl font-black tracking-tight text-gray-950 sm:text-3xl">Pedidos</h1>
+            <h1 className="text-2xl font-black tracking-tight text-gray-950 sm:text-3xl">
+              Histórico
+            </h1>
             <p className="mt-1 hidden text-sm text-[var(--muted)] sm:block">
-              Consulte todo o histórico da operação da sua loja.
+              Consulte pedidos e vendas sem excesso de informações na tela.
             </p>
           </div>
         </div>
+
         <button
           onClick={() => exportExcel(visibleOrders)}
           aria-label="Exportar histórico"
@@ -393,22 +400,22 @@ export default function HistoryPage() {
       </div>
 
       <section className="surface-card rounded-[24px] p-3 sm:rounded-[28px] sm:p-5 md:p-6">
-        <div className="flex items-center gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
-          <Search size={18} className="flex-shrink-0 text-gray-400" />
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Buscar pedido, cliente ou telefone"
-            className="min-w-0 w-full bg-transparent text-sm outline-none placeholder:text-gray-400"
-          />
-        </div>
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
+          <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
+            <Search size={18} className="flex-shrink-0 text-gray-400" />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Buscar pedido, cliente ou telefone"
+              className="min-w-0 w-full bg-transparent text-sm outline-none placeholder:text-gray-400"
+            />
+          </div>
 
-        <div className="mt-3 flex items-center gap-2 md:hidden">
           <button
             type="button"
             onClick={() => setIsMobileFiltersOpen((current) => !current)}
             aria-expanded={isMobileFiltersOpen}
-            className="inline-flex min-w-0 flex-1 items-center justify-between gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-left"
+            className="inline-flex min-w-0 items-center justify-between gap-4 rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-left lg:min-w-[250px]"
           >
             <span className="inline-flex min-w-0 items-center gap-2">
               <SlidersHorizontal size={17} className="flex-shrink-0 text-gray-500" />
@@ -421,7 +428,7 @@ export default function HistoryPage() {
         </div>
 
         {isMobileFiltersOpen && (
-          <div className="mt-3 space-y-4 rounded-2xl border border-[var(--line)] bg-[#fcfaf7] p-4 md:hidden">
+          <div className="mt-3 grid gap-3 rounded-2xl border border-[var(--line)] bg-[#fcfaf7] p-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
             <label className="block space-y-2 text-sm font-bold text-gray-700">
               Situação
               <select
@@ -453,7 +460,7 @@ export default function HistoryPage() {
             </label>
 
             {period === "custom" && (
-              <div className="grid gap-3 sm:grid-cols-2">
+              <>
                 <label className="flex flex-col gap-2 text-sm font-semibold text-gray-700">
                   Data inicial
                   <input
@@ -473,140 +480,156 @@ export default function HistoryPage() {
                     className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm font-medium text-gray-700 outline-none"
                   />
                 </label>
-              </div>
+              </>
             )}
           </div>
         )}
 
-        <div className="mt-5 hidden flex-wrap gap-2 md:flex">
-          {FILTERS.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setFilter(item.id)}
-              className={`rounded-full px-4 py-2 text-sm font-bold transition-colors ${
-                filter === item.id
-                  ? "bg-[#171311] text-white"
-                  : "border border-[var(--line)] bg-white text-gray-600"
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="mt-4 hidden flex-wrap gap-2 md:flex">
-          {PERIOD_OPTIONS.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => selectPeriod(item.id)}
-              className={`rounded-full px-4 py-2 text-sm font-bold transition-colors ${
-                period === item.id
-                  ? "bg-[var(--brand-soft)] text-[var(--brand)]"
-                  : "border border-[var(--line)] bg-white text-gray-600"
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-
-        {period === "custom" && (
-          <div className="mt-4 hidden gap-3 rounded-2xl border border-[var(--line)] bg-[#fcfaf7] p-4 md:grid md:grid-cols-2">
-            <label className="flex flex-col gap-2 text-sm font-semibold text-gray-700">
-              Data inicial
-              <input
-                type="date"
-                value={customStartDate}
-                onChange={(event) => setCustomStartDate(event.target.value)}
-                className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm font-medium text-gray-700 outline-none"
-              />
-            </label>
-            <label className="flex flex-col gap-2 text-sm font-semibold text-gray-700">
-              Data final
-              <input
-                type="date"
-                value={customEndDate}
-                onChange={(event) => setCustomEndDate(event.target.value)}
-                min={customStartDate || undefined}
-                className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm font-medium text-gray-700 outline-none"
-              />
-            </label>
-          </div>
-        )}
-
-        <div className="mt-4 grid grid-cols-2 divide-x divide-[var(--line)] rounded-2xl border border-[var(--line)] bg-white md:hidden">
+        <div className="mt-4 grid grid-cols-2 divide-x divide-[var(--line)] rounded-2xl border border-[var(--line)] bg-white sm:max-w-md">
           <div className="px-4 py-3">
-            <p className="text-xs font-bold uppercase tracking-[0.1em] text-gray-400">Pedidos</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-gray-400">
+              Pedidos
+            </p>
             <p className="mt-1 text-lg font-black text-gray-950">{summary.count}</p>
           </div>
           <div className="px-4 py-3">
-            <p className="text-xs font-bold uppercase tracking-[0.1em] text-gray-400">Vendas</p>
-            <p className="mt-1 text-lg font-black text-gray-950">{formatMoney(summary.value)}</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-gray-400">
+              Vendas
+            </p>
+            <p className="mt-1 text-lg font-black text-gray-950">
+              {formatMoney(summary.value)}
+            </p>
           </div>
         </div>
 
-        <div className="mt-4 overflow-hidden rounded-2xl border border-[var(--line)] bg-white md:hidden">
+        <div className="mt-4 overflow-hidden rounded-2xl border border-[var(--line)] bg-white">
           {paginatedOrders.length === 0 ? (
-            <div className="px-5 py-14 text-center text-sm text-gray-500">
+            <div className="px-5 py-16 text-center text-sm text-gray-500">
               Nenhum pedido encontrado para este filtro.
             </div>
           ) : (
             groupedOrders.map((group) => (
               <div key={group.key} className="border-b border-[var(--line)] last:border-b-0">
-                <div className="flex items-center justify-between gap-3 bg-[#fcfaf7] px-4 py-3">
+                <div className="flex items-center justify-between gap-3 bg-[#fcfaf7] px-4 py-3 sm:px-5">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-black capitalize text-gray-950">{group.label}</p>
-                    <p className="mt-0.5 text-xs text-gray-400">{group.orders.length} pedidos</p>
+                    <p className="truncate text-sm font-black capitalize text-gray-950">
+                      {group.label}
+                    </p>
+                    <p className="mt-0.5 text-xs text-gray-400">
+                      {group.orders.length} pedidos
+                    </p>
                   </div>
-                  <p className="flex-shrink-0 text-sm font-bold text-gray-600">{formatMoney(group.total)}</p>
+                  <p className="flex-shrink-0 text-sm font-bold text-gray-600">
+                    {formatMoney(group.total)}
+                  </p>
                 </div>
 
                 <div className="divide-y divide-[var(--line)]">
                   {group.orders.map((order) => (
                     <details key={order.id} className="group bg-white">
-                      <summary className="list-none cursor-pointer px-4 py-4 [&::-webkit-details-marker]:hidden">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0 flex-1">
+                      <summary className="list-none cursor-pointer px-4 py-4 transition-colors hover:bg-[#fffdfa] sm:px-5 [&::-webkit-details-marker]:hidden">
+                        <div className="flex items-start justify-between gap-3 lg:grid lg:grid-cols-[minmax(180px,0.85fr)_minmax(190px,1fr)_auto_auto] lg:items-center lg:gap-5">
+                          <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                              <p className="font-black text-gray-950">#{order.id.slice(0, 4)}</p>
-                              <span className="text-xs font-semibold text-gray-400">{formatHour(order.created_at)}</span>
+                              <p className="font-black text-gray-950">
+                                #{order.id.slice(0, 4)}
+                              </p>
+                              <span className="text-xs font-semibold text-gray-400">
+                                {formatHour(order.created_at)} · {formatDate(order.created_at)}
+                              </span>
                             </div>
-                            <p className="mt-2 truncate text-sm font-semibold text-gray-700">{order.customer_name}</p>
+                            <p className="mt-2 truncate text-sm font-semibold text-gray-700 lg:hidden">
+                              {order.customer_name}
+                            </p>
                           </div>
-                          <div className="flex flex-shrink-0 flex-col items-end gap-2">
-                            <OrderStatusBadge status={order.status} className="whitespace-nowrap" />
-                            <p className="text-sm font-black text-gray-950">{formatMoney(Number(order.total || 0))}</p>
+
+                          <div className="hidden min-w-0 lg:block">
+                            <p className="truncate text-sm font-semibold text-gray-950">
+                              {order.customer_name}
+                            </p>
+                            <p className="mt-1 truncate text-xs text-gray-400">
+                              Cliente do pedido
+                            </p>
                           </div>
-                        </div>
-                        <div className="mt-3 flex items-center justify-end gap-1 text-xs font-bold text-gray-400">
-                          Ver detalhes
-                          <ChevronDown size={15} className="transition-transform group-open:rotate-180" />
+
+                          <div className="flex flex-col items-end gap-2 lg:contents">
+                            <OrderStatusBadge
+                              status={order.status}
+                              className="whitespace-nowrap"
+                            />
+                            <div className="flex items-center gap-2">
+                              <div className="text-right">
+                                <p className="text-sm font-black text-gray-950">
+                                  {formatMoney(Number(order.total || 0))}
+                                </p>
+                                <span className="text-[11px] font-bold text-gray-400 sm:hidden">
+                                  Ver detalhes
+                                </span>
+                              </div>
+                              <ChevronDown
+                                size={17}
+                                className="flex-shrink-0 text-gray-400 transition-transform group-open:rotate-180"
+                              />
+                            </div>
+                          </div>
                         </div>
                       </summary>
 
-                      <div className="border-t border-[var(--line)] bg-[#fcfaf7] px-4 py-4">
-                        <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div className="border-t border-[var(--line)] bg-[#fcfaf7] px-4 py-4 sm:px-5">
+                        <div className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                           <div>
-                            <p className="text-xs font-bold uppercase tracking-[0.1em] text-gray-400">Data</p>
-                            <p className="mt-1 font-semibold text-gray-700">{formatDate(order.created_at)}</p>
+                            <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-gray-400">
+                              Telefone
+                            </p>
+                            <p className="mt-1 truncate font-semibold text-gray-700">
+                              {order.customer_phone}
+                            </p>
                           </div>
                           <div>
-                            <p className="text-xs font-bold uppercase tracking-[0.1em] text-gray-400">Telefone</p>
-                            <p className="mt-1 truncate font-semibold text-gray-700">{order.customer_phone}</p>
+                            <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-gray-400">
+                              Pagamento
+                            </p>
+                            <p className="mt-1 truncate font-semibold text-gray-700">
+                              {order.payment_method || "Não informado"}
+                            </p>
                           </div>
                           <div>
-                            <p className="text-xs font-bold uppercase tracking-[0.1em] text-gray-400">Pagamento</p>
-                            <p className="mt-1 truncate font-semibold text-gray-700">{order.payment_method || "Não informado"}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs font-bold uppercase tracking-[0.1em] text-gray-400">Líquido</p>
+                            <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-gray-400">
+                              Subtotal
+                            </p>
                             <p className="mt-1 font-semibold text-gray-700">
-                              {formatMoney(Number(order.total || 0) - Number(order.discount || 0))}
+                              {formatMoney(Number(order.subtotal || 0))}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-gray-400">
+                              Entrega
+                            </p>
+                            <p className="mt-1 font-semibold text-gray-700">
+                              {formatMoney(Number(order.delivery_fee || 0))}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-gray-400">
+                              Desconto
+                            </p>
+                            <p className="mt-1 font-semibold text-gray-700">
+                              {formatMoney(Number(order.discount || 0))}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-gray-400">
+                              Líquido
+                            </p>
+                            <p className="mt-1 font-semibold text-gray-700">
+                              {formatMoney(
+                                Number(order.total || 0) - Number(order.discount || 0),
+                              )}
                             </p>
                           </div>
                         </div>
 
-                        <div className="mt-4 grid grid-cols-2 gap-2">
+                        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
                           <button
                             onClick={() => handleCopyOrder(order.id)}
                             className="inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--line)] bg-white px-3 py-2.5 text-sm font-bold text-gray-600"
@@ -634,93 +657,6 @@ export default function HistoryPage() {
               </div>
             ))
           )}
-          {renderPagination()}
-        </div>
-
-        <div className="mt-8 hidden overflow-hidden rounded-[24px] border border-[var(--line)] bg-white md:block">
-          <div className="grid grid-cols-[88px_1.1fr_1fr_minmax(118px,0.9fr)_0.9fr_140px_132px] gap-4 border-b border-[var(--line)] px-6 py-4 text-xs font-bold uppercase tracking-[0.16em] text-gray-400">
-            <span className="whitespace-nowrap">Horário</span>
-            <span>Pedido</span>
-            <span>Cliente</span>
-            <span className="whitespace-nowrap">Situação</span>
-            <span className="whitespace-nowrap">Valor da venda</span>
-            <span className="whitespace-nowrap text-right">Líquido</span>
-            <span className="whitespace-nowrap text-right">Ações</span>
-          </div>
-
-          <div className="border-b border-[var(--line)] bg-[#fcfaf7] px-6 py-4 text-sm text-gray-500">
-            <span className="font-bold text-gray-950">{summary.count} pedidos</span>
-            <span> • Valor das vendas de {formatMoney(summary.value)}</span>
-          </div>
-
-          <div className="divide-y divide-[var(--line)]">
-            {paginatedOrders.length === 0 ? (
-              <div className="flex min-h-[340px] items-center justify-center px-6 py-16 text-center text-sm text-gray-500">
-                Nenhum pedido encontrado para este filtro.
-              </div>
-            ) : (
-              groupedOrders.map((group) => (
-                <div key={group.key}>
-                  <div className="flex items-center justify-between border-b border-[var(--line)] bg-[#fcfaf7] px-6 py-3 text-sm">
-                    <div className="flex items-center gap-3">
-                      <span className="font-bold text-gray-950">{group.label}</span>
-                      <span className="text-gray-400">{group.orders.length} pedidos</span>
-                    </div>
-                    <span className="font-semibold text-gray-500">
-                      Valor das vendas de {formatMoney(group.total)}
-                    </span>
-                  </div>
-
-                  {group.orders.map((order) => (
-                    <div
-                      key={order.id}
-                      className="grid grid-cols-[88px_1.1fr_1fr_minmax(118px,0.9fr)_0.9fr_140px_132px] gap-4 px-6 py-5 text-sm text-gray-700"
-                    >
-                      <div className="font-bold text-gray-950">{formatHour(order.created_at)}</div>
-                      <div>
-                        <p className="font-bold text-gray-950">#{order.id.slice(0, 4)}</p>
-                        <p className="mt-1 text-xs text-gray-400">{formatDate(order.created_at)}</p>
-                      </div>
-                      <div>
-                        <p className="font-semibold text-gray-950">{order.customer_name}</p>
-                        <p className="mt-1 text-xs text-gray-400">{order.customer_phone}</p>
-                      </div>
-                      <div>
-                        <OrderStatusBadge status={order.status} className="whitespace-nowrap" />
-                      </div>
-                      <div className="font-semibold text-gray-950">
-                        {formatMoney(Number(order.total || 0))}
-                      </div>
-                      <div className="text-right font-semibold text-gray-700">
-                        {formatMoney(Number(order.total || 0) - Number(order.discount || 0))}
-                      </div>
-                      <div className="flex justify-end gap-2">
-                        <button
-                          onClick={() => handleCopyOrder(order.id)}
-                          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--line)] bg-white text-gray-600"
-                          title="Copiar ID do pedido"
-                        >
-                          <Copy size={15} />
-                        </button>
-                        <button
-                          onClick={() =>
-                            window.open(
-                              `https://wa.me/${order.customer_phone.replace(/\D/g, "")}`,
-                              "_blank",
-                            )
-                          }
-                          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700"
-                          title="Abrir WhatsApp"
-                        >
-                          <MessageCircle size={15} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ))
-            )}
-          </div>
 
           {renderPagination()}
         </div>
