@@ -78,6 +78,37 @@
   .admin-panel-content [class*="flex items-center justify-between"][class*="border-t"] button {
     justify-content: center;
   }
+
+  .admin-panel-content .group[class*="flex-wrap"][class*="px-5"][class*="py-4"] > .min-w-0.flex-1 p.truncate.font-bold {
+    overflow: visible;
+    overflow-wrap: anywhere;
+    text-overflow: clip;
+    white-space: normal;
+  }
+
+  .admin-panel-content .group[class*="flex-wrap"][class*="px-5"][class*="py-4"] > div[class*="ml-20"] {
+    margin-left: auto;
+  }
+
+  .admin-panel-content .group[class*="flex-wrap"][class*="px-5"][class*="py-4"] > div[class*="ml-20"] > button:first-child {
+    align-items: center;
+    display: inline-flex;
+    font-size: 0;
+    height: 2.5rem;
+    justify-content: center;
+    padding: 0;
+    width: 2.5rem;
+  }
+
+  .admin-panel-content .group[class*="flex-wrap"][class*="px-5"][class*="py-4"] > div[class*="ml-20"] > button:first-child::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%234b5563' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 20h9'/%3E%3Cpath d='M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z'/%3E%3C/svg%3E");
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: contain;
+    content: "";
+    height: 1rem;
+    width: 1rem;
+  }
 }
 
 @media (max-width: 1023px) {
