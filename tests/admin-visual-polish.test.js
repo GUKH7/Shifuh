@@ -18,9 +18,10 @@ test("pedidos mantém pagamento em uma linha e pulsa no badge de loja aberta", (
   assert.match(orders, /<LiveStatusDot \/>\s+Loja aberta/);
 });
 
-test("histórico reserva espaço e mantém a bolinha nos status operacionais", () => {
-  assert.equal((history.match(/minmax\(118px,0\.9fr\)/g) || []).length, 2);
-  assert.match(history, /<OrderStatusBadge status=\{order\.status\} className="whitespace-nowrap" \/>/);
+test("histórico usa linhas expansíveis e mantém a bolinha nos status operacionais", () => {
+  assert.doesNotMatch(history, /grid-cols-\[88px_1\.1fr_1fr/);
+  assert.match(history, /<details key=\{order\.id\}/);
+  assert.match(history, /<OrderStatusBadge[\s\S]*status=\{order\.status\}[\s\S]*className="whitespace-nowrap"/);
 });
 
 test("cardápios centraliza busca, compacta ações e reduz o raio da prévia interna", () => {
