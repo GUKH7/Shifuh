@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useRouter } from "next/navigation";
 import {
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Copy,
@@ -11,6 +12,7 @@ import {
   History,
   MessageCircle,
   Search,
+  SlidersHorizontal,
 } from "lucide-react";
 import { getCurrentRestaurant } from "@/lib/supabase/restaurant";
 import { PERIOD_OPTIONS, PeriodKey, isWithinPeriod } from "@/lib/admin-period";
@@ -94,7 +96,19 @@ function getStatusLabel(status: HistoryOrder["status"]) {
 }
 
 function exportExcel(rows: HistoryOrder[]) {
-  const header = ["Data", "Hora", "Pedido", "Cliente", "Telefone", "Situação", "Pagamento", "Subtotal", "Entrega", "Desconto", "Total"];
+  const header = [
+    "Data",
+    "Hora",
+    "Pedido",
+    "Cliente",
+    "Telefone",
+    "Situação",
+    "Pagamento",
+    "Subtotal",
+    "Entrega",
+    "Desconto",
+    "Total",
+  ];
   const lines = rows.map((order) => [
     formatDate(order.created_at),
     formatHour(order.created_at),
@@ -162,6 +176,7 @@ export default function HistoryPage() {
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
   const [page, setPage] = useState(1);
+  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -180,7 +195,9 @@ export default function HistoryPage() {
 
       const { data, error } = await supabase
         .from("orders")
-        .select("id, customer_name, customer_phone, total, subtotal, delivery_fee, discount, status, payment_method, created_at")
+        .select(
+          "id, customer_name, customer_phone, total, subtotal, delivery_fee, discount, status, payment_method, created_at",
+        )
         .eq("restaurant_id", restaurant.id)
         .order("created_at", { ascending: false });
 
@@ -224,7 +241,11 @@ export default function HistoryPage() {
             order.customer_name.toLowerCase().includes(term) ||
             order.customer_phone.toLowerCase().includes(term);
 
-      return (period === "custom" ? matchesCustomPeriod : matchesPeriod) && matchesFilter && matchesSearch;
+      return (
+        (period === "custom" ? matchesCustomPeriod : matchesPeriod) &&
+        matchesFilter &&
+        matchesSearch
+      );
     });
   }, [customEndDate, customStartDate, filter, orders, period, query]);
 
@@ -271,9 +292,24 @@ export default function HistoryPage() {
     };
   }, [visibleOrders]);
 
+  const activeFilterLabel = FILTERS.find((item) => item.id === filter)?.label || "Todos";
+  const activePeriodLabel = PERIOD_OPTIONS.find((item) => item.id === period)?.label || "30 dias";
+
   useEffect(() => {
     setPage(1);
   }, [customEndDate, customStartDate, query, filter, period]);
+
+  const selectPeriod = (nextPeriod: PeriodKey) => {
+    setPeriod(nextPeriod);
+
+    if (nextPeriod === "custom" && (!customStartDate || !customEndDate)) {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(end.getDate() - 29);
+      setCustomStartDate(formatInputDate(start));
+      setCustomEndDate(formatInputDate(end));
+    }
+  };
 
   const handleCopyOrder = async (orderId: string) => {
     try {
@@ -292,6 +328,36 @@ export default function HistoryPage() {
     }
   };
 
+  const renderPagination = () => {
+    if (visibleOrders.length <= PAGE_SIZE) return null;
+
+    return (
+      <div className="flex flex-col gap-3 border-t border-[var(--line)] px-4 py-4 text-sm text-gray-500 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <p>
+          Página {page} de {totalPages}
+        </p>
+        <div className="grid grid-cols-2 gap-2 sm:flex">
+          <button
+            onClick={() => setPage((current) => Math.max(1, current - 1))}
+            disabled={page === 1}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--line)] bg-white px-3 py-2 font-semibold disabled:opacity-50"
+          >
+            <ChevronLeft size={16} />
+            Anterior
+          </button>
+          <button
+            onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+            disabled={page === totalPages}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--line)] bg-white px-3 py-2 font-semibold disabled:opacity-50"
+          >
+            Próxima
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   if (loading) return <HistorySkeleton />;
 
   if (errorMsg) {
@@ -304,41 +370,115 @@ export default function HistoryPage() {
 
   return (
     <div className="mx-auto max-w-6xl">
-      <div className="mb-8 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="brand-gradient flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-sm">
-            <History size={24} />
+      <div className="mb-6 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:mb-8">
+        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+          <div className="brand-gradient flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl text-white shadow-sm sm:h-14 sm:w-14">
+            <History size={22} />
           </div>
-          <div>
-            <h1 className="text-3xl font-black tracking-tight text-gray-950">Pedidos</h1>
-            <p className="mt-1 text-sm text-[var(--muted)]">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-black tracking-tight text-gray-950 sm:text-3xl">Pedidos</h1>
+            <p className="mt-1 hidden text-sm text-[var(--muted)] sm:block">
               Consulte todo o histórico da operação da sua loja.
             </p>
           </div>
         </div>
         <button
           onClick={() => exportExcel(visibleOrders)}
-          className="inline-flex items-center gap-2 rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700"
+          aria-label="Exportar histórico"
+          className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[var(--line)] bg-white text-gray-700 sm:h-auto sm:w-auto sm:gap-2 sm:px-4 sm:py-3 sm:text-sm sm:font-bold"
         >
-          <Download size={16} />
-          Exportar
+          <Download size={17} />
+          <span className="hidden sm:inline">Exportar</span>
         </button>
       </div>
 
-      <section className="surface-card rounded-[28px] p-5 md:p-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
-          <div className="flex flex-1 items-center gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
-            <Search size={18} className="text-gray-400" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Digite o número do pedido, cliente ou telefone"
-              className="w-full bg-transparent text-sm outline-none placeholder:text-gray-400"
-            />
-          </div>
+      <section className="surface-card rounded-[24px] p-3 sm:rounded-[28px] sm:p-5 md:p-6">
+        <div className="flex items-center gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
+          <Search size={18} className="flex-shrink-0 text-gray-400" />
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Buscar pedido, cliente ou telefone"
+            className="min-w-0 w-full bg-transparent text-sm outline-none placeholder:text-gray-400"
+          />
         </div>
 
-        <div className="mt-5 flex flex-wrap gap-2">
+        <div className="mt-3 flex items-center gap-2 md:hidden">
+          <button
+            type="button"
+            onClick={() => setIsMobileFiltersOpen((current) => !current)}
+            aria-expanded={isMobileFiltersOpen}
+            className="inline-flex min-w-0 flex-1 items-center justify-between gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-left"
+          >
+            <span className="inline-flex min-w-0 items-center gap-2">
+              <SlidersHorizontal size={17} className="flex-shrink-0 text-gray-500" />
+              <span className="font-bold text-gray-700">Filtros</span>
+            </span>
+            <span className="min-w-0 truncate text-xs font-semibold text-gray-400">
+              {activeFilterLabel} · {activePeriodLabel}
+            </span>
+          </button>
+        </div>
+
+        {isMobileFiltersOpen && (
+          <div className="mt-3 space-y-4 rounded-2xl border border-[var(--line)] bg-[#fcfaf7] p-4 md:hidden">
+            <label className="block space-y-2 text-sm font-bold text-gray-700">
+              Situação
+              <select
+                value={filter}
+                onChange={(event) => setFilter(event.target.value)}
+                className="w-full rounded-xl border border-[var(--line)] bg-white px-3 py-3 text-sm font-semibold outline-none"
+              >
+                {FILTERS.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block space-y-2 text-sm font-bold text-gray-700">
+              Período
+              <select
+                value={period}
+                onChange={(event) => selectPeriod(event.target.value as PeriodKey)}
+                className="w-full rounded-xl border border-[var(--line)] bg-white px-3 py-3 text-sm font-semibold outline-none"
+              >
+                {PERIOD_OPTIONS.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {period === "custom" && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="flex flex-col gap-2 text-sm font-semibold text-gray-700">
+                  Data inicial
+                  <input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(event) => setCustomStartDate(event.target.value)}
+                    className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm font-medium text-gray-700 outline-none"
+                  />
+                </label>
+                <label className="flex flex-col gap-2 text-sm font-semibold text-gray-700">
+                  Data final
+                  <input
+                    type="date"
+                    value={customEndDate}
+                    onChange={(event) => setCustomEndDate(event.target.value)}
+                    min={customStartDate || undefined}
+                    className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm font-medium text-gray-700 outline-none"
+                  />
+                </label>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="mt-5 hidden flex-wrap gap-2 md:flex">
           {FILTERS.map((item) => (
             <button
               key={item.id}
@@ -354,21 +494,11 @@ export default function HistoryPage() {
           ))}
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-4 hidden flex-wrap gap-2 md:flex">
           {PERIOD_OPTIONS.map((item) => (
             <button
               key={item.id}
-              onClick={() => {
-                setPeriod(item.id);
-
-                if (item.id === "custom" && (!customStartDate || !customEndDate)) {
-                  const end = new Date();
-                  const start = new Date();
-                  start.setDate(end.getDate() - 29);
-                  setCustomStartDate(formatInputDate(start));
-                  setCustomEndDate(formatInputDate(end));
-                }
-              }}
+              onClick={() => selectPeriod(item.id)}
               className={`rounded-full px-4 py-2 text-sm font-bold transition-colors ${
                 period === item.id
                   ? "bg-[var(--brand-soft)] text-[var(--brand)]"
@@ -381,7 +511,7 @@ export default function HistoryPage() {
         </div>
 
         {period === "custom" && (
-          <div className="mt-4 grid gap-3 rounded-2xl border border-[var(--line)] bg-[#fcfaf7] p-4 md:grid-cols-2">
+          <div className="mt-4 hidden gap-3 rounded-2xl border border-[var(--line)] bg-[#fcfaf7] p-4 md:grid md:grid-cols-2">
             <label className="flex flex-col gap-2 text-sm font-semibold text-gray-700">
               Data inicial
               <input
@@ -404,7 +534,110 @@ export default function HistoryPage() {
           </div>
         )}
 
-        <div className="mt-8 overflow-hidden rounded-[24px] border border-[var(--line)] bg-white">
+        <div className="mt-4 grid grid-cols-2 divide-x divide-[var(--line)] rounded-2xl border border-[var(--line)] bg-white md:hidden">
+          <div className="px-4 py-3">
+            <p className="text-xs font-bold uppercase tracking-[0.1em] text-gray-400">Pedidos</p>
+            <p className="mt-1 text-lg font-black text-gray-950">{summary.count}</p>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-xs font-bold uppercase tracking-[0.1em] text-gray-400">Vendas</p>
+            <p className="mt-1 text-lg font-black text-gray-950">{formatMoney(summary.value)}</p>
+          </div>
+        </div>
+
+        <div className="mt-4 overflow-hidden rounded-2xl border border-[var(--line)] bg-white md:hidden">
+          {paginatedOrders.length === 0 ? (
+            <div className="px-5 py-14 text-center text-sm text-gray-500">
+              Nenhum pedido encontrado para este filtro.
+            </div>
+          ) : (
+            groupedOrders.map((group) => (
+              <div key={group.key} className="border-b border-[var(--line)] last:border-b-0">
+                <div className="flex items-center justify-between gap-3 bg-[#fcfaf7] px-4 py-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-black capitalize text-gray-950">{group.label}</p>
+                    <p className="mt-0.5 text-xs text-gray-400">{group.orders.length} pedidos</p>
+                  </div>
+                  <p className="flex-shrink-0 text-sm font-bold text-gray-600">{formatMoney(group.total)}</p>
+                </div>
+
+                <div className="divide-y divide-[var(--line)]">
+                  {group.orders.map((order) => (
+                    <details key={order.id} className="group bg-white">
+                      <summary className="list-none cursor-pointer px-4 py-4 [&::-webkit-details-marker]:hidden">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                              <p className="font-black text-gray-950">#{order.id.slice(0, 4)}</p>
+                              <span className="text-xs font-semibold text-gray-400">{formatHour(order.created_at)}</span>
+                            </div>
+                            <p className="mt-2 truncate text-sm font-semibold text-gray-700">{order.customer_name}</p>
+                          </div>
+                          <div className="flex flex-shrink-0 flex-col items-end gap-2">
+                            <OrderStatusBadge status={order.status} className="whitespace-nowrap" />
+                            <p className="text-sm font-black text-gray-950">{formatMoney(Number(order.total || 0))}</p>
+                          </div>
+                        </div>
+                        <div className="mt-3 flex items-center justify-end gap-1 text-xs font-bold text-gray-400">
+                          Ver detalhes
+                          <ChevronDown size={15} className="transition-transform group-open:rotate-180" />
+                        </div>
+                      </summary>
+
+                      <div className="border-t border-[var(--line)] bg-[#fcfaf7] px-4 py-4">
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <p className="text-xs font-bold uppercase tracking-[0.1em] text-gray-400">Data</p>
+                            <p className="mt-1 font-semibold text-gray-700">{formatDate(order.created_at)}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold uppercase tracking-[0.1em] text-gray-400">Telefone</p>
+                            <p className="mt-1 truncate font-semibold text-gray-700">{order.customer_phone}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold uppercase tracking-[0.1em] text-gray-400">Pagamento</p>
+                            <p className="mt-1 truncate font-semibold text-gray-700">{order.payment_method || "Não informado"}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold uppercase tracking-[0.1em] text-gray-400">Líquido</p>
+                            <p className="mt-1 font-semibold text-gray-700">
+                              {formatMoney(Number(order.total || 0) - Number(order.discount || 0))}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 grid grid-cols-2 gap-2">
+                          <button
+                            onClick={() => handleCopyOrder(order.id)}
+                            className="inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--line)] bg-white px-3 py-2.5 text-sm font-bold text-gray-600"
+                          >
+                            <Copy size={15} />
+                            Copiar ID
+                          </button>
+                          <button
+                            onClick={() =>
+                              window.open(
+                                `https://wa.me/${order.customer_phone.replace(/\D/g, "")}`,
+                                "_blank",
+                              )
+                            }
+                            className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm font-bold text-emerald-700"
+                          >
+                            <MessageCircle size={15} />
+                            WhatsApp
+                          </button>
+                        </div>
+                      </div>
+                    </details>
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
+          {renderPagination()}
+        </div>
+
+        <div className="mt-8 hidden overflow-hidden rounded-[24px] border border-[var(--line)] bg-white md:block">
           <div className="grid grid-cols-[88px_1.1fr_1fr_minmax(118px,0.9fr)_0.9fr_140px_132px] gap-4 border-b border-[var(--line)] px-6 py-4 text-xs font-bold uppercase tracking-[0.16em] text-gray-400">
             <span className="whitespace-nowrap">Horário</span>
             <span>Pedido</span>
@@ -470,7 +703,12 @@ export default function HistoryPage() {
                           <Copy size={15} />
                         </button>
                         <button
-                          onClick={() => window.open(`https://wa.me/${order.customer_phone.replace(/\D/g, "")}`, "_blank")}
+                          onClick={() =>
+                            window.open(
+                              `https://wa.me/${order.customer_phone.replace(/\D/g, "")}`,
+                              "_blank",
+                            )
+                          }
                           className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700"
                           title="Abrir WhatsApp"
                         >
@@ -484,31 +722,7 @@ export default function HistoryPage() {
             )}
           </div>
 
-          {visibleOrders.length > PAGE_SIZE && (
-            <div className="flex items-center justify-between border-t border-[var(--line)] px-6 py-4 text-sm text-gray-500">
-              <p>
-                Página {page} de {totalPages}
-              </p>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setPage((current) => Math.max(1, current - 1))}
-                  disabled={page === 1}
-                  className="inline-flex items-center gap-2 rounded-xl border border-[var(--line)] bg-white px-3 py-2 font-semibold disabled:opacity-50"
-                >
-                  <ChevronLeft size={16} />
-                  Anterior
-                </button>
-                <button
-                  onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
-                  disabled={page === totalPages}
-                  className="inline-flex items-center gap-2 rounded-xl border border-[var(--line)] bg-white px-3 py-2 font-semibold disabled:opacity-50"
-                >
-                  Próxima
-                  <ChevronRight size={16} />
-                </button>
-              </div>
-            </div>
-          )}
+          {renderPagination()}
         </div>
       </section>
     </div>
