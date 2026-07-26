@@ -18,6 +18,7 @@ import {
   Store,
   Users,
   UtensilsCrossed,
+  X,
 } from "lucide-react";
 import { getCurrentRestaurant } from "@/lib/supabase/restaurant";
 import { isPlatformAdminEmail } from "@/lib/platform-admin";
@@ -35,10 +36,17 @@ const MENU_ITEMS = [
 
 interface AdminSidebarProps {
   isCollapsed: boolean;
+  isMobileOpen: boolean;
   toggleSidebar: () => void;
+  closeMobileSidebar: () => void;
 }
 
-export default function AdminSidebar({ isCollapsed, toggleSidebar }: AdminSidebarProps) {
+export default function AdminSidebar({
+  isCollapsed,
+  isMobileOpen,
+  toggleSidebar,
+  closeMobileSidebar,
+}: AdminSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [storeSlug, setStoreSlug] = useState("");
@@ -69,38 +77,49 @@ export default function AdminSidebar({ isCollapsed, toggleSidebar }: AdminSideba
     router.push("/admin/login");
   };
 
+  const desktopItemLayout = isCollapsed
+    ? "lg:justify-center lg:px-3"
+    : "lg:gap-3 lg:px-4";
+  const desktopLabelVisibility = isCollapsed ? "lg:hidden" : "";
+
   return (
     <aside
-      className={`fixed left-0 top-0 z-50 flex h-screen flex-col overflow-visible border-r border-[var(--line)] bg-white transition-all duration-300 ${
-        isCollapsed ? "w-16" : "w-56"
-      }`}
+      aria-label="Navegação administrativa"
+      className={`fixed left-0 top-0 z-50 flex h-dvh w-[min(18rem,calc(100vw-2rem))] flex-col overflow-y-auto border-r border-[var(--line)] bg-white shadow-2xl transition-[transform,width] duration-300 lg:h-screen lg:translate-x-0 lg:overflow-visible lg:shadow-none ${
+        isMobileOpen ? "translate-x-0" : "-translate-x-full"
+      } ${isCollapsed ? "lg:w-16" : "lg:w-56"}`}
     >
       <button
+        type="button"
         onClick={toggleSidebar}
-        className="absolute -right-4 top-[70px] z-50 flex h-8 w-8 items-center justify-center rounded-full border border-[var(--line)] bg-white text-gray-500 shadow-sm transition-colors hover:bg-[var(--brand-soft)] hover:text-[var(--brand)]"
+        aria-label={isCollapsed ? "Expandir menu lateral" : "Recolher menu lateral"}
+        className="absolute -right-4 top-[70px] z-50 hidden h-8 w-8 items-center justify-center rounded-full border border-[var(--line)] bg-white text-gray-500 shadow-sm transition-colors hover:bg-[var(--brand-soft)] hover:text-[var(--brand)] lg:flex"
       >
         {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
       </button>
 
-      <div
-        className={`flex h-20 items-center px-5 ${
-          isCollapsed ? "justify-center px-2" : ""
-        }`}
-      >
-        <div className={`flex items-center gap-3 ${isCollapsed ? "justify-center" : ""}`}>
-          <div className="brand-gradient flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl text-white shadow-sm">
+      <div className="flex h-16 shrink-0 items-center justify-between px-4 sm:h-20 lg:px-5">
+        <div className={`flex items-center gap-3 ${isCollapsed ? "lg:justify-center" : ""}`}>
+          <div className="brand-gradient flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white shadow-sm">
             <Store size={17} />
           </div>
-          {!isCollapsed && (
-            <div>
-              <p className="text-base font-black tracking-tight text-gray-950">GESTOR.</p>
-              <p className="text-[11px] text-gray-500">Portal da loja</p>
-            </div>
-          )}
+          <div className={desktopLabelVisibility}>
+            <p className="text-base font-black tracking-tight text-gray-950">GESTOR.</p>
+            <p className="text-[11px] text-gray-500">Portal da loja</p>
+          </div>
         </div>
+
+        <button
+          type="button"
+          onClick={closeMobileSidebar}
+          aria-label="Fechar menu lateral"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[#fbf7f2] text-gray-500 lg:hidden"
+        >
+          <X size={18} />
+        </button>
       </div>
 
-      <div className={`px-3 py-4 ${isCollapsed ? "px-2" : ""}`}>
+      <div className="px-3 py-3 sm:py-4 lg:px-3">
         <nav className="space-y-1">
           {MENU_ITEMS.map((item) => {
             const isActive = pathname === item.href;
@@ -109,10 +128,9 @@ export default function AdminSidebar({ isCollapsed, toggleSidebar }: AdminSideba
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={closeMobileSidebar}
                 title={isCollapsed ? item.name : undefined}
-                className={`flex items-center rounded-2xl text-sm font-semibold transition-all ${
-                  isCollapsed ? "justify-center px-3 py-2.5" : "gap-3 px-4 py-2.5"
-                } ${
+                className={`flex items-center gap-3 rounded-2xl px-4 py-2.5 text-sm font-semibold transition-all ${desktopItemLayout} ${
                   isActive
                     ? "bg-[var(--brand-soft)] text-[var(--brand)]"
                     : "text-gray-600 hover:bg-[#faf5ef] hover:text-gray-950"
@@ -120,9 +138,9 @@ export default function AdminSidebar({ isCollapsed, toggleSidebar }: AdminSideba
               >
                 <item.icon
                   size={19}
-                  className={isActive ? "text-[var(--brand)]" : "text-gray-400"}
+                  className={`shrink-0 ${isActive ? "text-[var(--brand)]" : "text-gray-400"}`}
                 />
-                {!isCollapsed && <span>{item.name}</span>}
+                <span className={desktopLabelVisibility}>{item.name}</span>
               </Link>
             );
           })}
@@ -130,10 +148,9 @@ export default function AdminSidebar({ isCollapsed, toggleSidebar }: AdminSideba
           {canAccessPlatform && (
             <Link
               href="/admin/platform"
+              onClick={closeMobileSidebar}
               title={isCollapsed ? "Lojas cadastradas" : undefined}
-              className={`flex items-center rounded-2xl text-sm font-semibold transition-all ${
-                isCollapsed ? "justify-center px-3 py-2.5" : "gap-3 px-4 py-2.5"
-              } ${
+              className={`flex items-center gap-3 rounded-2xl px-4 py-2.5 text-sm font-semibold transition-all ${desktopItemLayout} ${
                 pathname === "/admin/platform"
                   ? "bg-[var(--brand-soft)] text-[var(--brand)]"
                   : "text-gray-600 hover:bg-[#faf5ef] hover:text-gray-950"
@@ -141,9 +158,11 @@ export default function AdminSidebar({ isCollapsed, toggleSidebar }: AdminSideba
             >
               <Store
                 size={19}
-                className={pathname === "/admin/platform" ? "text-[var(--brand)]" : "text-gray-400"}
+                className={`shrink-0 ${
+                  pathname === "/admin/platform" ? "text-[var(--brand)]" : "text-gray-400"
+                }`}
               />
-              {!isCollapsed && <span>Lojas cadastradas</span>}
+              <span className={desktopLabelVisibility}>Lojas cadastradas</span>
             </Link>
           )}
         </nav>
@@ -154,36 +173,32 @@ export default function AdminSidebar({ isCollapsed, toggleSidebar }: AdminSideba
           <Link
             href={`/${storeSlug}`}
             target="_blank"
+            onClick={closeMobileSidebar}
             title={isCollapsed ? "Ver vitrine" : undefined}
-            className={`mb-2 flex w-full items-center rounded-2xl bg-[#171311] text-sm font-bold text-white transition-all hover:bg-black ${
-              isCollapsed ? "justify-center px-3 py-3" : "gap-3 px-4 py-3"
-            }`}
+            className={`mb-2 flex w-full items-center gap-3 rounded-2xl bg-[#171311] px-4 py-3 text-sm font-bold text-white transition-all hover:bg-black ${desktopItemLayout}`}
           >
-            <ExternalLink size={18} />
-            {!isCollapsed && <span>Ver vitrine</span>}
+            <ExternalLink size={18} className="shrink-0" />
+            <span className={desktopLabelVisibility}>Ver vitrine</span>
           </Link>
         ) : (
           <button
             disabled
             title={isCollapsed ? "Vitrine indisponível" : undefined}
-            className={`mb-2 flex w-full cursor-not-allowed items-center rounded-2xl bg-gray-100 text-sm font-bold text-gray-400 ${
-              isCollapsed ? "justify-center px-3 py-3" : "gap-3 px-4 py-3"
-            }`}
+            className={`mb-2 flex w-full cursor-not-allowed items-center gap-3 rounded-2xl bg-gray-100 px-4 py-3 text-sm font-bold text-gray-400 ${desktopItemLayout}`}
           >
-            <ExternalLink size={18} />
-            {!isCollapsed && <span>Ver vitrine</span>}
+            <ExternalLink size={18} className="shrink-0" />
+            <span className={desktopLabelVisibility}>Ver vitrine</span>
           </button>
         )}
 
         <button
+          type="button"
           onClick={handleLogout}
           title={isCollapsed ? "Sair" : undefined}
-          className={`group flex w-full items-center rounded-2xl text-sm font-semibold text-gray-500 transition-all hover:bg-[#faf5ef] hover:text-red-600 ${
-            isCollapsed ? "justify-center px-3 py-3" : "gap-3 px-4 py-3"
-          }`}
+          className={`group flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-gray-500 transition-all hover:bg-[#faf5ef] hover:text-red-600 ${desktopItemLayout}`}
         >
-          <LogOut size={19} className="text-gray-400 transition-colors group-hover:text-red-600" />
-          {!isCollapsed && <span>Sair</span>}
+          <LogOut size={19} className="shrink-0 text-gray-400 transition-colors group-hover:text-red-600" />
+          <span className={desktopLabelVisibility}>Sair</span>
         </button>
       </div>
     </aside>
