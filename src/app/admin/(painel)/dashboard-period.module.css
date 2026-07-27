@@ -8,6 +8,102 @@
 }
 
 /*
+ * O filtro de período continua usando o select nativo do sistema, mas passa a
+ * funcionar visualmente como um controle global do Dashboard. O :has mantém a
+ * regra ligada ao label sem exigir classes extras no componente React.
+ */
+.page :global(.admin-page-shell) div:has(> label[for="dashboard-period"]) {
+  position: relative;
+  display: grid;
+  width: min(100%, 19rem);
+  min-width: 17.5rem;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.3rem;
+  padding: 0.625rem 0.7rem 0.625rem 3rem;
+  border: 1px solid rgba(225, 207, 192, 0.9);
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(255, 106, 0, 0.07), transparent 52%),
+    rgba(255, 255, 255, 0.94);
+  box-shadow: 0 10px 26px rgba(77, 48, 29, 0.06);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.page :global(.admin-page-shell) div:has(> label[for="dashboard-period"])::before {
+  position: absolute;
+  top: 50%;
+  left: 0.75rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 1px solid rgba(255, 106, 0, 0.14);
+  border-radius: 10px;
+  background: rgba(255, 106, 0, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.65);
+  content: "";
+  transform: translateY(-50%);
+}
+
+.page :global(.admin-page-shell) div:has(> label[for="dashboard-period"])::after {
+  position: absolute;
+  top: 50%;
+  left: 1.2rem;
+  width: 0.85rem;
+  height: 0.85rem;
+  background: var(--brand);
+  content: "";
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 2v4M16 2v4M3 10h18'/%3E%3Crect x='3' y='4' width='18' height='17' rx='2'/%3E%3C/svg%3E");
+  mask-position: center;
+  mask-repeat: no-repeat;
+  mask-size: contain;
+  transform: translateY(-50%);
+}
+
+.page :global(.admin-page-shell) div:has(> label[for="dashboard-period"]):hover {
+  border-color: rgba(255, 106, 0, 0.32);
+  box-shadow: 0 12px 30px rgba(77, 48, 29, 0.085);
+}
+
+.page :global(.admin-page-shell) div:has(> label[for="dashboard-period"]):focus-within {
+  border-color: var(--brand);
+  box-shadow:
+    0 0 0 3px rgba(255, 106, 0, 0.1),
+    0 14px 32px rgba(77, 48, 29, 0.09);
+  transform: translateY(-1px);
+}
+
+.page :global(.admin-page-shell) label[for="dashboard-period"] {
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1rem;
+  letter-spacing: 0.075em;
+  color: #9a6a48;
+  text-transform: uppercase;
+}
+
+.page :global(.admin-page-shell) select#dashboard-period {
+  width: 100% !important;
+  min-height: 2.45rem !important;
+  padding-top: 0.35rem !important;
+  padding-bottom: 0.35rem !important;
+  border-color: transparent !important;
+  border-radius: 12px !important;
+  background-color: rgba(255, 255, 255, 0.86) !important;
+  box-shadow: inset 0 0 0 1px rgba(225, 207, 192, 0.72);
+  font-size: 0.875rem;
+  font-weight: 800;
+  color: #312a25;
+}
+
+.page :global(.admin-page-shell) select#dashboard-period:focus-visible {
+  border-color: transparent !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 106, 0, 0.3) !important;
+  outline: none !important;
+}
+
+/*
  * O ranking de produtos é o segundo card da primeira seção de gráficos.
  * Os estilos abaixo mantêm o Recharts, mas dão mais presença às barras,
  * melhoram a leitura dos nomes e criam uma superfície própria para o ranking.
@@ -101,6 +197,11 @@
 }
 
 @media (max-width: 639px) {
+  .page :global(.admin-page-shell) div:has(> label[for="dashboard-period"]) {
+    width: 100%;
+    min-width: 0;
+  }
+
   .page :global(.admin-page-shell) > section:nth-of-type(2) > article:nth-child(2) :global(.recharts-yAxis .recharts-cartesian-axis-tick-value) {
     font-size: 10px;
   }
