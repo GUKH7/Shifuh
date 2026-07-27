@@ -28,7 +28,7 @@ function AdminGuardSkeleton() {
         <div className="h-16 border-b border-[var(--line)] bg-[#fbf7f2] px-3 py-2 sm:h-20 sm:px-4 lg:px-6">
           <div className="mx-auto grid h-full max-w-[1460px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
             <AdminSkeleton className="h-10 w-10 lg:hidden" />
-            <AdminSkeleton className="mx-auto h-11 w-full max-w-2xl" />
+            <AdminSkeleton className="h-11 w-full max-w-2xl justify-self-start" />
             <div className="flex gap-2">
               <AdminSkeleton className="h-10 w-10" />
               <AdminSkeleton className="h-10 w-10" />
@@ -168,12 +168,12 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
               type="button"
               onClick={() => setIsMobileSidebarOpen(true)}
               aria-label="Abrir menu lateral"
-              className="surface-card inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-gray-600 lg:invisible"
+              className="surface-card inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-gray-600 lg:hidden"
             >
               <Menu size={19} />
             </button>
 
-            <div className="relative mx-auto w-full min-w-0 max-w-2xl">
+            <div className="relative w-full min-w-0 max-w-2xl justify-self-start">
               <div className="flex items-center gap-2.5 rounded-xl border border-[var(--line)] bg-white px-3 py-2.5 sm:px-4">
                 <Search size={17} className="shrink-0 text-gray-400" />
                 <input
