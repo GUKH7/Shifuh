@@ -24,7 +24,7 @@ import { getCurrentRestaurant } from "@/lib/supabase/restaurant";
 import { isPlatformAdminEmail } from "@/lib/platform-admin";
 
 const MENU_ITEMS = [
-  { name: "Início", href: "/admin", icon: LayoutDashboard },
+  { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { name: "Pedidos", href: "/admin/orders", icon: ShoppingBag },
   { name: "Histórico", href: "/admin/history", icon: History },
   { name: "Cardápios", href: "/admin/menu", icon: UtensilsCrossed },
@@ -77,9 +77,7 @@ export default function AdminSidebar({
     router.push("/admin/login");
   };
 
-  const desktopItemLayout = isCollapsed
-    ? "lg:justify-center lg:px-3"
-    : "lg:gap-3 lg:px-4";
+  const desktopItemLayout = isCollapsed ? "lg:justify-center lg:px-3" : "lg:gap-3 lg:px-4";
   const desktopLabelVisibility = isCollapsed ? "lg:hidden" : "";
 
   return (
@@ -93,7 +91,7 @@ export default function AdminSidebar({
         type="button"
         onClick={toggleSidebar}
         aria-label={isCollapsed ? "Expandir menu lateral" : "Recolher menu lateral"}
-        className="absolute -right-4 top-[70px] z-50 hidden h-8 w-8 items-center justify-center rounded-full border border-[var(--line)] bg-white text-gray-500 shadow-sm transition-colors hover:bg-[var(--brand-soft)] hover:text-[var(--brand)] lg:flex"
+        className="absolute -right-4 top-[70px] z-50 hidden h-8 w-8 items-center justify-center rounded-full border border-[var(--line)] bg-white text-gray-500 shadow-sm transition-colors hover:bg-[var(--brand-soft)] hover:text-gray-950 lg:flex"
       >
         {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
       </button>
@@ -130,7 +128,7 @@ export default function AdminSidebar({
                 href={item.href}
                 onClick={closeMobileSidebar}
                 title={isCollapsed ? item.name : undefined}
-                className={`flex items-center gap-3 rounded-2xl px-4 py-2.5 text-sm font-semibold transition-all ${desktopItemLayout} ${
+                className={`group flex items-center gap-3 rounded-2xl px-4 py-2.5 text-sm font-semibold transition-all ${desktopItemLayout} ${
                   isActive
                     ? "bg-[var(--brand-soft)] text-[var(--brand)]"
                     : "text-gray-600 hover:bg-[#faf5ef] hover:text-gray-950"
@@ -138,7 +136,9 @@ export default function AdminSidebar({
               >
                 <item.icon
                   size={19}
-                  className={`shrink-0 ${isActive ? "text-[var(--brand)]" : "text-gray-400"}`}
+                  className={`shrink-0 transition-colors ${
+                    isActive ? "text-[var(--brand)]" : "text-gray-400 group-hover:text-gray-950"
+                  }`}
                 />
                 <span className={desktopLabelVisibility}>{item.name}</span>
               </Link>
@@ -150,7 +150,7 @@ export default function AdminSidebar({
               href="/admin/platform"
               onClick={closeMobileSidebar}
               title={isCollapsed ? "Lojas cadastradas" : undefined}
-              className={`flex items-center gap-3 rounded-2xl px-4 py-2.5 text-sm font-semibold transition-all ${desktopItemLayout} ${
+              className={`group flex items-center gap-3 rounded-2xl px-4 py-2.5 text-sm font-semibold transition-all ${desktopItemLayout} ${
                 pathname === "/admin/platform"
                   ? "bg-[var(--brand-soft)] text-[var(--brand)]"
                   : "text-gray-600 hover:bg-[#faf5ef] hover:text-gray-950"
@@ -158,8 +158,10 @@ export default function AdminSidebar({
             >
               <Store
                 size={19}
-                className={`shrink-0 ${
-                  pathname === "/admin/platform" ? "text-[var(--brand)]" : "text-gray-400"
+                className={`shrink-0 transition-colors ${
+                  pathname === "/admin/platform"
+                    ? "text-[var(--brand)]"
+                    : "text-gray-400 group-hover:text-gray-950"
                 }`}
               />
               <span className={desktopLabelVisibility}>Lojas cadastradas</span>

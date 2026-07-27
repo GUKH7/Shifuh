@@ -8,21 +8,23 @@ import {
   ArrowUpRight,
   Bike,
   Clock3,
-  Loader2,
   PackageCheck,
   ShoppingBag,
   Store,
   Wallet,
 } from "lucide-react";
-import { getCurrentRestaurant } from "@/lib/supabase/restaurant";
-import { PERIOD_OPTIONS, PeriodKey, isWithinPeriod } from "@/lib/admin-period";
+import { AdminPageHeader, AdminPageShell, AdminSkeleton } from "@/components/ui/admin-primitives";
 import { LiveStatusDot } from "@/components/ui/live-status-dot";
+import { PERIOD_OPTIONS, type PeriodKey, isWithinPeriod } from "@/lib/admin-period";
+import { getCurrentRestaurant } from "@/lib/supabase/restaurant";
+
+type OrderStatus = "pending" | "preparing" | "delivering" | "done" | "canceled";
 
 type OrderRow = {
   id: string;
   customer_name: string;
   total: number;
-  status: "pending" | "preparing" | "delivering" | "done" | "canceled";
+  status: OrderStatus;
   created_at: string;
   order_items: Array<{
     product_name: string;
@@ -34,6 +36,14 @@ type MetricCard = {
   label: string;
   value: string;
   helper: string;
+};
+
+const STATUS_LABELS: Record<OrderStatus, string> = {
+  pending: "Pendente",
+  preparing: "Em preparo",
+  delivering: "Em rota",
+  done: "Concluído",
+  canceled: "Cancelado",
 };
 
 function formatMoney(value: number) {
@@ -52,24 +62,27 @@ function formatHour(date: string) {
 
 function DashboardSkeleton() {
   return (
-    <div className="mx-auto max-w-6xl animate-pulse">
-      <div className="mb-8 flex items-center gap-4">
-        <div className="h-14 w-14 rounded-2xl bg-white" />
-        <div className="space-y-3">
-          <div className="h-6 w-64 rounded-full bg-white" />
-          <div className="h-4 w-80 rounded-full bg-white" />
+    <AdminPageShell className="space-y-6">
+      <div className="flex items-center gap-4">
+        <AdminSkeleton className="h-14 w-14 shrink-0" />
+        <div className="w-full max-w-md space-y-3">
+          <AdminSkeleton className="h-7 w-52" />
+          <AdminSkeleton className="h-4 w-full" />
         </div>
       </div>
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, index) => (
-          <div key={index} className="surface-card rounded-[24px] p-5">
-            <div className="h-4 w-24 rounded-full bg-white" />
-            <div className="mt-4 h-8 w-32 rounded-full bg-white" />
-            <div className="mt-3 h-3 w-36 rounded-full bg-white" />
-          </div>
-        ))}
+      <div className="surface-card rounded-[28px] p-4 sm:p-6">
+        <AdminSkeleton className="h-24 w-full" />
+        <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <AdminSkeleton key={index} className="h-32 w-full" />
+          ))}
+        </div>
       </div>
-    </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <AdminSkeleton className="h-80 w-full" />
+        <AdminSkeleton className="h-80 w-full" />
+      </div>
+    </AdminPageShell>
   );
 }
 
@@ -87,7 +100,7 @@ export default function AdminHomePage() {
   const [period, setPeriod] = useState<PeriodKey>("7d");
 
   useEffect(() => {
-    fetchDashboard();
+    void fetchDashboard();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -131,14 +144,14 @@ export default function AdminHomePage() {
     const canceledOrders = filteredOrders.filter((order) => order.status === "canceled");
     const grossRevenue = activeOrders.reduce((sum, order) => sum + Number(order.total || 0), 0);
     const averageTicket = activeOrders.length > 0 ? grossRevenue / activeOrders.length : 0;
-    const inKitchen = filteredOrders.filter((order) => order.status === "preparing").length;
-    const onTheWay = filteredOrders.filter((order) => order.status === "delivering").length;
 
     const productRankingMap = new Map<string, number>();
     filteredOrders.forEach((order) => {
       order.order_items?.forEach((item) => {
-        const current = productRankingMap.get(item.product_name) || 0;
-        productRankingMap.set(item.product_name, current + Number(item.quantity || 0));
+        productRankingMap.set(
+          item.product_name,
+          (productRankingMap.get(item.product_name) || 0) + Number(item.quantity || 0),
+        );
       });
     });
 
@@ -146,8 +159,6 @@ export default function AdminHomePage() {
       .map(([name, quantity]) => ({ name, quantity }))
       .sort((a, b) => b.quantity - a.quantity)
       .slice(0, 5);
-
-    const recentOrders = filteredOrders.slice(0, 5);
 
     const cards: MetricCard[] = [
       {
@@ -175,10 +186,10 @@ export default function AdminHomePage() {
     return {
       cards,
       topProducts,
-      recentOrders,
+      recentOrders: filteredOrders.slice(0, 5),
       filteredOrdersCount: filteredOrders.length,
-      inKitchen,
-      onTheWay,
+      inKitchen: filteredOrders.filter((order) => order.status === "preparing").length,
+      onTheWay: filteredOrders.filter((order) => order.status === "delivering").length,
     };
   }, [orders, period]);
 
@@ -186,32 +197,28 @@ export default function AdminHomePage() {
 
   if (errorMsg) {
     return (
-      <div className="mx-auto max-w-6xl">
+      <AdminPageShell>
         <div className="rounded-[28px] border border-red-200 bg-red-50 px-6 py-5 text-red-700">
           {errorMsg}
         </div>
-      </div>
+      </AdminPageShell>
     );
   }
 
-  return (
-    <div className="mx-auto max-w-6xl">
-      <div className="mb-8 flex items-center gap-4">
-        <div className="brand-gradient flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-sm">
-          <Store size={24} />
-        </div>
-        <div>
-          <h1 className="text-3xl font-black tracking-tight text-gray-950">Painel operacional</h1>
-          <p className="mt-1 text-sm text-[var(--muted)]">
-            Acompanhe pedidos, faturamento e ritmo da operação da {restaurantName}.
-          </p>
-        </div>
-      </div>
+  const maxProductQuantity = dashboard.topProducts[0]?.quantity || 1;
 
-      <section className="surface-card rounded-[28px] p-6">
+  return (
+    <AdminPageShell className="space-y-6">
+      <AdminPageHeader
+        title="Dashboard"
+        description={`Acompanhe pedidos, faturamento e ritmo da operação da ${restaurantName}.`}
+        icon={<Store size={24} />}
+      />
+
+      <section className="surface-card rounded-[28px] p-4 sm:p-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-[var(--brand-soft)] px-3 py-1.5 text-xs font-bold text-[var(--brand)]">
+            <div className="inline-flex items-center gap-2 rounded-full bg-[var(--brand-soft)] px-3 py-2 text-xs font-bold text-[var(--brand)]">
               <LiveStatusDot className="text-current" />
               Dashboard em tempo real
             </div>
@@ -224,7 +231,7 @@ export default function AdminHomePage() {
           </div>
           <Link
             href="/admin/orders"
-            className="inline-flex items-center gap-2 rounded-2xl border border-[#ffd8ca] bg-[var(--brand-soft)] px-5 py-3 text-sm font-bold text-[var(--brand)]"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-[#ffd8ca] bg-[var(--brand-soft)] px-5 py-3 text-sm font-bold text-[var(--brand)] transition-colors hover:bg-[#ffe8dc]"
           >
             Ir para pedidos <ArrowUpRight size={16} />
           </Link>
@@ -238,7 +245,7 @@ export default function AdminHomePage() {
               className={`rounded-full px-4 py-2 text-sm font-bold transition-colors ${
                 period === item.id
                   ? "bg-[#171311] text-white"
-                  : "border border-[var(--line)] bg-white text-gray-600"
+                  : "border border-[var(--line)] bg-white text-gray-600 hover:text-gray-950"
               }`}
             >
               {item.label}
@@ -250,52 +257,39 @@ export default function AdminHomePage() {
           {dashboard.cards.map((card) => (
             <div key={card.label} className="rounded-2xl border border-[var(--line)] bg-white p-5">
               <p className="text-sm font-medium text-gray-500">{card.label}</p>
-              <div className="mt-3">
-                <p className="text-3xl font-black text-gray-950">{card.value}</p>
-                <p className="mt-2 text-xs font-medium text-gray-400">{card.helper}</p>
-              </div>
+              <p className="mt-3 text-3xl font-black text-gray-950">{card.value}</p>
+              <p className="mt-2 text-xs font-medium text-gray-400">{card.helper}</p>
             </div>
           ))}
         </div>
       </section>
 
-      <section className="mt-6 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="surface-card rounded-[28px] p-6">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h3 className="text-xl font-black text-gray-950">Atalhos da operação</h3>
-              <p className="mt-1 text-sm text-[var(--muted)]">
-                O caminho mais rápido para manter a loja publicada e recebendo pedidos.
-              </p>
-            </div>
-          </div>
+      <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="surface-card rounded-[28px] p-4 sm:p-6">
+          <h3 className="text-xl font-black text-gray-950">Atalhos da operação</h3>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            O caminho mais rápido para manter a loja publicada e recebendo pedidos.
+          </p>
           <div className="mt-6 grid gap-4 md:grid-cols-3">
-            <Link href="/admin/orders" className="rounded-2xl border border-[var(--line)] bg-white p-5">
-              <ShoppingBag className="text-[var(--brand)]" size={22} />
-              <h4 className="mt-4 font-bold text-gray-950">Pedidos</h4>
-              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                Aceite, despache e conclua pedidos em tempo real.
-              </p>
-            </Link>
-            <Link href="/admin/menu" className="rounded-2xl border border-[var(--line)] bg-white p-5">
-              <PackageCheck className="text-[var(--brand)]" size={22} />
-              <h4 className="mt-4 font-bold text-gray-950">Cardápio</h4>
-              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                Crie categorias, organize itens e pause produtos.
-              </p>
-            </Link>
-            <Link href="/admin/settings" className="rounded-2xl border border-[var(--line)] bg-white p-5">
-              <Wallet className="text-[var(--brand)]" size={22} />
-              <h4 className="mt-4 font-bold text-gray-950">Configurações</h4>
-              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                Atualize WhatsApp, endereço e faixas de entrega.
-              </p>
-            </Link>
+            {[
+              { href: "/admin/orders", icon: ShoppingBag, title: "Pedidos", text: "Aceite, despache e conclua pedidos em tempo real." },
+              { href: "/admin/menu", icon: PackageCheck, title: "Cardápio", text: "Crie categorias, organize itens e pause produtos." },
+              { href: "/admin/settings", icon: Wallet, title: "Configurações", text: "Atualize WhatsApp, endereço e faixas de entrega." },
+            ].map((item) => (
+              <Link key={item.href} href={item.href} className="rounded-2xl border border-[var(--line)] bg-white p-5 transition-colors hover:border-[#ffd8ca]">
+                <item.icon className="text-[var(--brand)]" size={22} />
+                <h4 className="mt-4 font-bold text-gray-950">{item.title}</h4>
+                <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{item.text}</p>
+              </Link>
+            ))}
           </div>
         </div>
 
-        <div className="surface-card rounded-[28px] p-6">
-          <h3 className="text-xl font-black text-gray-950">Status da loja</h3>
+        <div className="surface-card rounded-[28px] p-4 sm:p-6">
+          <div className="flex items-center gap-2 text-[var(--brand)]">
+            <Store size={20} />
+            <h3 className="text-xl font-black">Operação de hoje</h3>
+          </div>
           <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
             <div className="flex items-center gap-3">
               <LiveStatusDot />
@@ -305,7 +299,6 @@ export default function AdminHomePage() {
               Sua vitrine está pronta para receber pedidos e enviar tudo direto no WhatsApp.
             </p>
           </div>
-
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
             <div className="rounded-2xl border border-[var(--line)] bg-white p-4">
               <p className="text-xs font-bold uppercase tracking-[0.14em] text-gray-400">No período</p>
@@ -323,50 +316,42 @@ export default function AdminHomePage() {
         </div>
       </section>
 
-      <section className="mt-6 grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
-        <div className="surface-card rounded-[28px] p-6">
-          <h3 className="text-xl font-black text-gray-950">Top produtos</h3>
+      <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
+        <div className="surface-card rounded-[28px] p-4 sm:p-6">
+          <h3 className="text-xl font-black text-gray-950">Produtos mais pedidos</h3>
           <p className="mt-1 text-sm text-[var(--muted)]">
-            Itens mais vendidos com base nos pedidos do período.
+            Comparação visual dos itens mais vendidos no período.
           </p>
-          <div className="mt-6 space-y-3">
+          <div className="mt-6 space-y-5">
             {dashboard.topProducts.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-[var(--line)] bg-white py-12 text-center text-sm text-gray-500">
                 Nenhum produto vendido no período selecionado.
               </div>
             ) : (
-              dashboard.topProducts.map((product, index) => (
-                <div
-                  key={product.name}
-                  className="flex items-center justify-between rounded-2xl border border-[var(--line)] bg-white px-4 py-4"
-                >
-                  <div className="flex items-center gap-4">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#faf4ee] text-sm font-black text-[var(--brand)]">
-                      {index + 1}
-                    </span>
-                    <div>
-                      <p className="font-bold text-gray-950">{product.name}</p>
-                      <p className="text-sm text-gray-500">{product.quantity} unidade(s)</p>
+              dashboard.topProducts.map((product, index) => {
+                const percentage = Math.max(8, (product.quantity / maxProductQuantity) * 100);
+                return (
+                  <div key={product.name}>
+                    <div className="mb-2 flex items-center justify-between gap-3 text-sm">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[var(--brand-soft)] text-xs font-black text-[var(--brand)]">
+                          {index + 1}
+                        </span>
+                        <span className="truncate font-bold text-gray-950">{product.name}</span>
+                      </div>
+                      <span className="shrink-0 font-bold text-gray-600">{product.quantity}</span>
+                    </div>
+                    <div className="h-3 overflow-hidden rounded-full bg-[#f3ebe4]" aria-label={`${product.name}: ${product.quantity} unidades`}>
+                      <div className="h-full rounded-full bg-[var(--brand)]" style={{ width: `${percentage}%` }} />
                     </div>
                   </div>
-                  <div className="h-2 w-24 overflow-hidden rounded-full bg-[#f3ebe4]">
-                    <div
-                      className="h-full rounded-full bg-[var(--brand)]"
-                      style={{
-                        width: `${Math.max(
-                          20,
-                          (product.quantity / (dashboard.topProducts[0]?.quantity || 1)) * 100,
-                        )}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
 
-        <div className="surface-card rounded-[28px] p-6">
+        <div className="surface-card rounded-[28px] p-4 sm:p-6">
           <h3 className="text-xl font-black text-gray-950">Últimos pedidos</h3>
           <p className="mt-1 text-sm text-[var(--muted)]">
             Visão rápida dos pedidos mais recentes no período.
@@ -378,27 +363,18 @@ export default function AdminHomePage() {
               </div>
             ) : (
               dashboard.recentOrders.map((order) => (
-                <div
-                  key={order.id}
-                  className="flex flex-col gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
-                >
+                <div key={order.id} className="flex flex-col gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <p className="font-bold text-gray-950">#{order.id.slice(0, 4)} • {order.customer_name}</p>
                     <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-gray-500">
-                      <span className="inline-flex items-center gap-1">
-                        <Clock3 size={14} />
-                        {formatHour(order.created_at)}
-                      </span>
-                      <span className="inline-flex items-center gap-1">
-                        <Bike size={14} />
-                        {order.status}
-                      </span>
+                      <span className="inline-flex items-center gap-1"><Clock3 size={14} />{formatHour(order.created_at)}</span>
+                      <span className="inline-flex items-center gap-1"><Bike size={14} />{STATUS_LABELS[order.status]}</span>
                     </div>
                   </div>
                   <div className="text-left sm:text-right">
                     <p className="text-lg font-black text-gray-950">{formatMoney(order.total)}</p>
                     <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">
-                      {order.order_items?.length || 0} item(ns)
+                      {order.order_items?.length || 0} {(order.order_items?.length || 0) === 1 ? "item" : "itens"}
                     </p>
                   </div>
                 </div>
@@ -407,6 +383,6 @@ export default function AdminHomePage() {
           </div>
         </div>
       </section>
-    </div>
+    </AdminPageShell>
   );
 }

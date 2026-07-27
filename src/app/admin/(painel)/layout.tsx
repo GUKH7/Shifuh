@@ -3,13 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, HelpCircle, Loader2, Menu, Search } from "lucide-react";
+import { Bell, HelpCircle, Menu, Search } from "lucide-react";
 import AdminSidebar from "@/components/admin-sidebar";
+import { AdminSkeleton } from "@/components/ui/admin-primitives";
 import { getRestaurantByUserId } from "@/lib/supabase/restaurant";
 import "./admin-responsive.css";
 
 const ADMIN_SEARCH_ITEMS = [
-  { label: "Início", href: "/admin", keywords: ["inicio", "dashboard", "resumo", "painel"] },
+  { label: "Dashboard", href: "/admin", keywords: ["inicio", "dashboard", "resumo", "painel"] },
   { label: "Pedidos", href: "/admin/orders", keywords: ["pedido", "pedidos", "entregas", "fila"] },
   { label: "Histórico", href: "/admin/history", keywords: ["historico", "vendas", "concluidos"] },
   { label: "Cardápios", href: "/admin/menu", keywords: ["cardapio", "menu", "produtos", "categorias"] },
@@ -18,6 +19,36 @@ const ADMIN_SEARCH_ITEMS = [
   { label: "Avaliações", href: "/admin/reviews", keywords: ["reviews", "avaliacoes", "notas"] },
   { label: "Configurações", href: "/admin/settings", keywords: ["configuracoes", "ajustes", "loja"] },
 ];
+
+function AdminGuardSkeleton() {
+  return (
+    <div className="min-h-screen bg-[#fbf7f2]">
+      <div className="hidden h-screen w-16 border-r border-[var(--line)] bg-white lg:fixed lg:block" />
+      <div className="lg:ml-16">
+        <div className="h-16 border-b border-[var(--line)] bg-[#fbf7f2] px-3 py-2 sm:h-20 sm:px-4 lg:px-6">
+          <div className="mx-auto grid h-full max-w-[1460px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
+            <AdminSkeleton className="h-10 w-10 lg:hidden" />
+            <AdminSkeleton className="mx-auto h-11 w-full max-w-2xl" />
+            <div className="flex gap-2">
+              <AdminSkeleton className="h-10 w-10" />
+              <AdminSkeleton className="h-10 w-10" />
+            </div>
+          </div>
+        </div>
+        <div className="px-3 py-4 sm:px-4 md:px-5 lg:px-6">
+          <div className="admin-page-shell space-y-4">
+            <AdminSkeleton className="h-20 w-full" />
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <AdminSkeleton key={index} className="h-36 w-full" />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function AdminPanelLayout({ children }: { children: React.ReactNode }) {
   const [isCollapsed, setIsCollapsed] = useState(true);
@@ -33,21 +64,15 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
 
   useEffect(() => {
     const savedState = window.localStorage.getItem("admin-sidebar-collapsed");
-    if (savedState !== null) {
-      setIsCollapsed(savedState === "true");
-    }
+    if (savedState !== null) setIsCollapsed(savedState === "true");
   }, []);
 
-  useEffect(() => {
-    setIsMobileSidebarOpen(false);
-  }, [pathname]);
+  useEffect(() => setIsMobileSidebarOpen(false), [pathname]);
 
   useEffect(() => {
     if (!isMobileSidebarOpen) return;
-
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-
     return () => {
       document.body.style.overflow = previousOverflow;
     };
@@ -85,7 +110,6 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
     };
 
     guardAdminAccess();
-
     return () => {
       isMounted = false;
     };
@@ -102,11 +126,9 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
   const searchResults = useMemo(() => {
     const normalizedTerm = panelSearch.trim().toLowerCase();
     if (!normalizedTerm) return [];
-
-    return ADMIN_SEARCH_ITEMS.filter((item) => {
-      const haystack = [item.label, ...item.keywords].join(" ").toLowerCase();
-      return haystack.includes(normalizedTerm);
-    }).slice(0, 6);
+    return ADMIN_SEARCH_ITEMS.filter((item) =>
+      [item.label, ...item.keywords].join(" ").toLowerCase().includes(normalizedTerm),
+    ).slice(0, 6);
   }, [panelSearch]);
 
   const handleGoToSearchResult = (href: string) => {
@@ -114,13 +136,7 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
     router.push(href);
   };
 
-  if (isGuardLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#fbf7f2]">
-        <Loader2 className="animate-spin text-[var(--brand)]" size={30} />
-      </div>
-    );
-  }
+  if (isGuardLoading) return <AdminGuardSkeleton />;
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#fbf7f2] text-gray-950">
@@ -146,18 +162,18 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
         }`}
         style={{ "--admin-sidebar-width": isCollapsed ? "4rem" : "14rem" } as React.CSSProperties}
       >
-        <header className="sticky top-0 z-30 bg-[#fbf7f2]/95 backdrop-blur">
-          <div className="flex min-h-16 items-center gap-2 px-3 py-2 sm:h-20 sm:gap-3 sm:px-4 sm:py-0 lg:px-6">
+        <header className="admin-panel-header sticky top-0 z-30 bg-[#fbf7f2]/95 backdrop-blur">
+          <div className="mx-auto grid min-h-16 max-w-[1460px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-3 py-2 sm:h-20 sm:gap-3 sm:px-4 sm:py-0 lg:px-6">
             <button
               type="button"
               onClick={() => setIsMobileSidebarOpen(true)}
               aria-label="Abrir menu lateral"
-              className="surface-card inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-gray-600 lg:hidden"
+              className="surface-card inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-gray-600 lg:invisible"
             >
               <Menu size={19} />
             </button>
 
-            <div className="relative min-w-0 flex-1 sm:max-w-lg">
+            <div className="relative mx-auto w-full min-w-0 max-w-2xl">
               <div className="flex items-center gap-2.5 rounded-xl border border-[var(--line)] bg-white px-3 py-2.5 sm:px-4">
                 <Search size={17} className="shrink-0 text-gray-400" />
                 <input
@@ -198,18 +214,18 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
               )}
             </div>
 
-            <div className="flex shrink-0 items-center gap-2 sm:gap-2.5">
+            <div className="flex shrink-0 items-center justify-end gap-2 sm:gap-2.5">
               <button
                 type="button"
                 aria-label="Ajuda"
-                className="surface-card hidden rounded-xl p-2.5 text-gray-500 sm:inline-flex"
+                className="surface-card hidden h-10 w-10 items-center justify-center rounded-xl text-gray-500 transition-colors hover:text-gray-950 sm:inline-flex"
               >
                 <HelpCircle size={17} />
               </button>
               <button
                 type="button"
                 aria-label="Notificações"
-                className="surface-card inline-flex rounded-xl p-2.5 text-gray-500"
+                className="surface-card inline-flex h-10 w-10 items-center justify-center rounded-xl text-gray-500 transition-colors hover:text-gray-950"
               >
                 <Bell size={17} />
               </button>

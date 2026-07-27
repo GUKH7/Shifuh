@@ -7,9 +7,10 @@ const orders = fs.readFileSync("src/app/admin/(painel)/orders/page.tsx", "utf8")
 const history = fs.readFileSync("src/app/admin/(painel)/history/page.tsx", "utf8");
 const menu = fs.readFileSync("src/app/admin/(painel)/menu/page.tsx", "utf8");
 
-test("dashboard alinha ação no topo e usa nome claro para o status da loja", () => {
+test("dashboard alinha ação no topo e destaca a operação de hoje", () => {
   assert.match(dashboard, /lg:items-start lg:justify-between/);
-  assert.match(dashboard, />Status da loja<\/h3>/);
+  assert.match(dashboard, />Operação de hoje<\/h3>/);
+  assert.match(dashboard, /flex items-center gap-2 text-\[var\(--brand\)\]/);
   assert.doesNotMatch(dashboard, />Pulso da loja<\/h3>/);
 });
 

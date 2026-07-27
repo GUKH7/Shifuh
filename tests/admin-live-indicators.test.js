@@ -13,7 +13,7 @@ test("real-time dashboard labels share the same live indicator", () => {
   assert.equal((dashboard.match(/<LiveStatusDot(?: className="text-current")? \/>/g) || []).length, 2);
   assert.match(
     dashboard,
-    /bg-\[var\(--brand-soft\)\] px-3 py-1\.5 text-xs font-bold text-\[var\(--brand\)\]/,
+    /bg-\[var\(--brand-soft\)\] px-3 py-2 text-xs font-bold text-\[var\(--brand\)\]/,
   );
 });
 
