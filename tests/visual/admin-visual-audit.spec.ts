@@ -26,10 +26,14 @@ async function login(page: Page) {
   expect(email, "O secret TEST_ADMIN_EMAIL precisa estar configurado.").toBeTruthy();
   expect(password, "O secret TEST_ADMIN_PASSWORD precisa estar configurado.").toBeTruthy();
 
-  await page.goto("/admin/login", { waitUntil: "domcontentloaded" });
+  await page.goto("/admin/login", { waitUntil: "networkidle", timeout: 30_000 });
+  await page.waitForFunction(() => document.readyState === "complete", undefined, {
+    timeout: 10_000,
+  });
 
   const emailInput = page.locator('input[type="email"]');
   const passwordInput = page.locator('input[type="password"]');
+  const submitButton = page.getByRole("button", { name: "Entrar agora" });
 
   await expect(emailInput, "O campo de e-mail não apareceu na tela de login.").toBeVisible({
     timeout: 10_000,
@@ -37,10 +41,32 @@ async function login(page: Page) {
   await expect(passwordInput, "O campo de senha não apareceu na tela de login.").toBeVisible({
     timeout: 10_000,
   });
+  await expect(submitButton, "O botão de login não apareceu.").toBeEnabled({ timeout: 10_000 });
 
   await emailInput.fill(email!);
   await passwordInput.fill(password!);
-  await page.getByRole("button", { name: "Entrar agora" }).click();
+
+  const authResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes("/auth/v1/token") && response.request().method() === "POST",
+    { timeout: 15_000 },
+  );
+
+  await submitButton.click();
+  const authResponse = await authResponsePromise;
+
+  if (!authResponse.ok()) {
+    const authError = await authResponse
+      .json()
+      .then((body) => body?.message || body?.error_description || body?.error)
+      .catch(() => null);
+
+    throw new Error(
+      `A autenticação de teste falhou com HTTP ${authResponse.status()}${
+        authError ? `: ${authError}` : "."
+      }`,
+    );
+  }
 
   await page.waitForURL(
     (url) =>
