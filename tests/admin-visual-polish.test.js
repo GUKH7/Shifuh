@@ -3,6 +3,8 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 
 const dashboard = fs.readFileSync("src/app/admin/(painel)/DashboardPeriodWorkspace.tsx", "utf8");
+const dashboardPage = fs.readFileSync("src/app/admin/(painel)/page.tsx", "utf8");
+const dashboardStyles = fs.readFileSync("src/app/admin/(painel)/dashboard-period.module.css", "utf8");
 const orders = fs.readFileSync("src/app/admin/(painel)/orders/page.tsx", "utf8");
 const history = fs.readFileSync("src/app/admin/(painel)/history/page.tsx", "utf8");
 const menu = fs.readFileSync("src/app/admin/(painel)/menu/page.tsx", "utf8");
@@ -19,6 +21,14 @@ test("dashboard segue a referência com cinco indicadores e período global", ()
   assert.match(dashboard, /vs\. 7 dias anteriores/);
   assert.match(dashboard, /vs\. 30 dias anteriores/);
   assert.match(dashboard, /vs\. ano anterior/);
+});
+
+test("títulos das métricas permanecem em uma linha na grade de cinco cards", () => {
+  assert.match(dashboardPage, /dashboard-period\.module\.css/);
+  assert.match(dashboardPage, /className=\{styles\.page\}/);
+  assert.match(dashboardStyles, /white-space: nowrap/);
+  assert.match(dashboardStyles, /min-width: 1280px/);
+  assert.match(dashboardStyles, /max-width: 1535px/);
 });
 
 test("pedidos mantém pagamento em uma linha e pulsa no badge de loja aberta", () => {
