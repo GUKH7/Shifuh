@@ -34,13 +34,19 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { AdminPageHeader, AdminPageShell, AdminSelect, AdminSkeleton } from "@/components/ui/admin-primitives";
+import {
+  AdminInput,
+  AdminPageHeader,
+  AdminPageShell,
+  AdminSelect,
+  AdminSkeleton,
+} from "@/components/ui/admin-primitives";
 import { LiveStatusDot } from "@/components/ui/live-status-dot";
 import { getCurrentRestaurant } from "@/lib/supabase/restaurant";
 import { getStoreStatus } from "@/features/storefront/store-summary";
 
 type OrderStatus = "pending" | "preparing" | "delivering" | "done" | "canceled";
-type DashboardPeriod = "today" | "7d" | "30d" | "year" | "all";
+type DashboardPeriod = "today" | "7d" | "30d" | "year" | "all" | "custom";
 type SourceKey = "ifood" | "whatsapp" | "storefront" | "counter" | "other";
 
 type OrderRow = {
@@ -79,6 +85,8 @@ type PeriodRange = {
 type RevenuePoint = { key: string; label: string; revenue: number };
 type SourcePoint = { key: SourceKey; label: string; count: number; color: string };
 
+const DAY_IN_MS = 86_400_000;
+
 const STATUS_META: Record<OrderStatus, { label: string; className: string }> = {
   pending: { label: "Pendente", className: "border-orange-200 bg-orange-50 text-orange-700" },
   preparing: { label: "Em preparo", className: "border-amber-200 bg-amber-50 text-amber-700" },
@@ -101,6 +109,7 @@ const DASHBOARD_PERIODS: Array<{ id: DashboardPeriod; label: string }> = [
   { id: "30d", label: "Últimos 30 dias" },
   { id: "year", label: "Este ano" },
   { id: "all", label: "Todo o período" },
+  { id: "custom", label: "Período personalizado" },
 ];
 
 function formatMoney(value: number) {
@@ -138,6 +147,12 @@ function endOfDay(date: Date) {
   return result;
 }
 
+function addDays(date: Date, amount: number) {
+  const result = new Date(date);
+  result.setDate(result.getDate() + amount);
+  return result;
+}
+
 function toDateKey(date: Date | string) {
   const value = typeof date === "string" ? new Date(date) : date;
   return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
@@ -148,13 +163,28 @@ function toMonthKey(date: Date | string) {
   return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function addDays(date: Date, amount: number) {
-  const result = new Date(date);
-  result.setDate(result.getDate() + amount);
-  return result;
+function toInputDate(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
-function getPeriodRange(period: DashboardPeriod, now = new Date()): PeriodRange {
+function parseInputDate(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) return null;
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+  return date;
+}
+
+function formatRangeDate(date: Date) {
+  return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+function getPeriodRange(
+  period: DashboardPeriod,
+  customStart: string,
+  customEnd: string,
+  now = new Date(),
+): PeriodRange {
   if (period === "today") {
     return {
       label: "Hoje",
@@ -171,7 +201,7 @@ function getPeriodRange(period: DashboardPeriod, now = new Date()): PeriodRange 
     const days = period === "7d" ? 7 : 30;
     const start = startOfDay(addDays(now, -(days - 1)));
     const previousEnd = new Date(start.getTime() - 1);
-    const previousStart = startOfDay(addDays(previousEnd, -(days - 1)));
+    const previousStart = startOfDay(addDays(start, -days));
     return {
       label: period === "7d" ? "Últimos 7 dias" : "Últimos 30 dias",
       shortLabel: period === "7d" ? "7 dias" : "30 dias",
@@ -201,6 +231,29 @@ function getPeriodRange(period: DashboardPeriod, now = new Date()): PeriodRange 
       comparisonLabel: "vs. ano anterior",
       start,
       end: now,
+      previousStart,
+      previousEnd,
+    };
+  }
+
+  if (period === "custom") {
+    const fallbackEnd = endOfDay(now);
+    const fallbackStart = startOfDay(addDays(now, -6));
+    const parsedStart = parseInputDate(customStart);
+    const parsedEnd = parseInputDate(customEnd);
+    const start = startOfDay(parsedStart || fallbackStart);
+    const end = endOfDay(parsedEnd || fallbackEnd);
+    const normalizedStart = start <= end ? start : startOfDay(end);
+    const normalizedEnd = start <= end ? end : endOfDay(start);
+    const days = Math.max(1, Math.round((startOfDay(normalizedEnd).getTime() - normalizedStart.getTime()) / DAY_IN_MS) + 1);
+    const previousEnd = new Date(normalizedStart.getTime() - 1);
+    const previousStart = startOfDay(addDays(normalizedStart, -days));
+    return {
+      label: `${formatRangeDate(normalizedStart)} a ${formatRangeDate(normalizedEnd)}`,
+      shortLabel: "período",
+      comparisonLabel: "vs. período anterior",
+      start: normalizedStart,
+      end: normalizedEnd,
       previousStart,
       previousEnd,
     };
@@ -239,53 +292,24 @@ function resolveSource(order: OrderRow): SourceKey {
   return "other";
 }
 
-function buildRevenueSeries(orders: OrderRow[], period: DashboardPeriod): RevenuePoint[] {
-  const now = new Date();
-
-  if (period === "today") {
-    return Array.from({ length: 24 }, (_, hour) => ({
-      key: String(hour),
-      label: `${String(hour).padStart(2, "0")}h`,
+function buildDailyRevenueSeries(orders: OrderRow[], start: Date, end: Date): RevenuePoint[] {
+  const days = Math.max(1, Math.round((startOfDay(end).getTime() - startOfDay(start).getTime()) / DAY_IN_MS) + 1);
+  return Array.from({ length: days }, (_, index) => {
+    const date = addDays(startOfDay(start), index);
+    const key = toDateKey(date);
+    return {
+      key,
+      label: date.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }).replace(".", ""),
       revenue: orders
-        .filter((order) => new Date(order.created_at).getHours() === hour)
+        .filter((order) => toDateKey(order.created_at) === key)
         .reduce((sum, order) => sum + Number(order.total || 0), 0),
-    }));
-  }
+    };
+  });
+}
 
-  if (period === "7d" || period === "30d") {
-    const days = period === "7d" ? 7 : 30;
-    return Array.from({ length: days }, (_, index) => {
-      const date = startOfDay(addDays(now, -(days - 1 - index)));
-      const key = toDateKey(date);
-      return {
-        key,
-        label: date.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }).replace(".", ""),
-        revenue: orders
-          .filter((order) => toDateKey(order.created_at) === key)
-          .reduce((sum, order) => sum + Number(order.total || 0), 0),
-      };
-    });
-  }
-
-  if (period === "year") {
-    return Array.from({ length: 12 }, (_, month) => {
-      const date = new Date(now.getFullYear(), month, 1);
-      const key = toMonthKey(date);
-      return {
-        key,
-        label: date.toLocaleDateString("pt-BR", { month: "short" }).replace(".", ""),
-        revenue: orders
-          .filter((order) => toMonthKey(order.created_at) === key)
-          .reduce((sum, order) => sum + Number(order.total || 0), 0),
-      };
-    });
-  }
-
-  const dates = orders.map((order) => new Date(order.created_at)).filter((date) => Number.isFinite(date.getTime()));
-  if (dates.length === 0) return [];
-  const first = new Date(Math.min(...dates.map((date) => date.getTime())));
-  const cursor = new Date(first.getFullYear(), first.getMonth(), 1);
-  const last = new Date(now.getFullYear(), now.getMonth(), 1);
+function buildMonthlyRevenueSeries(orders: OrderRow[], start: Date, end: Date): RevenuePoint[] {
+  const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+  const last = new Date(end.getFullYear(), end.getMonth(), 1);
   const points: RevenuePoint[] = [];
   while (cursor <= last) {
     const key = toMonthKey(cursor);
@@ -299,6 +323,48 @@ function buildRevenueSeries(orders: OrderRow[], period: DashboardPeriod): Revenu
     cursor.setMonth(cursor.getMonth() + 1);
   }
   return points;
+}
+
+function buildRevenueSeries(orders: OrderRow[], period: DashboardPeriod, range: PeriodRange): RevenuePoint[] {
+  if (period === "today") {
+    return Array.from({ length: 24 }, (_, hour) => ({
+      key: String(hour),
+      label: `${String(hour).padStart(2, "0")}h`,
+      revenue: orders
+        .filter((order) => new Date(order.created_at).getHours() === hour)
+        .reduce((sum, order) => sum + Number(order.total || 0), 0),
+    }));
+  }
+
+  if (period === "7d" || period === "30d") {
+    return buildDailyRevenueSeries(orders, range.start || new Date(), range.end);
+  }
+
+  if (period === "year") {
+    return Array.from({ length: 12 }, (_, month) => {
+      const date = new Date(range.end.getFullYear(), month, 1);
+      const key = toMonthKey(date);
+      return {
+        key,
+        label: date.toLocaleDateString("pt-BR", { month: "short" }).replace(".", ""),
+        revenue: orders
+          .filter((order) => toMonthKey(order.created_at) === key)
+          .reduce((sum, order) => sum + Number(order.total || 0), 0),
+      };
+    });
+  }
+
+  if (period === "custom" && range.start) {
+    const days = Math.max(1, Math.round((startOfDay(range.end).getTime() - range.start.getTime()) / DAY_IN_MS) + 1);
+    return days <= 45
+      ? buildDailyRevenueSeries(orders, range.start, range.end)
+      : buildMonthlyRevenueSeries(orders, range.start, range.end);
+  }
+
+  const dates = orders.map((order) => new Date(order.created_at)).filter((date) => Number.isFinite(date.getTime()));
+  if (dates.length === 0) return [];
+  const first = new Date(Math.min(...dates.map((date) => date.getTime())));
+  return buildMonthlyRevenueSeries(orders, first, range.end);
 }
 
 function DashboardSkeleton() {
@@ -371,6 +437,8 @@ export default function DashboardPeriodWorkspace() {
   const [workHours, setWorkHours] = useState<unknown>([]);
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [period, setPeriod] = useState<DashboardPeriod>("today");
+  const [customStart, setCustomStart] = useState(() => toInputDate(addDays(new Date(), -6)));
+  const [customEnd, setCustomEnd] = useState(() => toInputDate(new Date()));
 
   useEffect(() => {
     const fetchDashboard = async () => {
@@ -408,7 +476,7 @@ export default function DashboardPeriodWorkspace() {
 
   const storeStatus = useMemo(() => getStoreStatus(workHours), [workHours]);
   const dashboard = useMemo(() => {
-    const range = getPeriodRange(period);
+    const range = getPeriodRange(period, customStart, customEnd);
     const periodOrders = orders.filter((order) => isInRange(order, range.start, range.end));
     const previousOrders = range.previousStart && range.previousEnd
       ? orders.filter((order) => isInRange(order, range.previousStart, range.previousEnd))
@@ -428,7 +496,9 @@ export default function DashboardPeriodWorkspace() {
 
     const current = summarize(periodOrders);
     const previous = summarize(previousOrders);
-    const changeFor = (currentValue: number, previousValue: number) => range.previousStart ? percentageChange(currentValue, previousValue) : null;
+    const changeFor = (currentValue: number, previousValue: number) => range.previousStart
+      ? percentageChange(currentValue, previousValue)
+      : null;
     const metricSuffix = range.shortLabel === "hoje" ? "hoje" : range.shortLabel;
     const metrics: MetricCard[] = [
       { id: "revenue", label: `Faturamento (${metricSuffix})`, value: formatMoney(current.revenue), change: changeFor(current.revenue, previous.revenue), comparisonLabel: range.comparisonLabel, positiveIsGood: true, icon: CircleDollarSign, iconClass: "bg-orange-100 text-[var(--brand)]" },
@@ -473,7 +543,7 @@ export default function DashboardPeriodWorkspace() {
       metrics,
       periodOrders,
       periodRevenue: current.revenue,
-      revenueSeries: buildRevenueSeries(validPeriodOrders, period),
+      revenueSeries: buildRevenueSeries(validPeriodOrders, period, range),
       topProducts,
       sources,
       sourceTotal: sources.reduce((sum, source) => sum + source.count, 0),
@@ -483,7 +553,7 @@ export default function DashboardPeriodWorkspace() {
       onTheWay: orders.filter((order) => order.status === "delivering").length,
       recentOrders: periodOrders.slice(0, 5),
     };
-  }, [orders, period]);
+  }, [orders, period, customStart, customEnd]);
 
   if (loading) return <DashboardSkeleton />;
   if (errorMsg) return <AdminPageShell><div className="rounded-[28px] border border-red-200 bg-red-50 px-6 py-5 text-red-700">{errorMsg}</div></AdminPageShell>;
@@ -493,6 +563,7 @@ export default function DashboardPeriodWorkspace() {
     closing: { shell: "border-amber-200 bg-amber-50", icon: "bg-amber-500 text-white", title: "text-amber-700", dot: "text-amber-500", label: "Fechando em breve", helper: "Confira os pedidos pendentes" },
     closed: { shell: "border-red-200 bg-red-50", icon: "bg-red-500 text-white", title: "text-red-700", dot: "text-red-500", label: "Loja fechada", helper: "Fora do horário de atendimento" },
   }[storeStatus.tone];
+  const todayInput = toInputDate(new Date());
 
   return (
     <AdminPageShell className="space-y-5 sm:space-y-6">
@@ -523,6 +594,46 @@ export default function DashboardPeriodWorkspace() {
           </AdminSelect>
         </div>
       </div>
+
+      {period === "custom" ? (
+        <section className="surface-card grid gap-4 rounded-[24px] p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end sm:p-5" aria-label="Período personalizado do dashboard">
+          <label className="grid gap-2 text-sm font-bold text-gray-700" htmlFor="dashboard-custom-start">
+            Data inicial
+            <AdminInput
+              id="dashboard-custom-start"
+              type="date"
+              value={customStart}
+              max={customEnd || todayInput}
+              onChange={(event) => {
+                const value = event.target.value;
+                setCustomStart(value);
+                if (customEnd && value > customEnd) setCustomEnd(value);
+              }}
+              className="min-h-11 bg-white"
+            />
+          </label>
+          <label className="grid gap-2 text-sm font-bold text-gray-700" htmlFor="dashboard-custom-end">
+            Data final
+            <AdminInput
+              id="dashboard-custom-end"
+              type="date"
+              value={customEnd}
+              min={customStart}
+              max={todayInput}
+              onChange={(event) => {
+                const value = event.target.value;
+                setCustomEnd(value);
+                if (customStart && value < customStart) setCustomStart(value);
+              }}
+              className="min-h-11 bg-white"
+            />
+          </label>
+          <div className="rounded-2xl bg-[#fff7f1] px-4 py-3 text-xs text-gray-600 sm:max-w-[230px]">
+            <p className="font-black text-[var(--brand)]">{dashboard.range.label}</p>
+            <p className="mt-1 leading-relaxed">Comparação automática com o período anterior de mesma duração.</p>
+          </div>
+        </section>
+      ) : null}
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {dashboard.metrics.map((card) => <MetricCardView key={card.id} card={card} />)}
