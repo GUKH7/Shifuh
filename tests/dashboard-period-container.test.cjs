@@ -4,6 +4,7 @@ const test = require("node:test");
 
 const primitives = fs.readFileSync("src/components/ui/admin-primitives.tsx", "utf8");
 const periodSelect = fs.readFileSync("src/components/ui/admin-dashboard-period-select.tsx", "utf8");
+const styles = fs.readFileSync("src/app/admin/(painel)/dashboard-period.module.css", "utf8");
 
 test("dashboard usa container próprio no lugar do popup nativo", () => {
   assert.match(primitives, /id === "dashboard-period"/);
@@ -26,7 +27,10 @@ test("opção selecionada mantém o onChange existente", () => {
   assert.match(periodSelect, /PERIOD_HELPERS/);
 });
 
-test("container participa do fluxo e não cobre os gráficos", () => {
-  assert.match(periodSelect, /className="mt-3 w-full min-w-0 overflow-hidden/);
-  assert.doesNotMatch(periodSelect, /className="absolute right-0 top-\[calc\(100%\+0\.65rem\)\]/);
+test("container mantém o padrão sobreposto e fica acima dos gráficos", () => {
+  assert.match(periodSelect, /className="absolute right-0 top-\[calc\(100%\+0\.65rem\)\] z-\[130\]/);
+  assert.doesNotMatch(periodSelect, /className="mt-3 w-full min-w-0 overflow-hidden/);
+  assert.match(styles, /button\[aria-expanded="true"\]/);
+  assert.match(styles, /z-index: 120/);
+  assert.match(styles, /overflow: visible/);
 });

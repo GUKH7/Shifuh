@@ -18,6 +18,7 @@
   min-width: 17.5rem;
   grid-template-columns: minmax(0, 1fr);
   gap: 0.3rem;
+  overflow: visible;
   padding: 0.625rem 0.7rem 0.625rem 3rem;
   border: 1px solid rgba(225, 207, 192, 0.9);
   border-radius: 18px;
@@ -29,6 +30,10 @@
     border-color 160ms ease,
     box-shadow 160ms ease,
     transform 160ms ease;
+}
+
+.page :global(.admin-page-shell) div:has(> label[for="dashboard-period"]):has(button[aria-expanded="true"]) {
+  z-index: 120;
 }
 
 .page :global(.admin-page-shell) div:has(> label[for="dashboard-period"])::before {
