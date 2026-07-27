@@ -4,7 +4,7 @@ const path = require("node:path");
 const test = require("node:test");
 
 const root = path.join(__dirname, "..");
-const dashboard = fs.readFileSync(path.join(root, "src", "app", "admin", "(painel)", "page.tsx"), "utf8");
+const dashboard = fs.readFileSync(path.join(root, "src", "app", "admin", "(painel)", "DashboardPeriodWorkspace.tsx"), "utf8");
 const indicator = fs.readFileSync(path.join(root, "src", "components", "ui", "live-status-dot.tsx"), "utf8");
 
 test("dashboard mantém indicadores vivos no status da loja e no acompanhamento em tempo real", () => {
