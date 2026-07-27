@@ -4,7 +4,8 @@ import test from "node:test";
 
 const layout = fs.readFileSync("src/app/admin/(painel)/layout.tsx", "utf8");
 const sidebar = fs.readFileSync("src/components/admin-sidebar.tsx", "utf8");
-const dashboard = fs.readFileSync("src/app/admin/(painel)/page.tsx", "utf8");
+const dashboard = fs.readFileSync("src/app/admin/(painel)/DashboardPeriodWorkspace.tsx", "utf8");
+const dashboardRoute = fs.readFileSync("src/app/admin/(painel)/page.tsx", "utf8");
 const responsive = fs.readFileSync("src/app/admin/(painel)/admin-responsive.css", "utf8");
 const primitives = fs.readFileSync("src/components/ui/admin-primitives.tsx", "utf8");
 
@@ -12,6 +13,7 @@ test("painel usa Dashboard como nome padronizado", () => {
   assert.match(layout, /label: "Dashboard"/);
   assert.match(sidebar, /name: "Dashboard"/);
   assert.match(dashboard, /title="Dashboard"/);
+  assert.match(dashboardRoute, /<DashboardPeriodWorkspace \/>/);
   assert.doesNotMatch(dashboard, /Painel operacional/);
 });
 
@@ -36,13 +38,16 @@ test("componentes reutilizáveis cobrem páginas, controles, botões, skeleton e
   }
 });
 
-test("dashboard usa largura de pedidos e visão operacional completa", () => {
+test("dashboard usa largura de pedidos, visão operacional e período global", () => {
   assert.match(responsive, /max-width: 1460px/);
-  assert.match(dashboard, /Faturamento \(hoje\)/);
-  assert.match(dashboard, /Pedidos \(hoje\)/);
+  assert.match(dashboard, /Período das métricas/);
+  assert.match(dashboard, /value=\{period\}/);
+  assert.match(dashboard, /Últimos 7 dias/);
+  assert.match(dashboard, /Últimos 30 dias/);
+  assert.match(dashboard, /Todo o período/);
   assert.match(dashboard, /Produtos mais pedidos/);
   assert.match(dashboard, /Fontes de pedidos/);
-  assert.match(dashboard, /Atividade diária/);
+  assert.match(dashboard, /Atividade por horário/);
   assert.match(dashboard, /Pedidos recentes/);
   assert.match(dashboard, /<AreaChart/);
   assert.match(dashboard, /<PieChart>/);
