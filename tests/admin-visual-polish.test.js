@@ -7,11 +7,14 @@ const orders = fs.readFileSync("src/app/admin/(painel)/orders/page.tsx", "utf8")
 const history = fs.readFileSync("src/app/admin/(painel)/history/page.tsx", "utf8");
 const menu = fs.readFileSync("src/app/admin/(painel)/menu/page.tsx", "utf8");
 
-test("dashboard alinha ação no topo e destaca a operação de hoje", () => {
-  assert.match(dashboard, /lg:items-start lg:justify-between/);
-  assert.match(dashboard, />Operação de hoje<\/h3>/);
-  assert.match(dashboard, /flex items-center gap-2 text-\[var\(--brand\)\]/);
-  assert.doesNotMatch(dashboard, />Pulso da loja<\/h3>/);
+test("dashboard segue a referência com cinco indicadores e dois blocos analíticos", () => {
+  assert.match(dashboard, /sm:grid-cols-2 xl:grid-cols-5/);
+  assert.match(dashboard, /xl:grid-cols-12/);
+  assert.match(dashboard, /Faturamento \(hoje\)/);
+  assert.match(dashboard, /Pedidos concluídos/);
+  assert.match(dashboard, /Pedidos cancelados/);
+  assert.match(dashboard, /Fontes de pedidos/);
+  assert.match(dashboard, /Pedidos recentes/);
 });
 
 test("pedidos mantém pagamento em uma linha e pulsa no badge de loja aberta", () => {
