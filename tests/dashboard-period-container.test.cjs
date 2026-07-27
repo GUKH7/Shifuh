@@ -25,3 +25,8 @@ test("opção selecionada mantém o onChange existente", () => {
   assert.match(periodSelect, /aria-selected=\{active\}/);
   assert.match(periodSelect, /PERIOD_HELPERS/);
 });
+
+test("container participa do fluxo e não cobre os gráficos", () => {
+  assert.match(periodSelect, /className="mt-3 w-full min-w-0 overflow-hidden/);
+  assert.doesNotMatch(periodSelect, /className="absolute right-0 top-\[calc\(100%\+0\.65rem\)\]/);
+});
