@@ -43,19 +43,7 @@ jobs:
         run: npm run audit:service-role
 
       - name: Test
-        shell: bash
-        run: |
-          set -o pipefail
-          npm test 2>&1 | tee test-output.txt
-
-      - name: Publicar saída de testes em caso de falha
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-output-${{ github.run_number }}
-          path: test-output.txt
-          if-no-files-found: warn
-          retention-days: 1
+        run: npm test
 
       - name: Lint
         run: npm run lint
