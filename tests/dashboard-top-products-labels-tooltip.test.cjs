@@ -10,7 +10,7 @@ test("dashboard ativa o ajuste dos rótulos de produtos", () => {
   assert.match(page, /DashboardTopProductsEnhancer/);
   assert.match(enhancer, /MAX_PRODUCT_LABEL_LENGTH = 20/);
   assert.match(enhancer, /abbreviateProductLabel/);
-  assert.match(enhancer, /data\.fullProductLabel/);
+  assert.match(enhancer, /dataset\.fullProductLabel/);
   assert.match(enhancer, /replaceChildren\(document\.createTextNode\(shortLabel\)\)/);
 });
 
