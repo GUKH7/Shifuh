@@ -1,24 +1,29 @@
-/* Mantém os títulos das métricas em uma linha sem aumentar a largura dos cards. */
-.page section[class~="xl:grid-cols-5"] > article > div:first-child > div:first-child > p:first-child {
-  white-space: nowrap;
+/*
+ * Os cards de métricas são a primeira seção analítica do Dashboard.
+ * O seletor usa a classe global do shell para não depender das classes
+ * responsivas geradas pelo Tailwind, que podem mudar durante o build.
+ */
+.page :global(.admin-page-shell) > section:first-of-type article > div:first-child > div:first-child > p:first-child {
+  white-space: nowrap !important;
 }
 
 @media (min-width: 1280px) and (max-width: 1535px) {
-  .page section[class~="xl:grid-cols-5"] > article {
+  .page :global(.admin-page-shell) > section:first-of-type article {
     padding: 1rem;
   }
 
-  .page section[class~="xl:grid-cols-5"] > article > div:first-child {
-    gap: 0.625rem;
+  .page :global(.admin-page-shell) > section:first-of-type article > div:first-child {
+    gap: 0.5rem;
   }
 
-  .page section[class~="xl:grid-cols-5"] > article > div:first-child > div:first-child > p:first-child {
-    font-size: 0.8125rem;
-    letter-spacing: -0.01em;
+  .page :global(.admin-page-shell) > section:first-of-type article > div:first-child > div:first-child > p:first-child {
+    font-size: 0.75rem;
+    line-height: 1rem;
+    letter-spacing: -0.015em;
   }
 
-  .page section[class~="xl:grid-cols-5"] > article > div:first-child > div:last-child {
-    width: 2.75rem;
-    height: 2.75rem;
+  .page :global(.admin-page-shell) > section:first-of-type article > div:first-child > div:last-child {
+    width: 2.5rem;
+    height: 2.5rem;
   }
 }
