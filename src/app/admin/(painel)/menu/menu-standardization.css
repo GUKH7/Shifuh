@@ -1,0 +1,60 @@
+.menu-route-skeleton {
+  display: none;
+}
+
+.menu-route-shell:has(.menu-route-content > [role="status"]) .menu-route-skeleton {
+  display: block;
+}
+
+.menu-route-shell:has(.menu-route-content > [role="status"]) .menu-route-content {
+  display: none;
+}
+
+.menu-route-content > div {
+  margin-inline: auto;
+  max-width: 1460px !important;
+  width: 100%;
+}
+
+/* A importação pública do iFood não pertence mais à tela operacional do cardápio. */
+.menu-route-content button:has(.lucide-import) {
+  display: none !important;
+}
+
+.menu-route-content input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="color"]):not([type="range"]),
+.menu-route-content select,
+.menu-route-content textarea {
+  min-height: 44px;
+  border-radius: 1rem;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+.menu-route-content input:focus-visible,
+.menu-route-content select:focus-visible,
+.menu-route-content textarea:focus-visible {
+  border-color: var(--brand) !important;
+  box-shadow: 0 0 0 3px rgba(255, 90, 31, 0.14);
+  outline: none;
+}
+
+.menu-route-content select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-position: right 1rem center;
+  background-repeat: no-repeat;
+  background-size: 1rem;
+  padding-right: 2.75rem !important;
+}
+
+.menu-route-content > div > div:first-child button {
+  min-height: 44px;
+}
+
+@media (max-width: 767px) {
+  .menu-route-content .group[class*="flex-wrap"][class*="px-5"][class*="py-4"] > .min-w-0.flex-1 p.truncate.font-bold {
+    overflow: visible;
+    overflow-wrap: anywhere;
+    text-overflow: clip;
+    white-space: normal;
+  }
+}
