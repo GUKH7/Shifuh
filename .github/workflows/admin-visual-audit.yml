@@ -1,0 +1,63 @@
+name: Auditoria visual do ADM
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: URL opcional para substituir TEST_BASE_URL nesta execução
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: admin-visual-audit
+  cancel-in-progress: true
+
+jobs:
+  visual-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      TEST_BASE_URL: ${{ inputs.base_url || vars.TEST_BASE_URL }}
+      TEST_ADMIN_EMAIL: ${{ secrets.TEST_ADMIN_EMAIL }}
+      TEST_ADMIN_PASSWORD: ${{ secrets.TEST_ADMIN_PASSWORD }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Validar configuração protegida
+        shell: bash
+        run: |
+          test -n "$TEST_BASE_URL" || { echo "TEST_BASE_URL não foi configurada."; exit 1; }
+          test -n "$TEST_ADMIN_EMAIL" || { echo "TEST_ADMIN_EMAIL não foi configurado."; exit 1; }
+          test -n "$TEST_ADMIN_PASSWORD" || { echo "TEST_ADMIN_PASSWORD não foi configurado."; exit 1; }
+
+      - name: Instalar dependências
+        run: npm ci --ignore-scripts
+
+      - name: Instalar Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Capturar e validar páginas do ADM
+        run: npm run visual:audit
+
+      - name: Publicar screenshots e relatório
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-visual-audit-${{ github.run_number }}
+          path: |
+            test-results/visual-audit
+            playwright-report/visual-audit
+          if-no-files-found: warn
+          retention-days: 14
