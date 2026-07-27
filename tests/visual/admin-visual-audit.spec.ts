@@ -13,7 +13,7 @@ const ADMIN_PAGES = [
   { name: "pedidos", path: "/admin/orders" },
   { name: "historico", path: "/admin/history" },
   { name: "cardapios", path: "/admin/menu" },
-  { name: "clientes", path: "/admin/customers" },
+  { name: "clientes", path: "/admin/clients" },
   { name: "cupons", path: "/admin/coupons" },
   { name: "avaliacoes", path: "/admin/reviews" },
   { name: "configuracoes", path: "/admin/settings" },
