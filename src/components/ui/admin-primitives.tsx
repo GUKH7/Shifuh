@@ -1,5 +1,6 @@
 import { forwardRef, type ButtonHTMLAttributes, type HTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
 import { ArrowUpDown, ChevronDown, ChevronUp } from "lucide-react";
+import { AdminDashboardPeriodSelect } from "@/components/ui/admin-dashboard-period-select";
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -47,8 +48,20 @@ export const AdminInput = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLI
 );
 
 export const AdminSelect = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSelectElement>>(
-  function AdminSelect({ className, ...props }, ref) {
-    return <select ref={ref} className={cx("admin-control admin-select", className)} {...props} />;
+  function AdminSelect({ className, id, children, ...props }, ref) {
+    if (id === "dashboard-period") {
+      return (
+        <AdminDashboardPeriodSelect ref={ref} id={id} className={className} {...props}>
+          {children}
+        </AdminDashboardPeriodSelect>
+      );
+    }
+
+    return (
+      <select ref={ref} id={id} className={cx("admin-control admin-select", className)} {...props}>
+        {children}
+      </select>
+    );
   },
 );
 
