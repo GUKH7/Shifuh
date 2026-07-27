@@ -1,0 +1,24 @@
+/* Mantém os títulos das métricas em uma linha sem aumentar a largura dos cards. */
+.page section[class~="xl:grid-cols-5"] > article > div:first-child > div:first-child > p:first-child {
+  white-space: nowrap;
+}
+
+@media (min-width: 1280px) and (max-width: 1535px) {
+  .page section[class~="xl:grid-cols-5"] > article {
+    padding: 1rem;
+  }
+
+  .page section[class~="xl:grid-cols-5"] > article > div:first-child {
+    gap: 0.625rem;
+  }
+
+  .page section[class~="xl:grid-cols-5"] > article > div:first-child > div:first-child > p:first-child {
+    font-size: 0.8125rem;
+    letter-spacing: -0.01em;
+  }
+
+  .page section[class~="xl:grid-cols-5"] > article > div:first-child > div:last-child {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+}
