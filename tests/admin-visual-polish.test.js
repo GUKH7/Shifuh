@@ -2,19 +2,23 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 
-const dashboard = fs.readFileSync("src/app/admin/(painel)/page.tsx", "utf8");
+const dashboard = fs.readFileSync("src/app/admin/(painel)/DashboardPeriodWorkspace.tsx", "utf8");
 const orders = fs.readFileSync("src/app/admin/(painel)/orders/page.tsx", "utf8");
 const history = fs.readFileSync("src/app/admin/(painel)/history/page.tsx", "utf8");
 const menu = fs.readFileSync("src/app/admin/(painel)/menu/page.tsx", "utf8");
 
-test("dashboard segue a referência com cinco indicadores e dois blocos analíticos", () => {
+test("dashboard segue a referência com cinco indicadores e período global", () => {
   assert.match(dashboard, /sm:grid-cols-2 xl:grid-cols-5/);
   assert.match(dashboard, /xl:grid-cols-12/);
-  assert.match(dashboard, /Faturamento \(hoje\)/);
+  assert.match(dashboard, /Período das métricas/);
+  assert.match(dashboard, /Faturamento \(\$\{metricSuffix\}\)/);
   assert.match(dashboard, /Pedidos concluídos/);
   assert.match(dashboard, /Pedidos cancelados/);
   assert.match(dashboard, /Fontes de pedidos/);
   assert.match(dashboard, /Pedidos recentes/);
+  assert.match(dashboard, /vs\. 7 dias anteriores/);
+  assert.match(dashboard, /vs\. 30 dias anteriores/);
+  assert.match(dashboard, /vs\. ano anterior/);
 });
 
 test("pedidos mantém pagamento em uma linha e pulsa no badge de loja aberta", () => {
