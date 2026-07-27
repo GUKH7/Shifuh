@@ -27,8 +27,19 @@ async function login(page: Page) {
   expect(password, "O secret TEST_ADMIN_PASSWORD precisa estar configurado.").toBeTruthy();
 
   await page.goto("/admin/login", { waitUntil: "domcontentloaded" });
-  await page.getByLabel("Email", { exact: true }).fill(email!);
-  await page.getByLabel("Senha", { exact: true }).fill(password!);
+
+  const emailInput = page.locator('input[type="email"]');
+  const passwordInput = page.locator('input[type="password"]');
+
+  await expect(emailInput, "O campo de e-mail não apareceu na tela de login.").toBeVisible({
+    timeout: 10_000,
+  });
+  await expect(passwordInput, "O campo de senha não apareceu na tela de login.").toBeVisible({
+    timeout: 10_000,
+  });
+
+  await emailInput.fill(email!);
+  await passwordInput.fill(password!);
   await page.getByRole("button", { name: "Entrar agora" }).click();
 
   await page.waitForURL(
