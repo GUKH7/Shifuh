@@ -10,7 +10,7 @@ const styles = fs.readFileSync(
 test("títulos dos cards de métricas não quebram em duas linhas", () => {
   assert.match(
     styles,
-    /\.page :global\(\.admin-page-shell\) > section:first-of-type[\s\S]*white-space: nowrap !important;/,
+    /\.page :global\(\.admin-page-shell\) > section\[class\*="xl:grid-cols-5"\][\s\S]*white-space: nowrap !important;/,
   );
   assert.match(styles, /@media \(min-width: 1280px\) and \(max-width: 1535px\)/);
   assert.match(styles, /font-size: 0\.75rem;/);

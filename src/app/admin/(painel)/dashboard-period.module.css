@@ -1,9 +1,8 @@
 /*
- * Os cards de métricas são a primeira seção analítica do Dashboard.
- * O seletor usa a classe global do shell para não depender das classes
- * responsivas geradas pelo Tailwind, que podem mudar durante o build.
+ * A grade de indicadores é localizada pela classe responsiva, evitando que um
+ * painel condicional de datas altere a estilização dos cards.
  */
-.page :global(.admin-page-shell) > section:first-of-type article > div:first-child > div:first-child > p:first-child {
+.page :global(.admin-page-shell) > section[class*="xl:grid-cols-5"] article > div:first-child > div:first-child > p:first-child {
   white-space: nowrap !important;
 }
 
@@ -104,11 +103,11 @@
 }
 
 /*
- * O ranking de produtos é o segundo card da primeira seção de gráficos.
- * Os estilos abaixo mantêm o Recharts, mas dão mais presença às barras,
- * melhoram a leitura dos nomes e criam uma superfície própria para o ranking.
+ * O primeiro bloco analítico é o único grid de doze colunas com três cards.
+ * Essa identificação preserva o visual do ranking mesmo quando o painel de
+ * datas personalizadas é exibido antes dos gráficos.
  */
-.page :global(.admin-page-shell) > section:nth-of-type(2) > article:nth-child(2) {
+.page :global(.admin-page-shell) > section[class*="xl:grid-cols-12"]:has(> article:nth-child(3)) > article:nth-child(2) {
   position: relative;
   overflow: hidden;
   background:
@@ -116,7 +115,7 @@
     linear-gradient(180deg, #fffdfb 0%, #ffffff 58%, #fffaf6 100%);
 }
 
-.page :global(.admin-page-shell) > section:nth-of-type(2) > article:nth-child(2)::after {
+.page :global(.admin-page-shell) > section[class*="xl:grid-cols-12"]:has(> article:nth-child(3)) > article:nth-child(2)::after {
   position: absolute;
   right: -2.5rem;
   bottom: -3rem;
@@ -128,47 +127,47 @@
   pointer-events: none;
 }
 
-.page :global(.admin-page-shell) > section:nth-of-type(2) > article:nth-child(2) > div:first-child {
+.page :global(.admin-page-shell) > section[class*="xl:grid-cols-12"]:has(> article:nth-child(3)) > article:nth-child(2) > div:first-child {
   position: relative;
   z-index: 1;
   padding-bottom: 0.875rem;
   border-bottom: 1px solid rgba(238, 227, 217, 0.8);
 }
 
-.page :global(.admin-page-shell) > section:nth-of-type(2) > article:nth-child(2) > div:first-child > span {
+.page :global(.admin-page-shell) > section[class*="xl:grid-cols-12"]:has(> article:nth-child(3)) > article:nth-child(2) > div:first-child > span {
   border-color: rgba(255, 106, 0, 0.16);
   background: rgba(255, 106, 0, 0.07);
   color: #c65300;
 }
 
-.page :global(.admin-page-shell) > section:nth-of-type(2) > article:nth-child(2) :global(.recharts-wrapper) {
+.page :global(.admin-page-shell) > section[class*="xl:grid-cols-12"]:has(> article:nth-child(3)) > article:nth-child(2) :global(.recharts-wrapper) {
   position: relative;
   z-index: 1;
 }
 
-.page :global(.admin-page-shell) > section:nth-of-type(2) > article:nth-child(2) :global(.recharts-yAxis .recharts-cartesian-axis-tick-value) {
+.page :global(.admin-page-shell) > section[class*="xl:grid-cols-12"]:has(> article:nth-child(3)) > article:nth-child(2) :global(.recharts-yAxis .recharts-cartesian-axis-tick-value) {
   fill: #3f3833;
   font-size: 11px;
   font-weight: 700;
 }
 
-.page :global(.admin-page-shell) > section:nth-of-type(2) > article:nth-child(2) :global(.recharts-bar-rectangle path) {
+.page :global(.admin-page-shell) > section[class*="xl:grid-cols-12"]:has(> article:nth-child(3)) > article:nth-child(2) :global(.recharts-bar-rectangle path) {
   filter: drop-shadow(0 5px 7px rgba(255, 106, 0, 0.18));
   transition: filter 160ms ease, opacity 160ms ease, transform 160ms ease;
   transform-box: fill-box;
   transform-origin: left center;
 }
 
-.page :global(.admin-page-shell) > section:nth-of-type(2) > article:nth-child(2) :global(.recharts-bar-rectangle:hover path) {
+.page :global(.admin-page-shell) > section[class*="xl:grid-cols-12"]:has(> article:nth-child(3)) > article:nth-child(2) :global(.recharts-bar-rectangle:hover path) {
   filter: drop-shadow(0 7px 10px rgba(255, 106, 0, 0.3));
   transform: scaleX(1.025);
 }
 
-.page :global(.admin-page-shell) > section:nth-of-type(2) > article:nth-child(2) :global(.recharts-tooltip-wrapper) {
+.page :global(.admin-page-shell) > section[class*="xl:grid-cols-12"]:has(> article:nth-child(3)) > article:nth-child(2) :global(.recharts-tooltip-wrapper) {
   z-index: 5;
 }
 
-.page :global(.admin-page-shell) > section:nth-of-type(2) > article:nth-child(2) :global(.recharts-default-tooltip) {
+.page :global(.admin-page-shell) > section[class*="xl:grid-cols-12"]:has(> article:nth-child(3)) > article:nth-child(2) :global(.recharts-default-tooltip) {
   border: 1px solid #f1ded0 !important;
   border-radius: 14px !important;
   background: rgba(255, 255, 255, 0.97) !important;
@@ -176,21 +175,21 @@
 }
 
 @media (min-width: 1280px) and (max-width: 1535px) {
-  .page :global(.admin-page-shell) > section:first-of-type article {
+  .page :global(.admin-page-shell) > section[class*="xl:grid-cols-5"] article {
     padding: 1rem;
   }
 
-  .page :global(.admin-page-shell) > section:first-of-type article > div:first-child {
+  .page :global(.admin-page-shell) > section[class*="xl:grid-cols-5"] article > div:first-child {
     gap: 0.5rem;
   }
 
-  .page :global(.admin-page-shell) > section:first-of-type article > div:first-child > div:first-child > p:first-child {
+  .page :global(.admin-page-shell) > section[class*="xl:grid-cols-5"] article > div:first-child > div:first-child > p:first-child {
     font-size: 0.75rem;
     line-height: 1rem;
     letter-spacing: -0.015em;
   }
 
-  .page :global(.admin-page-shell) > section:first-of-type article > div:first-child > div:last-child {
+  .page :global(.admin-page-shell) > section[class*="xl:grid-cols-5"] article > div:first-child > div:last-child {
     width: 2.5rem;
     height: 2.5rem;
   }
@@ -202,7 +201,7 @@
     min-width: 0;
   }
 
-  .page :global(.admin-page-shell) > section:nth-of-type(2) > article:nth-child(2) :global(.recharts-yAxis .recharts-cartesian-axis-tick-value) {
+  .page :global(.admin-page-shell) > section[class*="xl:grid-cols-12"]:has(> article:nth-child(3)) > article:nth-child(2) :global(.recharts-yAxis .recharts-cartesian-axis-tick-value) {
     font-size: 10px;
   }
 }
