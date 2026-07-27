@@ -36,11 +36,17 @@ test("componentes reutilizáveis cobrem páginas, controles, botões, skeleton e
   }
 });
 
-test("dashboard usa largura de pedidos e gráfico de produtos", () => {
+test("dashboard usa largura de pedidos e visão operacional completa", () => {
   assert.match(responsive, /max-width: 1460px/);
+  assert.match(dashboard, /Faturamento \(hoje\)/);
+  assert.match(dashboard, /Pedidos \(hoje\)/);
   assert.match(dashboard, /Produtos mais pedidos/);
-  assert.match(dashboard, /style=\{\{ width: `\$\{percentage\}%` \}\}/);
-  assert.match(dashboard, /Operação de hoje/);
+  assert.match(dashboard, /Fontes de pedidos/);
+  assert.match(dashboard, /Atividade diária/);
+  assert.match(dashboard, /Pedidos recentes/);
+  assert.match(dashboard, /<AreaChart/);
+  assert.match(dashboard, /<PieChart>/);
+  assert.match(dashboard, /<BarChart/);
 });
 
 test("sidebar deixa ícones pretos no hover", () => {
