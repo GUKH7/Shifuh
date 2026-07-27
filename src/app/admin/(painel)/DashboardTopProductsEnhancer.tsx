@@ -5,6 +5,31 @@ import { useEffect } from "react";
 const DESKTOP_PRODUCT_LABEL_LENGTH = 20;
 const MOBILE_PRODUCT_LABEL_LENGTH = 16;
 const MOBILE_BREAKPOINT = 639;
+const MOBILE_STYLE_ID = "dashboard-top-products-mobile-labels";
+
+const MOBILE_STYLE_TEXT = `
+@media (max-width: ${MOBILE_BREAKPOINT}px) {
+  article[data-top-products-card="true"] .recharts-yAxis .recharts-cartesian-axis-tick-value {
+    font-size: 10px !important;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    white-space: pre;
+  }
+
+  article[data-top-products-card="true"] .recharts-yAxis .recharts-cartesian-axis-tick-value tspan:not(:first-child) {
+    display: none;
+  }
+
+  article[data-top-products-card="true"] .recharts-tooltip-wrapper {
+    max-width: calc(100vw - 2rem);
+  }
+
+  article[data-top-products-card="true"] .recharts-default-tooltip {
+    min-width: 180px;
+    max-width: min(260px, calc(100vw - 2rem));
+  }
+}
+`;
 
 function normalizeProductLabel(label: string) {
   return label.replace(/\s+/g, " ").trim();
@@ -46,10 +71,19 @@ function readFullProductLabel(node: SVGTextElement) {
 
 function findTopProductsCard(root: ParentNode) {
   return Array.from(root.querySelectorAll<HTMLElement>("article")).find((article) =>
-    Array.from(article.querySelectorAll("p")).some(
-      (paragraph) => paragraph.textContent?.trim() === "Produtos mais pedidos",
-    ),
+    article.textContent?.includes("Produtos mais pedidos"),
   );
+}
+
+function ensureMobileStyles() {
+  const existingStyle = document.getElementById(MOBILE_STYLE_ID) as HTMLStyleElement | null;
+  if (existingStyle) return existingStyle;
+
+  const style = document.createElement("style");
+  style.id = MOBILE_STYLE_ID;
+  style.textContent = MOBILE_STYLE_TEXT;
+  document.head.appendChild(style);
+  return style;
 }
 
 function enhanceTopProductsChart() {
@@ -82,15 +116,19 @@ function enhanceTopProductsChart() {
 
 export default function DashboardTopProductsEnhancer() {
   useEffect(() => {
+    const mobileStyle = ensureMobileStyles();
     let animationFrame = 0;
-    let delayedEnhancement = 0;
+    let delayedEnhancements: number[] = [];
 
     const scheduleEnhancement = () => {
       window.cancelAnimationFrame(animationFrame);
-      window.clearTimeout(delayedEnhancement);
+      delayedEnhancements.forEach((timeout) => window.clearTimeout(timeout));
 
       animationFrame = window.requestAnimationFrame(enhanceTopProductsChart);
-      delayedEnhancement = window.setTimeout(enhanceTopProductsChart, 120);
+      delayedEnhancements = [
+        window.setTimeout(enhanceTopProductsChart, 100),
+        window.setTimeout(enhanceTopProductsChart, 320),
+      ];
     };
 
     scheduleEnhancement();
@@ -113,11 +151,12 @@ export default function DashboardTopProductsEnhancer() {
 
     return () => {
       window.cancelAnimationFrame(animationFrame);
-      window.clearTimeout(delayedEnhancement);
+      delayedEnhancements.forEach((timeout) => window.clearTimeout(timeout));
       mutationObserver.disconnect();
       resizeObserver?.disconnect();
       window.removeEventListener("resize", scheduleEnhancement);
       window.removeEventListener("orientationchange", scheduleEnhancement);
+      mobileStyle.remove();
     };
   }, []);
 
