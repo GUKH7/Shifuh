@@ -49,6 +49,12 @@ test("dashboard usa largura de pedidos e visão operacional completa", () => {
   assert.match(dashboard, /<BarChart/);
 });
 
+test("pesquisa global fica alinhada à esquerda em todas as páginas", () => {
+  assert.match(layout, /relative w-full min-w-0 max-w-2xl justify-self-start/);
+  assert.doesNotMatch(layout, /relative mx-auto w-full min-w-0 max-w-2xl/);
+  assert.match(layout, /rounded-xl text-gray-600 lg:hidden/);
+});
+
 test("sidebar deixa ícones pretos no hover", () => {
   assert.match(sidebar, /group-hover:text-gray-950/);
 });
