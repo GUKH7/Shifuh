@@ -16,10 +16,14 @@ test("dashboard aplica o módulo de layout do cabeçalho", () => {
   assert.match(pageSource, /<div className=\{headerStyles\.page\}>/);
 });
 
-test("card de período ocupa uma coluna e meia no desktop", () => {
-  assert.match(cssSource, /@media \(min-width: 1280px\)/);
+test("cards de situação da loja e período usam o mesmo tamanho no desktop", () => {
+  assert.match(cssSource, /--dashboard-header-card-width: calc\(30% - 0\.2rem\)/);
+  assert.match(cssSource, /--dashboard-header-card-height: 5\.5rem/);
+  assert.match(cssSource, /> div:first-child > div:last-child \{/);
+  assert.match(cssSource, /width: var\(--dashboard-header-card-width\)/);
+  assert.match(cssSource, /height: var\(--dashboard-header-card-height\)/);
   assert.match(cssSource, /div:has\(> label\[for="dashboard-period"\]\)/);
-  assert.match(cssSource, /width: calc\(30% - 0\.2rem\)/);
+  assert.match(cssSource, /min-height: var\(--dashboard-header-card-height\)/);
   assert.match(cssSource, /margin-left: auto/);
 });
 
