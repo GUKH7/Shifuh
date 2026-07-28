@@ -12,27 +12,31 @@ test("dashboard cria uma coluna própria para os nomes dos produtos", () => {
   assert.match(enhancer, /MOBILE_PRODUCT_LABEL_LENGTH = 16/);
   assert.match(enhancer, /getProductLabelLimit/);
   assert.match(enhancer, /abbreviateProductLabel/);
-  assert.match(enhancer, /topProductsLabelOverlay/);
+  assert.match(enhancer, /top-products-label-overlay/);
+  assert.match(enhancer, /top-products-label/);
   assert.match(enhancer, /createLabelOverlay/);
-  assert.match(enhancer, /tickNode.style.opacity/);
+  assert.match(enhancer, /host\.classList\.add\("top-products-chart-host"\)/);
+  assert.match(enhancer, /card\.dataset\.topProductsCard = "true"/);
 });
 
 test("nomes ficam em uma linha e preservam o texto completo", () => {
-  assert.match(enhancer, /label.textContent = shortLabel/);
-  assert.match(enhancer, /label.title = fullLabel/);
+  assert.match(enhancer, /label\.textContent = abbreviateProductLabel\(fullLabel\)/);
+  assert.match(enhancer, /label\.title = fullLabel/);
   assert.match(enhancer, /aria-label/);
-  assert.match(enhancer, /textOverflow: "ellipsis"/);
-  assert.match(enhancer, /whiteSpace: "nowrap"/);
   assert.match(enhancer, /MutationObserver/);
   assert.match(enhancer, /ResizeObserver/);
   assert.match(enhancer, /orientationchange/);
+  assert.match(styles, /text-overflow: ellipsis/);
+  assert.match(styles, /white-space: nowrap/);
+  assert.match(styles, /recharts-yAxis text/);
+  assert.match(styles, /opacity: 0 !important/);
 });
 
 test("tooltip pode escapar do card sem ser cortado", () => {
-  assert.match(styles, /overflow: visible;/);
-  assert.match(styles, /z-index: 50 !important;/);
+  assert.match(styles, /overflow: visible/);
+  assert.match(styles, /z-index: 50 !important/);
   assert.match(styles, /recharts-tooltip-wrapper/);
   assert.match(styles, /recharts-surface/);
-  assert.match(styles, /white-space: normal !important;/);
-  assert.match(enhancer, /max-width: calc/);
+  assert.match(styles, /white-space: normal !important/);
+  assert.match(styles, /max-width: min\(280px, calc\(100vw - 2rem\)\)/);
 });
