@@ -6,6 +6,7 @@ const DESKTOP_PRODUCT_LABEL_LENGTH = 20;
 const MOBILE_PRODUCT_LABEL_LENGTH = 16;
 const MOBILE_BREAKPOINT = 639;
 const LABEL_OVERLAY_SELECTOR = ".top-products-label-overlay";
+const NATIVE_LABEL_SELECTOR = "[data-top-products-native-label='true']";
 
 function normalizeProductLabel(label: string) {
   return label.replace(/\s+/g, " ").trim();
@@ -47,7 +48,9 @@ function readFullProductLabel(node: SVGTextElement) {
 
 function findTopProductsCard(root: ParentNode) {
   return Array.from(root.querySelectorAll<HTMLElement>("article")).find((article) =>
-    article.textContent?.includes("Produtos mais pedidos"),
+    Array.from(article.querySelectorAll("p")).some(
+      (paragraph) => paragraph.textContent?.trim() === "Produtos mais pedidos",
+    ),
   );
 }
 
@@ -58,21 +61,27 @@ function getChartHost(card: HTMLElement) {
     : null;
 }
 
-function getProductTickNodes(card: HTMLElement) {
-  const selectors = [
-    ".recharts-yAxis .recharts-cartesian-axis-tick-value",
-    ".recharts-yAxis .recharts-cartesian-axis-tick text",
-    ".recharts-yAxis text",
-  ].join(",");
+function getProductTickNodes(card: HTMLElement, host: HTMLElement) {
+  const hostRect = host.getBoundingClientRect();
+  const leftLimit = hostRect.left + Math.min(150, hostRect.width * 0.48);
 
-  return Array.from(new Set(card.querySelectorAll<SVGTextElement>(selectors)))
-    .filter((node) => normalizeProductLabel(node.textContent || "").length > 0);
+  return Array.from(card.querySelectorAll<SVGTextElement>(".recharts-responsive-container svg text"))
+    .filter((node) => {
+      const label = normalizeProductLabel(node.textContent || "");
+      if (!label) return false;
+
+      const rect = node.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0 && rect.left < leftLimit;
+    })
+    .slice(0, 5);
 }
 
 function createLabelOverlay(card: HTMLElement) {
   const host = getChartHost(card);
-  const tickNodes = getProductTickNodes(card);
-  if (!host || tickNodes.length === 0) return;
+  if (!host) return;
+
+  const tickNodes = getProductTickNodes(card, host);
+  if (tickNodes.length === 0) return;
 
   host.classList.add("top-products-chart-host");
   card.dataset.topProductsCard = "true";
@@ -87,7 +96,10 @@ function createLabelOverlay(card: HTMLElement) {
 
   const labels = tickNodes.map((tickNode) => {
     const fullLabel = readFullProductLabel(tickNode);
+    tickNode.dataset.topProductsNativeLabel = "true";
     tickNode.setAttribute("aria-label", fullLabel);
+    tickNode.style.opacity = "0";
+    tickNode.style.visibility = "hidden";
 
     const label = document.createElement("span");
     label.className = "top-products-label";
@@ -96,11 +108,17 @@ function createLabelOverlay(card: HTMLElement) {
     return label;
   });
 
-  overlay.dataset.count = String(Math.min(labels.length, 5));
+  overlay.dataset.count = String(labels.length);
   overlay.replaceChildren(...labels);
 }
 
 function removeLabelOverlay(root: ParentNode) {
+  root.querySelectorAll<SVGTextElement>(NATIVE_LABEL_SELECTOR).forEach((label) => {
+    label.style.opacity = "";
+    label.style.visibility = "";
+    delete label.dataset.topProductsNativeLabel;
+  });
+
   root.querySelectorAll<HTMLElement>(LABEL_OVERLAY_SELECTOR).forEach((overlay) => {
     overlay.parentElement?.classList.remove("top-products-chart-host");
     overlay.remove();
@@ -140,6 +158,7 @@ export default function DashboardTopProductsEnhancer() {
       delayedEnhancements = [
         window.setTimeout(enhance, 120),
         window.setTimeout(enhance, 360),
+        window.setTimeout(enhance, 800),
       ];
     };
 
