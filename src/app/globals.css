@@ -49,6 +49,49 @@ a {
   text-decoration: none;
 }
 
+@layer base {
+  .admin-page-shell :where(input, select, textarea) {
+    accent-color: var(--brand);
+  }
+
+  .admin-page-shell
+    :where(input, select, textarea):not([type="checkbox"]):not([type="radio"]):not([type="file"]):not(.bg-transparent) {
+    min-height: 2.75rem;
+  }
+
+  .admin-page-shell
+    :where(input, select, textarea):not([type="checkbox"]):not([type="radio"]):not([type="file"]):not(.bg-transparent):focus-visible {
+    border-color: var(--brand) !important;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(255, 90, 31, 0.12);
+  }
+
+  .admin-page-shell :where(div, label):has(> input.bg-transparent:focus-visible),
+  .admin-page-shell :where(div, label):has(> textarea.bg-transparent:focus-visible) {
+    border-color: var(--brand) !important;
+    box-shadow: 0 0 0 3px rgba(255, 90, 31, 0.12);
+  }
+
+  .admin-page-shell :where(input, textarea)::placeholder {
+    color: #9c9188;
+    opacity: 1;
+  }
+
+  .admin-page-shell select:not([multiple]) {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%236f6257' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-position: right 0.9rem center;
+    background-repeat: no-repeat;
+    background-size: 1rem;
+    padding-right: 2.75rem !important;
+  }
+
+  .admin-page-shell :where(input, select, textarea):disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+  }
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;
