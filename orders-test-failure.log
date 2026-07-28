@@ -1,0 +1,160 @@
+    '\n' +
+    'function formatSelectedDateLabel(dateValue: string) {\n' +
+    '  const date = new Date(`${dateValue}T12:00:00`);\n' +
+    '  const today = formatDateInputValue();\n' +
+    '  const yesterdayDate = new Date();\n' +
+    '  yesterdayDate.setDate(yesterdayDate.getDate() - 1);\n' +
+    '  const yesterday = formatDateInputValue(yesterdayDate);\n' +
+    '  const shortDate = date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });\n' +
+    '\n' +
+    '  if (dateValue === today) return `Hoje, ${shortDate}`;\n' +
+    '  if (dateValue === yesterday) return `Ontem, ${shortDate}`;\n' +
+    '\n' +
+    '  return date\n' +
+    '    .toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" })\n' +
+    '    .replace(".", "");\n' +
+    '}\n' +
+    '\n' +
+    'function getChannelLabel(order: Order) {\n' +
+    '  if (isIfoodOrder(order)) return "iFood";\n' +
+    '  if (formatIfoodOrderType(order) === "Retirada") return "Balcão";\n' +
+    '  return "WhatsApp";\n' +
+    '}\n' +
+    '\n' +
+    'function getFulfillmentLabel(order: Order) {\n' +
+    '  if (order.address?.fulfillment_type === "pickup") return "Retirada";\n' +
+    '  return formatIfoodOrderType(order) === "Retirada" ? "Retirada" : "Delivery";\n' +
+    '}\n' +
+    '\n' +
+    'function isPickupOrder(order: Order) {\n' +
+    '  return order.address?.fulfillment_type === "pickup" ||\n' +
+    '    (isIfoodOrder(order) && String(getIfoodMeta(order).orderType).toUpperCase() === "TAKEOUT");\n' +
+    '}\n' +
+    '\n' +
+    'function getPrimaryActionLabel(order: Order) {\n' +
+    '  if (order.status === "pending") return "Aceitar pedido";\n' +
+    '  if (order.status === "preparing") {\n' +
+    '    return isPickupOrder(order)\n' +
+    '      ? "Pronto para retirada"\n' +
+    '      : "Despachar pedido";\n' +
+    '  }\n' +
+    '  if (order.status === "delivering") return "Marcar concluído";\n' +
+    '  return "";\n' +
+    '}\n' +
+    '\n' +
+    'function getCompactPrimaryActionLabel(order: Order) {\n' +
+    '  if (order.status === "pending") return "Aceitar";\n' +
+    '  if (order.status === "preparing") {\n' +
+    '    return isPickupOrder(order)\n' +
+    '      ? "Pronto"\n' +
+    '      : "Despachar";\n' +
+    '  }\n' +
+    '  if (order.status === "delivering") return "Concluir";\n' +
+    '  return "";\n' +
+    '}\n' +
+    '\n' +
+    'function getOperationalErrorMessage(error: unknown, fallback = "Tente novamente em instantes.") {\n' +
+    '  const message = error instanceof Error ? error.message : String(error || "");\n' +
+    '  const normalized = message.toLowerCase();\n' +
+    '\n' +
+    '  if (\n' +
+    '    normalized.includes("ifood api") ||\n' +
+    '    normalized.includes("bad request") ||\n' +
+    '    normalized.includes("request failed") ||\n' +
+    '    normalized.includes("unexpected end") ||\n' +
+    '    normalized.includes("json")\n' +
+    '  ) {\n' +
+    '    return "A integração não aceitou essa ação agora. Atualize os pedidos e tente novamente.";\n' +
+    '  }\n' +
+    '\n' +
+    '  return message || fallback;\n' +
+    '}\n' +
+    '\n' +
+    'export default function OrdersPage() {\n' +
+    '  const router = useRouter();\n' +
+    '  const supabase = createBrowserClient(\n' +
+    '    process.env.NEXT_PUBLIC_SUPABASE_URL!,\n' +
+    '    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,\n' +
+    '  );\n' +
+    '\n' +
+    '  const [orders, setOrders] = useState<Order[]>([]);\n' +
+    '  const [loading, setLoading] = useState(true);\n' +
+    '  const [errorMsg, setErrorMsg] = useState("");\n' +
+    '  const [activeStatus, setActiveStatus] = useState<StatusFilter>("all");\n' +
+    '  const [query, setQuery] = useState("");\n' +
+    '  const [selectedDate, setSelectedDate] = useState(() => formatDateInputValue());\n' +
+    '  const [isFiltersOpen, setIsFiltersOpen] = useState(false);\n' +
+    '  const [channelFilter, setChannelFilter] = useState<ChannelFilter>("all");\n' +
+    '  const [fulfillmentFilter, setFulfillmentFilter] = useState<FulfillmentFilter>("all");\n' +
+    '  const [paymentFilter, setPaymentFilter] = useState("all");\n' +
+    '  const [restaurantConfig, setRestaurantConfig] = useState<RestaurantConfig | null>(null);\n' +
+    '  const [restaurantId, setRestaurantId] = useState("");\n' +
+    '  const [lastSeenOrderId, setLastSeenOrderId] = useState("");\n' +
+    '  const [expandedOrders, setExpandedOrders] = useState<string[]>([]);\n' +
+    '  const [busyIfoodAction, setBusyIfoodAction] = useState("");\n' +
+    '  const [statusUpdatingOrderId, setStatusUpdatingOrderId] = useState("");\n' +
+    '  const [cancellationModalOrder, setCancellationModalOrder] = useState<Order | null>(null);\n' +
+    '  const [cancellationReasons, setCancellationReasons] = useState<IfoodCancellationReason[]>([]);\n' +
+    '  const [selectedCancellationCode, setSelectedCancellationCode] = useState("");\n' +
+    '  const [cancellationReasonText, setCancellationReasonText] = useState("");\n' +
+    '  const [ifoodEventsByOrder, setIfoodEventsByOrder] = useState<Record<string, IfoodEventAudit[]>>({});\n' +
+    '  const [loadingIfoodEvents, setLoadingIfoodEvents] = useState<Record<string, boolean>>({});\n' +
+    '  const [expandedIfoodEvent, setExpandedIfoodEvent] = useState("");\n' +
+    '  const [expandedTechnicalOrders, setExpandedTechnicalOrders] = useState<string[]>([]);\n' +
+    '  const [isSummaryOpen, setIsSummaryOpen] = useState(false);\n' +
+    '  const [isChimeEnabled, setIsChimeEnabled] = useState(false);\n' +
+    '  const { showToast } = useToast();\n' +
+    '  const isCurrentDate = selectedDate === formatDateInputValue();\n' +
+    '  const selectedDateLabel = formatSelectedDateLabel(selectedDate);\n' +
+    '\n' +
+    '  useEffect(() => {\n' +
+    '    setIsChimeEnabled(window.localStorage.getItem("orders-chime-enabled") === "true");\n' +
+    '  }, []);\n' +
+    '\n' +
+    '  useEffect(() => {\n' +
+    '    setExpandedOrders([]);\n' +
+    '    setExpandedTechnicalOrders([]);\n' +
+    '    void fetchOrders();\n' +
+    '    // eslint-disable-next-line react-hooks/exhaustive-deps\n' +
+    '  }, [selectedDate]);\n' +
+    '\n' +
+    '  useEffect(() => {\n' +
+    '    if (!restaurantId || !isCurrentDate) return;\n' +
+    '\n' +
+    '    const ordersChannel = supabase\n' +
+    '      .channel(`orders-live-${restaurantId}`)\n' +
+    '      .on(\n' +
+    '        "postgres_changes",\n' +
+    '        {\n' +
+    '          event: "*",\n' +
+    '          schema: "public",\n' +
+    '          table: "orders",\n' +
+    '          filter: `restaurant_id=eq.${restaurantId}`,\n' +
+    '        },\n' +
+    '        async (payload) => {\n' +
+    '          if (payload.eventType === "INSERT" && payload.new?.id && payload.new.id !== lastSeenOrderId) {\n' +
+    '            setLastSeenOrderId(String(payload.new.id));\n' +
+    '            const display = String(payload.new.display_number || 0).padStart(4, "0");\n' +
+    '            if (isChimeEnabled) {\n' +
+    '              playNewOrderChime();\n' +
+    '            }\n' +
+    '            showToast({\n' +
+    '              title: "Novo pedido recebido",\n' +
+    '              description: isChimeEnabled\n' +
+    '                ? `Pedido #${display === "0000" ? String(payload.new.id).slice(0, 4) : display} entrou na fila da operação.`\n' +
+    '                : `Pedido #${display === "0000" ? String(payload.new.id).slice(0, 4) : display} entrou na fila. Ative a campainha para ouvir os proxi'... 68183 more characters
+  
+      at TestContext.<anonymous> (/home/runner/work/gestor_delivery/gestor_delivery/tests/admin-visual-polish.test.js:36:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1325:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+      at Test.postRun (node:internal/test_runner/test:1465:19)
+      at Test.run (node:internal/test_runner/test:1390:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:911:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '"use client";\n\nimport { useEffect, useMemo, useState } from "react";\nimport type { ReactNode } from "react";\nimport { createBrowserClient } from "@supabase/ssr";\nimport { useRouter } from "next/navigation";\nimport {\n  BellRing,\n  Bike,\n  CalendarDays,\n  CheckCircle2,\n  ChevronDown,\n  ClipboardList,\n  Eye,\n  Filter,\n  MapPin,\n  Package,\n  Printer,\n  RefreshCw,\n  Search,\n  ShoppingBag,\n  Store,\n  WalletCards,\n  XCircle,\n} from "lucide-react";\nimport { getCurrentRestaurant } from "@/lib/supabase/restaurant";\nimport { useToast } from "@/components/ui/toast-provider";\nimport { OrderStatusBadge } from "@/components/ui/order-status-badge";\nimport { LiveStatusDot } from "@/components/ui/live-status-dot";\nimport { OrdersSkeleton } from "./OrdersSkeleton";\nimport type { IfoodCancellationReason, IfoodEventAudit, Order, OrderItem } from "./types";\nimport {\n  STATUS_FILTERS,\n  formatDate,\n  formatDateTime,\n  formatDisplayNumber,\n  formatIfoodCancellationStatus,\n  formatIfoodOrderType,\n  formatIfoodPayment,\n  formatIfoodTiming,\n  formatPrice,\n  formatTime,\n  calculateCashChange,\n  getAddonLabel,\n  getAddonPrice,\n  getIfoodBenefitAmount,\n  getIfoodBenefitLabel,\n  getIfoodCancellation,\n  getIfoodMeta,\n  getStatusLabel,\n  isIfoodOrder,\n  listIfoodBenefits,\n  normalizeCancellationReasons,\n  playNewOrderChime,\n} from "./utils";\n\ntype RestaurantConfig = {\n  id: string;\n  name?: string | null;\n  printer_auto_print?: boolean | null;\n  printer_width?: number | null;\n  printer_font_size?: number | null;\n  printer_font_weight?: number | null;\n};\n\ntype OrderStatus = Order["status"];\ntype StatusFilter = (typeof STATUS_FILTERS)[number]["id"];\ntype ChannelFilter = "all" | "ifood" | "whatsapp" | "counter";\ntype FulfillmentFilter = "all" | "delivery" | "pickup";\ntype IfoodAction =\n  | "confirm"\n  | "dispatch"\n  | "ready_to_pickup"\n  | "cancellation_reasons"\n  | "request_cancellation";\n\nconst STATUS_META: Record<OrderStatus, {\n  icon: ReactNode;\n}> = {\n  pending: {\n    icon: <ShoppingBag size={18} />,\n  },\n  preparing: {\n    icon: <Package size={18} />,\n  },\n  delivering: {\n    icon: <Bike size={18} />,\n  },\n  done: {\n    icon: <CheckCircle2 size={18} />,\n  },\n  canceled: {\n    icon: <XCircle size={18} />,\n  },\n};\n\nconst STAT_CARDS: Array<{\n  id: OrderStatus;\n  title: string;\n  tone: string;\n}> = [\n  { id: "pending", title: "Pendentes", tone: "bg-orange-50 text-orange-600" },\n  { id: "preparing", title: "Em preparo", tone: "bg-slate-100 text-slate-600" },\n  { id: "delivering", title: "Em rota", tone: "bg-blue-50 text-blue-600" },\n  { id: "done", title: "Concluídos", tone: "bg-emerald-50 text-emerald-600" },\n  { id: "canceled", title: "Cancelados", tone: "bg-red-50 text-red-600" },\n];\n\nconst LOCAL_CANCELLATION_REASONS: IfoodCancellationReason[] = [\n  { code: "ITEM_UNAVAILABLE", description: "Um ou mais itens ficaram indisponíveis" },\n  { code: "DELIVERY_UNAVAILABLE", description: "Não foi possível realizar a entrega" },\n  { code: "STORE_OPERATION", description: "A loja não conseguirá atender o pedido" },\n  { code: "CUSTOMER_REQUEST", description: "Cancelamento solicitado pelo cliente" },\n  { code: "OTHER", description: "Outro motivo" },\n];\n\nfunction getRelativeOrderTime(dateStr: string) {\n  const minutes = Math.max(0, Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000));\n  if (minutes < 1) return "Agora há pouco";\n  if (minutes < 60) return `${minutes} min atrás`;\n  const hours = Math.floor(minutes / 60);\n  if (hours < 24) return `${hours} h atrás`;\n  return formatDate(dateStr);\n}\n\nfunction formatDateInputValue(date = new Date()) {\n  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);\n  return localDate.toISOString().slice(0, 10);\n}\n\nfunction getSelectedDateRange(dateValue: string) {\n  const startDate = new Date(`${dateValue}T00:00:00`);\n  const endDate = new Date(startDate);\n  endDate.setDate(endDate.getDate() + 1);\n\n  return {\n    start: startDate.toISOString(),\n    end: endDate.toISOString(),\n  };\n}\n\nfunction formatSelectedDateLabel(dateValue: string) {\n  const date = new Date(`${dateValue}T12:00:00`);\n  const today = formatDateInputValue();\n  const yesterdayDate = new Date();\n  yesterdayDate.setDate(yesterdayDate.getDate() - 1);\n  const yesterday = formatDateInputValue(yesterdayDate);\n  const shortDate = date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });\n\n  if (dateValue === today) return `Hoje, ${shortDate}`;\n  if (dateValue === yesterday) return `Ontem, ${shortDate}`;\n\n  return date\n    .toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" })\n    .replace(".", "");\n}\n\nfunction getChannelLabel(order: Order) {\n  if (isIfoodOrder(order)) return "iFood";\n  if (formatIfoodOrderType(order) === "Retirada") return "Balcão";\n  return "WhatsApp";\n}\n\nfunction getFulfillmentLabel(order: Order) {\n  if (order.address?.fulfillment_type === "pickup") return "Retirada";\n  return formatIfoodOrderType(order) === "Retirada" ? "Retirada" : "Delivery";\n}\n\nfunction isPickupOrder(order: Order) {\n  return order.address?.fulfillment_type === "pickup" ||\n    (isIfoodOrder(order) && String(getIfoodMeta(order).orderType).toUpperCase() === "TAKEOUT");\n}\n\nfunction getPrimaryActionLabel(order: Order) {\n  if (order.status === "pending") return "Aceitar pedido";\n  if (order.status === "preparing") {\n    return isPickupOrder(order)\n      ? "Pronto para retirada"\n      : "Despachar pedido";\n  }\n  if (order.status === "delivering") return "Marcar concluído";\n  return "";\n}\n\nfunction getCompactPrimaryActionLabel(order: Order) {\n  if (order.status === "pending") return "Aceitar";\n  if (order.status === "preparing") {\n    return isPickupOrder(order)\n      ? "Pronto"\n      : "Despachar";\n  }\n  if (order.status === "delivering") return "Concluir";\n  return "";\n}\n\nfunction getOperationalErrorMessage(error: unknown, fallback = "Tente novamente em instantes.") {\n  const message = error instanceof Error ? error.message : String(error || "");\n  const normalized = message.toLowerCase();\n\n  if (\n    normalized.includes("ifood api") ||\n    normalized.includes("bad request") ||\n    normalized.includes("request failed") ||\n    normalized.includes("unexpected end") ||\n    normalized.includes("json")\n  ) {\n    return "A integração não aceitou essa ação agora. Atualize os pedidos e tente novamente.";\n  }\n\n  return message || fallback;\n}\n\nexport default function OrdersPage() {\n  const router = useRouter();\n  const supabase = createBrowserClient(\n    process.env.NEXT_PUBLIC_SUPABASE_URL!,\n    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,\n  );\n\n  const [orders, setOrders] = useState<Order[]>([]);\n  const [loading, setLoading] = useState(true);\n  const [errorMsg, setErrorMsg] = useState("");\n  const [activeStatus, setActiveStatus] = useState<StatusFilter>("all");\n  const [query, setQuery] = useState("");\n  const [selectedDate, setSelectedDate] = useState(() => formatDateInputValue());\n  const [isFiltersOpen, setIsFiltersOpen] = useState(false);\n  const [channelFilter, setChannelFilter] = useState<ChannelFilter>("all");\n  const [fulfillmentFilter, setFulfillmentFilter] = useState<FulfillmentFilter>("all");\n  const [paymentFilter, setPaymentFilter] = useState("all");\n  const [restaurantConfig, setRestaurantConfig] = useState<RestaurantConfig | null>(null);\n  const [restaurantId, setRestaurantId] = useState("");\n  const [lastSeenOrderId, setLastSeenOrderId] = useState("");\n  const [expandedOrders, setExpandedOrders] = useState<string[]>([]);\n  const [busyIfoodAction, setBusyIfoodAction] = useState("");\n  const [statusUpdatingOrderId, setStatusUpdatingOrderId] = useState("");\n  const [cancellationModalOrder, setCancellationModalOrder] = useState<Order | null>(null);\n  const [cancellationReasons, setCancellationReasons] = useState<IfoodCancellationReason[]>([]);\n  const [selectedCancellationCode, setSelectedCancellationCode] = useState("");\n  const [cancellationReasonText, setCancellationReasonText] = useState("");\n  const [ifoodEventsByOrder, setIfoodEventsByOrder] = useState<Record<string, IfoodEventAudit[]>>({});\n  const [loadingIfoodEvents, setLoadingIfoodEvents] = useState<Record<string, boolean>>({});\n  const [expandedIfoodEvent, setExpandedIfoodEvent] = useState("");\n  const [expandedTechnicalOrders, setExpandedTechnicalOrders] = useState<string[]>([]);\n  const [isSummaryOpen, setIsSummaryOpen] = useState(false);\n  const [isChimeEnabled, setIsChimeEnabled] = useState(false);\n  const { showToast } = useToast();\n  const isCurrentDate = selectedDate === formatDateInputValue();\n  const selectedDateLabel = formatSelectedDateLabel(selectedDate);\n\n  useEffect(() => {\n    setIsChimeEnabled(window.localStorage.getItem("orders-chime-enabled") === "true");\n  }, []);\n\n  useEffect(() => {\n    setExpandedOrders([]);\n    setExpandedTechnicalOrders([]);\n    void fetchOrders();\n    // eslint-disable-next-line react-hooks/exhaustive-deps\n  }, [selectedDate]);\n\n  useEffect(() => {\n    if (!restaurantId || !isCurrentDate) return;\n\n    const ordersChannel = supabase\n      .channel(`orders-live-${restaurantId}`)\n      .on(\n        "postgres_changes",\n        {\n          event: "*",\n          schema: "public",\n          table: "orders",\n          filter: `restaurant_id=eq.${restaurantId}`,\n        },\n        async (payload) => {\n          if (payload.eventType === "INSERT" && payload.new?.id && payload.new.id !== lastSeenOrderId) {\n            setLastSeenOrderId(String(payload.new.id));\n            const display = String(payload.new.display_number || 0).padStart(4, "0");\n            if (isChimeEnabled) {\n              playNewOrderChime();\n            }\n            showToast({\n              title: "Novo pedido recebido",\n              description: isChimeEnabled\n                ? `Pedido #${display === "0000" ? String(payload.new.id).slice(0, 4) : display} entrou na fila da operação.`\n                : `Pedido #${display === "0000" ? String(payload.new.id).slice(0, 4) : display} entrou na fila. Ative a campainha para ouvir os proxi'... 68183 more characters,
+    expected: /<LiveStatusDot \/>\s+Loja aberta/,
+    operator: 'match',
+    diff: 'simple'
+  }
