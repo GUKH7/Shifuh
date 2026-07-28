@@ -1,0 +1,12 @@
+.page :global(.admin-page-shell) a[aria-label="Abrir configurações da loja"] {
+  display: none !important;
+}
+
+@media (min-width: 1280px) {
+  .page :global(.admin-page-shell) div:has(> label[for="dashboard-period"]) {
+    width: calc(30% - 0.2rem);
+    min-width: 0;
+    max-width: none;
+    margin-left: auto;
+  }
+}
