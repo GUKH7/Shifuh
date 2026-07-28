@@ -12,7 +12,8 @@ const cssSource = fs.readFileSync(cssPath, "utf8");
 
 test("dashboard aplica o módulo de layout do cabeçalho", () => {
   assert.match(pageSource, /import headerStyles from "\.\/dashboard-header-layout\.module\.css"/);
-  assert.match(pageSource, /className=\{`\$\{styles\.page\} \$\{headerStyles\.page\}`\}/);
+  assert.match(pageSource, /<div className=\{styles\.page\}>/);
+  assert.match(pageSource, /<div className=\{headerStyles\.page\}>/);
 });
 
 test("card de período ocupa uma coluna e meia no desktop", () => {
