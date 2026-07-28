@@ -18,6 +18,24 @@ export function calculateDistance(lat1: number, lon1: number, lat2: number, lon2
 export function calculateDeliveryFee(distance: number, tiers: any[]) {
   if (!tiers || tiers.length === 0) return { price: 0, time: 0, valid: true };
 
+  const perKmRule = tiers.find((tier) => tier?.mode === "per_km");
+  if (perKmRule) {
+    const maxDistance = Number(perKmRule.max_distance);
+    const pricePerKm = Math.max(0, Number(perKmRule.price_per_km) || 0);
+    const billedDistance = distance > 0 ? Math.max(1, Math.ceil(distance)) : 0;
+
+    if (!Number.isFinite(maxDistance) || maxDistance <= 0 || distance > maxDistance) {
+      return { price: 0, time: 0, valid: false, billedDistance };
+    }
+
+    return {
+      price: Math.round(billedDistance * pricePerKm * 100) / 100,
+      time: Math.max(0, Number(perKmRule.time) || 0),
+      valid: true,
+      billedDistance,
+    };
+  }
+
   const sortedTiers = [...tiers].sort((a, b) => Number(a.distance) - Number(b.distance));
   const foundTier = sortedTiers.find((tier) => distance <= Number(tier.distance));
 

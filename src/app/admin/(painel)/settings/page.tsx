@@ -82,6 +82,10 @@ export default function SettingsPage() {
   const [storefrontSubheadline, setStorefrontSubheadline] = useState("");
   const [storefrontTheme, setStorefrontTheme] = useState<StorefrontTheme>(DEFAULT_STOREFRONT_THEME);
   const [tiers, setTiers] = useState<DeliveryTier[]>([]);
+  const [deliveryPricingMode, setDeliveryPricingMode] = useState<"tiers" | "per_km">("tiers");
+  const [deliveryPricePerKm, setDeliveryPricePerKm] = useState(2);
+  const [deliveryMaxDistance, setDeliveryMaxDistance] = useState(10);
+  const [deliveryPerKmTime, setDeliveryPerKmTime] = useState(40);
   const [schedule, setSchedule] = useState<WorkHour[]>(DEFAULT_SCHEDULE);
   const [scheduleMode, setScheduleMode] = useState<"shared" | "individual">("shared");
   const [sharedSchedule, setSharedSchedule] = useState({
@@ -193,8 +197,25 @@ export default function SettingsPage() {
           city: data.address_city || "",
           state: data.address_state || "",
         });
-        if (data.delivery_tiers) setTiers(data.delivery_tiers);
-        else setTiers([{ distance: 1, time: 20, price: 0 }]);
+        const savedDeliveryRules = Array.isArray(data.delivery_tiers) ? data.delivery_tiers : [];
+        const perKmRule = savedDeliveryRules.find(
+          (rule: Record<string, unknown>) => rule?.mode === "per_km",
+        ) as Record<string, unknown> | undefined;
+
+        if (perKmRule) {
+          setDeliveryPricingMode("per_km");
+          setDeliveryPricePerKm(Math.max(0, Number(perKmRule.price_per_km) || 0));
+          setDeliveryMaxDistance(Math.max(0.1, Number(perKmRule.max_distance) || 10));
+          setDeliveryPerKmTime(Math.max(0, Number(perKmRule.time) || 40));
+          setTiers([]);
+        } else {
+          setDeliveryPricingMode("tiers");
+          setTiers(
+            savedDeliveryRules.length > 0
+              ? (savedDeliveryRules as DeliveryTier[])
+              : [{ distance: 1, time: 20, price: 0 }],
+          );
+        }
         const normalizedSchedule = normalizeWorkHours(data.work_hours);
         const firstOpenDay = normalizedSchedule.find((day) => day.is_open);
         const sharedTimes = {
@@ -336,6 +357,14 @@ export default function SettingsPage() {
   const handleSave = async () => {
     setSaving(true);
     const sortedTiers = [...tiers].sort((a, b) => a.distance - b.distance);
+    const deliveryRules = deliveryPricingMode === "per_km"
+      ? [{
+          mode: "per_km",
+          price_per_km: Math.max(0, deliveryPricePerKm),
+          max_distance: Math.max(0.1, deliveryMaxDistance),
+          time: Math.max(0, deliveryPerKmTime),
+        }]
+      : sortedTiers;
     const normalizedSchedule = normalizeWorkHours(schedule);
     let latitude: number | null = restaurantLatitude;
     let longitude: number | null = restaurantLongitude;
@@ -360,7 +389,7 @@ export default function SettingsPage() {
       .update({
         name,
         phone,
-        delivery_tiers: sortedTiers,
+        delivery_tiers: deliveryRules,
         work_hours: normalizedSchedule,
         minimum_order_amount: Math.max(0, minimumOrderAmount),
         pickup_enabled: pickupEnabled,
@@ -2007,73 +2036,179 @@ export default function SettingsPage() {
           description="Defina preço e tempo por distância."
           defaultOpen={false}
         >
-          <div className="mt-6 space-y-3">
-            {tiers.map((tier, index) => (
-              <div key={index} className="grid items-end gap-3 rounded-2xl border border-[var(--line)] bg-white p-4 md:grid-cols-[1fr_1fr_1fr_auto]">
-                <label className="space-y-2">
-                  <span className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">
-                    Até quantos km
-                  </span>
-                  <div className="flex items-center rounded-xl border border-[var(--line)] bg-white px-3 focus-within:border-[var(--brand)]">
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.1"
-                      value={tier.distance}
-                      onChange={(e) => updateTier(index, "distance", e.target.value)}
-                      className="w-full py-2 text-sm outline-none"
-                      placeholder="Ex: 3"
-                    />
-                    <span className="text-sm font-bold text-gray-400">km</span>
-                  </div>
-                </label>
+          <div className="mt-6 space-y-4">
+            <div className="grid gap-3 rounded-2xl border border-[var(--line)] bg-[#fcfaf7] p-1 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setDeliveryPricingMode("tiers")}
+                className={`rounded-xl px-4 py-3 text-sm font-bold transition ${
+                  deliveryPricingMode === "tiers"
+                    ? "bg-white text-gray-950 shadow-sm"
+                    : "text-gray-500 hover:text-gray-800"
+                }`}
+              >
+                Faixas de distância
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeliveryPricingMode("per_km")}
+                className={`rounded-xl px-4 py-3 text-sm font-bold transition ${
+                  deliveryPricingMode === "per_km"
+                    ? "bg-white text-gray-950 shadow-sm"
+                    : "text-gray-500 hover:text-gray-800"
+                }`}
+              >
+                Valor por km
+              </button>
+            </div>
 
-                <label className="space-y-2">
-                  <span className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">
-                    Tempo estimado
-                  </span>
-                  <div className="flex items-center rounded-xl border border-[var(--line)] bg-white px-3 focus-within:border-[var(--brand)]">
-                    <input
-                      type="number"
-                      min="0"
-                      value={tier.time}
-                      onChange={(e) => updateTier(index, "time", e.target.value)}
-                      className="w-full py-2 text-sm outline-none"
-                      placeholder="Ex: 30"
-                    />
-                    <span className="text-sm font-bold text-gray-400">min</span>
+            {deliveryPricingMode === "per_km" ? (
+              <div className="rounded-[22px] border border-orange-100 bg-white p-5">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="font-black text-gray-950">Cobrança automática por distância</p>
+                    <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-500">
+                      O sistema cobra cada quilômetro iniciado. Por exemplo, uma entrega de 2,4 km será cobrada como 3 km.
+                    </p>
                   </div>
-                </label>
-
-                <label className="space-y-2">
-                  <span className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">
-                    Valor da entrega
+                  <span className="rounded-full bg-orange-50 px-3 py-2 text-xs font-black text-[var(--brand)]">
+                    Até {deliveryMaxDistance.toLocaleString("pt-BR")} km
                   </span>
-                  <div className="flex items-center rounded-xl border border-[var(--line)] bg-white px-3 focus-within:border-[var(--brand)]">
-                    <span className="mr-2 text-sm font-bold text-gray-400">R$</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={tier.price}
-                      onChange={(e) => updateTier(index, "price", e.target.value)}
-                      className="w-full py-2 text-sm outline-none"
-                      placeholder="Ex: 5,00"
-                    />
-                  </div>
-                </label>
+                </div>
 
-                <button onClick={() => removeTier(index)} className="rounded-xl p-3 text-gray-400 hover:bg-[#fff0e8] hover:text-[var(--brand)]">
-                  <Trash2 size={16} />
+                <div className="mt-5 grid gap-4 md:grid-cols-3">
+                  <label className="space-y-2">
+                    <span className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">
+                      Valor por km
+                    </span>
+                    <div className="flex items-center rounded-xl border border-[var(--line)] bg-white px-3 focus-within:border-[var(--brand)]">
+                      <span className="mr-2 text-sm font-bold text-gray-400">R$</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={deliveryPricePerKm}
+                        onChange={(event) => setDeliveryPricePerKm(Math.max(0, Number(event.target.value) || 0))}
+                        className="w-full py-2 text-sm outline-none"
+                        placeholder="Ex: 2,00"
+                      />
+                    </div>
+                  </label>
+
+                  <label className="space-y-2">
+                    <span className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">
+                      Limite de entrega
+                    </span>
+                    <div className="flex items-center rounded-xl border border-[var(--line)] bg-white px-3 focus-within:border-[var(--brand)]">
+                      <input
+                        type="number"
+                        min="0.1"
+                        step="0.1"
+                        value={deliveryMaxDistance}
+                        onChange={(event) => setDeliveryMaxDistance(Math.max(0.1, Number(event.target.value) || 0.1))}
+                        className="w-full py-2 text-sm outline-none"
+                        placeholder="Ex: 10"
+                      />
+                      <span className="text-sm font-bold text-gray-400">km</span>
+                    </div>
+                  </label>
+
+                  <label className="space-y-2">
+                    <span className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">
+                      Tempo estimado
+                    </span>
+                    <div className="flex items-center rounded-xl border border-[var(--line)] bg-white px-3 focus-within:border-[var(--brand)]">
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={deliveryPerKmTime}
+                        onChange={(event) => setDeliveryPerKmTime(Math.max(0, Number(event.target.value) || 0))}
+                        className="w-full py-2 text-sm outline-none"
+                        placeholder="Ex: 40"
+                      />
+                      <span className="text-sm font-bold text-gray-400">min</span>
+                    </div>
+                  </label>
+                </div>
+
+                <div className="mt-4 rounded-2xl bg-[#fcfaf7] px-4 py-3 text-sm text-gray-600">
+                  <span className="font-bold text-gray-900">Exemplo:</span>{" "}
+                  2,4 km × {deliveryPricePerKm.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}/km ={" "}
+                  {(Math.ceil(2.4) * deliveryPricePerKm).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}.
+                  Distâncias acima de {deliveryMaxDistance.toLocaleString("pt-BR")} km serão bloqueadas no checkout.
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {tiers.map((tier, index) => (
+                  <div key={index} className="grid items-end gap-3 rounded-2xl border border-[var(--line)] bg-white p-4 md:grid-cols-[1fr_1fr_1fr_auto]">
+                    <label className="space-y-2">
+                      <span className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">
+                        Até quantos km
+                      </span>
+                      <div className="flex items-center rounded-xl border border-[var(--line)] bg-white px-3 focus-within:border-[var(--brand)]">
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.1"
+                          value={tier.distance}
+                          onChange={(e) => updateTier(index, "distance", e.target.value)}
+                          className="w-full py-2 text-sm outline-none"
+                          placeholder="Ex: 3"
+                        />
+                        <span className="text-sm font-bold text-gray-400">km</span>
+                      </div>
+                    </label>
+
+                    <label className="space-y-2">
+                      <span className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">
+                        Tempo estimado
+                      </span>
+                      <div className="flex items-center rounded-xl border border-[var(--line)] bg-white px-3 focus-within:border-[var(--brand)]">
+                        <input
+                          type="number"
+                          min="0"
+                          value={tier.time}
+                          onChange={(e) => updateTier(index, "time", e.target.value)}
+                          className="w-full py-2 text-sm outline-none"
+                          placeholder="Ex: 30"
+                        />
+                        <span className="text-sm font-bold text-gray-400">min</span>
+                      </div>
+                    </label>
+
+                    <label className="space-y-2">
+                      <span className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">
+                        Valor da entrega
+                      </span>
+                      <div className="flex items-center rounded-xl border border-[var(--line)] bg-white px-3 focus-within:border-[var(--brand)]">
+                        <span className="mr-2 text-sm font-bold text-gray-400">R$</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={tier.price}
+                          onChange={(e) => updateTier(index, "price", e.target.value)}
+                          className="w-full py-2 text-sm outline-none"
+                          placeholder="Ex: 5,00"
+                        />
+                      </div>
+                    </label>
+
+                    <button onClick={() => removeTier(index)} className="rounded-xl p-3 text-gray-400 hover:bg-[#fff0e8] hover:text-[var(--brand)]">
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
+                <button onClick={addTier} className="rounded-2xl border border-dashed border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-600">
+                  <span className="inline-flex items-center gap-2">
+                    <Plus size={16} />
+                    Adicionar faixa
+                  </span>
                 </button>
               </div>
-            ))}
-            <button onClick={addTier} className="rounded-2xl border border-dashed border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-600">
-              <span className="inline-flex items-center gap-2">
-                <Plus size={16} />
-                Adicionar faixa
-              </span>
-            </button>
+            )}
           </div>
         </CollapsibleSection>
 
