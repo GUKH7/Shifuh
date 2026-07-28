@@ -26,7 +26,7 @@ function AdminGuardSkeleton() {
       <div className="hidden h-screen w-16 border-r border-[var(--line)] bg-white lg:fixed lg:block" />
       <div className="lg:ml-16">
         <div className="h-16 border-b border-[var(--line)] bg-[#fbf7f2] px-3 py-2 sm:h-20 sm:px-4 lg:px-6">
-          <div className="mx-auto grid h-full max-w-[1460px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
+          <div className="admin-page-shell grid h-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
             <AdminSkeleton className="h-10 w-10 lg:hidden" />
             <AdminSkeleton className="h-11 w-full max-w-2xl justify-self-start" />
             <div className="flex gap-2">
@@ -163,72 +163,74 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
         style={{ "--admin-sidebar-width": isCollapsed ? "4rem" : "14rem" } as React.CSSProperties}
       >
         <header className="admin-panel-header sticky top-0 z-30 bg-[#fbf7f2]/95 backdrop-blur">
-          <div className="mx-auto grid min-h-16 max-w-[1460px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-3 py-2 sm:h-20 sm:gap-3 sm:px-4 sm:py-0 lg:px-6">
-            <button
-              type="button"
-              onClick={() => setIsMobileSidebarOpen(true)}
-              aria-label="Abrir menu lateral"
-              className="surface-card inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-gray-600 lg:hidden"
-            >
-              <Menu size={19} />
-            </button>
+          <div className="min-h-16 px-3 py-2 sm:h-20 sm:px-4 sm:py-0 lg:px-6">
+            <div className="admin-page-shell grid h-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 sm:gap-3">
+              <button
+                type="button"
+                onClick={() => setIsMobileSidebarOpen(true)}
+                aria-label="Abrir menu lateral"
+                className="surface-card inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-gray-600 lg:hidden"
+              >
+                <Menu size={19} />
+              </button>
 
-            <div className="relative w-full min-w-0 max-w-2xl justify-self-start">
-              <div className="flex items-center gap-2.5 rounded-xl border border-[var(--line)] bg-white px-3 py-2.5 sm:px-4">
-                <Search size={17} className="shrink-0 text-gray-400" />
-                <input
-                  value={panelSearch}
-                  onChange={(event) => setPanelSearch(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" && searchResults[0]) {
-                      event.preventDefault();
-                      handleGoToSearchResult(searchResults[0].href);
-                    }
-                  }}
-                  placeholder="Pesquisar no painel"
-                  className="min-w-0 w-full bg-transparent text-sm text-gray-700 outline-none placeholder:text-gray-500"
-                />
+              <div className="relative w-full min-w-0 max-w-2xl justify-self-start">
+                <div className="flex items-center gap-2.5 rounded-xl border border-[var(--line)] bg-white px-3 py-2.5 sm:px-4">
+                  <Search size={17} className="shrink-0 text-gray-400" />
+                  <input
+                    value={panelSearch}
+                    onChange={(event) => setPanelSearch(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && searchResults[0]) {
+                        event.preventDefault();
+                        handleGoToSearchResult(searchResults[0].href);
+                      }
+                    }}
+                    placeholder="Pesquisar no painel"
+                    className="min-w-0 w-full bg-transparent text-sm text-gray-700 outline-none placeholder:text-gray-500"
+                  />
+                </div>
+
+                {panelSearch.trim().length > 0 && (
+                  <div className="absolute left-0 right-0 top-[calc(100%+10px)] z-50 overflow-hidden rounded-2xl border border-[var(--line)] bg-white shadow-[0_18px_40px_rgba(17,16,15,0.08)]">
+                    {searchResults.length > 0 ? (
+                      <div className="py-2">
+                        {searchResults.map((item) => (
+                          <button
+                            key={item.href}
+                            onClick={() => handleGoToSearchResult(item.href)}
+                            className="flex w-full items-center justify-between px-4 py-3 text-left text-sm text-gray-700 transition-colors hover:bg-[#fbf7f2]"
+                          >
+                            <span className="font-semibold">{item.label}</span>
+                            <span className="text-xs text-gray-400">Abrir</span>
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="px-4 py-6 text-center text-sm text-gray-500">
+                        Nenhum resultado encontrado no painel.
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
-              {panelSearch.trim().length > 0 && (
-                <div className="absolute left-0 right-0 top-[calc(100%+10px)] z-50 overflow-hidden rounded-2xl border border-[var(--line)] bg-white shadow-[0_18px_40px_rgba(17,16,15,0.08)]">
-                  {searchResults.length > 0 ? (
-                    <div className="py-2">
-                      {searchResults.map((item) => (
-                        <button
-                          key={item.href}
-                          onClick={() => handleGoToSearchResult(item.href)}
-                          className="flex w-full items-center justify-between px-4 py-3 text-left text-sm text-gray-700 transition-colors hover:bg-[#fbf7f2]"
-                        >
-                          <span className="font-semibold">{item.label}</span>
-                          <span className="text-xs text-gray-400">Abrir</span>
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="px-4 py-6 text-center text-sm text-gray-500">
-                      Nenhum resultado encontrado no painel.
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div className="flex shrink-0 items-center justify-end gap-2 sm:gap-2.5">
-              <button
-                type="button"
-                aria-label="Ajuda"
-                className="surface-card hidden h-10 w-10 items-center justify-center rounded-xl text-gray-500 transition-colors hover:text-gray-950 sm:inline-flex"
-              >
-                <HelpCircle size={17} />
-              </button>
-              <button
-                type="button"
-                aria-label="Notificações"
-                className="surface-card inline-flex h-10 w-10 items-center justify-center rounded-xl text-gray-500 transition-colors hover:text-gray-950"
-              >
-                <Bell size={17} />
-              </button>
+              <div className="flex shrink-0 items-center justify-end gap-2 sm:gap-2.5">
+                <button
+                  type="button"
+                  aria-label="Ajuda"
+                  className="surface-card hidden h-10 w-10 items-center justify-center rounded-xl text-gray-500 transition-colors hover:text-gray-950 sm:inline-flex"
+                >
+                  <HelpCircle size={17} />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Notificações"
+                  className="surface-card inline-flex h-10 w-10 items-center justify-center rounded-xl text-gray-500 transition-colors hover:text-gray-950"
+                >
+                  <Bell size={17} />
+                </button>
+              </div>
             </div>
           </div>
         </header>
