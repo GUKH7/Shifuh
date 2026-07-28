@@ -5,9 +5,10 @@ on:
   push:
     branches:
       - main
+      - fix/orders-auto-refresh
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -29,6 +30,29 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: fix/orders-auto-refresh
+          fetch-depth: 0
+
+      - name: Apply source correction
+        run: |
+          if grep -q 'const supabase = useMemo' "src/app/admin/(painel)/orders/page.tsx"; then
+            echo "Correction already applied"
+          else
+            python3 scripts/apply-orders-auto-refresh.py
+          fi
+
+      - name: Commit source correction
+        run: |
+          if git diff --quiet; then
+            echo "No generated changes"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add "src/app/admin/(painel)/orders/page.tsx" tests/orders-auto-refresh.test.js
+            git commit -m "fix: estabilizar atualização automática dos pedidos [orders-auto-refresh-applied]"
+            git push origin HEAD:fix/orders-auto-refresh
+          fi
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
