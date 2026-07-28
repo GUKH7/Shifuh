@@ -6,20 +6,10 @@ const DESKTOP_PRODUCT_LABEL_LENGTH = 20;
 const MOBILE_PRODUCT_LABEL_LENGTH = 16;
 const MOBILE_BREAKPOINT = 639;
 const MOBILE_STYLE_ID = "dashboard-top-products-mobile-labels";
+const LABEL_OVERLAY_SELECTOR = "[data-top-products-label-overlay='true']";
 
 const MOBILE_STYLE_TEXT = `
 @media (max-width: ${MOBILE_BREAKPOINT}px) {
-  article[data-top-products-card="true"] .recharts-yAxis .recharts-cartesian-axis-tick-value {
-    font-size: 10px !important;
-    font-weight: 700;
-    letter-spacing: -0.015em;
-    white-space: pre;
-  }
-
-  article[data-top-products-card="true"] .recharts-yAxis .recharts-cartesian-axis-tick-value tspan:not(:first-child) {
-    display: none;
-  }
-
   article[data-top-products-card="true"] .recharts-tooltip-wrapper {
     max-width: calc(100vw - 2rem);
   }
@@ -75,6 +65,24 @@ function findTopProductsCard(root: ParentNode) {
   );
 }
 
+function getChartHost(card: HTMLElement) {
+  const responsiveContainer = card.querySelector<HTMLElement>(".recharts-responsive-container");
+  return responsiveContainer?.parentElement instanceof HTMLElement
+    ? responsiveContainer.parentElement
+    : null;
+}
+
+function getProductTickNodes(card: HTMLElement) {
+  const selectors = [
+    ".recharts-yAxis .recharts-cartesian-axis-tick-value",
+    ".recharts-yAxis .recharts-cartesian-axis-tick text",
+    ".recharts-yAxis text",
+  ].join(",");
+
+  return Array.from(new Set(card.querySelectorAll<SVGTextElement>(selectors)))
+    .filter((node) => normalizeProductLabel(node.textContent || "").length > 0);
+}
+
 function ensureMobileStyles() {
   const existingStyle = document.getElementById(MOBILE_STYLE_ID) as HTMLStyleElement | null;
   if (existingStyle) return existingStyle;
@@ -86,32 +94,92 @@ function ensureMobileStyles() {
   return style;
 }
 
-function enhanceTopProductsChart() {
-  const shell = document.querySelector(".admin-page-shell");
-  if (!shell) return;
+function createLabelOverlay(card: HTMLElement) {
+  const host = getChartHost(card);
+  const tickNodes = getProductTickNodes(card);
+  if (!host || tickNodes.length === 0) return;
 
-  const card = findTopProductsCard(shell);
-  if (!card) return;
+  const hostRect = host.getBoundingClientRect();
+  if (hostRect.width === 0 || hostRect.height === 0) return;
+
+  if (window.getComputedStyle(host).position === "static") {
+    host.style.position = "relative";
+  }
+
+  let overlay = host.querySelector<HTMLElement>(LABEL_OVERLAY_SELECTOR);
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.dataset.topProductsLabelOverlay = "true";
+    host.appendChild(overlay);
+  }
+
+  overlay.replaceChildren();
+  Object.assign(overlay.style, {
+    position: "absolute",
+    inset: "0",
+    overflow: "visible",
+    pointerEvents: "none",
+    zIndex: "4",
+  });
 
   const isMobile = window.innerWidth <= MOBILE_BREAKPOINT;
+  const axisWidth = isMobile ? 112 : 120;
+
+  tickNodes.forEach((tickNode) => {
+    const fullLabel = readFullProductLabel(tickNode);
+    if (!fullLabel) return;
+
+    const tickRect = tickNode.getBoundingClientRect();
+    const centerY = tickRect.top - hostRect.top + tickRect.height / 2;
+    const shortLabel = abbreviateProductLabel(fullLabel);
+
+    tickNode.dataset.topProductsNativeLabel = "true";
+    tickNode.setAttribute("aria-label", fullLabel);
+    tickNode.style.opacity = "0";
+
+    const label = document.createElement("span");
+    label.textContent = shortLabel;
+    label.title = fullLabel;
+    label.setAttribute("aria-hidden", "true");
+    Object.assign(label.style, {
+      position: "absolute",
+      left: "0",
+      top: `${centerY}px`,
+      width: `${axisWidth}px`,
+      paddingRight: "8px",
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      whiteSpace: "nowrap",
+      textAlign: "right",
+      color: "#3f3833",
+      fontSize: isMobile ? "10px" : "11px",
+      fontWeight: "700",
+      lineHeight: "1.15",
+      letterSpacing: isMobile ? "-0.015em" : "normal",
+      transform: "translateY(-50%)",
+    });
+    overlay.appendChild(label);
+  });
+
   card.dataset.topProductsCard = "true";
   card.dataset.mobileLabels = isMobile ? "true" : "false";
+}
 
-  card
-    .querySelectorAll<SVGTextElement>(".recharts-yAxis .recharts-cartesian-axis-tick-value")
-    .forEach((labelNode) => {
-      const fullLabel = readFullProductLabel(labelNode);
-      if (!fullLabel) return;
-
-      const shortLabel = abbreviateProductLabel(fullLabel);
-      if (labelNode.textContent !== shortLabel || labelNode.querySelector("tspan")) {
-        labelNode.replaceChildren(document.createTextNode(shortLabel));
-      }
-
-      labelNode.setAttribute("aria-label", fullLabel);
-      labelNode.setAttribute("xml:space", "preserve");
-      labelNode.style.whiteSpace = "pre";
+function restoreNativeLabels(root: ParentNode) {
+  root.querySelectorAll<SVGTextElement>("[data-top-products-native-label='true']")
+    .forEach((node) => {
+      node.style.opacity = "";
+      delete node.dataset.topProductsNativeLabel;
     });
+
+  root.querySelectorAll<HTMLElement>(LABEL_OVERLAY_SELECTOR).forEach((overlay) => overlay.remove());
+}
+
+function isOverlayMutation(mutation: MutationRecord) {
+  const target = mutation.target instanceof Element
+    ? mutation.target
+    : mutation.target.parentElement;
+  return Boolean(target?.closest(LABEL_OVERLAY_SELECTOR));
 }
 
 export default function DashboardTopProductsEnhancer() {
@@ -120,21 +188,33 @@ export default function DashboardTopProductsEnhancer() {
     let animationFrame = 0;
     let delayedEnhancements: number[] = [];
 
+    const enhance = () => {
+      const shell = document.querySelector(".admin-page-shell");
+      if (!shell) return;
+
+      const card = findTopProductsCard(shell);
+      if (!card) return;
+      createLabelOverlay(card);
+    };
+
     const scheduleEnhancement = () => {
       window.cancelAnimationFrame(animationFrame);
       delayedEnhancements.forEach((timeout) => window.clearTimeout(timeout));
 
-      animationFrame = window.requestAnimationFrame(enhanceTopProductsChart);
+      animationFrame = window.requestAnimationFrame(enhance);
       delayedEnhancements = [
-        window.setTimeout(enhanceTopProductsChart, 100),
-        window.setTimeout(enhanceTopProductsChart, 320),
+        window.setTimeout(enhance, 120),
+        window.setTimeout(enhance, 360),
       ];
     };
 
     scheduleEnhancement();
 
     const observedRoot = document.querySelector(".admin-page-shell") || document.body;
-    const mutationObserver = new MutationObserver(scheduleEnhancement);
+    const mutationObserver = new MutationObserver((mutations) => {
+      if (mutations.every(isOverlayMutation)) return;
+      scheduleEnhancement();
+    });
     mutationObserver.observe(observedRoot, {
       childList: true,
       subtree: true,
@@ -156,6 +236,7 @@ export default function DashboardTopProductsEnhancer() {
       resizeObserver?.disconnect();
       window.removeEventListener("resize", scheduleEnhancement);
       window.removeEventListener("orientationchange", scheduleEnhancement);
+      restoreNativeLabels(observedRoot);
       mobileStyle.remove();
     };
   }, []);
