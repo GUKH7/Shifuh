@@ -155,6 +155,58 @@
   font-weight: 700;
 }
 
+.page :global(article[data-top-products-card="true"] .recharts-yAxis text) {
+  opacity: 0 !important;
+}
+
+.page :global(.top-products-chart-host) {
+  position: relative !important;
+}
+
+.page :global(.top-products-label-overlay) {
+  position: absolute;
+  z-index: 4;
+  top: 4px;
+  bottom: 4px;
+  left: 0;
+  display: grid;
+  width: 118px;
+  pointer-events: none;
+}
+
+.page :global(.top-products-label-overlay[data-count="1"]) {
+  grid-template-rows: repeat(1, minmax(0, 1fr));
+}
+
+.page :global(.top-products-label-overlay[data-count="2"]) {
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+
+.page :global(.top-products-label-overlay[data-count="3"]) {
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+}
+
+.page :global(.top-products-label-overlay[data-count="4"]) {
+  grid-template-rows: repeat(4, minmax(0, 1fr));
+}
+
+.page :global(.top-products-label-overlay[data-count="5"]) {
+  grid-template-rows: repeat(5, minmax(0, 1fr));
+}
+
+.page :global(.top-products-label) {
+  align-self: center;
+  overflow: hidden;
+  padding-right: 8px;
+  color: #3f3833;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.15;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .page :global(.admin-page-shell) > section[class*="xl:grid-cols-12"]:has(> article:nth-child(3)) > article:nth-child(2) :global(.recharts-bar-rectangle path) {
   filter: drop-shadow(0 5px 7px rgba(255, 106, 0, 0.18));
   transition: filter 160ms ease, opacity 160ms ease, transform 160ms ease;
@@ -211,5 +263,15 @@
 
   .page :global(.admin-page-shell) > section[class*="xl:grid-cols-12"]:has(> article:nth-child(3)) > article:nth-child(2) :global(.recharts-yAxis .recharts-cartesian-axis-tick-value) {
     font-size: 10px;
+  }
+
+  .page :global(.top-products-label-overlay) {
+    width: 112px;
+  }
+
+  .page :global(.top-products-label) {
+    padding-right: 7px;
+    font-size: 10px;
+    letter-spacing: -0.015em;
   }
 }
