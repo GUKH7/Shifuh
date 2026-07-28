@@ -5,21 +5,7 @@ import { useEffect } from "react";
 const DESKTOP_PRODUCT_LABEL_LENGTH = 20;
 const MOBILE_PRODUCT_LABEL_LENGTH = 16;
 const MOBILE_BREAKPOINT = 639;
-const MOBILE_STYLE_ID = "dashboard-top-products-mobile-labels";
-const LABEL_OVERLAY_SELECTOR = "[data-top-products-label-overlay='true']";
-
-const MOBILE_STYLE_TEXT = `
-@media (max-width: ${MOBILE_BREAKPOINT}px) {
-  article[data-top-products-card="true"] .recharts-tooltip-wrapper {
-    max-width: calc(100vw - 2rem);
-  }
-
-  article[data-top-products-card="true"] .recharts-default-tooltip {
-    min-width: 180px;
-    max-width: min(260px, calc(100vw - 2rem));
-  }
-}
-`;
+const LABEL_OVERLAY_SELECTOR = ".top-products-label-overlay";
 
 function normalizeProductLabel(label: string) {
   return label.replace(/\s+/g, " ").trim();
@@ -83,96 +69,46 @@ function getProductTickNodes(card: HTMLElement) {
     .filter((node) => normalizeProductLabel(node.textContent || "").length > 0);
 }
 
-function ensureMobileStyles() {
-  const existingStyle = document.getElementById(MOBILE_STYLE_ID) as HTMLStyleElement | null;
-  if (existingStyle) return existingStyle;
-
-  const style = document.createElement("style");
-  style.id = MOBILE_STYLE_ID;
-  style.textContent = MOBILE_STYLE_TEXT;
-  document.head.appendChild(style);
-  return style;
-}
-
 function createLabelOverlay(card: HTMLElement) {
   const host = getChartHost(card);
   const tickNodes = getProductTickNodes(card);
   if (!host || tickNodes.length === 0) return;
 
-  const hostRect = host.getBoundingClientRect();
-  if (hostRect.width === 0 || hostRect.height === 0) return;
-
-  if (window.getComputedStyle(host).position === "static") {
-    host.style.position = "relative";
-  }
+  host.classList.add("top-products-chart-host");
+  card.dataset.topProductsCard = "true";
 
   let overlay = host.querySelector<HTMLElement>(LABEL_OVERLAY_SELECTOR);
   if (!overlay) {
     overlay = document.createElement("div");
-    overlay.dataset.topProductsLabelOverlay = "true";
+    overlay.className = "top-products-label-overlay";
+    overlay.setAttribute("aria-hidden", "true");
     host.appendChild(overlay);
   }
 
-  overlay.replaceChildren();
-  Object.assign(overlay.style, {
-    position: "absolute",
-    inset: "0",
-    overflow: "visible",
-    pointerEvents: "none",
-    zIndex: "4",
-  });
-
-  const isMobile = window.innerWidth <= MOBILE_BREAKPOINT;
-  const axisWidth = isMobile ? 112 : 120;
-
-  tickNodes.forEach((tickNode) => {
+  const labels = tickNodes.map((tickNode) => {
     const fullLabel = readFullProductLabel(tickNode);
-    if (!fullLabel) return;
-
-    const tickRect = tickNode.getBoundingClientRect();
-    const centerY = tickRect.top - hostRect.top + tickRect.height / 2;
-    const shortLabel = abbreviateProductLabel(fullLabel);
-
-    tickNode.dataset.topProductsNativeLabel = "true";
     tickNode.setAttribute("aria-label", fullLabel);
-    tickNode.style.opacity = "0";
 
     const label = document.createElement("span");
-    label.textContent = shortLabel;
+    label.className = "top-products-label";
+    label.textContent = abbreviateProductLabel(fullLabel);
     label.title = fullLabel;
-    label.setAttribute("aria-hidden", "true");
-    Object.assign(label.style, {
-      position: "absolute",
-      left: "0",
-      top: `${centerY}px`,
-      width: `${axisWidth}px`,
-      paddingRight: "8px",
-      overflow: "hidden",
-      textOverflow: "ellipsis",
-      whiteSpace: "nowrap",
-      textAlign: "right",
-      color: "#3f3833",
-      fontSize: isMobile ? "10px" : "11px",
-      fontWeight: "700",
-      lineHeight: "1.15",
-      letterSpacing: isMobile ? "-0.015em" : "normal",
-      transform: "translateY(-50%)",
-    });
-    overlay.appendChild(label);
+    return label;
   });
 
-  card.dataset.topProductsCard = "true";
-  card.dataset.mobileLabels = isMobile ? "true" : "false";
+  overlay.dataset.count = String(Math.min(labels.length, 5));
+  overlay.replaceChildren(...labels);
 }
 
-function restoreNativeLabels(root: ParentNode) {
-  root.querySelectorAll<SVGTextElement>("[data-top-products-native-label='true']")
-    .forEach((node) => {
-      node.style.opacity = "";
-      delete node.dataset.topProductsNativeLabel;
-    });
+function removeLabelOverlay(root: ParentNode) {
+  root.querySelectorAll<HTMLElement>(LABEL_OVERLAY_SELECTOR).forEach((overlay) => {
+    overlay.parentElement?.classList.remove("top-products-chart-host");
+    overlay.remove();
+  });
 
-  root.querySelectorAll<HTMLElement>(LABEL_OVERLAY_SELECTOR).forEach((overlay) => overlay.remove());
+  root.querySelectorAll<HTMLElement>("[data-top-products-card='true']").forEach((card) => {
+    delete card.dataset.topProductsCard;
+  });
 }
 
 function isOverlayMutation(mutation: MutationRecord) {
@@ -184,7 +120,6 @@ function isOverlayMutation(mutation: MutationRecord) {
 
 export default function DashboardTopProductsEnhancer() {
   useEffect(() => {
-    const mobileStyle = ensureMobileStyles();
     let animationFrame = 0;
     let delayedEnhancements: number[] = [];
 
@@ -236,8 +171,7 @@ export default function DashboardTopProductsEnhancer() {
       resizeObserver?.disconnect();
       window.removeEventListener("resize", scheduleEnhancement);
       window.removeEventListener("orientationchange", scheduleEnhancement);
-      restoreNativeLabels(observedRoot);
-      mobileStyle.remove();
+      removeLabelOverlay(observedRoot);
     };
   }, []);
 
