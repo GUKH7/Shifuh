@@ -13,7 +13,7 @@ permissions:
 
 concurrency:
   group: apply-orders-date-filters
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   apply:
