@@ -5,8 +5,10 @@ import "./dashboard-card-heights.module.css";
 
 export default function AdminHomePage() {
   return (
-    <div className={`${styles.page} ${headerStyles.page}`}>
-      <DashboardPeriodWorkspace />
+    <div className={styles.page}>
+      <div className={headerStyles.page}>
+        <DashboardPeriodWorkspace />
+      </div>
     </div>
   );
 }
