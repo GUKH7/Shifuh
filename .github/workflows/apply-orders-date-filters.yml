@@ -69,13 +69,33 @@ jobs:
         run: npm run audit:service-role
 
       - name: Test
-        run: npm test
+        id: tests
+        run: |
+          set +e
+          npm test > /tmp/orders-tests.log 2>&1
+          status=$?
+          if [ "$status" -ne 0 ]; then
+            tail -n 160 /tmp/orders-tests.log > orders-test-failure.log
+            exit "$status"
+          fi
+
+      - name: Commit test diagnostics
+        if: failure() && steps.tests.outcome == 'failure'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add orders-test-failure.log
+          git commit -m "chore: registrar falha dos testes de pedidos [orders-tests-diagnostic]"
+          git push origin HEAD:agent/orders-date-filters
 
       - name: Lint
+        if: success()
         run: npm run lint
 
       - name: Typecheck
+        if: success()
         run: npm run typecheck
 
       - name: Build
+        if: success()
         run: npm run build
