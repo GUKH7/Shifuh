@@ -36,12 +36,6 @@ jobs:
           ref: agent/orders-date-filters
           fetch-depth: 0
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-
       - name: Apply source changes
         run: |
           if [ -f tests/orders-date-filters.test.js ]; then
@@ -49,12 +43,6 @@ jobs:
             exit 0
           fi
           python3 scripts/apply-orders-date-filters.py
-
-      - name: Install locked dependencies
-        run: npm ci --ignore-scripts
-
-      - name: Validate project
-        run: npm run validate
 
       - name: Commit generated changes
         run: |
@@ -67,3 +55,27 @@ jobs:
           git add "src/app/admin/(painel)/orders/page.tsx" tests/orders-date-filters.test.js
           git commit -m "feat: tornar data e filtros de pedidos funcionais [orders-filters-applied]"
           git push origin HEAD:agent/orders-date-filters
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Audit service role usage
+        run: npm run audit:service-role
+
+      - name: Test
+        run: npm test
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
