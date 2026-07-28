@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useRouter } from "next/navigation";
@@ -212,9 +212,12 @@ function getOperationalErrorMessage(error: unknown, fallback = "Tente novamente 
 
 export default function OrdersPage() {
   const router = useRouter();
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  const supabase = useMemo(
+    () => createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    ),
+    [],
   );
 
   const [orders, setOrders] = useState<Order[]>([]);
@@ -229,7 +232,7 @@ export default function OrdersPage() {
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [restaurantConfig, setRestaurantConfig] = useState<RestaurantConfig | null>(null);
   const [restaurantId, setRestaurantId] = useState("");
-  const [lastSeenOrderId, setLastSeenOrderId] = useState("");
+  const lastSeenOrderIdRef = useRef("");
   const [expandedOrders, setExpandedOrders] = useState<string[]>([]);
   const [busyIfoodAction, setBusyIfoodAction] = useState("");
   const [statusUpdatingOrderId, setStatusUpdatingOrderId] = useState("");
@@ -272,8 +275,8 @@ export default function OrdersPage() {
           filter: `restaurant_id=eq.${restaurantId}`,
         },
         async (payload) => {
-          if (payload.eventType === "INSERT" && payload.new?.id && payload.new.id !== lastSeenOrderId) {
-            setLastSeenOrderId(String(payload.new.id));
+          if (payload.eventType === "INSERT" && payload.new?.id && payload.new.id !== lastSeenOrderIdRef.current) {
+            lastSeenOrderIdRef.current = String(payload.new.id);
             const display = String(payload.new.display_number || 0).padStart(4, "0");
             if (isChimeEnabled) {
               playNewOrderChime();
@@ -312,7 +315,7 @@ export default function OrdersPage() {
       supabase.removeChannel(itemsChannel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isChimeEnabled, isCurrentDate, lastSeenOrderId, restaurantId, showToast, supabase]);
+  }, [isChimeEnabled, isCurrentDate, restaurantId, showToast, supabase]);
 
   useEffect(() => {
     if (!restaurantId || !isCurrentDate) return;
@@ -353,6 +356,29 @@ export default function OrdersPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCurrentDate, restaurantId]);
 
+  useEffect(() => {
+    if (!restaurantId || !isCurrentDate) return;
+
+    const refreshOrders = () => {
+      void fetchOrders(false);
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") refreshOrders();
+    };
+
+    const intervalId = window.setInterval(refreshOrders, 12000);
+    window.addEventListener("focus", refreshOrders);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", refreshOrders);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+    // O polling funciona como contingência quando o websocket do Realtime é interrompido.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCurrentDate, restaurantId]);
+
   const fetchOrders = async (showLoading = true) => {
     if (showLoading) setLoading(true);
     try {
@@ -388,8 +414,8 @@ export default function OrdersPage() {
 
       setOrders(mappedOrders);
 
-      if (mappedOrders.length > 0) {
-        setLastSeenOrderId((current) => current || String(mappedOrders[0].id));
+      if (mappedOrders.length > 0 && !lastSeenOrderIdRef.current) {
+        lastSeenOrderIdRef.current = String(mappedOrders[0].id);
       }
     } catch (err) {
       console.error(err);
