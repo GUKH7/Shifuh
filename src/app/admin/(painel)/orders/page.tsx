@@ -49,7 +49,6 @@ import {
   getIfoodMeta,
   getStatusLabel,
   isIfoodOrder,
-  isToday,
   listIfoodBenefits,
   normalizeCancellationReasons,
   playNewOrderChime,
@@ -66,6 +65,8 @@ type RestaurantConfig = {
 
 type OrderStatus = Order["status"];
 type StatusFilter = (typeof STATUS_FILTERS)[number]["id"];
+type ChannelFilter = "all" | "ifood" | "whatsapp" | "counter";
+type FulfillmentFilter = "all" | "delivery" | "pickup";
 type IfoodAction =
   | "confirm"
   | "dispatch"
@@ -122,9 +123,41 @@ function getRelativeOrderTime(dateStr: string) {
   return formatDate(dateStr);
 }
 
+function formatDateInputValue(date = new Date()) {
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return localDate.toISOString().slice(0, 10);
+}
+
+function getSelectedDateRange(dateValue: string) {
+  const startDate = new Date(`${dateValue}T00:00:00`);
+  const endDate = new Date(startDate);
+  endDate.setDate(endDate.getDate() + 1);
+
+  return {
+    start: startDate.toISOString(),
+    end: endDate.toISOString(),
+  };
+}
+
+function formatSelectedDateLabel(dateValue: string) {
+  const date = new Date(`${dateValue}T12:00:00`);
+  const today = formatDateInputValue();
+  const yesterdayDate = new Date();
+  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+  const yesterday = formatDateInputValue(yesterdayDate);
+  const shortDate = date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+
+  if (dateValue === today) return `Hoje, ${shortDate}`;
+  if (dateValue === yesterday) return `Ontem, ${shortDate}`;
+
+  return date
+    .toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" })
+    .replace(".", "");
+}
+
 function getChannelLabel(order: Order) {
   if (isIfoodOrder(order)) return "iFood";
-  if (formatIfoodOrderType(order) === "Retirada") return "Balcao";
+  if (formatIfoodOrderType(order) === "Retirada") return "Balcão";
   return "WhatsApp";
 }
 
@@ -189,6 +222,11 @@ export default function OrdersPage() {
   const [errorMsg, setErrorMsg] = useState("");
   const [activeStatus, setActiveStatus] = useState<StatusFilter>("all");
   const [query, setQuery] = useState("");
+  const [selectedDate, setSelectedDate] = useState(() => formatDateInputValue());
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [channelFilter, setChannelFilter] = useState<ChannelFilter>("all");
+  const [fulfillmentFilter, setFulfillmentFilter] = useState<FulfillmentFilter>("all");
+  const [paymentFilter, setPaymentFilter] = useState("all");
   const [restaurantConfig, setRestaurantConfig] = useState<RestaurantConfig | null>(null);
   const [restaurantId, setRestaurantId] = useState("");
   const [lastSeenOrderId, setLastSeenOrderId] = useState("");
@@ -206,15 +244,22 @@ export default function OrdersPage() {
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
   const [isChimeEnabled, setIsChimeEnabled] = useState(false);
   const { showToast } = useToast();
+  const isCurrentDate = selectedDate === formatDateInputValue();
+  const selectedDateLabel = formatSelectedDateLabel(selectedDate);
 
   useEffect(() => {
-    void fetchOrders();
     setIsChimeEnabled(window.localStorage.getItem("orders-chime-enabled") === "true");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (!restaurantId) return;
+    setExpandedOrders([]);
+    setExpandedTechnicalOrders([]);
+    void fetchOrders();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate]);
+
+  useEffect(() => {
+    if (!restaurantId || !isCurrentDate) return;
 
     const ordersChannel = supabase
       .channel(`orders-live-${restaurantId}`)
@@ -267,10 +312,10 @@ export default function OrdersPage() {
       supabase.removeChannel(itemsChannel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isChimeEnabled, lastSeenOrderId, restaurantId, showToast, supabase]);
+  }, [isChimeEnabled, isCurrentDate, lastSeenOrderId, restaurantId, showToast, supabase]);
 
   useEffect(() => {
-    if (!restaurantId) return;
+    if (!restaurantId || !isCurrentDate) return;
 
     let isRunning = false;
     let isCancelled = false;
@@ -306,7 +351,7 @@ export default function OrdersPage() {
       window.clearInterval(intervalId);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [restaurantId]);
+  }, [isCurrentDate, restaurantId]);
 
   const fetchOrders = async (showLoading = true) => {
     if (showLoading) setLoading(true);
@@ -321,11 +366,13 @@ export default function OrdersPage() {
       setRestaurantConfig(resto);
       setRestaurantId(resto.id);
 
+      const { start, end } = getSelectedDateRange(selectedDate);
       const { data, error } = await supabase
         .from("orders")
         .select("id, customer_name, customer_phone, total, subtotal, delivery_fee, discount, status, payment_method, display_number, external_source, external_order_id, external_display_id, external_payload, is_test, scheduled_for, created_at, address, change_for, order_items (*)")
         .eq("restaurant_id", resto.id)
         .in("status", ["pending", "preparing", "delivering", "done", "canceled"])
+        .or(`and(created_at.gte.${start},created_at.lt.${end}),and(scheduled_for.gte.${start},scheduled_for.lt.${end})`)
         .order("created_at", { ascending: false });
 
       if (error) {
@@ -334,12 +381,10 @@ export default function OrdersPage() {
       }
 
       type OrderRow = Omit<Order, "items"> & { order_items?: Order["items"] | null };
-      const mappedOrders = ((data || []) as OrderRow[])
-        .map((order) => ({
-          ...order,
-          items: order.order_items || [],
-        }))
-        .filter((order: Order) => isToday(order.created_at) || Boolean(order.scheduled_for && isToday(order.scheduled_for))) as Order[];
+      const mappedOrders = ((data || []) as OrderRow[]).map((order) => ({
+        ...order,
+        items: order.order_items || [],
+      })) as Order[];
 
       setOrders(mappedOrders);
 
@@ -701,13 +746,23 @@ export default function OrdersPage() {
     });
   };
 
-  const filteredOrders = useMemo(() => {
+  const paymentOptions = useMemo(
+    () =>
+      Array.from(new Set(orders.map((order) => formatIfoodPayment(order)).filter(Boolean))).sort(
+        (left, right) => left.localeCompare(right, "pt-BR"),
+      ),
+    [orders],
+  );
+
+  const baseFilteredOrders = useMemo(() => {
     const term = query.trim().toLowerCase();
 
     return orders.filter((order) => {
-      const matchesStatus = activeStatus === "all" ? true : order.status === activeStatus;
       const displayLabel = formatDisplayNumber(order).toLowerCase();
       const itemNames = order.items.map((item) => item.product_name || item.name || "").join(" ").toLowerCase();
+      const channelLabel = getChannelLabel(order);
+      const fulfillmentLabel = getFulfillmentLabel(order);
+      const paymentLabel = formatIfoodPayment(order);
       const matchesQuery =
         term.length === 0
           ? true
@@ -715,26 +770,43 @@ export default function OrdersPage() {
             displayLabel.includes(term) ||
             order.customer_name.toLowerCase().includes(term) ||
             order.customer_phone.toLowerCase().includes(term) ||
-            itemNames.includes(term);
+            itemNames.includes(term) ||
+            channelLabel.toLowerCase().includes(term) ||
+            paymentLabel.toLowerCase().includes(term);
+      const matchesChannel =
+        channelFilter === "all" ||
+        (channelFilter === "ifood" && channelLabel === "iFood") ||
+        (channelFilter === "whatsapp" && channelLabel === "WhatsApp") ||
+        (channelFilter === "counter" && channelLabel === "Balcão");
+      const matchesFulfillment =
+        fulfillmentFilter === "all" ||
+        (fulfillmentFilter === "pickup" && fulfillmentLabel === "Retirada") ||
+        (fulfillmentFilter === "delivery" && fulfillmentLabel === "Delivery");
+      const matchesPayment = paymentFilter === "all" || paymentLabel === paymentFilter;
 
-      return matchesStatus && matchesQuery;
-    }).sort((a, b) => {
-      const priority: Record<OrderStatus, number> = {
-        pending: 0,
-        preparing: 1,
-        delivering: 2,
-        done: 3,
-        canceled: 4,
-      };
-
-      return priority[a.status] - priority[b.status] || new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      return matchesQuery && matchesChannel && matchesFulfillment && matchesPayment;
     });
-  }, [activeStatus, orders, query]);
+  }, [channelFilter, fulfillmentFilter, orders, paymentFilter, query]);
+
+  const filteredOrders = useMemo(() => {
+    return baseFilteredOrders
+      .filter((order) => (activeStatus === "all" ? true : order.status === activeStatus))
+      .sort((a, b) => {
+        const priority: Record<OrderStatus, number> = {
+          pending: 0,
+          preparing: 1,
+          delivering: 2,
+          done: 3,
+          canceled: 4,
+        };
+
+        return priority[a.status] - priority[b.status] || new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+  }, [activeStatus, baseFilteredOrders]);
 
   const summary = useMemo(() => {
-    const revenue = orders
-      .filter((order) => order.status !== "canceled")
-      .reduce((sum, order) => sum + Number(order.total || 0), 0);
+    const billableOrders = orders.filter((order) => order.status !== "canceled");
+    const revenue = billableOrders.reduce((sum, order) => sum + Number(order.total || 0), 0);
     const completedOrders = orders.filter((order) => order.status === "done").length;
 
     return {
@@ -746,12 +818,26 @@ export default function OrdersPage() {
       count: orders.length,
       visibleCount: filteredOrders.length,
       revenue,
-      averageTicket: orders.length > 0 ? revenue / Math.max(1, orders.length) : 0,
+      averageTicket: billableOrders.length > 0 ? revenue / billableOrders.length : 0,
     };
   }, [filteredOrders.length, orders]);
 
   const getCount = (status: StatusFilter) =>
-    status === "all" ? orders.length : orders.filter((order) => order.status === status).length;
+    status === "all"
+      ? baseFilteredOrders.length
+      : baseFilteredOrders.filter((order) => order.status === status).length;
+
+  const activeFiltersCount = [channelFilter, fulfillmentFilter, paymentFilter].filter(
+    (filter) => filter !== "all",
+  ).length;
+
+  const clearAllFilters = () => {
+    setQuery("");
+    setActiveStatus("all");
+    setChannelFilter("all");
+    setFulfillmentFilter("all");
+    setPaymentFilter("all");
+  };
 
   const loadIfoodEvents = async (order: Order, force = false) => {
     if (!isIfoodOrder(order)) return;
@@ -896,18 +982,35 @@ export default function OrdersPage() {
           <div>
             <h1 className="text-[28px] font-black tracking-tight text-gray-950">Pedidos</h1>
             <p className="mt-1 text-sm font-medium text-gray-500">
-              Acompanhe e atualize os pedidos em tempo real.
+              {isCurrentDate
+                ? "Acompanhe e atualize os pedidos em tempo real."
+                : "Consulte os pedidos e resultados da data selecionada."}
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <div className="inline-flex items-center gap-2.5 rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm font-bold text-gray-700 shadow-sm">
+            <label
+              htmlFor="orders-date"
+              className="relative inline-flex cursor-pointer items-center gap-2.5 rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm font-bold text-gray-700 shadow-sm transition hover:border-orange-200"
+            >
               <CalendarDays size={17} className="text-gray-500" />
-              Hoje, {new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
-              <ChevronDown size={16} className="text-gray-400" />
-            </div>
-            <div className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-black text-emerald-700">
-              <LiveStatusDot />
-              Loja aberta
+              <span>{selectedDateLabel}</span>
+              <ChevronDown size={16} className="pointer-events-none text-gray-400" />
+              <input
+                id="orders-date"
+                type="date"
+                value={selectedDate}
+                onChange={(event) => setSelectedDate(event.target.value || formatDateInputValue())}
+                className="absolute inset-0 cursor-pointer opacity-0"
+                aria-label="Selecionar data dos pedidos"
+              />
+            </label>
+            <div className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-black ${
+              isCurrentDate
+                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                : "border-gray-200 bg-gray-50 text-gray-600"
+            }`}>
+              {isCurrentDate ? <LiveStatusDot /> : <CalendarDays size={16} />}
+              {isCurrentDate ? "Loja aberta" : "Consulta histórica"}
             </div>
           </div>
         </div>
@@ -917,10 +1020,12 @@ export default function OrdersPage() {
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
                 <p className="text-sm font-black uppercase tracking-[0.14em] text-orange-500">
-                  Operação de hoje
+                  {isCurrentDate ? "Operação de hoje" : "Operação da data selecionada"}
                 </p>
                 <p className="mt-1 text-sm text-gray-500">
-                  Pedidos novos entram automaticamente na fila e ficam priorizados no topo.
+                  {isCurrentDate
+                    ? "Pedidos novos entram automaticamente na fila e ficam priorizados no topo."
+                    : `Exibindo os pedidos registrados ou agendados para ${selectedDateLabel.toLowerCase()}.`}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -936,18 +1041,20 @@ export default function OrdersPage() {
               </div>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={enableChime}
-            className={`inline-flex items-center justify-center gap-2.5 rounded-2xl border px-4 py-3 text-sm font-black shadow-sm transition ${
-              isChimeEnabled
-                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                : "border-orange-200 bg-white text-[var(--brand)] hover:bg-orange-50"
-            }`}
-          >
-            <BellRing size={18} />
-            {isChimeEnabled ? "Campainha ativa" : "Ativar campainha"}
-          </button>
+          {isCurrentDate && (
+            <button
+              type="button"
+              onClick={enableChime}
+              className={`inline-flex items-center justify-center gap-2.5 rounded-2xl border px-4 py-3 text-sm font-black shadow-sm transition ${
+                isChimeEnabled
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                  : "border-orange-200 bg-white text-[var(--brand)] hover:bg-orange-50"
+              }`}
+            >
+              <BellRing size={18} />
+              {isChimeEnabled ? "Campainha ativa" : "Ativar campainha"}
+            </button>
+          )}
         </section>
 
         <section className="space-y-4">
@@ -963,14 +1070,91 @@ export default function OrdersPage() {
             </div>
             <button
               type="button"
-              onClick={() => setQuery("")}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--line)] bg-white px-4 py-2.5 text-sm font-bold text-gray-700 shadow-sm"
+              onClick={() => setIsFiltersOpen((current) => !current)}
+              aria-expanded={isFiltersOpen}
+              aria-controls="orders-filters-panel"
+              className={`inline-flex items-center justify-center gap-2 rounded-xl border bg-white px-4 py-2.5 text-sm font-bold shadow-sm transition ${
+                isFiltersOpen || activeFiltersCount > 0
+                  ? "border-orange-300 text-[var(--brand)]"
+                  : "border-[var(--line)] text-gray-700"
+              }`}
             >
               <Filter size={17} />
               Filtros
-              <ChevronDown size={16} className="text-gray-400" />
+              {activeFiltersCount > 0 && (
+                <span className="rounded-full bg-orange-50 px-2 py-0.5 text-xs text-[var(--brand)]">
+                  {activeFiltersCount}
+                </span>
+              )}
+              <ChevronDown
+                size={16}
+                className={`text-gray-400 transition-transform ${isFiltersOpen ? "rotate-180" : ""}`}
+              />
             </button>
           </div>
+
+          {isFiltersOpen && (
+            <div
+              id="orders-filters-panel"
+              className="grid gap-3 rounded-2xl border border-orange-100 bg-[#fffdfa] p-4 shadow-sm md:grid-cols-2 xl:grid-cols-[1fr_1fr_1.25fr_auto] xl:items-end"
+            >
+              <label className="grid gap-1.5 text-xs font-black uppercase tracking-[0.08em] text-gray-500">
+                Canal
+                <select
+                  value={channelFilter}
+                  onChange={(event) => setChannelFilter(event.target.value as ChannelFilter)}
+                  className="rounded-xl border border-[var(--line)] bg-white px-3 py-2.5 text-sm font-bold normal-case tracking-normal text-gray-700"
+                >
+                  <option value="all">Todos os canais</option>
+                  <option value="ifood">iFood</option>
+                  <option value="whatsapp">WhatsApp</option>
+                  <option value="counter">Balcão</option>
+                </select>
+              </label>
+
+              <label className="grid gap-1.5 text-xs font-black uppercase tracking-[0.08em] text-gray-500">
+                Atendimento
+                <select
+                  value={fulfillmentFilter}
+                  onChange={(event) => setFulfillmentFilter(event.target.value as FulfillmentFilter)}
+                  className="rounded-xl border border-[var(--line)] bg-white px-3 py-2.5 text-sm font-bold normal-case tracking-normal text-gray-700"
+                >
+                  <option value="all">Entrega e retirada</option>
+                  <option value="delivery">Delivery</option>
+                  <option value="pickup">Retirada</option>
+                </select>
+              </label>
+
+              <label className="grid gap-1.5 text-xs font-black uppercase tracking-[0.08em] text-gray-500">
+                Pagamento
+                <select
+                  value={paymentFilter}
+                  onChange={(event) => setPaymentFilter(event.target.value)}
+                  className="rounded-xl border border-[var(--line)] bg-white px-3 py-2.5 text-sm font-bold normal-case tracking-normal text-gray-700"
+                >
+                  <option value="all">Todos os pagamentos</option>
+                  {paymentOptions.map((payment) => (
+                    <option key={payment} value={payment}>
+                      {payment}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setChannelFilter("all");
+                  setFulfillmentFilter("all");
+                  setPaymentFilter("all");
+                }}
+                disabled={activeFiltersCount === 0}
+                className="rounded-xl border border-[var(--line)] bg-white px-4 py-2.5 text-sm font-bold text-gray-600 disabled:opacity-50"
+              >
+                Limpar avançados
+              </button>
+            </div>
+          )}
 
           <div className="flex flex-wrap gap-3">
             {STATUS_FILTERS.map((tab) => (
@@ -1013,10 +1197,7 @@ export default function OrdersPage() {
                 <p className="mt-1 text-sm text-gray-500">Tente ajustar os filtros ou buscar por outro termo.</p>
                 <button
                   type="button"
-                  onClick={() => {
-                    setQuery("");
-                    setActiveStatus("all");
-                  }}
+                  onClick={clearAllFilters}
                   className="mt-5 inline-flex items-center gap-2 rounded-xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700"
                 >
                   <RefreshCw size={16} />
@@ -1425,10 +1606,7 @@ export default function OrdersPage() {
           </div>
           <button
             type="button"
-            onClick={() => {
-              setQuery("");
-              setActiveStatus("all");
-            }}
+            onClick={clearAllFilters}
             className="inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700 shadow-sm"
           >
             <RefreshCw size={16} />
@@ -1473,7 +1651,7 @@ export default function OrdersPage() {
                   <WalletCards size={18} />
                 </span>
                 <div>
-                  <p className="text-sm font-bold text-gray-500">Valor de hoje</p>
+                  <p className="text-sm font-bold text-gray-500">{isCurrentDate ? "Valor de hoje" : "Valor do dia"}</p>
                   <p className="text-lg font-black text-gray-950">{formatPrice(summary.revenue)}</p>
                 </div>
               </div>
@@ -1483,7 +1661,9 @@ export default function OrdersPage() {
               <div className="rounded-2xl border border-[var(--line)] p-4">
                 <p className="text-sm font-bold text-gray-500">Total de pedidos</p>
                 <p className="mt-2 text-2xl font-black text-gray-950">{summary.count}</p>
-                <p className="mt-1 text-xs font-bold text-emerald-600">Online agora</p>
+                <p className="mt-1 text-xs font-bold text-emerald-600">
+                  {isCurrentDate ? "Online agora" : selectedDateLabel}
+                </p>
               </div>
               <div className="rounded-2xl border border-[var(--line)] p-4">
                 <p className="text-sm font-bold text-gray-500">Faturamento</p>
@@ -1493,7 +1673,7 @@ export default function OrdersPage() {
               <div className="rounded-2xl border border-[var(--line)] p-4">
                 <p className="text-sm font-bold text-gray-500">Cancelados</p>
                 <p className="mt-2 text-2xl font-black text-gray-950">{summary.canceled}</p>
-                <p className="mt-1 text-xs font-bold text-gray-500">Hoje</p>
+                <p className="mt-1 text-xs font-bold text-gray-500">{selectedDateLabel}</p>
               </div>
               <div className="rounded-2xl border border-[var(--line)] p-4">
                 <p className="text-sm font-bold text-gray-500">Ticket medio</p>
@@ -1512,7 +1692,9 @@ export default function OrdersPage() {
         >
           <div>
             <p className="text-base font-black text-gray-950 md:text-lg">Resumo do dia</p>
-            <p className="text-xs text-gray-500 md:text-sm">Atualizado em tempo real</p>
+            <p className="text-xs text-gray-500 md:text-sm">
+              {isCurrentDate ? "Atualizado em tempo real" : selectedDateLabel}
+            </p>
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:justify-end">
             <span className="rounded-xl bg-orange-50 px-2.5 py-1.5 text-xs font-black text-[var(--brand)] md:px-3 md:py-2 md:text-sm">

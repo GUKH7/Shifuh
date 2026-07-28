@@ -31,9 +31,10 @@ test("títulos das métricas permanecem em uma linha na grade de cinco cards", (
   assert.match(dashboardStyles, /max-width: 1535px/);
 });
 
-test("pedidos mantém pagamento em uma linha e pulsa no badge de loja aberta", () => {
+test("pedidos mantém pagamento em uma linha e adapta o badge à data selecionada", () => {
   assert.match(orders, /whitespace-nowrap">Método de pagamento<\/span>/);
-  assert.match(orders, /<LiveStatusDot \/>\s+Loja aberta/);
+  assert.match(orders, /isCurrentDate \? <LiveStatusDot \/> : <CalendarDays size=\{16\} \/>/);
+  assert.match(orders, /isCurrentDate \? "Loja aberta" : "Consulta histórica"/);
 });
 
 test("histórico usa linhas expansíveis e mantém a bolinha nos status operacionais", () => {
