@@ -9,11 +9,15 @@ const storefront = fs.readFileSync(path.join(root, "src/features/storefront/use-
 const migration = fs.readFileSync(path.join(root, "supabase/migrations/20260729162500_add_category_active.sql"), "utf8");
 
 test("categorias podem ser pausadas sem alterar o estado individual dos produtos", () => {
-  assert.match(menu, /const toggleCategoryStatus = async/);
-  assert.match(menu, /update\(\{ is_active: newStatus \}\)/);
+  const categoryToggle = menu.match(
+    /const toggleCategoryStatus = async[\s\S]*?\n  };\n\n  const handleOpenCategoryModal/,
+  )?.[0] || "";
+
+  assert.match(categoryToggle, /from\("categories"\)/);
+  assert.match(categoryToggle, /update\(\{ is_active: newStatus \}\)/);
+  assert.doesNotMatch(categoryToggle, /from\("products"\)/);
   assert.match(menu, /Categoria pausada/);
   assert.match(menu, /Reativar categoria/);
-  assert.doesNotMatch(menu, /from\("products"\)[\s\S]{0,120}update\(\{ is_active: newStatus \}\)/);
 });
 
 test("vitrine carrega somente categorias ativas", () => {
