@@ -233,6 +233,7 @@ export default function OrdersPage() {
   const [restaurantConfig, setRestaurantConfig] = useState<RestaurantConfig | null>(null);
   const [restaurantId, setRestaurantId] = useState("");
   const lastSeenOrderIdRef = useRef("");
+  const dateInputRef = useRef<HTMLInputElement>(null);
   const [expandedOrders, setExpandedOrders] = useState<string[]>([]);
   const [busyIfoodAction, setBusyIfoodAction] = useState("");
   const [statusUpdatingOrderId, setStatusUpdatingOrderId] = useState("");
@@ -249,6 +250,23 @@ export default function OrdersPage() {
   const { showToast } = useToast();
   const isCurrentDate = selectedDate === formatDateInputValue();
   const selectedDateLabel = formatSelectedDateLabel(selectedDate);
+
+  const openDatePicker = () => {
+    const input = dateInputRef.current;
+    if (!input) return;
+
+    try {
+      if (typeof input.showPicker === "function") {
+        input.showPicker();
+        return;
+      }
+    } catch {
+      // Alguns navegadores bloqueiam showPicker; o clique nativo abaixo serve como fallback.
+    }
+
+    input.focus();
+    input.click();
+  };
 
   useEffect(() => {
     setIsChimeEnabled(window.localStorage.getItem("orders-chime-enabled") === "true");
@@ -1014,22 +1032,28 @@ export default function OrdersPage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <label
-              htmlFor="orders-date"
-              className="relative inline-flex cursor-pointer items-center gap-2.5 rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm font-bold text-gray-700 shadow-sm transition hover:border-orange-200"
-            >
-              <CalendarDays size={17} className="text-gray-500" />
-              <span>{selectedDateLabel}</span>
-              <ChevronDown size={16} className="pointer-events-none text-gray-400" />
+            <div className="relative">
+              <button
+                type="button"
+                onClick={openDatePicker}
+                className="inline-flex cursor-pointer items-center gap-2.5 rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm font-bold text-gray-700 shadow-sm transition hover:border-orange-200 focus-visible:border-[var(--brand)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-100"
+                aria-label={`Escolher data dos pedidos. Data selecionada: ${selectedDateLabel}`}
+              >
+                <CalendarDays size={17} className="text-gray-500" />
+                <span>{selectedDateLabel}</span>
+                <ChevronDown size={16} className="text-gray-400" />
+              </button>
               <input
+                ref={dateInputRef}
                 id="orders-date"
                 type="date"
                 value={selectedDate}
                 onChange={(event) => setSelectedDate(event.target.value || formatDateInputValue())}
-                className="absolute inset-0 cursor-pointer opacity-0"
+                className="pointer-events-none absolute bottom-0 left-1/2 h-px w-px -translate-x-1/2 opacity-0"
+                tabIndex={-1}
                 aria-label="Selecionar data dos pedidos"
               />
-            </label>
+            </div>
             <div className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-black ${
               isCurrentDate
                 ? "border-emerald-200 bg-emerald-50 text-emerald-700"
