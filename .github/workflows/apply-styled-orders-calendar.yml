@@ -1,0 +1,35 @@
+name: Apply styled orders calendar
+
+on:
+  push:
+    branches:
+      - feature/styled-orders-calendar
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/styled-orders-calendar
+          fetch-depth: 0
+
+      - name: Apply patch
+        run: python .github/scripts/apply_styled_orders_calendar.py
+
+      - name: Commit generated changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "src/app/admin/(painel)/orders/page.tsx" tests/orders-date-filters.test.js
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "feat(orders): integrar calendário estilizado"
+          git push origin HEAD:feature/styled-orders-calendar
