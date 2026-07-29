@@ -26,7 +26,7 @@ test("botão de data usa calendário estilizado do sistema", () => {
   assert.match(calendar, /Calendário de pedidos/);
   assert.match(calendar, /Mês anterior/);
   assert.match(calendar, /Próximo mês/);
-  assert.match(calendar, />Hoje</);
+  assert.match(calendar, />\s*Hoje\s*</);
   assert.match(calendar, /bg-\[var\(--brand\)\]/);
   assert.match(calendar, /document\.addEventListener\("pointerdown"/);
   assert.match(calendar, /event\.key === "Escape"/);
