@@ -6,7 +6,6 @@ const test = require("node:test");
 const root = path.join(__dirname, "..");
 const dashboard = fs.readFileSync(path.join(root, "src", "app", "admin", "(painel)", "DashboardPeriodWorkspace.tsx"), "utf8");
 const indicator = fs.readFileSync(path.join(root, "src", "components", "ui", "live-status-dot.tsx"), "utf8");
-const indicatorStyles = fs.readFileSync(path.join(root, "src", "components", "ui", "live-status-dot.module.css"), "utf8");
 
 test("dashboard mantém indicadores vivos no status da loja e no acompanhamento em tempo real", () => {
   assert.match(dashboard, /Dashboard em tempo real/);
@@ -19,15 +18,14 @@ test("dashboard mantém indicadores vivos no status da loja e no acompanhamento 
   );
 });
 
-test("live indicator uses consistent dimensions, colors and visible animation", () => {
-  assert.match(indicator, /import styles from "\.\/live-status-dot\.module\.css"/);
+test("live indicator usa dimensões consistentes e animação SVG nativa", () => {
   assert.match(indicator, /className = "text-emerald-500"/);
-  assert.match(indicator, /className=\{styles\.pulse\}/);
-  assert.match(indicator, /className=\{styles\.core\}/);
+  assert.match(indicator, /<svg/);
+  assert.match(indicator, /className=\{`h-3 w-3 shrink-0 overflow-visible \$\{className\}`\}/);
+  assert.match(indicator, /<animate/);
+  assert.match(indicator, /attributeName="r"/);
+  assert.match(indicator, /attributeName="opacity"/);
+  assert.match(indicator, /repeatCount="indefinite"/);
+  assert.match(indicator, /fill="currentColor"/);
   assert.match(indicator, /aria-hidden="true"/);
-  assert.match(indicatorStyles, /width: 0\.75rem/);
-  assert.match(indicatorStyles, /height: 0\.75rem/);
-  assert.match(indicatorStyles, /overflow: visible/);
-  assert.match(indicatorStyles, /animation: live-status-pulse 1\.45s/);
-  assert.match(indicatorStyles, /@keyframes live-status-pulse/);
 });
