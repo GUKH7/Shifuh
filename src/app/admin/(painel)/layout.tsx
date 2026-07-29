@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, HelpCircle, Menu, Search } from "lucide-react";
+import { Menu, Search } from "lucide-react";
 import AdminSidebar from "@/components/admin-sidebar";
 import { AdminSkeleton } from "@/components/ui/admin-primitives";
 import { getRestaurantByUserId } from "@/lib/supabase/restaurant";
@@ -26,14 +26,10 @@ function AdminGuardSkeleton() {
       <div className="hidden h-screen w-16 border-r border-[var(--line)] bg-white lg:fixed lg:block" />
       <div className="lg:ml-16">
         <div className="h-16 border-b border-[var(--line)] bg-[#fbf7f2] px-3 py-2 sm:h-20 sm:px-4 lg:px-6">
-          <div className="admin-page-shell grid h-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
-            <AdminSkeleton className="h-10 w-10 lg:hidden" />
-            <AdminSkeleton className="h-11 w-full max-w-2xl justify-self-start" />
-            <div className="flex gap-2">
-              <AdminSkeleton className="h-10 w-10" />
-              <AdminSkeleton className="h-10 w-10" />
+            <div className="admin-page-shell grid h-full grid-cols-[auto_minmax(0,1fr)] items-center gap-3 lg:grid-cols-1">
+              <AdminSkeleton className="h-10 w-10 lg:hidden" />
+              <AdminSkeleton className="h-11 w-full max-w-2xl justify-self-start" />
             </div>
-          </div>
         </div>
         <div className="px-3 py-4 sm:px-4 md:px-5 lg:px-6">
           <div className="admin-page-shell space-y-4">
@@ -57,9 +53,12 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
   const [panelSearch, setPanelSearch] = useState("");
   const router = useRouter();
   const pathname = usePathname();
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  const supabase = useMemo(
+    () => createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    ),
+    [],
   );
 
   useEffect(() => {
@@ -164,7 +163,7 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
       >
         <header className="admin-panel-header sticky top-0 z-30 bg-[#fbf7f2]/95 backdrop-blur">
           <div className="min-h-16 px-3 py-2 sm:h-20 sm:px-4 sm:py-0 lg:px-6">
-            <div className="admin-page-shell grid h-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 sm:gap-3">
+            <div className="admin-page-shell grid h-full grid-cols-[auto_minmax(0,1fr)] items-center gap-2 sm:gap-3 lg:grid-cols-1">
               <button
                 type="button"
                 onClick={() => setIsMobileSidebarOpen(true)}
@@ -215,22 +214,6 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
                 )}
               </div>
 
-              <div className="flex shrink-0 items-center justify-end gap-2 sm:gap-2.5">
-                <button
-                  type="button"
-                  aria-label="Ajuda"
-                  className="surface-card hidden h-10 w-10 items-center justify-center rounded-xl text-gray-500 transition-colors hover:text-gray-950 sm:inline-flex"
-                >
-                  <HelpCircle size={17} />
-                </button>
-                <button
-                  type="button"
-                  aria-label="Notificações"
-                  className="surface-card inline-flex h-10 w-10 items-center justify-center rounded-xl text-gray-500 transition-colors hover:text-gray-950"
-                >
-                  <Bell size={17} />
-                </button>
-              </div>
             </div>
           </div>
         </header>

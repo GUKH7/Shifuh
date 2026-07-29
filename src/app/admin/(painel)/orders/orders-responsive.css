@@ -1,0 +1,62 @@
+@media (max-width: 1279px) {
+  .orders-table-row {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.875rem 1rem !important;
+    margin: 0.75rem;
+    padding: 1rem !important;
+    border: 1px solid var(--line);
+    border-radius: 1rem;
+    background: #fff;
+  }
+
+  .orders-table-row > .orders-table-cell {
+    min-width: 0;
+    justify-content: flex-start !important;
+    text-align: left !important;
+  }
+
+  .orders-table-row > .orders-table-cell::before {
+    display: block;
+    margin-bottom: 0.3rem;
+    color: #9ca3af;
+    content: attr(data-label);
+    font-size: 0.625rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    line-height: 1rem;
+    text-transform: uppercase;
+  }
+
+  .orders-table-row > .orders-table-cell[data-label="Canal"],
+  .orders-table-row > .orders-table-cell[data-label="Status"],
+  .orders-table-row > .orders-actions-cell {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .orders-table-row > .orders-table-cell[data-label="Canal"]::before,
+  .orders-table-row > .orders-table-cell[data-label="Status"]::before,
+  .orders-table-row > .orders-actions-cell::before {
+    flex-basis: 100%;
+  }
+
+  .orders-table-row > .orders-actions-cell {
+    grid-column: 1 / -1;
+    gap: 0.5rem;
+  }
+}
+
+@media (max-width: 639px) {
+  .orders-table-row {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .orders-table-row > .orders-actions-cell {
+    grid-column: auto;
+  }
+
+  .orders-table-row > .orders-actions-cell > button:first-of-type:not(:last-child) {
+    flex: 1 1 auto;
+  }
+}

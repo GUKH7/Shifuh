@@ -24,11 +24,13 @@ import {
   XCircle,
 } from "lucide-react";
 import { getCurrentRestaurant } from "@/lib/supabase/restaurant";
+import { getStoreStatus } from "@/features/storefront/store-summary";
 import { useToast } from "@/components/ui/toast-provider";
 import { OrderStatusBadge } from "@/components/ui/order-status-badge";
 import { LiveStatusDot } from "@/components/ui/live-status-dot";
 import { OrdersSkeleton } from "./OrdersSkeleton";
 import { OrdersDatePicker } from "./OrdersDatePicker";
+import "./orders-responsive.css";
 import type { IfoodCancellationReason, IfoodEventAudit, Order, OrderItem } from "./types";
 import {
   STATUS_FILTERS,
@@ -62,6 +64,7 @@ type RestaurantConfig = {
   printer_width?: number | null;
   printer_font_size?: number | null;
   printer_font_weight?: number | null;
+  work_hours?: unknown;
 };
 
 type OrderStatus = Order["status"];
@@ -247,12 +250,32 @@ export default function OrdersPage() {
   const [expandedTechnicalOrders, setExpandedTechnicalOrders] = useState<string[]>([]);
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
   const [isChimeEnabled, setIsChimeEnabled] = useState(false);
+  const [storeClock, setStoreClock] = useState(() => new Date());
   const { showToast } = useToast();
   const isCurrentDate = selectedDate === formatDateInputValue();
   const selectedDateLabel = formatSelectedDateLabel(selectedDate);
+  const storeStatus = useMemo(
+    () => getStoreStatus(restaurantConfig?.work_hours, storeClock),
+    [restaurantConfig?.work_hours, storeClock],
+  );
+  const storeStatusClasses = {
+    open: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    closing: "border-amber-200 bg-amber-50 text-amber-700",
+    closed: "border-red-200 bg-red-50 text-red-700",
+  }[storeStatus.tone];
+  const storeStatusDotClass = {
+    open: "text-emerald-500",
+    closing: "text-amber-500",
+    closed: "text-red-500",
+  }[storeStatus.tone];
 
   useEffect(() => {
     setIsChimeEnabled(window.localStorage.getItem("orders-chime-enabled") === "true");
+  }, []);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => setStoreClock(new Date()), 60_000);
+    return () => window.clearInterval(intervalId);
   }, []);
 
   useEffect(() => {
@@ -1021,12 +1044,10 @@ export default function OrdersPage() {
               onChange={setSelectedDate}
             />
             <div className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-black ${
-              isCurrentDate
-                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                : "border-gray-200 bg-gray-50 text-gray-600"
+              isCurrentDate ? storeStatusClasses : "border-gray-200 bg-gray-50 text-gray-600"
             }`}>
-              {isCurrentDate ? <LiveStatusDot /> : <CalendarDays size={16} />}
-              {isCurrentDate ? "Loja aberta" : "Consulta histórica"}
+              {isCurrentDate ? <LiveStatusDot className={storeStatusDotClass} /> : <CalendarDays size={16} />}
+              {isCurrentDate ? `Loja ${storeStatus.label.toLowerCase()}` : "Consulta histórica"}
             </div>
           </div>
         </div>
@@ -1194,7 +1215,7 @@ export default function OrdersPage() {
           </div>
 
           <div className="overflow-hidden rounded-[18px] border border-[var(--line)] bg-white shadow-sm">
-            <div className="hidden grid-cols-[96px_145px_100px_64px_78px_120px_104px_80px_145px] items-center gap-2 border-b border-[var(--line)] bg-[#fffdfa] px-4 py-3 text-center text-[10px] font-black uppercase tracking-[0.06em] text-gray-400 xl:grid">
+            <div className="orders-table-header hidden grid-cols-[96px_145px_100px_64px_78px_120px_104px_80px_145px] items-center gap-2 border-b border-[var(--line)] bg-[#fffdfa] px-4 py-3 text-center text-[10px] font-black uppercase tracking-[0.06em] text-gray-400 xl:grid">
               <span>Pedido</span>
               <span>Cliente</span>
               <span>Canal</span>
@@ -1235,8 +1256,8 @@ export default function OrdersPage() {
 
                   return (
                     <div key={order.id} className={order.status === "pending" ? "bg-orange-50/25" : "bg-white"}>
-                      <div className="grid gap-4 px-5 py-4 xl:grid-cols-[96px_145px_100px_64px_78px_120px_104px_80px_145px] xl:items-center xl:gap-2 xl:px-4">
-                        <div className="text-center">
+                      <div className="orders-table-row grid gap-4 px-5 py-4 xl:grid-cols-[96px_145px_100px_64px_78px_120px_104px_80px_145px] xl:items-center xl:gap-2 xl:px-4">
+                        <div className="orders-table-cell text-center" data-label="Pedido">
                           <p className="text-sm font-black text-gray-950">#{formatDisplayNumber(order)}</p>
                           <p className="mt-1 text-[11px] font-medium text-gray-500">
                             {formatDate(order.created_at)}, {formatTime(order.created_at)}
@@ -1248,12 +1269,12 @@ export default function OrdersPage() {
                           )}
                         </div>
 
-                        <div className="min-w-0 text-center">
+                        <div className="orders-table-cell min-w-0 text-center" data-label="Cliente">
                           <p className="truncate text-sm font-bold text-gray-950">{order.customer_name}</p>
                           <p className="mt-1 truncate text-[11px] font-medium text-gray-500">{order.customer_phone}</p>
                         </div>
 
-                        <div className="flex items-center justify-center gap-2">
+                        <div className="orders-table-cell flex items-center justify-center gap-2" data-label="Canal">
                           <span className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${
                             isIfoodOrder(order) ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-600"
                           }`}>
@@ -1265,32 +1286,32 @@ export default function OrdersPage() {
                           </div>
                         </div>
 
-                        <div className="text-center">
+                        <div className="orders-table-cell text-center" data-label="Itens">
                           <p className="text-sm font-black text-gray-950">
                             {order.items.length} {order.items.length === 1 ? "item" : "itens"}
                           </p>
                         </div>
 
-                        <div className="text-center">
+                        <div className="orders-table-cell text-center" data-label="Valor">
                           <p className="text-sm font-black text-gray-950">{formatPrice(Number(order.total || 0))}</p>
                         </div>
 
-                        <div className="min-w-0 text-center">
+                        <div className="orders-table-cell min-w-0 text-center" data-label="Pagamento">
                           <p className="break-words text-xs font-bold leading-4 text-gray-700">
                             {paymentText || "Não informado"}
                           </p>
                         </div>
 
-                        <div className="flex justify-center">
+                        <div className="orders-table-cell flex justify-center" data-label="Status">
                           <OrderStatusBadge status={order.status} className="font-black" />
                         </div>
 
-                        <div className="text-center">
+                        <div className="orders-table-cell text-center" data-label="Horário">
                           <p className="text-xs font-black text-gray-950">{getRelativeOrderTime(order.created_at)}</p>
                           <p className="mt-1 text-[11px] font-medium text-gray-500">{formatTime(order.created_at)}</p>
                         </div>
 
-                        <div className="flex items-center gap-1 xl:justify-center">
+                        <div className="orders-table-cell orders-actions-cell flex items-center gap-1 xl:justify-center" data-label="Ações">
                           {primaryActionLabel && (
                             <button
                               type="button"
@@ -1609,26 +1630,6 @@ export default function OrdersPage() {
             )}
           </div>
         </section>
-
-        <div className="flex flex-col gap-4 rounded-[18px] border border-dashed border-orange-200 bg-white px-5 py-4 shadow-sm md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-4">
-            <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 text-[var(--brand)]">
-              <Package size={24} />
-            </span>
-            <div>
-              <p className="font-black text-gray-950">Não encontrou o pedido que procura?</p>
-              <p className="mt-1 text-sm text-gray-500">Tente ajustar os filtros ou buscar por outro termo.</p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={clearAllFilters}
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700 shadow-sm"
-          >
-            <RefreshCw size={16} />
-            Limpar filtros
-          </button>
-        </div>
 
       </div>
 
