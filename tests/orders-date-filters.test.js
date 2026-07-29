@@ -11,12 +11,13 @@ test("pedidos consultam a data selecionada no banco", () => {
   assert.match(page, /scheduled_for\.gte\.\$\{start\}/);
 });
 
-test("botão de data abre o calendário nativo de forma explícita", () => {
-  assert.match(page, /const dateInputRef = useRef<HTMLInputElement>\(null\)/);
-  assert.match(page, /const openDatePicker = \(\) =>/);
-  assert.match(page, /input\.showPicker\(\)/);
-  assert.match(page, /onClick=\{openDatePicker\}/);
-  assert.match(page, /ref=\{dateInputRef\}/);
+test("botão de data usa calendário estilizado do sistema", () => {
+  assert.match(page, /import \{ OrdersDatePicker \} from "\.\/OrdersDatePicker"/);
+  assert.match(page, /<OrdersDatePicker/);
+  assert.match(page, /value=\{selectedDate\}/);
+  assert.match(page, /onChange=\{setSelectedDate\}/);
+  assert.doesNotMatch(page, /showPicker/);
+  assert.doesNotMatch(page, /type="date"/);
 });
 
 test("painel de filtros controla canal atendimento e pagamento", () => {
