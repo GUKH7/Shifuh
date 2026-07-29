@@ -5,21 +5,20 @@ const test = require("node:test");
 
 const root = path.resolve(__dirname, "..");
 const componentPath = path.join(root, "src/components/ui/live-status-dot.tsx");
-const cssPath = path.join(root, "src/components/ui/live-status-dot.module.css");
-
 const componentSource = fs.readFileSync(componentPath, "utf8");
-const cssSource = fs.readFileSync(cssPath, "utf8");
 
-test("indicador em tempo real usa animação própria e visível", () => {
-  assert.match(componentSource, /import styles from "\.\/live-status-dot\.module\.css"/);
-  assert.match(componentSource, /className=\{styles\.pulse\}/);
-  assert.match(componentSource, /className=\{styles\.core\}/);
-  assert.match(cssSource, /@keyframes live-status-pulse/);
-  assert.match(cssSource, /animation: live-status-pulse 1\.45s/);
-  assert.match(cssSource, /overflow: visible/);
+test("indicador em tempo real usa animação SVG própria e visível", () => {
+  assert.match(componentSource, /<svg/);
+  assert.match(componentSource, /overflow-visible/);
+  assert.match(componentSource, /<animate/);
+  assert.match(componentSource, /values="4\.5;11"/);
+  assert.match(componentSource, /values="0\.55;0"/);
+  assert.match(componentSource, /dur="1\.35s"/);
+  assert.match(componentSource, /repeatCount="indefinite"/);
 });
 
-test("indicador não depende mais da animação utilitária que podia ser desativada", () => {
+test("indicador não depende de animações CSS utilitárias", () => {
   assert.doesNotMatch(componentSource, /animate-ping/);
-  assert.doesNotMatch(componentSource, /motion-reduce:animate-none/);
+  assert.doesNotMatch(componentSource, /@keyframes/);
+  assert.doesNotMatch(componentSource, /live-status-dot\.module\.css/);
 });
