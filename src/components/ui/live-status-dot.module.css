@@ -1,0 +1,43 @@
+.dot {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  width: 0.75rem;
+  height: 0.75rem;
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+.pulse {
+  position: absolute;
+  inset: -0.1875rem;
+  z-index: 0;
+  border-radius: 9999px;
+  background: currentColor;
+  pointer-events: none;
+  animation: live-status-pulse 1.45s cubic-bezier(0.2, 0.7, 0.35, 1) infinite;
+  transform-origin: center;
+}
+
+.core {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 9999px;
+  background: currentColor;
+}
+
+@keyframes live-status-pulse {
+  0% {
+    opacity: 0.55;
+    transform: scale(0.65);
+  }
+
+  72%,
+  100% {
+    opacity: 0;
+    transform: scale(1.75);
+  }
+}
