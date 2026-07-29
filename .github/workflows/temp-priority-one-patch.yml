@@ -4,6 +4,13 @@ on:
   push:
     branches:
       - fix/priority-1-operational-trust
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
 
 permissions:
   contents: write
@@ -24,6 +31,9 @@ jobs:
 
       - name: Remove temporary patch script
         run: rm -f .github/scripts/apply-priority-one.py
+
+      - name: Remove temporary trigger file
+        run: rm -f .github/scripts/trigger-priority-one.txt
 
       - name: Commit changes
         run: |
