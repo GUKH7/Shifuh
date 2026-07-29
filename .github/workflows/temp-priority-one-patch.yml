@@ -26,14 +26,14 @@ jobs:
           ref: fix/priority-1-operational-trust
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Normalize patch script
+        run: python .github/scripts/fix-priority-one-script.py
+
       - name: Apply operational trust patch
         run: python .github/scripts/apply-priority-one.py
 
-      - name: Remove temporary patch script
-        run: rm -f .github/scripts/apply-priority-one.py
-
-      - name: Remove temporary trigger file
-        run: rm -f .github/scripts/trigger-priority-one.txt
+      - name: Remove temporary patch files
+        run: rm -f .github/scripts/apply-priority-one.py .github/scripts/fix-priority-one-script.py .github/scripts/trigger-priority-one.txt
 
       - name: Commit changes
         run: |
