@@ -692,6 +692,27 @@ export default function AdminDashboard() {
                       {!isEditing && (
                         <div className="flex flex-shrink-0 items-center gap-2">
                           <button
+                            type="button"
+                            onClick={() => void toggleCategoryStatus(category)}
+                            disabled={categoryStatusUpdatingId === category.id}
+                            className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold transition disabled:cursor-wait disabled:opacity-60 ${
+                              category.is_active === false
+                                ? "border-orange-200 bg-[#fff0e8] text-[var(--brand)]"
+                                : "border-[var(--line)] bg-white text-gray-600 hover:border-orange-200"
+                            }`}
+                            title={category.is_active === false ? "Reativar categoria" : "Pausar categoria"}
+                            aria-label={category.is_active === false ? `Reativar categoria ${category.name}` : `Pausar categoria ${category.name}`}
+                          >
+                            {categoryStatusUpdatingId === category.id ? (
+                              <Loader2 size={15} className="animate-spin" />
+                            ) : (
+                              <Power size={15} />
+                            )}
+                            <span className="hidden sm:inline">
+                              {category.is_active === false ? "Reativar" : "Pausar"}
+                            </span>
+                          </button>
+                          <button
                             onClick={() => startEditingCat(category)}
                             className="rounded-xl p-2 text-gray-400 hover:bg-[#fbf7f2] hover:text-[var(--brand)]"
                           >
