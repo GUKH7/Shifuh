@@ -141,8 +141,11 @@ a {
 @media (min-width: 768px) {
   .admin-page-shell section.fixed:has(> button[aria-expanded]) {
     left: calc(var(--admin-sidebar-width) + 1.5rem);
-    right: auto;
-    width: min(1460px, calc(100vw - var(--admin-sidebar-width) - 3rem));
+    right: 1.5rem;
+    width: auto;
+    max-width: 1460px;
+    margin-left: auto;
+    margin-right: auto;
   }
 }
 
