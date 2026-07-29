@@ -1,15 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Loader2, Store } from "lucide-react";
 
 export default function AdminLogin() {
   const router = useRouter();
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  const supabase = useMemo(
+    () => createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    ),
+    [],
   );
 
   const [email, setEmail] = useState("");
@@ -24,6 +27,41 @@ export default function AdminLogin() {
     const newName = e.target.value;
     setRestaurantName(newName);
     setRestaurantSlug(newName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, ""));
+  };
+
+  const handleLogin = async () => {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 15000);
+
+    try {
+      const response = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+        signal: controller.signal,
+      });
+
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(payload?.error || "Não foi possível entrar. Tente novamente.");
+      }
+
+      router.replace("/admin");
+      router.refresh();
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        throw new Error("A autenticação demorou mais que o esperado. Tente novamente.");
+      }
+
+      if (error instanceof TypeError && error.message.toLowerCase().includes("fetch")) {
+        throw new Error("Não foi possível conectar ao Gestor Delivery. Verifique sua internet e tente novamente.");
+      }
+
+      throw error;
+    } finally {
+      window.clearTimeout(timeoutId);
+    }
   };
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -43,11 +81,11 @@ export default function AdminLogin() {
           .eq("slug", restaurantSlug)
           .maybeSingle();
 
-    if (existingSlug) throw new Error("Este link já está em uso.");
+        if (existingSlug) throw new Error("Este link já está em uso.");
 
         const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
         if (authError) throw authError;
-    if (!authData.user) throw new Error("Não foi possível criar o usuário.");
+        if (!authData.user) throw new Error("Não foi possível criar o usuário.");
 
         const { error: dbError } = await supabase.from("restaurants").insert({
           name: restaurantName.trim(),
@@ -58,17 +96,14 @@ export default function AdminLogin() {
 
         if (dbError) throw dbError;
 
-        const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
-        if (loginError) throw loginError;
-
-        router.push("/admin/settings");
+        await handleLogin();
+        router.replace("/admin/settings");
+        router.refresh();
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        router.push("/admin");
+        await handleLogin();
       }
-    } catch (error: any) {
-      setErrorMsg(error.message || "Ocorreu um erro. Tente novamente.");
+    } catch (error) {
+      setErrorMsg(error instanceof Error ? error.message : "Ocorreu um erro. Tente novamente.");
     } finally {
       setLoading(false);
     }
@@ -88,7 +123,7 @@ export default function AdminLogin() {
             Gerencie sua loja com pedidos direto no <span className="italic text-[var(--brand)]">WhatsApp.</span>
           </h1>
           <p className="mt-6 max-w-lg text-lg leading-8 text-[var(--muted)]">
-        Um painel simples para configurar a vitrine, publicar o cardápio e acompanhar os pedidos em tempo real.
+            Um painel simples para configurar a vitrine, publicar o cardápio e acompanhar os pedidos em tempo real.
           </p>
           <div className="mt-10 surface-card max-w-xl rounded-[28px] p-6">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400">Fluxo MVP</p>
@@ -129,7 +164,7 @@ export default function AdminLogin() {
             {isRegistering && (
               <>
                 <div>
-                  <label className="mb-1.5 block text-sm font-bold text-gray-700">Nome do negocio</label>
+                  <label className="mb-1.5 block text-sm font-bold text-gray-700">Nome do negócio</label>
                   <input
                     type="text"
                     required
@@ -162,6 +197,7 @@ export default function AdminLogin() {
               <input
                 type="email"
                 required
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3.5 text-sm outline-none focus:border-[var(--brand)]"
@@ -174,6 +210,7 @@ export default function AdminLogin() {
               <input
                 type="password"
                 required
+                autoComplete={isRegistering ? "new-password" : "current-password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3.5 text-sm outline-none focus:border-[var(--brand)]"
