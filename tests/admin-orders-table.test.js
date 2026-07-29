@@ -27,13 +27,15 @@ test("orders table separates value and payment using one aligned grid", () => {
   assert.doesNotMatch(page, /min-w-\[1280px\]/);
 });
 
-test("order rows omit customer avatars and center content under every heading", () => {
+test("order rows omit customer avatars and keep semantic labels on mobile", () => {
   assert.doesNotMatch(page, /getCustomerInitials/);
   assert.match(page, /px-4 py-3 text-center text-\[10px\]/);
-  assert.match(page, /min-w-0 text-center/);
-  assert.match(page, /flex items-center justify-center gap-2/);
-  assert.match(page, /<div className="flex justify-center">\s+<OrderStatusBadge/);
-  assert.match(page, /<div className="text-center">\s+<p className="text-xs font-black text-gray-950">\{getRelativeOrderTime/);
+  assert.match(page, /data-label="Cliente"/);
+  assert.match(page, /data-label="Canal"/);
+  assert.match(page, /data-label="Status"/);
+  assert.match(page, /data-label="Horário"/);
+  assert.match(page, /orders-table-cell flex justify-center" data-label="Status">\s+<OrderStatusBadge/);
+  assert.match(page, /orders-table-cell text-center" data-label="Horário">\s+<p className="text-xs font-black text-gray-950">\{getRelativeOrderTime/);
 });
 
 test("order actions use compact labels without losing accessible names", () => {

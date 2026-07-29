@@ -607,9 +607,11 @@ export default function StorePage() {
   const startingDeliveryFee = deliveryTiers.length > 0
     ? Math.min(...deliveryTiers.map((tier: any) => Math.max(0, Number(tier.price) || 0)))
     : 0;
-  const deliveryFeeLabel = hasFreeDelivery || deliveryTiers.length === 0
-    ? "Entrega grátis"
-    : `Entrega a partir de ${formatMoney(startingDeliveryFee)}`;
+  const deliveryFeeLabel = deliveryTiers.length === 0
+    ? "Taxa a consultar"
+    : hasFreeDelivery
+      ? "Entrega grátis"
+      : `Entrega a partir de ${formatMoney(startingDeliveryFee)}`;
   const deliveryEstimate = formatDeliveryEstimate(deliveryTiers);
   const serviceRegion = formatServiceRegion(restaurant || {});
   const storeStatus = getStoreStatus(restaurant?.work_hours, storeClock);

@@ -458,15 +458,20 @@ function MetricCardView({ card }: { card: MetricCard }) {
 
 export default function DashboardPeriodWorkspace() {
   const router = useRouter();
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  const supabase = useMemo(
+    () => createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    ),
+    [],
   );
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
   const [restaurantName, setRestaurantName] = useState("sua loja");
   const [restaurantSlug, setRestaurantSlug] = useState("");
   const [workHours, setWorkHours] = useState<unknown>([]);
+  const [restaurantId, setRestaurantId] = useState("");
+  const [dashboardClock, setDashboardClock] = useState(() => new Date());
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [period, setPeriod] = useState<DashboardPeriod>("today");
   const [customStart, setCustomStart] = useState(() => toInputDate(addDays(new Date(), -6)));
@@ -486,6 +491,7 @@ export default function DashboardPeriodWorkspace() {
         setRestaurantName(restaurant.name || "sua loja");
         setRestaurantSlug(restaurant.slug || "");
         setWorkHours(restaurant.work_hours || []);
+        setRestaurantId(restaurant.id);
 
         const { data, error } = await supabase
           .from("orders")
@@ -511,7 +517,83 @@ export default function DashboardPeriodWorkspace() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const storeStatus = useMemo(() => getStoreStatus(workHours), [workHours]);
+  useEffect(() => {
+    if (!restaurantId) return;
+
+    let isRefreshing = false;
+    let isMounted = true;
+
+    const refreshOrders = async () => {
+      if (isRefreshing) return;
+      isRefreshing = true;
+
+      try {
+        const { data, error } = await supabase
+          .from("orders")
+          .select("id, customer_name, total, status, created_at, display_number, external_source, address, order_items (product_name, quantity)")
+          .eq("restaurant_id", restaurantId)
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+        if (isMounted) setOrders((data || []) as OrderRow[]);
+      } catch (error) {
+        console.warn("Falha ao atualizar o dashboard em tempo real:", error);
+      } finally {
+        isRefreshing = false;
+      }
+    };
+
+    const ordersChannel = supabase
+      .channel(`dashboard-orders-${restaurantId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "orders",
+          filter: `restaurant_id=eq.${restaurantId}`,
+        },
+        () => void refreshOrders(),
+      )
+      .subscribe();
+
+    const itemsChannel = supabase
+      .channel(`dashboard-order-items-${restaurantId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "order_items" },
+        () => void refreshOrders(),
+      )
+      .subscribe();
+
+    const intervalId = window.setInterval(() => void refreshOrders(), 15_000);
+    const handleFocus = () => void refreshOrders();
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") void refreshOrders();
+    };
+
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      void supabase.removeChannel(ordersChannel);
+      void supabase.removeChannel(itemsChannel);
+    };
+  }, [restaurantId, supabase]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => setDashboardClock(new Date()), 60_000);
+    return () => window.clearInterval(intervalId);
+  }, []);
+
+  const storeStatus = useMemo(
+    () => getStoreStatus(workHours, dashboardClock),
+    [dashboardClock, workHours],
+  );
   const dashboard = useMemo(() => {
     const range = getPeriodRange(period, customStart, customEnd);
     const periodOrders = orders.filter((order) => isInRange(order, range.start, range.end));
