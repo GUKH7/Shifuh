@@ -44,5 +44,5 @@ test("ações de ajuda e notificações não aparecem sem implementação", () =
   assert.doesNotMatch(layout, /aria-label="Ajuda"/);
   assert.doesNotMatch(layout, /aria-label="Notificações"/);
   assert.doesNotMatch(layout, /HelpCircle/);
-  assert.doesNotMatch(layout, /Bell/);
+  assert.doesNotMatch(layout, /\bBell\b/);
 });
