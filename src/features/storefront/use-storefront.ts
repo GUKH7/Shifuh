@@ -146,6 +146,7 @@ export function useStorefront({ slug, onCustomerLoaded, onMissingStore }: UseSto
           .from("categories")
           .select("*")
           .eq("restaurant_id", resto.id)
+          .eq("is_active", true)
           .order("order"),
         supabase
           .from("public_storefront_products")
