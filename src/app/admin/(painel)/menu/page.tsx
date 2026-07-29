@@ -54,6 +54,7 @@ export default function AdminDashboard() {
   const [categoryToDelete, setCategoryToDelete] = useState<any>(null);
   const [isDeletingCategory, setIsDeletingCategory] = useState(false);
   const [deleteCategoryError, setDeleteCategoryError] = useState("");
+  const [categoryStatusUpdatingId, setCategoryStatusUpdatingId] = useState("");
 
   const router = useRouter();
   const { showToast } = useToast();
@@ -212,6 +213,46 @@ export default function AdminDashboard() {
     await supabase.from("products").update({ is_active: newStatus }).eq("id", product.id);
   };
 
+  const toggleCategoryStatus = async (category: any) => {
+    if (!category?.id || categoryStatusUpdatingId) return;
+
+    const newStatus = category.is_active === false;
+    setCategoryStatusUpdatingId(category.id);
+    setCategories((current) =>
+      current.map((item) => (item.id === category.id ? { ...item, is_active: newStatus } : item)),
+    );
+
+    try {
+      const { error } = await supabase
+        .from("categories")
+        .update({ is_active: newStatus })
+        .eq("id", category.id);
+
+      if (error) throw error;
+
+      showToast({
+        title: newStatus ? "Categoria reativada" : "Categoria pausada",
+        description: newStatus
+          ? `${category.name} voltou a aparecer na vitrine.`
+          : `${category.name} e seus produtos foram ocultados da vitrine.`,
+        tone: "success",
+      });
+    } catch (error) {
+      setCategories((current) =>
+        current.map((item) =>
+          item.id === category.id ? { ...item, is_active: category.is_active !== false } : item,
+        ),
+      );
+      showToast({
+        title: "Não foi possível atualizar a categoria",
+        description: error instanceof Error ? error.message : "Tente novamente em instantes.",
+        tone: "error",
+      });
+    } finally {
+      setCategoryStatusUpdatingId("");
+    }
+  };
+
   const handleOpenCategoryModal = () => {
     setNewCategoryName("");
     setCategoryModalError("");
@@ -252,6 +293,7 @@ export default function AdminDashboard() {
           name: trimmedName,
           restaurant_id: restaurant.id,
           order: nextOrder,
+          is_active: true,
         })
         .select()
         .single();
@@ -412,17 +454,26 @@ export default function AdminDashboard() {
       .filter((category) => !searchTerm || category.categoryProducts.length > 0);
   }, [categories, products, searchTerm, sortBy, sortDirection]);
 
-  const previewItems = useMemo(() => {
-    return filteredCategories.flatMap((category) =>
-      category.categoryProducts.slice(0, 2).map((product: any) => ({
-        ...product,
-        categoryName: category.name,
-      })),
-    );
-  }, [filteredCategories]);
+  const activeFilteredCategories = useMemo(
+    () => filteredCategories.filter((category) => category.is_active !== false),
+    [filteredCategories],
+  );
 
-  const totalVisibleProducts = filteredCategories.reduce(
-    (sum, category) => sum + category.categoryProducts.length,
+  const previewItems = useMemo(() => {
+    return activeFilteredCategories.flatMap((category) =>
+      category.categoryProducts
+        .filter((product: any) => product.is_active)
+        .slice(0, 2)
+        .map((product: any) => ({
+          ...product,
+          categoryName: category.name,
+        })),
+    );
+  }, [activeFilteredCategories]);
+
+  const totalVisibleProducts = activeFilteredCategories.reduce(
+    (sum, category) =>
+      sum + category.categoryProducts.filter((product: any) => product.is_active).length,
     0,
   );
 
@@ -621,9 +672,17 @@ export default function AdminDashboard() {
                             className="flex min-w-0 flex-1 items-center gap-3 text-left"
                           >
                             <div className="min-w-0">
-                              <p className="break-words text-lg font-black text-gray-950">{category.name}</p>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="break-words text-lg font-black text-gray-950">{category.name}</p>
+                                {category.is_active === false && (
+                                  <span className="rounded-full bg-[#fff0e8] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--brand)]">
+                                    Categoria pausada
+                                  </span>
+                                )}
+                              </div>
                               <p className="text-xs font-medium text-gray-400">
                                 {category.categoryProducts.length} itens
+                                {category.is_active === false ? " · oculta na vitrine" : ""}
                               </p>
                             </div>
                           </button>
@@ -632,6 +691,27 @@ export default function AdminDashboard() {
 
                       {!isEditing && (
                         <div className="flex flex-shrink-0 items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => void toggleCategoryStatus(category)}
+                            disabled={categoryStatusUpdatingId === category.id}
+                            className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold transition disabled:cursor-wait disabled:opacity-60 ${
+                              category.is_active === false
+                                ? "border-orange-200 bg-[#fff0e8] text-[var(--brand)]"
+                                : "border-[var(--line)] bg-white text-gray-600 hover:border-orange-200"
+                            }`}
+                            title={category.is_active === false ? "Reativar categoria" : "Pausar categoria"}
+                            aria-label={category.is_active === false ? `Reativar categoria ${category.name}` : `Pausar categoria ${category.name}`}
+                          >
+                            {categoryStatusUpdatingId === category.id ? (
+                              <Loader2 size={15} className="animate-spin" />
+                            ) : (
+                              <Power size={15} />
+                            )}
+                            <span className="hidden sm:inline">
+                              {category.is_active === false ? "Reativar" : "Pausar"}
+                            </span>
+                          </button>
                           <button
                             onClick={() => startEditingCat(category)}
                             className="rounded-xl p-2 text-gray-400 hover:bg-[#fbf7f2] hover:text-[var(--brand)]"
@@ -748,11 +828,11 @@ export default function AdminDashboard() {
           <div className="mt-5 overflow-hidden rounded-[18px] border border-[var(--line)] bg-[#fffdfa] shadow-[0_16px_36px_rgba(17,16,15,0.08)]">
             <div className="bg-[#171311] px-4 py-5 text-white">
               <p className="text-lg font-black">{restaurant?.name || "Sua loja"}</p>
-              <p className="mt-1 text-sm text-white/70">{categories.length} categorias ativas</p>
+              <p className="mt-1 text-sm text-white/70">{categories.filter((category) => category.is_active !== false).length} categorias ativas</p>
             </div>
             <div className="space-y-4 p-4">
               <div className="flex flex-wrap gap-2">
-                {filteredCategories.slice(0, 3).map((category) => (
+                {activeFilteredCategories.slice(0, 3).map((category) => (
                   <span
                     key={category.id}
                     className="max-w-full break-words rounded-full bg-[#fff0e8] px-3 py-1.5 text-xs font-bold text-[var(--brand)]"
