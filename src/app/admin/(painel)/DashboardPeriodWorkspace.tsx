@@ -408,13 +408,13 @@ function MetricCardView({ card }: { card: MetricCard }) {
   const TrendIcon = isUp ? ArrowUpRight : ArrowDownRight;
 
   return (
-    <article className="surface-card rounded-[24px] p-5">
-      <div className="flex items-start justify-between gap-4">
+    <article className="dashboard-metric-card surface-card p-5">
+      <div className="dashboard-metric-card-header flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-gray-500">{card.label}</p>
+          <p className="dashboard-metric-card-label text-sm font-semibold text-gray-500">{card.label}</p>
           <p className="mt-3 truncate text-2xl font-black tracking-tight text-gray-950 sm:text-3xl">{card.value}</p>
         </div>
-        <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${card.iconClass}`}>
+        <div className={`dashboard-metric-card-icon flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${card.iconClass}`}>
           <Icon size={21} />
         </div>
       </div>
@@ -670,7 +670,7 @@ export default function DashboardPeriodWorkspace() {
         title="Dashboard"
         description={`Resumo da operação da ${restaurantName} em tempo real.`}
         action={
-          <div className={`flex w-full items-center gap-3 rounded-[22px] border px-4 py-3 shadow-sm sm:w-auto ${storeTone.shell}`}>
+          <div className={`dashboard-store-card flex w-full items-center gap-3 border px-4 py-3 shadow-sm sm:w-auto ${storeTone.shell}`}>
             <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${storeTone.icon}`}>
               <Store size={20} />
             </div>
@@ -688,13 +688,6 @@ export default function DashboardPeriodWorkspace() {
             >
               Ver loja <ExternalLink size={14} />
             </Link>
-            <Link
-              href="/admin/settings"
-              aria-label="Abrir configurações da loja"
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--line)] bg-white text-gray-500 transition-colors hover:text-gray-950"
-            >
-              <MoreVertical size={17} />
-            </Link>
           </div>
         }
       />
@@ -703,7 +696,7 @@ export default function DashboardPeriodWorkspace() {
         <div className="inline-flex w-fit items-center gap-2 rounded-full bg-[var(--brand-soft)] px-3 py-2 text-xs font-bold text-[var(--brand)]">
           <LiveStatusDot className="text-current" /> Dashboard em tempo real
         </div>
-        <div className="flex items-center gap-3">
+        <div className="dashboard-period-control flex items-center gap-3">
           <label htmlFor="dashboard-period" className="text-sm font-bold text-gray-600">Período das métricas</label>
           <AdminSelect
             id="dashboard-period"
@@ -750,11 +743,11 @@ export default function DashboardPeriodWorkspace() {
         </section>
       ) : null}
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <section className="dashboard-metrics-grid grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {dashboard.metrics.map((card) => <MetricCardView key={card.id} card={card} />)}
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-12">
+      <section className="dashboard-analytics-grid grid gap-4 xl:grid-cols-12">
         <article className="surface-card rounded-[24px] p-4 sm:p-5 xl:col-span-5">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -785,8 +778,8 @@ export default function DashboardPeriodWorkspace() {
           </div>
         </article>
 
-        <article className="surface-card overflow-visible rounded-[24px] p-4 sm:p-5 xl:col-span-3">
-          <div className="flex items-start justify-between gap-3">
+        <article className="dashboard-top-products-card surface-card overflow-visible p-4 sm:p-5 xl:col-span-3">
+          <div className="dashboard-card-header flex items-start justify-between gap-3">
             <div>
               <p className="text-base font-black text-gray-950">Produtos mais pedidos</p>
               <p className="mt-1 text-xs text-gray-400">Ranking por quantidade</p>
@@ -832,7 +825,7 @@ export default function DashboardPeriodWorkspace() {
           )}
         </article>
 
-        <article className="surface-card rounded-[24px] p-4 sm:p-5 xl:col-span-4">
+        <article className="dashboard-sources-card surface-card p-4 sm:p-5 xl:col-span-4">
           <p className="text-base font-black text-gray-950">Fontes de pedidos</p>
           <p className="mt-1 text-xs text-gray-400">Origem dos pedidos válidos em {dashboard.range.label.toLowerCase()}</p>
           {dashboard.sources.length === 0 ? (
@@ -870,7 +863,7 @@ export default function DashboardPeriodWorkspace() {
         </article>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-12">
+      <section className="dashboard-secondary-grid grid gap-4 xl:grid-cols-12">
         <article className="surface-card rounded-[24px] p-4 sm:p-5 xl:col-span-5">
           <div className="flex items-start justify-between gap-4">
             <div>

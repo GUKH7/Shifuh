@@ -291,7 +291,7 @@ export default function ReviewsPage() {
                     </div>
                   ) : (
                     <p className="rounded-[20px] bg-[#fcfaf7] px-5 py-4 text-sm italic text-gray-400">
-                      O cliente deixou apenas a nota, sem comentario.
+                      O cliente deixou apenas a nota, sem comentário.
                     </p>
                   )}
                 </div>
