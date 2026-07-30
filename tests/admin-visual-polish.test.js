@@ -34,7 +34,7 @@ test("títulos das métricas permanecem em uma linha na grade de cinco cards", (
 test("pedidos mantém pagamento em uma linha e adapta o badge à data e ao horário da loja", () => {
   assert.match(orders, /whitespace-nowrap">Método de pagamento<\/span>/);
   assert.match(orders, /isCurrentDate \? <LiveStatusDot className=\{storeStatusDotClass\} \/> : <CalendarDays size=\{16\} \/>/);
-  assert.match(orders, /isCurrentDate \? `Loja \$\{storeStatus\.label\.toLowerCase\(\)\}` : "Consulta histórica"/);
+  assert.match(orders, /isCurrentDate \? "Loja " \+ storeStatus\.label\.toLowerCase\(\) : "Consulta histórica"/);
   assert.match(orders, /getStoreStatus\(restaurantConfig\?\.work_hours, storeClock\)/);
 });
 
@@ -44,8 +44,8 @@ test("histórico usa linhas expansíveis e mantém a bolinha nos status operacio
   assert.match(history, /<OrderStatusBadge[\s\S]*status=\{order\.status\}[\s\S]*className="whitespace-nowrap"/);
 });
 
-test("cardápios centraliza busca, compacta ações e reduz o raio da prévia interna", () => {
+test("cardápios centraliza busca, padroniza ações e reduz o raio da prévia interna", () => {
   assert.match(menu, /left-4 top-1\/2 -translate-y-1\/2 text-gray-400/);
-  assert.equal((menu.match(/inline-flex h-10 items-center justify-center rounded-2xl/g) || []).length >= 3, true);
+  assert.equal((menu.match(/inline-flex h-11 items-center justify-center gap-2 rounded-2xl/g) || []).length >= 3, true);
   assert.match(menu, /mt-5 overflow-hidden rounded-\[18px\]/);
 });
