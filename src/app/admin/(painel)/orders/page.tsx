@@ -1029,7 +1029,7 @@ export default function OrdersPage() {
         </div>
       )}
 
-      <AdminPageShell className="space-y-4 pb-6">
+      <AdminPageShell className={`space-y-4 ${isSummaryOpen ? "pb-[26rem]" : "pb-24"}`}>
         <AdminPageHeader
           title="Pedidos"
           description={
@@ -1635,7 +1635,7 @@ export default function OrdersPage() {
           </div>
         </section>
 
-        <section className="sticky bottom-3 z-20 overflow-hidden rounded-[18px] border border-[var(--line)] bg-white/95 shadow-[0_18px_55px_rgba(17,16,15,0.14)] backdrop-blur">
+        <section className="fixed bottom-3 left-3 right-3 z-40 overflow-hidden rounded-[18px] border border-[var(--line)] bg-white/95 shadow-[0_18px_55px_rgba(17,16,15,0.14)] backdrop-blur md:left-[calc(var(--admin-sidebar-width)+1.5rem)] md:right-6 md:mx-auto md:max-w-[1460px]">
         {isSummaryOpen && (
           <div className="max-h-[70vh] overflow-y-auto border-b border-[var(--line)] p-3 md:p-4">
             <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-6">
