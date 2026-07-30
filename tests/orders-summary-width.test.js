@@ -10,25 +10,16 @@ const skeleton = fs.readFileSync(
   "utf8",
 );
 
-test("resumo de pedidos usa as mesmas bordas dos containers principais", () => {
-  assert.match(
-    globals,
-    /\.admin-panel-content > section\.fixed:has\(> button\[aria-expanded\]\)/,
-  );
-  assert.doesNotMatch(globals, /\.admin-page-shell section\.fixed/);
-  assert.match(globals, /left: calc\(var\(--admin-sidebar-width\) \+ 1\.5rem\)/);
-  assert.match(globals, /right: max\(0px, calc\(1\.5rem - \(100vw - 100%\)\)\)/);
-  assert.match(globals, /width: auto/);
-  assert.match(globals, /max-width: 1460px/);
+test("resumo de pedidos usa o mesmo shell e não depende da janela", () => {
+  const page = fs.readFileSync(path.join(root, "src/app/admin/(painel)/orders/page.tsx"), "utf8");
+  assert.match(page, /<AdminPageShell className="space-y-4 pb-6">/);
+  assert.match(page, /section className="sticky bottom-3/);
+  assert.doesNotMatch(page, /section className="fixed bottom-3/);
+  assert.doesNotMatch(globals, /section\.fixed:has/);
 });
 
-test("skeleton de pedidos representa a estrutura atual e o resumo fixo", () => {
-  assert.match(skeleton, /max-w-\[1460px\]/);
-  assert.match(skeleton, /lg:grid-cols-\[1fr_auto\]/);
-  assert.match(
-    skeleton,
-    /xl:grid-cols-\[96px_145px_100px_64px_78px_120px_104px_80px_145px\]/,
-  );
-  assert.match(skeleton, /section className="fixed bottom-3/);
-  assert.match(skeleton, /aria-expanded=\{false\}/);
+test("skeleton de pedidos usa o padrão compartilhado e resumo sticky", () => {
+  assert.match(skeleton, /AdminPageSkeleton/);
+  assert.match(skeleton, /section className="sticky bottom-3/);
+  assert.doesNotMatch(skeleton, /section className="fixed bottom-3/);
 });

@@ -24,10 +24,10 @@ import {
   AdminPageHeader,
   AdminPageShell,
   AdminSelect,
-  AdminSkeleton,
   SortableTableHeader,
   type SortDirection,
 } from "@/components/ui/admin-primitives";
+import { AdminEmptyState, AdminErrorState, AdminPageSkeleton } from "@/components/ui/admin-page-states";
 
 type Coupon = {
   id: string;
@@ -99,24 +99,7 @@ function getSortValue(coupon: Coupon, metrics: CouponMetrics, key: CouponSortKey
 }
 
 function CouponsWorkspaceSkeleton() {
-  return (
-    <AdminPageShell className="space-y-6" role="status" aria-label="Carregando cupons">
-      <div className="flex items-center gap-4">
-        <AdminSkeleton className="h-14 w-14" />
-        <div className="space-y-2">
-          <AdminSkeleton className="h-7 w-36" />
-          <AdminSkeleton className="h-4 w-72 max-w-[70vw]" />
-        </div>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, index) => (
-          <AdminSkeleton key={index} className="h-28 w-full" />
-        ))}
-      </div>
-      <AdminSkeleton className="h-32 w-full" />
-      <AdminSkeleton className="h-[460px] w-full" />
-    </AdminPageShell>
-  );
+  return <AdminPageSkeleton ariaLabel="Carregando cupons" metrics={4} />;
 }
 
 export default function CouponsWorkspace() {
@@ -308,15 +291,7 @@ export default function CouponsWorkspace() {
 
   if (loading) return <CouponsWorkspaceSkeleton />;
 
-  if (errorMsg) {
-    return (
-      <AdminPageShell>
-        <div className="rounded-[24px] border border-red-200 bg-red-50 px-6 py-5 text-red-700">
-          {errorMsg}
-        </div>
-      </AdminPageShell>
-    );
-  }
+  if (errorMsg) return <AdminErrorState description={errorMsg} />;
 
   return (
     <AdminPageShell className="space-y-6 pb-12">
@@ -411,7 +386,7 @@ export default function CouponsWorkspace() {
           </div>
 
           {visibleCoupons.length === 0 ? (
-            <div className="px-6 py-16 text-center text-sm text-gray-500">Nenhum cupom encontrado.</div>
+            <AdminEmptyState title="Nenhum cupom encontrado" description="Revise a busca e os filtros selecionados." />
           ) : (
             <div className="divide-y divide-[var(--line)]">
               {visibleCoupons.map((coupon) => {

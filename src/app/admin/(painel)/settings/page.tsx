@@ -27,6 +27,8 @@ import Cropper from "react-easy-crop";
 import { getCurrentRestaurant } from "@/lib/supabase/restaurant";
 import { getCoordinates } from "@/lib/geo";
 import { useToast } from "@/components/ui/toast-provider";
+import { AdminPageHeader, AdminPageShell } from "@/components/ui/admin-primitives";
+import { AdminErrorState, AdminPageSkeleton } from "@/components/ui/admin-page-states";
 import { CollapsibleSection, FieldHint, SettingsGroupHeading } from "./SettingsSections";
 import {
   DEFAULT_IFOOD_CONNECTION_CHECK,
@@ -60,6 +62,7 @@ export default function SettingsPage() {
   );
 
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState("");
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [restaurantId, setRestaurantId] = useState("");
@@ -170,6 +173,7 @@ export default function SettingsPage() {
   }, []);
 
   const fetchSettings = async () => {
+    setErrorMsg("");
     try {
       const { restaurant: data, user } = await getCurrentRestaurant(supabase);
       if (!user) return router.push("/admin/login");
@@ -271,6 +275,7 @@ export default function SettingsPage() {
       }
     } catch (error) {
       console.error(error);
+      setErrorMsg("Não foi possível carregar as configurações da loja.");
     } finally {
       setLoading(false);
     }
@@ -1057,35 +1062,26 @@ export default function SettingsPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex h-64 items-center justify-center text-sm font-semibold text-gray-500">
-        <Loader2 className="mr-2 animate-spin text-[var(--brand)]" size={18} />
-        Carregando configurações...
-      </div>
-    );
-  }
+  if (loading) return <AdminPageSkeleton ariaLabel="Carregando configurações" metrics={3} />;
+  if (errorMsg) return <AdminErrorState description={errorMsg} onRetry={() => void fetchSettings()} />;
 
   return (
-    <div className="mx-auto max-w-6xl pb-20">
-      <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <h1 className="text-3xl font-black tracking-tight text-gray-950">Configurações</h1>
-          <p className="mt-1 text-sm text-[var(--muted)]">
-            Atualize dados da loja, identidade visual e regras de entrega.
-          </p>
-        </div>
-        <button
-          onClick={handleSave}
-          disabled={saving || uploading}
-          className="brand-gradient rounded-2xl px-5 py-3 text-sm font-bold text-white disabled:opacity-60"
-        >
-          <span className="inline-flex items-center gap-2">
+    <AdminPageShell className="space-y-6 pb-20">
+      <AdminPageHeader
+        title="Configurações"
+        description="Atualize dados da loja, identidade visual e regras de entrega."
+        icon={<Store size={22} />}
+        action={
+          <button
+            onClick={handleSave}
+            disabled={saving || uploading}
+            className="brand-gradient inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-bold text-white disabled:opacity-60"
+          >
             {saving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
             Salvar alterações
-          </span>
-        </button>
-      </div>
+          </button>
+        }
+      />
 
       <div className="flex flex-col gap-5">
         <SettingsGroupHeading
@@ -2493,9 +2489,6 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
-    </div>
+    </AdminPageShell>
   );
 }
-
-
-

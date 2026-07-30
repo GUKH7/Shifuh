@@ -36,7 +36,7 @@ export function AdminPageHeader({
           {description ? <p className="mt-1 text-sm text-[var(--muted)]">{description}</p> : null}
         </div>
       </div>
-      {action ? <div className="shrink-0">{action}</div> : null}
+      {action ? <div className="w-full sm:w-auto sm:shrink-0">{action}</div> : null}
     </div>
   );
 }

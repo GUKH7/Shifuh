@@ -21,10 +21,10 @@ import {
   AdminPageHeader,
   AdminPageShell,
   AdminSelect,
-  AdminSkeleton,
   SortableTableHeader,
   type SortDirection,
 } from "@/components/ui/admin-primitives";
+import { AdminEmptyState, AdminErrorState, AdminPageSkeleton } from "@/components/ui/admin-page-states";
 
 type Client = {
   phone: string;
@@ -98,23 +98,7 @@ function exportClients(rows: Client[]) {
 }
 
 function ClientsWorkspaceSkeleton() {
-  return (
-    <AdminPageShell className="space-y-6" role="status" aria-label="Carregando clientes">
-      <div className="flex items-center gap-4">
-        <AdminSkeleton className="h-14 w-14" />
-        <div className="space-y-2">
-          <AdminSkeleton className="h-7 w-40" />
-          <AdminSkeleton className="h-4 w-72 max-w-[70vw]" />
-        </div>
-      </div>
-      <div className="grid gap-4 md:grid-cols-3">
-        {Array.from({ length: 3 }).map((_, index) => (
-          <AdminSkeleton key={index} className="h-28 w-full" />
-        ))}
-      </div>
-      <AdminSkeleton className="h-[520px] w-full" />
-    </AdminPageShell>
-  );
+  return <AdminPageSkeleton ariaLabel="Carregando clientes" metrics={3} />;
 }
 
 export default function ClientsWorkspace() {
@@ -251,15 +235,7 @@ export default function ClientsWorkspace() {
 
   if (loading) return <ClientsWorkspaceSkeleton />;
 
-  if (errorMsg) {
-    return (
-      <AdminPageShell>
-        <div className="rounded-[24px] border border-red-200 bg-red-50 px-6 py-5 text-red-700">
-          {errorMsg}
-        </div>
-      </AdminPageShell>
-    );
-  }
+  if (errorMsg) return <AdminErrorState description={errorMsg} />;
 
   return (
     <AdminPageShell className="space-y-6 pb-12">
@@ -327,7 +303,7 @@ export default function ClientsWorkspace() {
           </div>
 
           {paginatedClients.length === 0 ? (
-            <div className="px-6 py-16 text-center text-sm text-gray-500">Nenhum cliente encontrado.</div>
+            <AdminEmptyState title="Nenhum cliente encontrado" description="Revise a busca e os filtros selecionados." />
           ) : (
             <div className="divide-y divide-[var(--line)]">
               {paginatedClients.map((client) => (

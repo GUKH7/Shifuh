@@ -138,16 +138,6 @@ a {
   }
 }
 
-@media (min-width: 768px) {
-  .admin-panel-content > section.fixed:has(> button[aria-expanded]) {
-    left: calc(var(--admin-sidebar-width) + 1.5rem);
-    right: max(0px, calc(1.5rem - (100vw - 100%)));
-    width: auto;
-    max-width: 1460px;
-    margin-left: auto;
-    margin-right: auto;
-  }
-}
 
 @media (prefers-reduced-motion: reduce) {
   html {
