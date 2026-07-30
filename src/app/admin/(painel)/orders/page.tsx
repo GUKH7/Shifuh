@@ -28,6 +28,8 @@ import { getStoreStatus } from "@/features/storefront/store-summary";
 import { useToast } from "@/components/ui/toast-provider";
 import { OrderStatusBadge } from "@/components/ui/order-status-badge";
 import { LiveStatusDot } from "@/components/ui/live-status-dot";
+import { AdminPageHeader, AdminPageShell } from "@/components/ui/admin-primitives";
+import { AdminEmptyState, AdminErrorState } from "@/components/ui/admin-page-states";
 import { OrdersSkeleton } from "./OrdersSkeleton";
 import { OrdersDatePicker } from "./OrdersDatePicker";
 import "./orders-responsive.css";
@@ -940,7 +942,7 @@ export default function OrdersPage() {
   };
 
   if (loading) return <OrdersSkeleton />;
-  if (errorMsg) return <div className="p-8 text-center text-red-600">{errorMsg}</div>;
+  if (errorMsg) return <AdminErrorState description={errorMsg} />;
 
   return (
     <>
@@ -1027,30 +1029,30 @@ export default function OrdersPage() {
         </div>
       )}
 
-      <div className={`mx-auto max-w-[1460px] space-y-4 ${isSummaryOpen ? "pb-[26rem]" : "pb-20"}`}>
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-          <div>
-            <h1 className="text-[28px] font-black tracking-tight text-gray-950">Pedidos</h1>
-            <p className="mt-1 text-sm font-medium text-gray-500">
-              {isCurrentDate
-                ? "Acompanhe e atualize os pedidos em tempo real."
-                : "Consulte os pedidos e resultados da data selecionada."}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <OrdersDatePicker
-              value={selectedDate}
-              label={selectedDateLabel}
-              onChange={setSelectedDate}
-            />
-            <div className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-black ${
-              isCurrentDate ? storeStatusClasses : "border-gray-200 bg-gray-50 text-gray-600"
-            }`}>
-              {isCurrentDate ? <LiveStatusDot className={storeStatusDotClass} /> : <CalendarDays size={16} />}
-              {isCurrentDate ? `Loja ${storeStatus.label.toLowerCase()}` : "Consulta histórica"}
+      <AdminPageShell className="space-y-4 pb-6">
+        <AdminPageHeader
+          title="Pedidos"
+          description={
+            isCurrentDate
+              ? "Acompanhe e atualize os pedidos em tempo real."
+              : "Consulte os pedidos e resultados da data selecionada."
+          }
+          icon={<ShoppingBag size={22} />}
+          action={
+            <div className="flex flex-wrap gap-3">
+              <OrdersDatePicker value={selectedDate} label={selectedDateLabel} onChange={setSelectedDate} />
+              <div
+                className={[
+                  "inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-black",
+                  isCurrentDate ? storeStatusClasses : "border-gray-200 bg-gray-50 text-gray-600",
+                ].join(" ")}
+              >
+                {isCurrentDate ? <LiveStatusDot className={storeStatusDotClass} /> : <CalendarDays size={16} />}
+                {isCurrentDate ? "Loja " + storeStatus.label.toLowerCase() : "Consulta histórica"}
+              </div>
             </div>
-          </div>
-        </div>
+          }
+        />
 
         <section className="grid gap-3 lg:grid-cols-[1fr_auto]">
           <div className="rounded-2xl border border-orange-100 bg-white px-4 py-3 shadow-sm">
@@ -1228,19 +1230,21 @@ export default function OrdersPage() {
             </div>
 
             {filteredOrders.length === 0 ? (
-              <div className="px-6 py-16 text-center">
-                <Package className="mx-auto h-12 w-12 text-orange-300" />
-                <p className="mt-4 font-black text-gray-950">Não encontrou o pedido que procura?</p>
-                <p className="mt-1 text-sm text-gray-500">Tente ajustar os filtros ou buscar por outro termo.</p>
-                <button
-                  type="button"
-                  onClick={clearAllFilters}
-                  className="mt-5 inline-flex items-center gap-2 rounded-xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700"
-                >
-                  <RefreshCw size={16} />
-                  Limpar filtros
-                </button>
-              </div>
+              <AdminEmptyState
+                icon={<Package size={22} />}
+                title="Não encontrou o pedido que procura?"
+                description="Tente ajustar os filtros ou buscar por outro termo."
+                action={
+                  <button
+                    type="button"
+                    onClick={clearAllFilters}
+                    className="inline-flex items-center gap-2 rounded-xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700"
+                  >
+                    <RefreshCw size={16} />
+                    Limpar filtros
+                  </button>
+                }
+              />
             ) : (
               <div className="divide-y divide-[var(--line)]">
                 {filteredOrders.map((order) => {
@@ -1631,9 +1635,7 @@ export default function OrdersPage() {
           </div>
         </section>
 
-      </div>
-
-      <section className="fixed bottom-3 left-3 right-3 z-40 overflow-hidden rounded-[18px] border border-[var(--line)] bg-white/95 shadow-[0_18px_55px_rgba(17,16,15,0.14)] backdrop-blur md:bottom-3 md:left-[calc(var(--admin-sidebar-width)+1.5rem)] md:right-6">
+        <section className="sticky bottom-3 z-20 overflow-hidden rounded-[18px] border border-[var(--line)] bg-white/95 shadow-[0_18px_55px_rgba(17,16,15,0.14)] backdrop-blur">
         {isSummaryOpen && (
           <div className="max-h-[70vh] overflow-y-auto border-b border-[var(--line)] p-3 md:p-4">
             <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-6">
@@ -1693,9 +1695,9 @@ export default function OrdersPage() {
                 <p className="mt-1 text-xs font-bold text-gray-500">{selectedDateLabel}</p>
               </div>
               <div className="rounded-2xl border border-[var(--line)] p-4">
-                <p className="text-sm font-bold text-gray-500">Ticket medio</p>
+                <p className="text-sm font-bold text-gray-500">Ticket médio</p>
                 <p className="mt-2 text-2xl font-black text-gray-950">{formatPrice(summary.averageTicket)}</p>
-                <p className="mt-1 text-xs font-bold text-gray-500">{summary.visibleCount} visiveis</p>
+                <p className="mt-1 text-xs font-bold text-gray-500">{summary.visibleCount} visíveis</p>
               </div>
             </div>
           </div>
@@ -1728,7 +1730,8 @@ export default function OrdersPage() {
             </span>
           </div>
         </button>
-      </section>
+        </section>
+      </AdminPageShell>
     </>
   );
 }

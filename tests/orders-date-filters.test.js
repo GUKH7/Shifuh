@@ -3,10 +3,11 @@ const fs = require("node:fs");
 const test = require("node:test");
 
 const page = fs.readFileSync("src/app/admin/(painel)/orders/page.tsx", "utf8");
-const calendar = fs.readFileSync(
+const calendarAdapter = fs.readFileSync(
   "src/app/admin/(painel)/orders/OrdersDatePicker.tsx",
   "utf8",
 );
+const calendar = fs.readFileSync("src/components/ui/admin-date-picker.tsx", "utf8");
 
 test("pedidos consultam a data selecionada no banco", () => {
   assert.match(page, /getSelectedDateRange\(selectedDate\)/);
@@ -23,7 +24,8 @@ test("botão de data usa calendário estilizado do sistema", () => {
   assert.doesNotMatch(page, /type="date"/);
 
   assert.match(calendar, /role="dialog"/);
-  assert.match(calendar, /Calendário de pedidos/);
+  assert.match(calendarAdapter, /AdminDatePicker as OrdersDatePicker/);
+  assert.match(calendar, /aria-label="Calendário"/);
   assert.match(calendar, /Mês anterior/);
   assert.match(calendar, /Próximo mês/);
   assert.match(calendar, />\s*Hoje\s*</);

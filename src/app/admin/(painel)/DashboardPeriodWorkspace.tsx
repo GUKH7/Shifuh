@@ -35,13 +35,13 @@ import {
   YAxis,
 } from "recharts";
 import {
-  AdminInput,
   AdminPageHeader,
   AdminPageShell,
   AdminSelect,
-  AdminSkeleton,
 } from "@/components/ui/admin-primitives";
 import { LiveStatusDot } from "@/components/ui/live-status-dot";
+import { AdminDatePicker } from "@/components/ui/admin-date-picker";
+import { AdminEmptyState, AdminErrorState, AdminPageSkeleton } from "@/components/ui/admin-page-states";
 import { getCurrentRestaurant } from "@/lib/supabase/restaurant";
 import { getStoreStatus } from "@/features/storefront/store-summary";
 
@@ -398,32 +398,7 @@ function buildRevenueSeries(orders: OrderRow[], period: DashboardPeriod, range: 
 }
 
 function DashboardSkeleton() {
-  return (
-    <AdminPageShell className="space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="space-y-3">
-          <AdminSkeleton className="h-8 w-44" />
-          <AdminSkeleton className="h-4 w-80 max-w-full" />
-        </div>
-        <AdminSkeleton className="h-20 w-full lg:w-[420px]" />
-      </div>
-      <AdminSkeleton className="h-12 w-full sm:w-80" />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        {Array.from({ length: 5 }).map((_, index) => (
-          <AdminSkeleton key={index} className="h-32 w-full" />
-        ))}
-      </div>
-      <div className="grid gap-4 xl:grid-cols-12">
-        <AdminSkeleton className="h-[340px] xl:col-span-5" />
-        <AdminSkeleton className="h-[340px] xl:col-span-3" />
-        <AdminSkeleton className="h-[340px] xl:col-span-4" />
-      </div>
-      <div className="grid gap-4 xl:grid-cols-12">
-        <AdminSkeleton className="h-[330px] xl:col-span-5" />
-        <AdminSkeleton className="h-[330px] xl:col-span-7" />
-      </div>
-    </AdminPageShell>
-  );
+  return <AdminPageSkeleton ariaLabel="Carregando dashboard" metrics={5} />;
 }
 
 function MetricCardView({ card }: { card: MetricCard }) {
@@ -680,13 +655,7 @@ export default function DashboardPeriodWorkspace() {
   }, [orders, period, customStart, customEnd]);
 
   if (loading) return <DashboardSkeleton />;
-  if (errorMsg) {
-    return (
-      <AdminPageShell>
-        <div className="rounded-[28px] border border-red-200 bg-red-50 px-6 py-5 text-red-700">{errorMsg}</div>
-      </AdminPageShell>
-    );
-  }
+  if (errorMsg) return <AdminErrorState description={errorMsg} />;
 
   const storeTone = {
     open: { shell: "border-emerald-100 bg-white", icon: "bg-emerald-500 text-white", title: "text-emerald-700", dot: "text-emerald-500", label: "Loja aberta", helper: "Recebendo pedidos" },
@@ -754,33 +723,24 @@ export default function DashboardPeriodWorkspace() {
         <section className="surface-card grid gap-4 rounded-[24px] p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end sm:p-5" aria-label="Período personalizado do dashboard">
           <label className="grid gap-2 text-sm font-bold text-gray-700" htmlFor="dashboard-custom-start">
             Data inicial
-            <AdminInput
-              id="dashboard-custom-start"
-              type="date"
+            <AdminDatePicker
               value={customStart}
-              max={customEnd || todayInput}
-              onChange={(event) => {
-                const value = event.target.value;
+              label={formatRangeDate(parseInputDate(customStart) || new Date())}
+              onChange={(value) => {
                 setCustomStart(value);
                 if (customEnd && value > customEnd) setCustomEnd(value);
               }}
-              className="min-h-11 bg-white"
             />
           </label>
           <label className="grid gap-2 text-sm font-bold text-gray-700" htmlFor="dashboard-custom-end">
             Data final
-            <AdminInput
-              id="dashboard-custom-end"
-              type="date"
+            <AdminDatePicker
               value={customEnd}
-              min={customStart}
-              max={todayInput}
-              onChange={(event) => {
-                const value = event.target.value;
+              label={formatRangeDate(parseInputDate(customEnd) || new Date())}
+              onChange={(value) => {
                 setCustomEnd(value);
                 if (customStart && value < customStart) setCustomStart(value);
               }}
-              className="min-h-11 bg-white"
             />
           </label>
           <div className="rounded-2xl bg-[#fff7f1] px-4 py-3 text-xs text-gray-600 sm:max-w-[230px]">
@@ -834,9 +794,7 @@ export default function DashboardPeriodWorkspace() {
             <span className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-xs font-bold text-gray-500">{dashboard.range.label}</span>
           </div>
           {dashboard.topProducts.length === 0 ? (
-            <div className="mt-5 flex h-[250px] items-center justify-center rounded-2xl border border-dashed border-[var(--line)] bg-white px-5 text-center text-sm text-gray-500">
-              Nenhum produto vendido no período.
-            </div>
+            <AdminEmptyState compact title="Nenhum produto vendido" description="Os produtos aparecerão aqui quando houver vendas no período." />
           ) : (
             <div className="mt-5 h-[250px] w-full overflow-visible">
               <ResponsiveContainer width="100%" height="100%">
@@ -878,9 +836,7 @@ export default function DashboardPeriodWorkspace() {
           <p className="text-base font-black text-gray-950">Fontes de pedidos</p>
           <p className="mt-1 text-xs text-gray-400">Origem dos pedidos válidos em {dashboard.range.label.toLowerCase()}</p>
           {dashboard.sources.length === 0 ? (
-            <div className="mt-5 flex h-[250px] items-center justify-center rounded-2xl border border-dashed border-[var(--line)] bg-white px-5 text-center text-sm text-gray-500">
-              Nenhum pedido registrado no período.
-            </div>
+            <AdminEmptyState compact title="Nenhum pedido registrado" description="Altere o período ou aguarde novos pedidos." />
           ) : (
             <div className="mt-3 grid items-center gap-3 sm:grid-cols-[1fr_150px]">
               <div className="relative h-[250px] min-w-0">
@@ -965,7 +921,7 @@ export default function DashboardPeriodWorkspace() {
             <Link href="/admin/orders" className="text-xs font-black text-[var(--brand)] hover:underline">Ver todos</Link>
           </div>
           {dashboard.recentOrders.length === 0 ? (
-            <div className="flex min-h-[270px] items-center justify-center px-6 text-center text-sm text-gray-500">Nenhum pedido registrado no período.</div>
+            <AdminEmptyState compact title="Nenhum pedido recente" description="Os pedidos do período aparecerão aqui." />
           ) : (
             <>
               <div className="hidden overflow-x-auto md:block">

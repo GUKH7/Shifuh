@@ -18,18 +18,22 @@ import {
   Power,
   Save,
   Search,
+  ShoppingBag,
   Trash2,
   X,
 } from "lucide-react";
 import ProductModal from "@/components/product-modal";
 import { getCurrentRestaurant } from "@/lib/supabase/restaurant";
 import { useToast } from "@/components/ui/toast-provider";
+import { AdminPageHeader, AdminPageShell } from "@/components/ui/admin-primitives";
+import { AdminEmptyState, AdminErrorState, AdminPageSkeleton } from "@/components/ui/admin-page-states";
 
 type SortKey = "name" | "price";
 type SortDirection = "asc" | "desc";
 
 export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState("");
   const [restaurant, setRestaurant] = useState<any>(null);
   const [categories, setCategories] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
@@ -78,9 +82,13 @@ export default function AdminDashboard() {
   };
 
   const fetchData = async () => {
+    setErrorMsg("");
     try {
       const { restaurant: resto, error } = await getCurrentRestaurant(supabase);
-      if (error || !resto) return;
+      if (error || !resto) {
+        setErrorMsg("Não foi possível localizar a loja.");
+        return;
+      }
 
       setRestaurant(resto);
 
@@ -112,6 +120,7 @@ export default function AdminDashboard() {
       if (prods) setProducts(prods);
     } catch (error) {
       console.error("Erro ao buscar cardápio:", error);
+      setErrorMsg("Não foi possível carregar o cardápio.");
     } finally {
       setLoading(false);
     }
@@ -477,77 +486,44 @@ export default function AdminDashboard() {
     0,
   );
 
-  if (loading) {
-    return (
-      <div className="flex min-h-[calc(100dvh-7.5rem)] items-center justify-center" role="status" aria-live="polite">
-        <div className="flex items-center gap-2 text-sm font-semibold text-gray-500">
-          <Loader2 className="animate-spin text-[var(--brand)]" size={18} />
-          Carregando cardápio...
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <AdminPageSkeleton ariaLabel="Carregando cardápio" metrics={3} />;
+  if (errorMsg) return <AdminErrorState description={errorMsg} onRetry={() => void fetchData()} />;
 
   return (
-    <div className="mx-auto w-full min-w-0 max-w-6xl pb-20">
-      <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <h1 className="text-3xl font-black tracking-tight text-gray-950">Cardápios</h1>
-          <p className="mt-1 text-sm text-[var(--muted)]">
-            Organize categorias, destaque itens e ligue ou desligue produtos em segundos.
-          </p>
-          <div className="mt-3 text-sm font-medium text-gray-500">
-            {isSavingCategory
-              ? "Salvando ordem das categorias..."
-              : `${categories.length} categorias e ${products.length} produtos na loja`}
+    <AdminPageShell className="space-y-6 pb-20">
+      <AdminPageHeader
+        title="Cardápios"
+        description="Organize categorias, destaque itens e ligue ou desligue produtos em segundos."
+        icon={<ShoppingBag size={22} />}
+        action={
+          <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row lg:w-auto">
+            <div className="relative w-full min-w-0 sm:min-w-[240px] lg:w-[280px]">
+              <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true">
+                <Search size={16} />
+              </span>
+              <input
+                type="text"
+                placeholder="Buscar item ou categoria"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                className="h-11 w-full rounded-2xl border border-[var(--line)] bg-white pl-11 pr-4 text-sm outline-none focus:border-[var(--brand)]"
+              />
+            </div>
+            <button onClick={handleOpenImportModal} className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-[var(--line)] bg-white px-4 text-sm font-bold text-gray-700">
+              <Import size={16} /> Importar do iFood
+            </button>
+            <button onClick={handleOpenCategoryModal} className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-[var(--line)] bg-white px-4 text-sm font-bold text-gray-700">
+              <Plus size={16} /> Categoria
+            </button>
+            <button onClick={handleOpenNewProduct} className="brand-gradient inline-flex h-11 items-center justify-center gap-2 rounded-2xl px-4 text-sm font-bold text-white">
+              <Plus size={16} /> Produto
+            </button>
           </div>
-        </div>
-
-        <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row lg:w-auto">
-          <div className="relative w-full min-w-0 sm:min-w-[240px] lg:w-[280px]">
-            <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true">
-              <Search size={16} />
-            </span>
-            <input
-              type="text"
-              placeholder="Buscar item ou categoria"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-12 w-full rounded-2xl border border-[var(--line)] bg-white pl-11 pr-4 text-sm outline-none transition-colors focus:border-[var(--brand)]"
-            />
-          </div>
-
-          <button
-            onClick={handleOpenImportModal}
-            className="inline-flex h-10 items-center justify-center rounded-2xl border border-[var(--line)] bg-white px-4 text-sm font-bold text-gray-700"
-          >
-            <span className="inline-flex items-center gap-2">
-              <Import size={16} />
-              Importar do iFood
-            </span>
-          </button>
-
-          <button
-            onClick={handleOpenCategoryModal}
-            className="inline-flex h-10 items-center justify-center rounded-2xl border border-[var(--line)] bg-white px-4 text-sm font-bold text-gray-700"
-          >
-            <span className="inline-flex items-center gap-2">
-              <Plus size={16} />
-              Categoria
-            </span>
-          </button>
-
-          <button
-            onClick={handleOpenNewProduct}
-            className="brand-gradient inline-flex h-10 items-center justify-center rounded-2xl px-4 text-sm font-bold text-white"
-          >
-            <span className="inline-flex items-center gap-2">
-              <Plus size={16} />
-              Produto
-            </span>
-          </button>
-        </div>
-      </div>
+        }
+      />
+      <p className="text-sm font-medium text-gray-500">
+        {isSavingCategory ? "Salvando ordem das categorias..." : <>{categories.length} categorias e {products.length} produtos na loja</>}
+      </p>
 
       <div className="grid min-w-0 gap-6 2xl:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
         <div className="min-w-0 space-y-5">
@@ -843,9 +819,7 @@ export default function AdminDashboard() {
               </div>
 
               {previewItems.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-[var(--line)] px-4 py-10 text-center text-sm text-gray-500">
-                  Nenhum item visível para pré-visualizar.
-                </div>
+                <AdminEmptyState compact title="Nenhum item visível" description="Ative produtos ou ajuste a busca para preencher a pré-visualização." />
               ) : (
                 <div className="space-y-3">
                   {previewItems.slice(0, 4).map((item) => (
@@ -1156,6 +1130,6 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
-    </div>
+    </AdminPageShell>
   );
 }

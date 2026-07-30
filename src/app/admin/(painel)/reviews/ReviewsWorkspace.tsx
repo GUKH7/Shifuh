@@ -20,10 +20,10 @@ import {
   AdminPageHeader,
   AdminPageShell,
   AdminSelect,
-  AdminSkeleton,
   SortableTableHeader,
   type SortDirection,
 } from "@/components/ui/admin-primitives";
+import { AdminEmptyState, AdminErrorState, AdminPageSkeleton } from "@/components/ui/admin-page-states";
 
 type Review = {
   id: string;
@@ -90,22 +90,7 @@ function matchesRatingFilter(review: Review, filter: ReviewFilter) {
 }
 
 function ReviewsWorkspaceSkeleton() {
-  return (
-    <AdminPageShell className="space-y-6" role="status" aria-label="Carregando avaliações">
-      <div className="flex items-center gap-4">
-        <AdminSkeleton className="h-14 w-14" />
-        <div className="space-y-2">
-          <AdminSkeleton className="h-7 w-40" />
-          <AdminSkeleton className="h-4 w-72 max-w-[70vw]" />
-        </div>
-      </div>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <AdminSkeleton className="h-56 w-full" />
-        <AdminSkeleton className="h-56 w-full" />
-      </div>
-      <AdminSkeleton className="h-[520px] w-full" />
-    </AdminPageShell>
-  );
+  return <AdminPageSkeleton ariaLabel="Carregando avaliações" metrics={2} />;
 }
 
 export default function ReviewsWorkspace() {
@@ -231,15 +216,7 @@ export default function ReviewsWorkspace() {
 
   if (loading) return <ReviewsWorkspaceSkeleton />;
 
-  if (errorMsg) {
-    return (
-      <AdminPageShell>
-        <div className="rounded-[24px] border border-red-200 bg-red-50 px-6 py-5 text-red-700">
-          {errorMsg}
-        </div>
-      </AdminPageShell>
-    );
-  }
+  if (errorMsg) return <AdminErrorState description={errorMsg} />;
 
   return (
     <AdminPageShell className="space-y-6 pb-12">
@@ -363,7 +340,7 @@ export default function ReviewsWorkspace() {
           </div>
 
           {paginatedReviews.length === 0 ? (
-            <div className="px-6 py-16 text-center text-sm text-gray-500">Nenhuma avaliação encontrada para este filtro.</div>
+            <AdminEmptyState title="Nenhuma avaliação encontrada" description="Revise a busca e os filtros selecionados." />
           ) : (
             <div className="divide-y divide-[var(--line)]">
               {paginatedReviews.map((review) => (

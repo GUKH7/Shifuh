@@ -20,6 +20,9 @@ import { PERIOD_OPTIONS, PeriodKey, isWithinPeriod } from "@/lib/admin-period";
 import { useToast } from "@/components/ui/toast-provider";
 import { OrderStatusBadge } from "@/components/ui/order-status-badge";
 import { getOrderStatusLabel } from "@/lib/order-status";
+import { AdminButton, AdminPageHeader, AdminPageShell } from "@/components/ui/admin-primitives";
+import { AdminDatePicker } from "@/components/ui/admin-date-picker";
+import { AdminEmptyState, AdminErrorState, AdminPageSkeleton } from "@/components/ui/admin-page-states";
 
 type HistoryOrderItem = {
   product_name?: string | null;
@@ -185,30 +188,7 @@ function exportExcel(rows: HistoryOrder[]) {
 }
 
 function HistorySkeleton() {
-  return (
-    <div className="admin-page-shell animate-pulse">
-      <div className="mb-8 flex items-center gap-4">
-        <div className="h-14 w-14 rounded-2xl bg-white" />
-        <div className="space-y-3">
-          <div className="h-6 w-40 rounded-full bg-white" />
-          <div className="h-4 w-72 rounded-full bg-white" />
-        </div>
-      </div>
-      <div className="surface-card rounded-[28px] p-6">
-        <div className="h-12 rounded-2xl bg-white" />
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <div key={index} className="h-20 rounded-2xl bg-white" />
-          ))}
-        </div>
-        <div className="mt-4 space-y-3">
-          {Array.from({ length: 5 }).map((_, index) => (
-            <div key={index} className="h-20 rounded-2xl bg-white" />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+  return <AdminPageSkeleton ariaLabel="Carregando histórico" metrics={4} />;
 }
 
 export default function HistoryPage() {
@@ -397,40 +377,21 @@ export default function HistoryPage() {
 
   if (loading) return <HistorySkeleton />;
 
-  if (errorMsg) {
-    return (
-      <div className="admin-page-shell rounded-[28px] border border-red-200 bg-red-50 px-6 py-5 text-red-700">
-        {errorMsg}
-      </div>
-    );
-  }
+  if (errorMsg) return <AdminErrorState description={errorMsg} />;
 
   return (
-    <div className="admin-page-shell">
-      <div className="mb-6 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:mb-8">
-        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
-          <div className="brand-gradient flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl text-white shadow-sm sm:h-14 sm:w-14">
-            <History size={22} />
-          </div>
-          <div className="min-w-0">
-            <h1 className="text-2xl font-black tracking-tight text-gray-950 sm:text-3xl">
-              Histórico
-            </h1>
-            <p className="mt-1 hidden text-sm text-[var(--muted)] sm:block">
-              Consulte pedidos, produtos vendidos e valores em um só lugar.
-            </p>
-          </div>
-        </div>
-
-        <button
-          onClick={() => exportExcel(visibleOrders)}
-          aria-label="Exportar histórico"
-          className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[var(--line)] bg-white text-gray-700 sm:h-auto sm:w-auto sm:gap-2 sm:px-4 sm:py-3 sm:text-sm sm:font-bold"
-        >
-          <Download size={17} />
-          <span className="hidden sm:inline">Exportar</span>
-        </button>
-      </div>
+    <AdminPageShell className="space-y-6 pb-12">
+      <AdminPageHeader
+        title="Histórico"
+        description="Consulte pedidos, produtos vendidos e valores em um só lugar."
+        icon={<History size={22} />}
+        action={
+          <AdminButton variant="secondary" onClick={() => exportExcel(visibleOrders)} aria-label="Exportar histórico">
+            <Download size={17} />
+            Exportar
+          </AdminButton>
+        }
+      />
 
       <section className="surface-card rounded-[24px] p-3 sm:rounded-[28px] sm:p-5 md:p-6">
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
@@ -496,22 +457,11 @@ export default function HistoryPage() {
               <>
                 <label className="flex flex-col gap-2 text-sm font-semibold text-gray-700">
                   Data inicial
-                  <input
-                    type="date"
-                    value={customStartDate}
-                    onChange={(event) => setCustomStartDate(event.target.value)}
-                    className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm font-medium text-gray-700 outline-none"
-                  />
+                  <AdminDatePicker value={customStartDate} onChange={setCustomStartDate} />
                 </label>
                 <label className="flex flex-col gap-2 text-sm font-semibold text-gray-700">
                   Data final
-                  <input
-                    type="date"
-                    value={customEndDate}
-                    onChange={(event) => setCustomEndDate(event.target.value)}
-                    min={customStartDate || undefined}
-                    className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm font-medium text-gray-700 outline-none"
-                  />
+                  <AdminDatePicker value={customEndDate} onChange={setCustomEndDate} />
                 </label>
               </>
             )}
@@ -542,9 +492,7 @@ export default function HistoryPage() {
 
         <div className="mt-4 overflow-hidden rounded-2xl border border-[var(--line)] bg-white">
           {paginatedOrders.length === 0 ? (
-            <div className="px-5 py-16 text-center text-sm text-gray-500">
-              Nenhum pedido encontrado para este filtro.
-            </div>
+            <AdminEmptyState title="Nenhum pedido encontrado" description="Ajuste a busca, o período ou a situação selecionada." />
           ) : (
             groupedOrders.map((group) => (
               <div key={group.key} className="border-b border-[var(--line)] last:border-b-0">
@@ -744,6 +692,6 @@ export default function HistoryPage() {
           )}
         </div>
       </section>
-    </div>
+    </AdminPageShell>
   );
 }
