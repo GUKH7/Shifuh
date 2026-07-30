@@ -20,7 +20,7 @@ export function OrdersSkeleton() {
         </div>
         <AdminSkeleton className="h-[310px] w-full" />
       </section>
-      <section className="sticky bottom-3 z-20 rounded-[18px] border border-[var(--line)] bg-white/95 p-4 shadow-[0_18px_55px_rgba(17,16,15,0.14)] backdrop-blur">
+      <section className="fixed bottom-3 left-3 right-3 z-40 rounded-[18px] border border-[var(--line)] bg-white/95 p-4 shadow-[0_18px_55px_rgba(17,16,15,0.14)] backdrop-blur md:left-[calc(var(--admin-sidebar-width)+1.5rem)] md:right-6 md:mx-auto md:max-w-[1460px]">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-2">
             <AdminSkeleton className="h-5 w-32" />

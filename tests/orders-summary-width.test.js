@@ -5,21 +5,24 @@ const test = require("node:test");
 
 const root = path.resolve(__dirname, "..");
 const globals = fs.readFileSync(path.join(root, "src/app/globals.css"), "utf8");
+const page = fs.readFileSync(path.join(root, "src/app/admin/(painel)/orders/page.tsx"), "utf8");
 const skeleton = fs.readFileSync(
   path.join(root, "src/app/admin/(painel)/orders/OrdersSkeleton.tsx"),
   "utf8",
 );
 
-test("resumo de pedidos usa o mesmo shell e não depende da janela", () => {
-  const page = fs.readFileSync(path.join(root, "src/app/admin/(painel)/orders/page.tsx"), "utf8");
-  assert.match(page, /<AdminPageShell className="space-y-4 pb-6">/);
-  assert.match(page, /section className="sticky bottom-3/);
-  assert.doesNotMatch(page, /section className="fixed bottom-3/);
-  assert.doesNotMatch(globals, /section\.fixed:has/);
+test("resumo de pedidos permanece fixo e alinhado ao shell de 1460px", () => {
+  assert.match(page, /isSummaryOpen ? "pb-[26rem]" : "pb-24"/);
+  assert.match(page, /section className="fixed bottom-3 left-3 right-3 z-40/);
+  assert.match(page, /md:left-[calc(var(--admin-sidebar-width)+1.5rem)]/);
+  assert.match(page, /md:right-6 md:mx-auto md:max-w-[1460px]/);
+  assert.doesNotMatch(page, /section className="sticky bottom-3/);
+  assert.doesNotMatch(globals, /section.fixed:has/);
 });
 
-test("skeleton de pedidos usa o padrão compartilhado e resumo sticky", () => {
+test("skeleton representa o resumo fixo no rodapé", () => {
   assert.match(skeleton, /AdminPageSkeleton/);
-  assert.match(skeleton, /section className="sticky bottom-3/);
-  assert.doesNotMatch(skeleton, /section className="fixed bottom-3/);
+  assert.match(skeleton, /section className="fixed bottom-3 left-3 right-3 z-40/);
+  assert.match(skeleton, /md:max-w-[1460px]/);
+  assert.doesNotMatch(skeleton, /section className="sticky bottom-3/);
 });
