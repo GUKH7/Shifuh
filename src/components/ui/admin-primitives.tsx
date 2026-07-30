@@ -42,8 +42,20 @@ export function AdminPageHeader({
 }
 
 export const AdminInput = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
-  function AdminInput({ className, ...props }, ref) {
-    return <input ref={ref} className={cx("admin-control", className)} {...props} />;
+  function AdminInput({ className, style, ...props }, ref) {
+    const reservesLeadingIconSpace = className?.split(/\s+/).includes("pl-11") ?? false;
+    const resolvedStyle = reservesLeadingIconSpace
+      ? { paddingLeft: "2.75rem", ...style }
+      : style;
+
+    return (
+      <input
+        ref={ref}
+        className={cx("admin-control", className)}
+        style={resolvedStyle}
+        {...props}
+      />
+    );
   },
 );
 
