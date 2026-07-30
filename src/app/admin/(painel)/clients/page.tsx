@@ -318,9 +318,9 @@ export default function ClientsPage() {
                     <ShoppingBag size={14} />
                     {client.orderCount}
                   </div>
-                  <div className="inline-flex w-fit items-center gap-2 rounded-xl bg-[#eefaf2] px-3 py-2 font-bold text-emerald-700">
-                    <Wallet size={14} />
-                    {formatMoney(client.totalSpent)}
+                  <div className="client-total-spent inline-flex w-fit items-center gap-2 rounded-xl bg-[#eefaf2] px-3 py-2 font-bold text-emerald-700">
+                    <Wallet size={14} className="shrink-0" />
+                    <span>{formatMoney(client.totalSpent)}</span>
                   </div>
                   <div className="justify-self-center text-center font-semibold text-gray-600">{formatDate(client.lastOrderDate)}</div>
                   <div className="text-right">
