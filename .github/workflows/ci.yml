@@ -32,17 +32,17 @@ jobs:
         with:
           ref: ${{ github.head_ref || github.ref_name }}
 
-      - name: Apply priority 3 responsive follow-up
-        run: node scripts/run-priority3-followup.mjs
+      - name: Fix calendar keyboard type
+        run: node scripts/fix-priority3-keyboard-type.mjs
 
-      - name: Commit priority 3 responsive follow-up
+      - name: Commit calendar keyboard type
         if: github.event_name == 'pull_request'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src tests
+          git add src
           if ! git diff --cached --quiet; then
-            git commit -m "Refinar responsividade da prioridade 3"
+            git commit -m "Corrigir tipagem do calendário administrativo"
             git push
           fi
 
