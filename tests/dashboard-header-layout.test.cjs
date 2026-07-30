@@ -5,15 +5,18 @@ const test = require("node:test");
 
 const root = path.resolve(__dirname, "..");
 const pagePath = path.join(root, "src/app/admin/(painel)/page.tsx");
+const workspacePath = path.join(root, "src/app/admin/(painel)/DashboardPeriodWorkspace.tsx");
 const cssPath = path.join(root, "src/app/admin/(painel)/dashboard-header-layout.module.css");
 
 const pageSource = fs.readFileSync(pagePath, "utf8");
+const workspaceSource = fs.readFileSync(workspacePath, "utf8");
 const cssSource = fs.readFileSync(cssPath, "utf8");
 
-test("dashboard aplica o módulo de layout do cabeçalho", () => {
-  assert.match(pageSource, /import headerStyles from "\.\/dashboard-header-layout\.module\.css"/);
+test("dashboard usa o cabeçalho administrativo compartilhado", () => {
   assert.match(pageSource, /<div className=\{styles\.page\}>/);
-  assert.match(pageSource, /<div className=\{headerStyles\.page\}>/);
+  assert.doesNotMatch(pageSource, /headerStyles/);
+  assert.match(workspaceSource, /<AdminPageHeader/);
+  assert.match(workspaceSource, /title="Dashboard"/);
 });
 
 test("cards de situação da loja e período usam o mesmo tamanho no desktop", () => {
