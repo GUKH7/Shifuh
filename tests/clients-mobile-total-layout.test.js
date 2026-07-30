@@ -16,6 +16,6 @@ test("total gasto do cliente não quebra no cartão mobile", () => {
 });
 
 test("quebra global de texto no mobile não é aplicada ao container inteiro", () => {
-  assert.doesNotMatch(responsive, /\.admin-page-shell \{[\s\S]*overflow-wrap: anywhere/);
+  assert.doesNotMatch(responsive, /\.admin-page-shell\s*\{[^}]*overflow-wrap/);
   assert.match(responsive, /\.admin-page-shell :where\(p, h1, h2, h3, h4, li, dd, dt\)/);
 });
