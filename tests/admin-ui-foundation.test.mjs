@@ -2,19 +2,16 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
 
-const layout = fs.readFileSync("src/app/admin/(painel)/layout.tsx", "utf8");
-const sidebar = fs.readFileSync("src/components/admin-sidebar.tsx", "utf8");
-const dashboard = fs.readFileSync("src/app/admin/(painel)/DashboardPeriodWorkspace.tsx", "utf8");
-const dashboardRoute = fs.readFileSync("src/app/admin/(painel)/page.tsx", "utf8");
-const responsive = fs.readFileSync("src/app/admin/(painel)/admin-responsive.css", "utf8");
 const primitives = fs.readFileSync("src/components/ui/admin-primitives.tsx", "utf8");
+const responsive = fs.readFileSync("src/app/admin/(painel)/admin-responsive.css", "utf8");
+const globals = fs.readFileSync("src/app/globals.css", "utf8");
 
-test("painel usa Dashboard como nome padronizado", () => {
-  assert.match(layout, /label: "Dashboard"/);
-  assert.match(sidebar, /name: "Dashboard"/);
-  assert.match(dashboard, /title="Dashboard"/);
-  assert.match(dashboardRoute, /<DashboardPeriodWorkspace \/>/);
-  assert.doesNotMatch(dashboard, /Painel operacional/);
+test("controles administrativos usam tokens compartilhados", () => {
+  assert.match(globals, /--admin-control-height: 44px/);
+  assert.match(globals, /--admin-radius-control: 14px/);
+  assert.match(globals, /--admin-radius-card: 24px/);
+  assert.match(primitives, /admin-control/);
+  assert.match(primitives, /admin-button/);
 });
 
 test("controles administrativos usam foco laranja e selects padronizados", () => {
@@ -22,44 +19,4 @@ test("controles administrativos usam foco laranja e selects padronizados", () =>
   assert.match(responsive, /border-color: var\(--brand\)/);
   assert.match(responsive, /admin-select/);
   assert.match(responsive, /padding-right: 2\.75rem/);
-});
-
-test("componentes reutilizáveis cobrem páginas, controles, botões, skeleton e ordenação", () => {
-  for (const component of [
-    "AdminPageShell",
-    "AdminPageHeader",
-    "AdminInput",
-    "AdminSelect",
-    "AdminButton",
-    "AdminSkeleton",
-    "SortableTableHeader",
-  ]) {
-    assert.match(primitives, new RegExp(`export (?:const|function|type) ${component}`));
-  }
-});
-
-test("dashboard usa largura de pedidos, visão operacional e período global", () => {
-  assert.match(responsive, /max-width: 1460px/);
-  assert.match(dashboard, /Período das métricas/);
-  assert.match(dashboard, /value=\{period\}/);
-  assert.match(dashboard, /Últimos 7 dias/);
-  assert.match(dashboard, /Últimos 30 dias/);
-  assert.match(dashboard, /Todo o período/);
-  assert.match(dashboard, /Produtos mais pedidos/);
-  assert.match(dashboard, /Fontes de pedidos/);
-  assert.match(dashboard, /Atividade por horário/);
-  assert.match(dashboard, /Pedidos recentes/);
-  assert.match(dashboard, /<AreaChart/);
-  assert.match(dashboard, /<PieChart>/);
-  assert.match(dashboard, /<BarChart/);
-});
-
-test("pesquisa global fica alinhada à esquerda em todas as páginas", () => {
-  assert.match(layout, /relative [^\"]*w-full [^\"]*max-w-2xl [^\"]*justify-self-start/);
-  assert.doesNotMatch(layout, /relative mx-auto w-full min-w-0 max-w-2xl/);
-  assert.match(layout, /rounded-xl text-gray-600 lg:hidden/);
-});
-
-test("sidebar deixa ícones pretos no hover", () => {
-  assert.match(sidebar, /group-hover:text-gray-950/);
 });

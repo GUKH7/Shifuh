@@ -714,7 +714,7 @@ export default function AdminDashboard() {
                       <div className="divide-y divide-[var(--line)] bg-[#fffdfa]">
                         {category.categoryProducts.length > 0 ? (
                           category.categoryProducts.map((product: any) => (
-                            <div key={product.id} className="group flex min-w-0 flex-wrap items-center gap-4 px-5 py-4 sm:flex-nowrap">
+                            <div key={product.id} className="menu-product-row group flex min-w-0 flex-wrap items-center gap-4 px-5 py-4 sm:flex-nowrap">
                               <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-2xl border border-[var(--line)] bg-[#fbf7f2]">
                                 {product.image_url ? (
                                   <img
@@ -736,7 +736,7 @@ export default function AdminDashboard() {
 
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2">
-                                  <p className="truncate font-bold text-gray-950">{product.name}</p>
+                                  <p className="menu-product-name truncate font-bold text-gray-950">{product.name}</p>
                                   {!product.is_active && (
                                     <span className="rounded-full bg-[#fff0e8] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--brand)]">
                                       Pausado
@@ -751,12 +751,14 @@ export default function AdminDashboard() {
                                 </p>
                               </div>
 
-                              <div className="ml-20 flex flex-shrink-0 items-center gap-2 opacity-100 transition-opacity sm:ml-0 md:opacity-0 md:group-hover:opacity-100">
+                              <div className="menu-product-actions ml-20 flex flex-shrink-0 items-center gap-2 opacity-100 transition-opacity sm:ml-0 md:opacity-0 md:group-hover:opacity-100">
                                 <button
                                   onClick={() => handleEditProduct(product)}
-                                  className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-xs font-bold text-gray-600"
+                                  className="menu-product-edit admin-button border border-[var(--line)] bg-white px-3 py-2 text-xs font-bold text-gray-600"
+                                  aria-label={`Editar produto ${product.name}`}
                                 >
-                                  Editar
+                                  <Edit3 size={15} aria-hidden="true" />
+                                  <span className="menu-product-edit-label">Editar</span>
                                 </button>
                                 <button
                                   onClick={() => toggleProductStatus(product)}

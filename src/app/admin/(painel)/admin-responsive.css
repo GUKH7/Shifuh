@@ -53,6 +53,7 @@
   border-radius: var(--admin-radius-card);
 }
 
+.admin-control:focus-visible,
 .admin-page-shell :where(button, a[href], input, select, textarea, [role="button"]):focus-visible,
 .admin-panel-header :where(button, a[href], input):focus-visible {
   border-color: var(--brand) !important;
@@ -114,5 +115,47 @@
     width: auto !important;
     max-width: none !important;
     margin: 0 !important;
+  }
+}
+
+
+.menu-product-name {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1023px) {
+  .admin-page-shell .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  .admin-page-header-action {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 639px) {
+  .menu-product-row {
+    align-items: flex-start;
+  }
+
+  .menu-product-name {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+  }
+
+  .menu-product-actions {
+    margin-left: auto;
+  }
+
+  .menu-product-edit {
+    width: var(--admin-control-height);
+    min-width: var(--admin-control-height);
+    padding-inline: 0;
+  }
+
+  .menu-product-edit-label {
+    display: none;
   }
 }
