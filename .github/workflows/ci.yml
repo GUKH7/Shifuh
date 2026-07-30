@@ -33,7 +33,7 @@ jobs:
           ref: ${{ github.head_ref || github.ref_name }}
 
       - name: Apply priority 3 responsive follow-up
-        run: node scripts/apply-priority3-followup.mjs
+        run: node scripts/run-priority3-followup.mjs
 
       - name: Commit priority 3 responsive follow-up
         if: github.event_name == 'pull_request'
