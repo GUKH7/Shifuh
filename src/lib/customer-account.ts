@@ -47,7 +47,7 @@ export async function ensureCustomerAccount(
       phone_confirm: false,
       user_metadata: { name: input.name },
     });
-    if (error || !data?.user?.id) throw error || new Error("Nao foi possivel criar a conta do cliente.");
+    if (error || !data?.user?.id) throw error || new Error("Não foi possível criar a conta do cliente.");
     authUserId = data.user.id;
   }
 

@@ -1,277 +1,181 @@
-/*
- * A grade de indicadores é localizada pela classe responsiva, evitando que um
- * painel condicional de datas altere a estilização dos cards.
- */
-.page :global(.admin-page-shell) > section[class*="xl:grid-cols-5"] article > div:first-child > div:first-child > p:first-child {
-  white-space: nowrap !important;
+.page :global(.dashboard-metrics-grid .dashboard-metric-card-label) {
+  white-space: nowrap;
 }
 
-/*
- * O filtro de período continua usando o select nativo do sistema, mas passa a
- * funcionar visualmente como um controle global do Dashboard. O :has mantém a
- * regra ligada ao label sem exigir classes extras no componente React.
- */
-.page :global(.admin-page-shell) div:has(> label[for="dashboard-period"]) {
+.page :global(.dashboard-store-card),
+.page :global(.dashboard-period-control) {
+  border-radius: var(--admin-radius-card);
+}
+
+.page :global(.dashboard-period-control) {
   position: relative;
-  display: grid;
   width: min(100%, 19rem);
   min-width: 17.5rem;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 0.3rem;
-  overflow: visible;
   padding: 0.625rem 0.7rem 0.625rem 3rem;
   border: 1px solid rgba(225, 207, 192, 0.9);
-  border-radius: 18px;
-  background:
-    linear-gradient(135deg, rgba(255, 106, 0, 0.07), transparent 52%),
-    rgba(255, 255, 255, 0.94);
+  background: linear-gradient(135deg, rgba(255, 106, 0, 0.07), transparent 52%), rgba(255, 255, 255, 0.94);
   box-shadow: 0 10px 26px rgba(77, 48, 29, 0.06);
-  transition:
-    border-color 160ms ease,
-    box-shadow 160ms ease,
-    transform 160ms ease;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
 }
 
-.page :global(.admin-page-shell) div:has(> label[for="dashboard-period"]):has(button[aria-expanded="true"]) {
-  z-index: 120;
-}
-
-.page :global(.admin-page-shell) div:has(> label[for="dashboard-period"])::before {
+.page :global(.dashboard-period-control)::before,
+.page :global(.dashboard-period-control)::after {
   position: absolute;
   top: 50%;
+  content: "";
+  transform: translateY(-50%);
+}
+
+.page :global(.dashboard-period-control)::before {
   left: 0.75rem;
   width: 1.75rem;
   height: 1.75rem;
   border: 1px solid rgba(255, 106, 0, 0.14);
   border-radius: 10px;
   background: rgba(255, 106, 0, 0.1);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.65);
-  content: "";
-  transform: translateY(-50%);
 }
 
-.page :global(.admin-page-shell) div:has(> label[for="dashboard-period"])::after {
-  position: absolute;
-  top: 50%;
+.page :global(.dashboard-period-control)::after {
   left: 1.2rem;
   width: 0.85rem;
   height: 0.85rem;
   background: var(--brand);
-  content: "";
   mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 2v4M16 2v4M3 10h18'/%3E%3Crect x='3' y='4' width='18' height='17' rx='2'/%3E%3C/svg%3E");
   mask-position: center;
   mask-repeat: no-repeat;
   mask-size: contain;
-  transform: translateY(-50%);
 }
 
-.page :global(.admin-page-shell) div:has(> label[for="dashboard-period"]):hover {
+.page :global(.dashboard-period-control:hover) {
   border-color: rgba(255, 106, 0, 0.32);
-  box-shadow: 0 12px 30px rgba(77, 48, 29, 0.085);
 }
 
-.page :global(.admin-page-shell) div:has(> label[for="dashboard-period"]):focus-within {
+.page :global(.dashboard-period-control:focus-within) {
+  z-index: 120;
   border-color: var(--brand);
-  box-shadow:
-    0 0 0 3px rgba(255, 106, 0, 0.1),
-    0 14px 32px rgba(77, 48, 29, 0.09);
+  box-shadow: var(--admin-focus-ring), 0 14px 32px rgba(77, 48, 29, 0.09);
   transform: translateY(-1px);
 }
 
-.page :global(.admin-page-shell) label[for="dashboard-period"] {
+.page :global(.dashboard-period-control label) {
+  color: #9a6a48;
   font-size: 0.68rem;
   font-weight: 800;
-  line-height: 1rem;
   letter-spacing: 0.075em;
-  color: #9a6a48;
+  line-height: 1rem;
   text-transform: uppercase;
 }
 
-.page :global(.admin-page-shell) select#dashboard-period {
+.page :global(.dashboard-period-control #dashboard-period) {
   width: 100% !important;
   min-height: 2.45rem !important;
-  padding-top: 0.35rem !important;
-  padding-bottom: 0.35rem !important;
   border-color: transparent !important;
   border-radius: 12px !important;
   background-color: rgba(255, 255, 255, 0.86) !important;
   box-shadow: inset 0 0 0 1px rgba(225, 207, 192, 0.72);
+  color: #312a25;
   font-size: 0.875rem;
   font-weight: 800;
-  color: #312a25;
 }
 
-.page :global(.admin-page-shell) select#dashboard-period:focus-visible {
-  border-color: transparent !important;
-  box-shadow: inset 0 0 0 1px rgba(255, 106, 0, 0.3) !important;
-  outline: none !important;
-}
-
-/*
- * O primeiro bloco analítico é o único grid de doze colunas com três cards.
- * Essa identificação preserva o visual do ranking mesmo quando o painel de
- * datas personalizadas é exibido antes dos gráficos.
- */
-.page :global(.admin-page-shell) > section[class*="xl:grid-cols-12"]:has(> article:nth-child(3)) {
+.page :global(.dashboard-analytics-grid) {
   overflow: visible;
 }
 
-.page :global(.admin-page-shell) > section[class*="xl:grid-cols-12"]:has(> article:nth-child(3)) > article:nth-child(2) {
+.page :global(.dashboard-top-products-card),
+.page :global(.dashboard-sources-card) {
+  align-self: stretch;
+}
+
+.page :global(.dashboard-top-products-card) {
   position: relative;
   z-index: 3;
-  overflow: visible;
-  background:
-    radial-gradient(circle at 100% 0%, rgba(255, 106, 0, 0.1), transparent 38%),
-    linear-gradient(180deg, #fffdfb 0%, #ffffff 58%, #fffaf6 100%);
+  background: radial-gradient(circle at 100% 0%, rgba(255, 106, 0, 0.1), transparent 38%), linear-gradient(180deg, #fffdfb 0%, #ffffff 58%, #fffaf6 100%);
 }
 
-.page :global(.admin-page-shell) > section[class*="xl:grid-cols-12"]:has(> article:nth-child(3)) > article:nth-child(2)::after {
-  display: none;
-}
-
-.page :global(.admin-page-shell) > section[class*="xl:grid-cols-12"]:has(> article:nth-child(3)) > article:nth-child(2) > div:first-child {
-  position: relative;
-  z-index: 1;
+.page :global(.dashboard-card-header) {
   padding-bottom: 0.875rem;
   border-bottom: 1px solid rgba(238, 227, 217, 0.8);
 }
 
-.page :global(.admin-page-shell) > section[class*="xl:grid-cols-12"]:has(> article:nth-child(3)) > article:nth-child(2) > div:first-child > span {
-  border-color: rgba(255, 106, 0, 0.16);
-  background: rgba(255, 106, 0, 0.07);
-  color: #c65300;
-}
-
-.page :global(.admin-page-shell) > section[class*="xl:grid-cols-12"]:has(> article:nth-child(3)) > article:nth-child(2) :global(.recharts-wrapper),
-.page :global(.admin-page-shell) > section[class*="xl:grid-cols-12"]:has(> article:nth-child(3)) > article:nth-child(2) :global(.recharts-surface) {
-  position: relative;
-  z-index: 1;
+.page :global(.dashboard-top-products-card .recharts-wrapper),
+.page :global(.dashboard-top-products-card .recharts-surface) {
   overflow: visible !important;
 }
 
-.page :global(.admin-page-shell) > section[class*="xl:grid-cols-12"]:has(> article:nth-child(3)) > article:nth-child(2) :global(.recharts-yAxis .recharts-cartesian-axis-tick-value) {
+.page :global(.dashboard-top-products-card .recharts-yAxis .recharts-cartesian-axis-tick-value) {
   fill: #3f3833;
   font-size: 11px;
   font-weight: 700;
 }
 
-.page :global(article[data-top-products-card="true"] .recharts-yAxis text) {
-  opacity: 0 !important;
-}
-
-.page :global(.top-products-chart-host) {
-  position: relative !important;
-}
-
-.page :global(.top-products-label-overlay) {
-  position: absolute;
-  z-index: 4;
-  top: 4px;
-  bottom: 4px;
-  left: 0;
-  display: grid;
-  width: 118px;
-  pointer-events: none;
-}
-
-.page :global(.top-products-label-overlay[data-count="1"]) {
-  grid-template-rows: repeat(1, minmax(0, 1fr));
-}
-
-.page :global(.top-products-label-overlay[data-count="2"]) {
-  grid-template-rows: repeat(2, minmax(0, 1fr));
-}
-
-.page :global(.top-products-label-overlay[data-count="3"]) {
-  grid-template-rows: repeat(3, minmax(0, 1fr));
-}
-
-.page :global(.top-products-label-overlay[data-count="4"]) {
-  grid-template-rows: repeat(4, minmax(0, 1fr));
-}
-
-.page :global(.top-products-label-overlay[data-count="5"]) {
-  grid-template-rows: repeat(5, minmax(0, 1fr));
-}
-
-.page :global(.top-products-label) {
-  align-self: center;
-  overflow: hidden;
-  padding-right: 8px;
-  color: #3f3833;
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1.15;
-  text-align: right;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.page :global(.admin-page-shell) > section[class*="xl:grid-cols-12"]:has(> article:nth-child(3)) > article:nth-child(2) :global(.recharts-bar-rectangle path) {
+.page :global(.dashboard-top-products-card .recharts-bar-rectangle path) {
   filter: drop-shadow(0 5px 7px rgba(255, 106, 0, 0.18));
   transition: filter 160ms ease, opacity 160ms ease, transform 160ms ease;
   transform-box: fill-box;
   transform-origin: left center;
 }
 
-.page :global(.admin-page-shell) > section[class*="xl:grid-cols-12"]:has(> article:nth-child(3)) > article:nth-child(2) :global(.recharts-bar-rectangle:hover path) {
+.page :global(.dashboard-top-products-card .recharts-bar-rectangle:hover path) {
   filter: drop-shadow(0 7px 10px rgba(255, 106, 0, 0.3));
   transform: scaleX(1.025);
 }
 
-.page :global(.admin-page-shell) > section[class*="xl:grid-cols-12"]:has(> article:nth-child(3)) > article:nth-child(2) :global(.recharts-tooltip-wrapper) {
+.page :global(.dashboard-top-products-card .recharts-tooltip-wrapper) {
   z-index: 50 !important;
   overflow: visible !important;
   pointer-events: none;
 }
 
-.page :global(.admin-page-shell) > section[class*="xl:grid-cols-12"]:has(> article:nth-child(3)) > article:nth-child(2) :global(.recharts-default-tooltip) {
+.page :global(.dashboard-top-products-card .recharts-default-tooltip) {
   max-width: min(280px, calc(100vw - 2rem));
   border: 1px solid #f1ded0 !important;
-  border-radius: 14px !important;
+  border-radius: var(--admin-radius-control) !important;
   background: rgba(255, 255, 255, 0.98) !important;
   box-shadow: 0 16px 34px rgba(63, 43, 29, 0.16) !important;
   white-space: normal !important;
 }
 
+@media (min-width: 1280px) {
+  .page :global(.dashboard-top-products-card),
+  .page :global(.dashboard-sources-card) {
+    min-height: 380px;
+  }
+
+  .page :global(.dashboard-top-products-card) {
+    display: flex;
+    flex-direction: column;
+  }
+}
+
 @media (min-width: 1280px) and (max-width: 1535px) {
-  .page :global(.admin-page-shell) > section[class*="xl:grid-cols-5"] article {
+  .page :global(.dashboard-metric-card) {
     padding: 1rem;
   }
 
-  .page :global(.admin-page-shell) > section[class*="xl:grid-cols-5"] article > div:first-child {
+  .page :global(.dashboard-metric-card-header) {
     gap: 0.5rem;
   }
 
-  .page :global(.admin-page-shell) > section[class*="xl:grid-cols-5"] article > div:first-child > div:first-child > p:first-child {
+  .page :global(.dashboard-metric-card-label) {
     font-size: 0.75rem;
     line-height: 1rem;
     letter-spacing: -0.015em;
   }
 
-  .page :global(.admin-page-shell) > section[class*="xl:grid-cols-5"] article > div:first-child > div:last-child {
+  .page :global(.dashboard-metric-card-icon) {
     width: 2.5rem;
     height: 2.5rem;
   }
 }
 
 @media (max-width: 639px) {
-  .page :global(.admin-page-shell) div:has(> label[for="dashboard-period"]) {
+  .page :global(.dashboard-period-control) {
     width: 100%;
     min-width: 0;
   }
 
-  .page :global(.admin-page-shell) > section[class*="xl:grid-cols-12"]:has(> article:nth-child(3)) > article:nth-child(2) :global(.recharts-yAxis .recharts-cartesian-axis-tick-value) {
+  .page :global(.dashboard-top-products-card .recharts-yAxis .recharts-cartesian-axis-tick-value) {
     font-size: 10px;
-  }
-
-  .page :global(.top-products-label-overlay) {
-    width: 112px;
-  }
-
-  .page :global(.top-products-label) {
-    padding-right: 7px;
-    font-size: 10px;
-    letter-spacing: -0.015em;
   }
 }

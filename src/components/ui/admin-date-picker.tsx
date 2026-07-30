@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarDays,
   Check,
@@ -47,11 +47,14 @@ export type AdminDatePickerProps = {
 
 export function AdminDatePicker({ value, label, onChange }: AdminDatePickerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const calendarRef = useRef<HTMLDivElement>(null);
   const selectedDate = useMemo(() => parseDateValue(value), [value]);
   const [isOpen, setIsOpen] = useState(false);
   const [visibleMonth, setVisibleMonth] = useState(
     () => new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1, 12),
   );
+  const [activeDateValue, setActiveDateValue] = useState(value);
 
   const today = useMemo(() => new Date(), []);
   const todayValue = formatDateValue(today);
@@ -76,8 +79,12 @@ export function AdminDatePicker({ value, label, onChange }: AdminDatePickerProps
       }
     };
 
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setIsOpen(false);
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setIsOpen(false);
+        triggerRef.current?.focus();
+      }
     };
 
     document.addEventListener("pointerdown", handlePointerDown);
@@ -95,6 +102,41 @@ export function AdminDatePicker({ value, label, onChange }: AdminDatePickerProps
     );
   };
 
+  const focusDateButton = (dateValue: string) => {
+    window.requestAnimationFrame(() => {
+      calendarRef.current
+        ?.querySelector<HTMLButtonElement>('[data-date="' + dateValue + '"]')
+        ?.focus();
+    });
+  };
+
+  const handleDateKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>, date: Date) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      selectDate(date);
+      return;
+    }
+
+    const nextDate = new Date(date);
+    let handled = true;
+    if (event.key === "ArrowLeft") nextDate.setDate(nextDate.getDate() - 1);
+    else if (event.key === "ArrowRight") nextDate.setDate(nextDate.getDate() + 1);
+    else if (event.key === "ArrowUp") nextDate.setDate(nextDate.getDate() - 7);
+    else if (event.key === "ArrowDown") nextDate.setDate(nextDate.getDate() + 7);
+    else if (event.key === "Home") nextDate.setDate(nextDate.getDate() - nextDate.getDay());
+    else if (event.key === "End") nextDate.setDate(nextDate.getDate() + (6 - nextDate.getDay()));
+    else if (event.key === "PageUp") nextDate.setMonth(nextDate.getMonth() - 1);
+    else if (event.key === "PageDown") nextDate.setMonth(nextDate.getMonth() + 1);
+    else handled = false;
+
+    if (!handled) return;
+    event.preventDefault();
+    const nextValue = formatDateValue(nextDate);
+    setVisibleMonth(new Date(nextDate.getFullYear(), nextDate.getMonth(), 1, 12));
+    setActiveDateValue(nextValue);
+    focusDateButton(nextValue);
+  };
+
   const selectDate = (date: Date) => {
     onChange(formatDateValue(date));
     setIsOpen(false);
@@ -103,9 +145,13 @@ export function AdminDatePicker({ value, label, onChange }: AdminDatePickerProps
   return (
     <div ref={containerRef} className="relative">
       <button
+        ref={triggerRef}
         type="button"
-        onClick={() => setIsOpen((current) => !current)}
-        className="inline-flex min-h-11 cursor-pointer items-center gap-2.5 rounded-xl border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm font-bold text-gray-700 shadow-sm transition hover:border-orange-200 hover:bg-orange-50/30 focus-visible:border-[var(--brand)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-100"
+        onClick={() => {
+          setActiveDateValue(value);
+          setIsOpen((current) => !current);
+        }}
+        className="admin-button inline-flex min-h-11 cursor-pointer items-center gap-2.5 border border-[var(--line)] bg-white px-3.5 py-2.5 text-sm font-bold text-gray-700 shadow-sm transition hover:border-orange-200 hover:bg-orange-50/30 focus-visible:border-[var(--brand)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-100"
         aria-label={`Escolher data. Data selecionada: ${displayLabel}`}
         aria-haspopup="dialog"
         aria-expanded={isOpen}
@@ -120,15 +166,16 @@ export function AdminDatePicker({ value, label, onChange }: AdminDatePickerProps
 
       {isOpen && (
         <div
+          ref={calendarRef}
           role="dialog"
           aria-label="Calendário"
-          className="absolute right-0 top-full z-[80] mt-2 w-[324px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-[22px] border border-orange-100 bg-white shadow-[0_24px_70px_rgba(49,34,23,0.18)]"
+          className="admin-date-picker-popover absolute right-0 top-full z-[80] mt-2 w-[324px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-[22px] border border-orange-100 bg-white shadow-[0_24px_70px_rgba(49,34,23,0.18)]"
         >
           <div className="flex items-center justify-between border-b border-orange-50 bg-[#fffdfa] px-4 py-3.5">
             <button
               type="button"
               onClick={() => moveMonth(-1)}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--line)] bg-white text-gray-600 transition hover:border-orange-200 hover:bg-orange-50 hover:text-[var(--brand)]"
+              className="admin-icon-button inline-flex items-center justify-center border border-[var(--line)] bg-white text-gray-600 transition hover:border-orange-200 hover:bg-orange-50 hover:text-[var(--brand)]"
               aria-label="Mês anterior"
             >
               <ChevronLeft size={18} />
@@ -144,7 +191,7 @@ export function AdminDatePicker({ value, label, onChange }: AdminDatePickerProps
             <button
               type="button"
               onClick={() => moveMonth(1)}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--line)] bg-white text-gray-600 transition hover:border-orange-200 hover:bg-orange-50 hover:text-[var(--brand)]"
+              className="admin-icon-button inline-flex items-center justify-center border border-[var(--line)] bg-white text-gray-600 transition hover:border-orange-200 hover:bg-orange-50 hover:text-[var(--brand)]"
               aria-label="Próximo mês"
             >
               <ChevronRight size={18} />
@@ -172,8 +219,12 @@ export function AdminDatePicker({ value, label, onChange }: AdminDatePickerProps
                   <button
                     key={dateValue}
                     type="button"
+                    data-date={dateValue}
+                    tabIndex={dateValue === activeDateValue ? 0 : -1}
+                    onFocus={() => setActiveDateValue(dateValue)}
+                    onKeyDown={(event) => handleDateKeyDown(event, date)}
                     onClick={() => selectDate(date)}
-                    className={`relative inline-flex h-9 w-9 items-center justify-center justify-self-center rounded-xl text-sm font-bold transition ${
+                    className={`relative inline-flex h-9 w-9 items-center justify-center justify-self-center rounded-xl text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300 ${
                       isSelected
                         ? "bg-[var(--brand)] text-white shadow-[0_7px_18px_rgba(255,90,31,0.3)]"
                         : isCurrentMonth
@@ -220,7 +271,7 @@ export function AdminDatePicker({ value, label, onChange }: AdminDatePickerProps
             <button
               type="button"
               onClick={() => selectDate(today)}
-              className="shrink-0 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-black text-[var(--brand)] transition hover:bg-orange-100"
+              className="admin-button shrink-0 border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-black text-[var(--brand)] transition hover:bg-orange-100"
             >
               Hoje
             </button>

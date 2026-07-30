@@ -24,10 +24,10 @@ export function AdminPageHeader({
   className?: string;
 }) {
   return (
-    <div className={cx("flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between", className)}>
-      <div className="flex min-w-0 items-center gap-4">
+    <div className={cx("admin-page-header flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between", className)}>
+      <div className="admin-page-header-main flex min-w-0 items-center gap-4">
         {icon ? (
-          <div className="brand-gradient flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-sm sm:h-14 sm:w-14">
+          <div className="admin-page-header-icon brand-gradient flex h-12 w-12 shrink-0 items-center justify-center text-white shadow-sm sm:h-14 sm:w-14">
             {icon}
           </div>
         ) : null}
@@ -36,7 +36,7 @@ export function AdminPageHeader({
           {description ? <p className="mt-1 text-sm text-[var(--muted)]">{description}</p> : null}
         </div>
       </div>
-      {action ? <div className="w-full sm:w-auto sm:shrink-0">{action}</div> : null}
+      {action ? <div className="admin-page-header-action w-full sm:w-auto sm:shrink-0">{action}</div> : null}
     </div>
   );
 }
@@ -96,7 +96,7 @@ export const AdminButton = forwardRef<
       ref={ref}
       type={type}
       className={cx(
-        "inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+        "admin-button inline-flex min-h-11 items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50",
         BUTTON_VARIANTS[variant],
         className,
       )}
@@ -106,7 +106,7 @@ export const AdminButton = forwardRef<
 });
 
 export function AdminSkeleton({ className }: { className?: string }) {
-  return <div aria-hidden="true" className={cx("animate-pulse rounded-2xl bg-white", className)} />;
+  return <div aria-hidden="true" className={cx("admin-skeleton animate-pulse bg-white", className)} />;
 }
 
 export type SortDirection = "asc" | "desc" | null;
@@ -131,6 +131,7 @@ export function SortableTableHeader({
       type="button"
       onClick={onClick}
       aria-label={`Ordenar por ${label}${active && direction ? ` em ordem ${direction === "asc" ? "crescente" : "decrescente"}` : ""}`}
+      aria-pressed={active}
       className={cx(
         "group inline-flex items-center gap-1.5 text-left font-bold transition-colors hover:text-gray-950",
         active ? "text-[var(--brand)]" : "text-gray-400",
