@@ -87,7 +87,7 @@
     justify-content: center;
   }
 
-  .admin-page-shell {
+  .admin-page-shell :where(p, h1, h2, h3, h4, li, dd, dt) {
     overflow-wrap: anywhere;
   }
 
@@ -117,7 +117,6 @@
     margin: 0 !important;
   }
 }
-
 
 .menu-product-name {
   overflow-wrap: anywhere;
@@ -160,17 +159,34 @@
   }
 }
 
-
 .client-total-spent {
+  display: grid !important;
+  grid-template-columns: auto max-content !important;
+  width: max-content !important;
+  min-width: 8.75rem !important;
+  max-width: none !important;
+  flex: 0 0 auto !important;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap !important;
+  overflow-wrap: normal !important;
+  word-break: keep-all !important;
+}
+
+.client-total-spent > span {
+  display: block;
+  width: max-content;
   min-width: max-content;
-  white-space: nowrap;
-  overflow-wrap: normal;
-  word-break: normal;
+  white-space: nowrap !important;
+  overflow-wrap: normal !important;
+  word-break: keep-all !important;
 }
 
 @media (max-width: 639px) {
   .client-total-spent {
     align-self: start;
     justify-self: end;
+    padding-inline: 0.875rem !important;
+    line-height: 1.25;
   }
 }
