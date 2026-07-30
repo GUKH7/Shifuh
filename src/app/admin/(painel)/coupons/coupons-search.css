@@ -1,0 +1,4 @@
+/* Mantém o texto da busca afastado do ícone, mesmo com o padding global de .admin-control. */
+.admin-panel-content input.admin-control[placeholder="Buscar código do cupom"] {
+  padding-left: 2.75rem !important;
+}
