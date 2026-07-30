@@ -5,6 +5,7 @@ import { createBrowserClient } from "@supabase/ssr";
 import { usePathname, useRouter } from "next/navigation";
 import { Menu, Search } from "lucide-react";
 import AdminSidebar from "@/components/admin-sidebar";
+import { AdminHeaderActions } from "@/components/admin-header-actions";
 import { AdminSkeleton } from "@/components/ui/admin-primitives";
 import { getRestaurantByUserId } from "@/lib/supabase/restaurant";
 import "./admin-responsive.css";
@@ -26,10 +27,14 @@ function AdminGuardSkeleton() {
       <div className="hidden h-screen w-16 border-r border-[var(--line)] bg-white lg:fixed lg:block" />
       <div className="lg:ml-16">
         <div className="h-16 border-b border-[var(--line)] bg-[#fbf7f2] px-3 py-2 sm:h-20 sm:px-4 lg:px-6">
-            <div className="admin-page-shell grid h-full grid-cols-[auto_minmax(0,1fr)] items-center gap-3 lg:grid-cols-1">
-              <AdminSkeleton className="h-10 w-10 lg:hidden" />
-              <AdminSkeleton className="h-11 w-full max-w-2xl justify-self-start" />
+          <div className="admin-page-shell grid h-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
+            <AdminSkeleton className="h-10 w-10 lg:hidden" />
+            <AdminSkeleton className="col-start-2 h-11 w-full max-w-2xl justify-self-start" />
+            <div className="col-start-3 flex gap-2">
+              <AdminSkeleton className="h-10 w-10" />
+              <AdminSkeleton className="h-10 w-10" />
             </div>
+          </div>
         </div>
         <div className="px-3 py-4 sm:px-4 md:px-5 lg:px-6">
           <div className="admin-page-shell space-y-4">
@@ -54,10 +59,11 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
   const router = useRouter();
   const pathname = usePathname();
   const supabase = useMemo(
-    () => createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    ),
+    () =>
+      createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      ),
     [],
   );
 
@@ -108,7 +114,7 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
       }
     };
 
-    guardAdminAccess();
+    void guardAdminAccess();
     return () => {
       isMounted = false;
     };
@@ -163,7 +169,7 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
       >
         <header className="admin-panel-header sticky top-0 z-30 bg-[#fbf7f2]/95 backdrop-blur">
           <div className="min-h-16 px-3 py-2 sm:h-20 sm:px-4 sm:py-0 lg:px-6">
-            <div className="admin-page-shell grid h-full grid-cols-[auto_minmax(0,1fr)] items-center gap-2 sm:gap-3 lg:grid-cols-1">
+            <div className="admin-page-shell grid h-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 sm:gap-3">
               <button
                 type="button"
                 onClick={() => setIsMobileSidebarOpen(true)}
@@ -173,7 +179,7 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
                 <Menu size={19} />
               </button>
 
-              <div className="relative w-full min-w-0 max-w-2xl justify-self-start">
+              <div className="relative col-start-2 w-full min-w-0 max-w-2xl justify-self-start">
                 <div className="flex items-center gap-2.5 rounded-xl border border-[var(--line)] bg-white px-3 py-2.5 sm:px-4">
                   <Search size={17} className="shrink-0 text-gray-400" />
                   <input
@@ -214,6 +220,7 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
                 )}
               </div>
 
+              <AdminHeaderActions />
             </div>
           </div>
         </header>

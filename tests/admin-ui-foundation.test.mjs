@@ -55,7 +55,7 @@ test("dashboard usa largura de pedidos, visão operacional e período global", (
 });
 
 test("pesquisa global fica alinhada à esquerda em todas as páginas", () => {
-  assert.match(layout, /relative w-full min-w-0 max-w-2xl justify-self-start/);
+  assert.match(layout, /relative [^\"]*w-full [^\"]*max-w-2xl [^\"]*justify-self-start/);
   assert.doesNotMatch(layout, /relative mx-auto w-full min-w-0 max-w-2xl/);
   assert.match(layout, /rounded-xl text-gray-600 lg:hidden/);
 });
