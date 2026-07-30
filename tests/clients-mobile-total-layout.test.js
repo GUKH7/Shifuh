@@ -8,7 +8,14 @@ const responsive = fs.readFileSync("src/app/admin/(painel)/admin-responsive.css"
 test("total gasto do cliente não quebra no cartão mobile", () => {
   assert.match(clients, /client-total-spent/);
   assert.match(clients, /Wallet size=\{14\} className="shrink-0"/);
-  assert.match(responsive, /\.client-total-spent[\s\S]*white-space: nowrap/);
-  assert.match(responsive, /overflow-wrap: normal/);
-  assert.match(responsive, /word-break: normal/);
+  assert.match(responsive, /\.client-total-spent[\s\S]*grid-template-columns: auto max-content/);
+  assert.match(responsive, /min-width: 8\.75rem !important/);
+  assert.match(responsive, /\.client-total-spent > span[\s\S]*white-space: nowrap !important/);
+  assert.match(responsive, /overflow-wrap: normal !important/);
+  assert.match(responsive, /word-break: keep-all !important/);
+});
+
+test("quebra global de texto no mobile não é aplicada ao container inteiro", () => {
+  assert.doesNotMatch(responsive, /\.admin-page-shell \{[\s\S]*overflow-wrap: anywhere/);
+  assert.match(responsive, /\.admin-page-shell :where\(p, h1, h2, h3, h4, li, dd, dt\)/);
 });
