@@ -32,17 +32,17 @@ jobs:
         with:
           ref: ${{ github.head_ref || github.ref_name }}
 
-      - name: Apply priority 3 visual polish
-        run: node scripts/apply-priority3.mjs
+      - name: Apply priority 3 responsive follow-up
+        run: node scripts/apply-priority3-followup.mjs
 
-      - name: Commit priority 3 visual polish
+      - name: Commit priority 3 responsive follow-up
         if: github.event_name == 'pull_request'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add src tests
           if ! git diff --cached --quiet; then
-            git commit -m "Aplicar acabamento visual da prioridade 3"
+            git commit -m "Refinar responsividade da prioridade 3"
             git push
           fi
 
