@@ -1,6 +1,6 @@
 "use client";
 
-import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
+import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarDays,
   Check,
@@ -79,7 +79,7 @@ export function AdminDatePicker({ value, label, onChange }: AdminDatePickerProps
       }
     };
 
-    const handleKeyDown = (event: KeyboardEvent) => {
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
         setIsOpen(false);
@@ -110,7 +110,7 @@ export function AdminDatePicker({ value, label, onChange }: AdminDatePickerProps
     });
   };
 
-  const handleDateKeyDown = (event: KeyboardEvent<HTMLButtonElement>, date: Date) => {
+  const handleDateKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>, date: Date) => {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
       selectDate(date);
