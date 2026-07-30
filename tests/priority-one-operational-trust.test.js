@@ -7,6 +7,7 @@ const ordersResponsive = fs.readFileSync("src/app/admin/(painel)/orders/orders-r
 const dashboard = fs.readFileSync("src/app/admin/(painel)/DashboardPeriodWorkspace.tsx", "utf8");
 const storefront = fs.readFileSync("src/app/[slug]/page.tsx", "utf8");
 const layout = fs.readFileSync("src/app/admin/(painel)/layout.tsx", "utf8");
+const headerActions = fs.readFileSync("src/components/admin-header-actions.tsx", "utf8");
 
 test("pedidos exibem apenas um estado vazio", () => {
   const matches = orders.match(/Não encontrou o pedido que procura\?/g) || [];
@@ -40,9 +41,13 @@ test("vitrine não chama ausência de configuração de entrega grátis", () => 
   assert.match(storefront, /Taxa a consultar/);
 });
 
-test("ações de ajuda e notificações não aparecem sem implementação", () => {
-  assert.doesNotMatch(layout, /aria-label="Ajuda"/);
-  assert.doesNotMatch(layout, /aria-label="Notificações"/);
-  assert.doesNotMatch(layout, /HelpCircle/);
-  assert.doesNotMatch(layout, /\bBell\b/);
+test("ações de ajuda e notificações possuem funcionalidade real", () => {
+  assert.match(layout, /<AdminHeaderActions \/>/);
+  assert.match(headerActions, /aria-label="Ajuda"/);
+  assert.match(headerActions, /aria-label="Notificações da operação"/);
+  assert.match(headerActions, /HELP_ITEMS/);
+  assert.match(headerActions, /admin-header-notifications-\$\{restaurantId\}/);
+  assert.match(headerActions, /postgres_changes/);
+  assert.match(headerActions, /gestor-delivery:notifications-seen/);
+  assert.match(headerActions, /Ver todos os pedidos/);
 });
