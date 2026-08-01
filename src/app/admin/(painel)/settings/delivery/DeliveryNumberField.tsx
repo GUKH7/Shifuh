@@ -69,7 +69,7 @@ export function DeliveryNumberField({
 
   const commitDraft = (nextDraft = draft) => {
     const parsed = parseNumber(nextDraft);
-    const normalized = normalizeValue(parsed ?? min, min, max, decimals);
+    const normalized = normalizeValue(parsed ?? value, min, max, decimals);
 
     setDraft(formatEditableValue(normalized, decimals));
     onValueChange(normalized);
