@@ -86,13 +86,13 @@ export function DeliveryNumberField({
   };
 
   return (
-    <label className="block min-w-0 space-y-2">
-      <span className="block text-xs font-bold uppercase tracking-[0.12em] text-gray-400">
+    <label className="block min-w-0 space-y-1.5">
+      <span className="block text-[11px] font-bold uppercase tracking-[0.1em] text-gray-400">
         {label}
       </span>
 
       <div
-        className={`grid min-h-12 min-w-0 grid-cols-[46px_minmax(0,1fr)_46px] overflow-hidden rounded-2xl border bg-white transition focus-within:ring-2 ${
+        className={`grid min-h-11 min-w-0 grid-cols-[40px_minmax(0,1fr)_40px] overflow-hidden rounded-xl border bg-white transition focus-within:ring-2 ${
           error
             ? "border-red-300 focus-within:border-red-400 focus-within:ring-red-100"
             : "border-[var(--line)] focus-within:border-[var(--brand)] focus-within:ring-orange-100"
@@ -102,14 +102,14 @@ export function DeliveryNumberField({
           type="button"
           aria-label={`Diminuir ${label}`}
           onClick={() => changeByStep(-1)}
-          className="inline-flex min-h-12 items-center justify-center text-gray-500 transition hover:bg-[#fcfaf7] active:bg-orange-50"
+          className="inline-flex min-h-11 items-center justify-center text-gray-500 transition hover:bg-[#fcfaf7] active:bg-orange-50"
         >
-          <Minus size={18} />
+          <Minus size={16} />
         </button>
 
-        <div className="flex min-w-0 items-center border-x border-[var(--line)] px-3">
+        <div className="flex min-w-0 items-center border-x border-[var(--line)] px-2.5">
           {prefix && (
-            <span className="mr-2 shrink-0 text-sm font-bold text-gray-400">{prefix}</span>
+            <span className="mr-1.5 shrink-0 text-xs font-bold text-gray-400">{prefix}</span>
           )}
           <input
             type="text"
@@ -142,10 +142,10 @@ export function DeliveryNumberField({
             }}
             aria-label={label}
             aria-invalid={Boolean(error)}
-            className="min-w-0 flex-1 bg-transparent py-3 text-center text-base font-semibold text-gray-950 outline-none"
+            className="min-w-0 flex-1 bg-transparent py-2 text-center text-sm font-semibold text-gray-950 outline-none"
           />
           {suffix && (
-            <span className="ml-2 shrink-0 text-sm font-bold text-gray-400">{suffix}</span>
+            <span className="ml-1.5 shrink-0 text-xs font-bold text-gray-400">{suffix}</span>
           )}
         </div>
 
@@ -153,18 +153,22 @@ export function DeliveryNumberField({
           type="button"
           aria-label={`Aumentar ${label}`}
           onClick={() => changeByStep(1)}
-          className="inline-flex min-h-12 items-center justify-center text-gray-500 transition hover:bg-[#fcfaf7] active:bg-orange-50"
+          className="inline-flex min-h-11 items-center justify-center text-gray-500 transition hover:bg-[#fcfaf7] active:bg-orange-50"
         >
-          <Plus size={18} />
+          <Plus size={16} />
         </button>
       </div>
 
       {error ? (
-        <span role="alert" className="block text-xs font-semibold leading-5 text-red-600">
+        <span role="alert" className="block text-[11px] font-semibold leading-4 text-red-600">
           {error}
         </span>
       ) : (
-        hint && <span className="block text-xs leading-5 text-gray-500">{hint}</span>
+        hint && (
+          <span className="hidden text-[11px] leading-4 text-gray-500 sm:block">
+            {hint}
+          </span>
+        )
       )}
     </label>
   );

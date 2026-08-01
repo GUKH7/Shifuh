@@ -20,11 +20,14 @@ test("campos de entrega permitem apagar e digitar antes de normalizar", () => {
   assert.doesNotMatch(page, /Number\(event\.target\.value\) \|\| 0\.1/);
 });
 
-test("campos possuem controles de toque e seleção rápida", () => {
+test("campos mantêm controles de toque em formato compacto", () => {
   assert.match(numberField, /Diminuir \$\{label\}/);
   assert.match(numberField, /Aumentar \$\{label\}/);
   assert.match(numberField, /event\.currentTarget\.select\(\)/);
-  assert.match(numberField, /min-h-12/);
+  assert.match(numberField, /min-h-11/);
+  assert.match(numberField, /grid-cols-\[40px_minmax\(0,1fr\)_40px\]/);
+  assert.match(numberField, /hidden text-\[11px\].*sm:block/);
+  assert.doesNotMatch(numberField, /min-h-12/);
 });
 
 test("layout evita campos lado a lado em celulares", () => {
