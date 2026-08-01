@@ -14,6 +14,7 @@ type DeliveryNumberFieldProps = {
   prefix?: string;
   suffix?: string;
   hint?: string;
+  error?: string;
 };
 
 const decimalPattern = /^\d*(?:[.,]\d*)?$/;
@@ -57,6 +58,7 @@ export function DeliveryNumberField({
   prefix,
   suffix,
   hint,
+  error,
 }: DeliveryNumberFieldProps) {
   const [draft, setDraft] = useState(() => formatEditableValue(value, decimals));
   const focusedRef = useRef(false);
@@ -89,7 +91,13 @@ export function DeliveryNumberField({
         {label}
       </span>
 
-      <div className="grid min-h-12 min-w-0 grid-cols-[46px_minmax(0,1fr)_46px] overflow-hidden rounded-2xl border border-[var(--line)] bg-white transition focus-within:border-[var(--brand)] focus-within:ring-2 focus-within:ring-orange-100">
+      <div
+        className={`grid min-h-12 min-w-0 grid-cols-[46px_minmax(0,1fr)_46px] overflow-hidden rounded-2xl border bg-white transition focus-within:ring-2 ${
+          error
+            ? "border-red-300 focus-within:border-red-400 focus-within:ring-red-100"
+            : "border-[var(--line)] focus-within:border-[var(--brand)] focus-within:ring-orange-100"
+        }`}
+      >
         <button
           type="button"
           aria-label={`Diminuir ${label}`}
@@ -133,6 +141,7 @@ export function DeliveryNumberField({
               }
             }}
             aria-label={label}
+            aria-invalid={Boolean(error)}
             className="min-w-0 flex-1 bg-transparent py-3 text-center text-base font-semibold text-gray-950 outline-none"
           />
           {suffix && (
@@ -150,7 +159,13 @@ export function DeliveryNumberField({
         </button>
       </div>
 
-      {hint && <span className="block text-xs leading-5 text-gray-500">{hint}</span>}
+      {error ? (
+        <span role="alert" className="block text-xs font-semibold leading-5 text-red-600">
+          {error}
+        </span>
+      ) : (
+        hint && <span className="block text-xs leading-5 text-gray-500">{hint}</span>
+      )}
     </label>
   );
 }
