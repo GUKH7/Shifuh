@@ -30,6 +30,7 @@ test("campos possuem controles de toque e seleção rápida", () => {
 test("layout evita campos lado a lado em celulares", () => {
   assert.match(page, /lg:grid-cols-2 2xl:grid-cols-4/);
   assert.doesNotMatch(page, /sm:grid-cols-2 xl:grid-cols-4/);
-  assert.match(page, /key=\{index\}/);
+  assert.match(page, /key=\{tier\.editorId\}/);
+  assert.doesNotMatch(page, /key=\{index\}/);
   assert.doesNotMatch(page, /key=\{`\$\{tier\.distance\}-\$\{index\}`\}/);
 });

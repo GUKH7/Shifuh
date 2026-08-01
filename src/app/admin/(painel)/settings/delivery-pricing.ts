@@ -7,8 +7,17 @@ export interface DeliveryTierGeneratorInput {
   timeAtLimit: number;
 }
 
+export interface DeliveryTierValidationResult {
+  normalizedTiers: DeliveryTier[];
+  duplicateDistances: number[];
+  errors: string[];
+  warnings: string[];
+  isValid: boolean;
+}
+
 const roundCurrency = (value: number) => Math.round(value * 100) / 100;
 const roundDistance = (value: number) => Math.round(value * 100) / 100;
+const distanceKey = (value: number) => roundDistance(value).toFixed(2);
 
 export function generateDeliveryTiers({
   pricePerKm,
@@ -62,4 +71,77 @@ export function normalizeDeliveryTiers(tiers: DeliveryTier[]): DeliveryTier[] {
       price: roundCurrency(Math.max(0, Number(tier.price) || 0)),
     }))
     .sort((first, second) => first.distance - second.distance);
+}
+
+export function serializeDeliveryTiers(tiers: DeliveryTier[]) {
+  return JSON.stringify(normalizeDeliveryTiers(tiers));
+}
+
+export function validateDeliveryTiers(tiers: DeliveryTier[]): DeliveryTierValidationResult {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  if (tiers.length === 0) {
+    errors.push("Adicione pelo menos uma faixa de entrega.");
+  }
+
+  const invalidDistance = tiers.some(
+    (tier) => !Number.isFinite(tier.distance) || Number(tier.distance) <= 0,
+  );
+  const invalidTime = tiers.some(
+    (tier) => !Number.isFinite(tier.time) || Number(tier.time) < 0,
+  );
+  const invalidPrice = tiers.some(
+    (tier) => !Number.isFinite(tier.price) || Number(tier.price) < 0,
+  );
+
+  if (invalidDistance) {
+    errors.push("Todas as distâncias precisam ser maiores que zero.");
+  }
+  if (invalidTime) {
+    errors.push("Os prazos não podem ser negativos.");
+  }
+  if (invalidPrice) {
+    errors.push("Os valores de entrega não podem ser negativos.");
+  }
+
+  const distanceOccurrences = new Map<string, number>();
+  tiers.forEach((tier) => {
+    const key = distanceKey(Number(tier.distance));
+    distanceOccurrences.set(key, (distanceOccurrences.get(key) ?? 0) + 1);
+  });
+
+  const duplicateDistances = Array.from(distanceOccurrences.entries())
+    .filter(([, occurrences]) => occurrences > 1)
+    .map(([key]) => Number(key));
+
+  if (duplicateDistances.length > 0) {
+    const formattedDistances = duplicateDistances
+      .map((distance) => distance.toLocaleString("pt-BR"))
+      .join(", ");
+    errors.push(`Existem faixas repetidas em ${formattedDistances} km.`);
+  }
+
+  const normalizedTiers = normalizeDeliveryTiers(tiers);
+  const hasDecreasingPrice = normalizedTiers.some(
+    (tier, index) => index > 0 && tier.price < normalizedTiers[index - 1].price,
+  );
+  const hasDecreasingTime = normalizedTiers.some(
+    (tier, index) => index > 0 && tier.time < normalizedTiers[index - 1].time,
+  );
+
+  if (hasDecreasingPrice) {
+    warnings.push("Há uma faixa mais distante com valor menor que a anterior.");
+  }
+  if (hasDecreasingTime) {
+    warnings.push("Há uma faixa mais distante com prazo menor que a anterior.");
+  }
+
+  return {
+    normalizedTiers,
+    duplicateDistances,
+    errors,
+    warnings,
+    isValid: errors.length === 0,
+  };
 }
