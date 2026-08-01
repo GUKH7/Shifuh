@@ -125,35 +125,29 @@ a {
     box-shadow: 0 1px 2px rgba(17, 16, 15, 0.04);
   }
 
-  /* Compatibilidade temporária para os valores arbitrários já usados no projeto. */
-  :where([class*="rounded-[16px]"], [class*="rounded-[18px]"]) {
+  /* Compatibilidade temporária enquanto classes arbitrárias são removidas. */
+  .rounded-\[16px\],
+  .rounded-\[18px\] {
     border-radius: var(--radius-card) !important;
   }
 
-  :where(
-    [class*="rounded-[20px]"],
-    [class*="rounded-[22px]"],
-    [class*="rounded-[24px]"],
-    [class*="rounded-[26px]"],
-    [class*="rounded-[28px]"],
-    [class*="rounded-[32px]"]
-  ) {
+  .rounded-\[20px\],
+  .rounded-\[22px\],
+  .rounded-\[24px\],
+  .rounded-\[26px\],
+  .rounded-\[28px\],
+  .rounded-\[32px\] {
     border-radius: var(--radius-panel) !important;
   }
 
-  :where([class*="rounded-b-[18px]"]) {
+  .rounded-b-\[18px\] {
     border-bottom-left-radius: var(--radius-card) !important;
     border-bottom-right-radius: var(--radius-card) !important;
   }
 
-  :where([class*="rounded-t-[24px]"]) {
+  .rounded-t-\[24px\] {
     border-top-left-radius: var(--radius-panel) !important;
     border-top-right-radius: var(--radius-panel) !important;
-  }
-
-  :where([class*="rounded-b-[28px]"]) {
-    border-bottom-left-radius: var(--radius-panel) !important;
-    border-bottom-right-radius: var(--radius-panel) !important;
   }
 
   .brand-gradient {
@@ -188,6 +182,24 @@ a {
     overflow: visible;
     clip: auto;
     white-space: normal;
+  }
+}
+
+@media (min-width: 640px) {
+  .sm\:rounded-\[18px\] {
+    border-radius: var(--radius-card) !important;
+  }
+
+  .sm\:rounded-\[20px\],
+  .sm\:rounded-\[22px\],
+  .sm\:rounded-\[24px\],
+  .sm\:rounded-\[28px\] {
+    border-radius: var(--radius-panel) !important;
+  }
+
+  .sm\:rounded-b-\[28px\] {
+    border-bottom-left-radius: var(--radius-panel) !important;
+    border-bottom-right-radius: var(--radius-panel) !important;
   }
 }
 
