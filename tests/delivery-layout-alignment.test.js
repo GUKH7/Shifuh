@@ -19,7 +19,7 @@ test("rota de taxas carrega ajustes locais de distribuição", () => {
 test("faixas individuais usam três campos alinhados e uma ação compacta", () => {
   assert.match(styles, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\) 48px/);
   assert.match(styles, /align-items: end/);
-  assert.match(styles, /> button > span \{\s*display: none;/);
+  assert.match(styles, /> button\s*> span \{\s*display: none;/);
 });
 
 test("campos numéricos ficam empilhados e centralizados no desktop", () => {
