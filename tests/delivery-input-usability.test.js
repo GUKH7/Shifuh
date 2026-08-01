@@ -20,14 +20,20 @@ test("campos de entrega permitem apagar e digitar antes de normalizar", () => {
   assert.doesNotMatch(page, /Number\(event\.target\.value\) \|\| 0\.1/);
 });
 
-test("campos mantêm controles de toque em formato compacto", () => {
-  assert.match(numberField, /Diminuir \$\{label\}/);
-  assert.match(numberField, /Aumentar \$\{label\}/);
+test("mobile volta ao input simples e realmente compacto", () => {
+  assert.match(numberField, /grid-cols-\[108px_minmax\(0,1fr\)\]/);
+  assert.match(numberField, /grid-cols-\[minmax\(0,1fr\)\]/);
+  assert.match(numberField, /min-h-10/);
+  assert.match(numberField, /hidden min-h-11.*sm:inline-flex/);
+  assert.match(numberField, /sm:grid-cols-\[36px_minmax\(0,1fr\)_36px\]/);
+  assert.doesNotMatch(numberField, /grid-cols-\[40px_minmax\(0,1fr\)_40px\]/);
+});
+
+test("digitação mantém atalhos e descrição acessível", () => {
   assert.match(numberField, /event\.currentTarget\.select\(\)/);
-  assert.match(numberField, /min-h-11/);
-  assert.match(numberField, /grid-cols-\[40px_minmax\(0,1fr\)_40px\]/);
-  assert.match(numberField, /hidden text-\[11px\].*sm:block/);
-  assert.doesNotMatch(numberField, /min-h-12/);
+  assert.match(numberField, /event\.key === "ArrowUp" \|\| event\.key === "ArrowDown"/);
+  assert.match(numberField, /aria-describedby=\{error \|\| hint \? descriptionId : undefined\}/);
+  assert.match(numberField, /useId\(\)/);
 });
 
 test("layout evita campos lado a lado em celulares", () => {

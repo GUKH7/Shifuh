@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Minus, Plus } from "lucide-react";
 
 type DeliveryNumberFieldProps = {
@@ -60,6 +60,7 @@ export function DeliveryNumberField({
   hint,
   error,
 }: DeliveryNumberFieldProps) {
+  const descriptionId = useId();
   const [draft, setDraft] = useState(() => formatEditableValue(value, decimals));
   const focusedRef = useRef(false);
 
@@ -86,13 +87,13 @@ export function DeliveryNumberField({
   };
 
   return (
-    <label className="block min-w-0 space-y-1.5">
-      <span className="block text-[11px] font-bold uppercase tracking-[0.1em] text-gray-400">
+    <label className="grid min-w-0 grid-cols-[108px_minmax(0,1fr)] items-center gap-2 sm:block sm:space-y-1.5">
+      <span className="block text-[10px] font-bold uppercase leading-4 tracking-[0.08em] text-gray-400 sm:text-[11px]">
         {label}
       </span>
 
       <div
-        className={`grid min-h-11 min-w-0 grid-cols-[40px_minmax(0,1fr)_40px] overflow-hidden rounded-xl border bg-white transition focus-within:ring-2 ${
+        className={`grid min-h-10 min-w-0 grid-cols-[minmax(0,1fr)] overflow-hidden rounded-xl border bg-white transition focus-within:ring-2 sm:min-h-11 sm:grid-cols-[36px_minmax(0,1fr)_36px] ${
           error
             ? "border-red-300 focus-within:border-red-400 focus-within:ring-red-100"
             : "border-[var(--line)] focus-within:border-[var(--brand)] focus-within:ring-orange-100"
@@ -102,12 +103,12 @@ export function DeliveryNumberField({
           type="button"
           aria-label={`Diminuir ${label}`}
           onClick={() => changeByStep(-1)}
-          className="inline-flex min-h-11 items-center justify-center text-gray-500 transition hover:bg-[#fcfaf7] active:bg-orange-50"
+          className="hidden min-h-11 items-center justify-center text-gray-500 transition hover:bg-[#fcfaf7] active:bg-orange-50 sm:inline-flex"
         >
-          <Minus size={16} />
+          <Minus size={15} />
         </button>
 
-        <div className="flex min-w-0 items-center border-x border-[var(--line)] px-2.5">
+        <div className="flex min-w-0 items-center px-3 sm:border-x sm:border-[var(--line)] sm:px-2.5">
           {prefix && (
             <span className="mr-1.5 shrink-0 text-xs font-bold text-gray-400">{prefix}</span>
           )}
@@ -138,11 +139,18 @@ export function DeliveryNumberField({
             onKeyDown={(event) => {
               if (event.key === "Enter") {
                 event.currentTarget.blur();
+                return;
+              }
+
+              if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+                event.preventDefault();
+                changeByStep(event.key === "ArrowUp" ? 1 : -1);
               }
             }}
             aria-label={label}
             aria-invalid={Boolean(error)}
-            className="min-w-0 flex-1 bg-transparent py-2 text-center text-sm font-semibold text-gray-950 outline-none"
+            aria-describedby={error || hint ? descriptionId : undefined}
+            className="min-w-0 flex-1 bg-transparent py-2 text-right text-sm font-semibold text-gray-950 outline-none sm:text-center"
           />
           {suffix && (
             <span className="ml-1.5 shrink-0 text-xs font-bold text-gray-400">{suffix}</span>
@@ -153,19 +161,26 @@ export function DeliveryNumberField({
           type="button"
           aria-label={`Aumentar ${label}`}
           onClick={() => changeByStep(1)}
-          className="inline-flex min-h-11 items-center justify-center text-gray-500 transition hover:bg-[#fcfaf7] active:bg-orange-50"
+          className="hidden min-h-11 items-center justify-center text-gray-500 transition hover:bg-[#fcfaf7] active:bg-orange-50 sm:inline-flex"
         >
-          <Plus size={16} />
+          <Plus size={15} />
         </button>
       </div>
 
       {error ? (
-        <span role="alert" className="block text-[11px] font-semibold leading-4 text-red-600">
+        <span
+          id={descriptionId}
+          role="alert"
+          className="col-span-2 block text-[11px] font-semibold leading-4 text-red-600 sm:col-span-1"
+        >
           {error}
         </span>
       ) : (
         hint && (
-          <span className="hidden text-[11px] leading-4 text-gray-500 sm:block">
+          <span
+            id={descriptionId}
+            className="col-span-2 hidden text-[11px] leading-4 text-gray-500 sm:col-span-1 sm:block"
+          >
             {hint}
           </span>
         )
