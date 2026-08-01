@@ -102,14 +102,18 @@ test("valores arbitrários existentes são normalizados e não podem aumentar", 
     );
   }
 
+  assert.doesNotMatch(styles, /\[class\*=/);
+
   for (const value of [16, 18, 20, 22, 24, 26, 28, 32]) {
     assert.ok(
-      styles.includes(`rounded-[${value}px]`),
+      styles.includes(`rounded-\\[${value}px\\]`),
       `Falta normalizar rounded-[${value}px] na camada de compatibilidade.`,
     );
   }
 
-  assert.ok(styles.includes("rounded-b-[18px]"));
-  assert.ok(styles.includes("rounded-t-[24px]"));
-  assert.ok(styles.includes("rounded-b-[28px]"));
+  assert.ok(styles.includes("rounded-b-\\[18px\\]"));
+  assert.ok(styles.includes("rounded-t-\\[24px\\]"));
+  assert.ok(styles.includes("sm\\:rounded-\\[18px\\]"));
+  assert.ok(styles.includes("sm\\:rounded-b-\\[28px\\]"));
+  assert.match(styles, /@media \(min-width: 640px\)/);
 });
