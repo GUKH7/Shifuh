@@ -31,6 +31,12 @@ test("editor permanece simples e compacto em celulares e tablets", () => {
   assert.doesNotMatch(numberField, /grid-cols-\[40px_minmax\(0,1fr\)_40px\]/);
 });
 
+test("valores permanecem centralizados em todas as larguras", () => {
+  assert.match(numberField, /py-2 text-center text-sm/);
+  assert.doesNotMatch(numberField, /text-right/);
+  assert.doesNotMatch(numberField, /xl:text-center/);
+});
+
 test("viewport usa a largura real do dispositivo", () => {
   assert.match(rootLayout, /import type \{ Metadata, Viewport \} from "next"/);
   assert.match(rootLayout, /export const viewport: Viewport/);
