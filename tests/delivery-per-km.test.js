@@ -34,8 +34,8 @@ test("gerador cria preço acumulado e prazo progressivo por quilometragem", () =
 test("faixas geradas permanecem editáveis antes de salvar", () => {
   assert.match(deliveryPage, /Gerar faixas/);
   assert.match(deliveryPage, /Ajustes individuais/);
-  assert.match(deliveryPage, /updateTier\(index, "time"/);
-  assert.match(deliveryPage, /updateTier\(index, "price"/);
+  assert.match(deliveryPage, /updateTier\(tier\.editorId, "time"/);
+  assert.match(deliveryPage, /updateTier\(tier\.editorId, "price"/);
   assert.match(deliveryPage, /delivery_tiers: normalizedTiers/);
   assert.match(deliveryPage, /legacyRule/);
 });
