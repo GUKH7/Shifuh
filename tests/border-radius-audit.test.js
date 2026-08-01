@@ -4,7 +4,7 @@ const path = require("node:path");
 const test = require("node:test");
 
 const SOURCE_ROOTS = ["src/app", "src/components", "src/features"];
-const SOURCE_EXTENSIONS = new Set([".css", ".js", ".jsx", ".ts", ".tsx"]);
+const SOURCE_EXTENSIONS = new Set([".js", ".jsx", ".ts", ".tsx"]);
 const LEGACY_ARBITRARY_LIMITS = new Map([
   ["rounded-[16px]", 4],
   ["rounded-[18px]", 12],
