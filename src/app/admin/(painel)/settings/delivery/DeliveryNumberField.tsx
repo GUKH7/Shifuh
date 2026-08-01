@@ -150,7 +150,7 @@ export function DeliveryNumberField({
             aria-label={label}
             aria-invalid={Boolean(error)}
             aria-describedby={error || hint ? descriptionId : undefined}
-            className="min-w-0 flex-1 bg-transparent py-2 text-right text-sm font-semibold text-gray-950 outline-none xl:text-center"
+            className="min-w-0 flex-1 bg-transparent py-2 text-center text-sm font-semibold text-gray-950 outline-none"
           />
           {suffix && (
             <span className="ml-1.5 shrink-0 text-xs font-bold text-gray-400">{suffix}</span>
