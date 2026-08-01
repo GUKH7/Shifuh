@@ -11,9 +11,14 @@
   --muted: #6f6257;
   --brand: #ff5a1f;
   --brand-soft: #fff0e8;
+  --radius-small: 8px;
+  --radius-control: 12px;
+  --radius-card: 16px;
+  --radius-panel: 20px;
+  --radius-pill: 9999px;
   --admin-control-height: 44px;
-  --admin-radius-control: 14px;
-  --admin-radius-card: 24px;
+  --admin-radius-control: var(--radius-control);
+  --admin-radius-card: var(--radius-panel);
   --admin-focus-ring: 0 0 0 3px rgba(255, 90, 31, 0.16);
 }
 
@@ -101,11 +106,54 @@ a {
     text-wrap: balance;
   }
 
+  .radius-control {
+    border-radius: var(--radius-control);
+  }
+
+  .radius-card {
+    border-radius: var(--radius-card);
+  }
+
+  .radius-panel {
+    border-radius: var(--radius-panel);
+  }
+
   .surface-card {
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: var(--admin-radius-card);
     box-shadow: 0 1px 2px rgba(17, 16, 15, 0.04);
+  }
+
+  /* Compatibilidade temporária para os valores arbitrários já usados no projeto. */
+  :where([class*="rounded-[16px]"], [class*="rounded-[18px]"]) {
+    border-radius: var(--radius-card) !important;
+  }
+
+  :where(
+    [class*="rounded-[20px]"],
+    [class*="rounded-[22px]"],
+    [class*="rounded-[24px]"],
+    [class*="rounded-[26px]"],
+    [class*="rounded-[28px]"],
+    [class*="rounded-[32px]"]
+  ) {
+    border-radius: var(--radius-panel) !important;
+  }
+
+  :where([class*="rounded-b-[18px]"]) {
+    border-bottom-left-radius: var(--radius-card) !important;
+    border-bottom-right-radius: var(--radius-card) !important;
+  }
+
+  :where([class*="rounded-t-[24px]"]) {
+    border-top-left-radius: var(--radius-panel) !important;
+    border-top-right-radius: var(--radius-panel) !important;
+  }
+
+  :where([class*="rounded-b-[28px]"]) {
+    border-bottom-left-radius: var(--radius-panel) !important;
+    border-bottom-right-radius: var(--radius-panel) !important;
   }
 
   .brand-gradient {
@@ -142,7 +190,6 @@ a {
     white-space: normal;
   }
 }
-
 
 @media (prefers-reduced-motion: reduce) {
   html {
