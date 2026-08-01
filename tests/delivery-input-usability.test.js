@@ -10,6 +10,7 @@ const numberField = fs.readFileSync(
   "src/app/admin/(painel)/settings/delivery/DeliveryNumberField.tsx",
   "utf8",
 );
+const rootLayout = fs.readFileSync("src/app/layout.tsx", "utf8");
 
 test("campos de entrega permitem apagar e digitar antes de normalizar", () => {
   assert.match(numberField, /type="text"/);
@@ -20,13 +21,21 @@ test("campos de entrega permitem apagar e digitar antes de normalizar", () => {
   assert.doesNotMatch(page, /Number\(event\.target\.value\) \|\| 0\.1/);
 });
 
-test("mobile volta ao input simples e realmente compacto", () => {
+test("editor permanece simples e compacto em celulares e tablets", () => {
   assert.match(numberField, /grid-cols-\[108px_minmax\(0,1fr\)\]/);
   assert.match(numberField, /grid-cols-\[minmax\(0,1fr\)\]/);
   assert.match(numberField, /min-h-10/);
-  assert.match(numberField, /hidden min-h-11.*sm:inline-flex/);
-  assert.match(numberField, /sm:grid-cols-\[36px_minmax\(0,1fr\)_36px\]/);
+  assert.match(numberField, /hidden min-h-11.*xl:inline-flex/);
+  assert.match(numberField, /xl:grid-cols-\[36px_minmax\(0,1fr\)_36px\]/);
+  assert.doesNotMatch(numberField, /sm:inline-flex/);
   assert.doesNotMatch(numberField, /grid-cols-\[40px_minmax\(0,1fr\)_40px\]/);
+});
+
+test("viewport usa a largura real do dispositivo", () => {
+  assert.match(rootLayout, /import type \{ Metadata, Viewport \} from "next"/);
+  assert.match(rootLayout, /export const viewport: Viewport/);
+  assert.match(rootLayout, /width: "device-width"/);
+  assert.match(rootLayout, /initialScale: 1/);
 });
 
 test("digitação mantém atalhos e descrição acessível", () => {
@@ -34,6 +43,7 @@ test("digitação mantém atalhos e descrição acessível", () => {
   assert.match(numberField, /event\.key === "ArrowUp" \|\| event\.key === "ArrowDown"/);
   assert.match(numberField, /aria-describedby=\{error \|\| hint \? descriptionId : undefined\}/);
   assert.match(numberField, /useId\(\)/);
+  assert.match(numberField, /className="sr-only"/);
 });
 
 test("layout evita campos lado a lado em celulares", () => {
