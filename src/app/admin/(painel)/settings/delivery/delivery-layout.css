@@ -1,0 +1,114 @@
+@media (min-width: 1024px) {
+  .delivery-settings-route section:nth-of-type(2) > div:nth-child(2) > label,
+  .delivery-settings-route
+    section:nth-of-type(3)
+    > div:nth-child(2)
+    > div[class*="grid"]
+    > label {
+    display: block;
+    min-width: 0;
+  }
+
+  .delivery-settings-route section:nth-of-type(2) > div:nth-child(2) > label > span:first-child,
+  .delivery-settings-route
+    section:nth-of-type(3)
+    > div:nth-child(2)
+    > div[class*="grid"]
+    > label
+    > span:first-child {
+    margin-bottom: 6px;
+    font-size: 11px;
+    line-height: 16px;
+  }
+
+  .delivery-settings-route section:nth-of-type(2) > div:nth-child(2) > label > div,
+  .delivery-settings-route
+    section:nth-of-type(3)
+    > div:nth-child(2)
+    > div[class*="grid"]
+    > label
+    > div {
+    min-height: 44px;
+    grid-template-columns: 36px minmax(0, 1fr) 36px;
+  }
+
+  .delivery-settings-route section:nth-of-type(2) > div:nth-child(2) > label > div > button,
+  .delivery-settings-route
+    section:nth-of-type(3)
+    > div:nth-child(2)
+    > div[class*="grid"]
+    > label
+    > div
+    > button {
+    display: inline-flex;
+  }
+
+  .delivery-settings-route section:nth-of-type(2) > div:nth-child(2) > label > div > div,
+  .delivery-settings-route
+    section:nth-of-type(3)
+    > div:nth-child(2)
+    > div[class*="grid"]
+    > label
+    > div
+    > div {
+    border-right: 1px solid var(--line);
+    border-left: 1px solid var(--line);
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
+  .delivery-settings-route section:nth-of-type(2) input,
+  .delivery-settings-route section:nth-of-type(3) input {
+    text-align: center;
+  }
+
+  .delivery-settings-route section:nth-of-type(3) > div:first-child > div:last-child {
+    width: 100%;
+  }
+
+  .delivery-settings-route section:nth-of-type(3) > div:first-child > div:last-child > span {
+    display: flex;
+    min-height: 40px;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .delivery-settings-route
+    section:nth-of-type(3)
+    > div:nth-child(2)
+    > div[class*="grid"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) 48px;
+    align-items: end;
+  }
+
+  .delivery-settings-route
+    section:nth-of-type(3)
+    > div:nth-child(2)
+    > div[class*="grid"]
+    > button {
+    width: 48px;
+    min-height: 44px;
+    align-self: end;
+    padding-right: 0;
+    padding-left: 0;
+  }
+
+  .delivery-settings-route
+    section:nth-of-type(3)
+    > div:nth-child(2)
+    > div[class*="grid"]
+    > button
+    > span {
+    display: none;
+  }
+
+  .delivery-settings-route
+    section:nth-of-type(3)
+    > div:nth-child(2)
+    > div[class*="grid"]
+    > label
+    > span[role="alert"] {
+    margin-top: 6px;
+  }
+}
