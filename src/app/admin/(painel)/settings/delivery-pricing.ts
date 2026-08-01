@@ -3,6 +3,7 @@ import type { DeliveryTier } from "./types";
 export interface DeliveryTierGeneratorInput {
   pricePerKm: number;
   maxDistance: number;
+  initialTime: number;
   timeAtLimit: number;
 }
 
@@ -12,6 +13,7 @@ const roundDistance = (value: number) => Math.round(value * 100) / 100;
 export function generateDeliveryTiers({
   pricePerKm,
   maxDistance,
+  initialTime,
   timeAtLimit,
 }: DeliveryTierGeneratorInput): DeliveryTier[] {
   const normalizedPrice = Math.max(0, Number.isFinite(pricePerKm) ? pricePerKm : 0);
@@ -19,7 +21,14 @@ export function generateDeliveryTiers({
     0.1,
     Number.isFinite(maxDistance) ? maxDistance : 0.1,
   );
-  const normalizedTime = Math.max(0, Number.isFinite(timeAtLimit) ? timeAtLimit : 0);
+  const normalizedInitialTime = Math.max(
+    0,
+    Number.isFinite(initialTime) ? Math.round(initialTime) : 0,
+  );
+  const normalizedLimitTime = Math.max(
+    normalizedInitialTime,
+    Number.isFinite(timeAtLimit) ? Math.round(timeAtLimit) : normalizedInitialTime,
+  );
   const wholeKilometers = Math.floor(normalizedDistance);
   const distances = Array.from({ length: wholeKilometers }, (_, index) => index + 1);
   const hasFractionalLimit = normalizedDistance - wholeKilometers > 0.001;
@@ -28,16 +37,18 @@ export function generateDeliveryTiers({
     distances.push(normalizedDistance);
   }
 
+  const firstDistance = distances[0];
+  const timeRange = normalizedLimitTime - normalizedInitialTime;
+  const distanceRange = normalizedDistance - firstDistance;
+
   return distances.map((distance) => {
     const billedDistance = Math.max(1, Math.ceil(distance));
-    const proportionalTime =
-      normalizedTime === 0
-        ? 0
-        : Math.max(1, Math.ceil((normalizedTime * distance) / normalizedDistance));
+    const progress = distanceRange <= 0 ? 1 : (distance - firstDistance) / distanceRange;
+    const estimatedTime = Math.round(normalizedInitialTime + timeRange * progress);
 
     return {
       distance: roundDistance(distance),
-      time: proportionalTime,
+      time: estimatedTime,
       price: roundCurrency(billedDistance * normalizedPrice),
     };
   });
