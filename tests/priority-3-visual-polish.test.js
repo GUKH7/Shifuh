@@ -13,8 +13,11 @@ const datePicker = read("src/components/ui/admin-date-picker.tsx");
 
 test("controles e cards usam tokens visuais compartilhados", () => {
   assert.match(globals, /--admin-control-height: 44px/);
-  assert.match(globals, /--admin-radius-control: 14px/);
-  assert.match(globals, /--admin-radius-card: 24px/);
+  assert.match(globals, /--radius-control: 12px/);
+  assert.match(globals, /--radius-card: 16px/);
+  assert.match(globals, /--radius-panel: 20px/);
+  assert.match(globals, /--admin-radius-control: var\(--radius-control\)/);
+  assert.match(globals, /--admin-radius-card: var\(--radius-panel\)/);
   assert.match(primitives, /admin-button/);
   assert.match(primitives, /admin-page-header/);
   assert.match(responsive, /var\(--admin-control-height\)/);
