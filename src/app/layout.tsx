@@ -1,10 +1,16 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Outfit } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "@/contexts/cart-context";
 import { ToastProvider } from "@/components/ui/toast-provider";
 
 const outfit = Outfit({ subsets: ["latin"], display: "swap", preload: true });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
 
 export const metadata: Metadata = {
   title: "Gestor Delivery",
