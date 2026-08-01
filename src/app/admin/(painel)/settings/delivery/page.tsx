@@ -11,6 +11,7 @@ import { useToast } from "@/components/ui/toast-provider";
 import { getCurrentRestaurant } from "@/lib/supabase/restaurant";
 import { generateDeliveryTiers, normalizeDeliveryTiers } from "../delivery-pricing";
 import type { DeliveryTier } from "../types";
+import { DeliveryNumberField } from "./DeliveryNumberField";
 
 interface LegacyPerKmRule {
   mode?: string;
@@ -124,12 +125,10 @@ export default function DeliverySettingsPage() {
     });
   };
 
-  const updateTier = (index: number, field: keyof DeliveryTier, value: string) => {
+  const updateTier = (index: number, field: keyof DeliveryTier, value: number) => {
     setTiers((current) =>
       current.map((tier, tierIndex) =>
-        tierIndex === index
-          ? { ...tier, [field]: Math.max(0, Number(value) || 0) }
-          : tier,
+        tierIndex === index ? { ...tier, [field]: value } : tier,
       ),
     );
   };
@@ -229,7 +228,7 @@ export default function DeliverySettingsPage() {
             type="button"
             onClick={handleSave}
             disabled={saving}
-            className="brand-gradient inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-bold text-white disabled:opacity-60"
+            className="brand-gradient inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-bold text-white disabled:opacity-60 sm:w-auto"
           >
             <Save size={16} />
             {saving ? "Salvando..." : "Salvar taxas"}
@@ -237,9 +236,9 @@ export default function DeliverySettingsPage() {
         }
       />
 
-      <section className="surface-card rounded-[28px] p-5 sm:p-6">
+      <section className="surface-card min-w-0 rounded-[28px] p-5 sm:p-6">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-          <div>
+          <div className="min-w-0">
             <div className="inline-flex items-center gap-2 text-[var(--brand)]">
               <Calculator size={18} />
               <span className="text-xs font-black uppercase tracking-[0.16em]">
@@ -250,87 +249,62 @@ export default function DeliverySettingsPage() {
               Criar uma faixa para cada quilometragem
             </h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-500">
-              O preço considera cada quilômetro iniciado. O prazo cresce do tempo inicial até o
-              tempo informado no limite de entrega. Depois da geração, cada linha pode ser
-              alterada separadamente.
+              Digite os valores ou use os botões de menos e mais. O preço considera cada
+              quilômetro iniciado e o prazo cresce do tempo inicial até o tempo no limite.
             </p>
           </div>
-          <span className="w-fit rounded-full bg-orange-50 px-3 py-2 text-xs font-black text-[var(--brand)]">
+          <span className="w-fit shrink-0 rounded-full bg-orange-50 px-3 py-2 text-xs font-black text-[var(--brand)]">
             Até {maxDistance.toLocaleString("pt-BR")} km
           </span>
         </div>
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <label className="space-y-2">
-            <span className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">
-              Valor por km
-            </span>
-            <div className="flex min-h-11 items-center rounded-2xl border border-[var(--line)] bg-white px-4 focus-within:border-[var(--brand)]">
-              <span className="mr-2 text-sm font-bold text-gray-400">R$</span>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={pricePerKm}
-                onChange={(event) => setPricePerKm(Math.max(0, Number(event.target.value) || 0))}
-                className="w-full bg-transparent py-3 text-sm outline-none"
-              />
-            </div>
-          </label>
+        <div className="mt-6 grid min-w-0 gap-5 lg:grid-cols-2 2xl:grid-cols-4">
+          <DeliveryNumberField
+            label="Valor por km"
+            value={pricePerKm}
+            onValueChange={setPricePerKm}
+            min={0}
+            step={0.5}
+            decimals={2}
+            prefix="R$"
+            hint="Aceita vírgula ou ponto. Os botões alteram R$ 0,50."
+          />
 
-          <label className="space-y-2">
-            <span className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">
-              Limite de entrega
-            </span>
-            <div className="flex min-h-11 items-center rounded-2xl border border-[var(--line)] bg-white px-4 focus-within:border-[var(--brand)]">
-              <input
-                type="number"
-                min="0.1"
-                step="0.1"
-                value={maxDistance}
-                onChange={(event) => setMaxDistance(Math.max(0.1, Number(event.target.value) || 0.1))}
-                className="w-full bg-transparent py-3 text-sm outline-none"
-              />
-              <span className="text-sm font-bold text-gray-400">km</span>
-            </div>
-          </label>
+          <DeliveryNumberField
+            label="Limite de entrega"
+            value={maxDistance}
+            onValueChange={setMaxDistance}
+            min={0.1}
+            step={1}
+            decimals={1}
+            suffix="km"
+            hint="Digite a distância total ou ajuste de 1 em 1 km."
+          />
 
-          <label className="space-y-2">
-            <span className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">
-              Tempo inicial
-            </span>
-            <div className="flex min-h-11 items-center rounded-2xl border border-[var(--line)] bg-white px-4 focus-within:border-[var(--brand)]">
-              <input
-                type="number"
-                min="0"
-                step="1"
-                value={initialTime}
-                onChange={(event) => setInitialTime(Math.max(0, Number(event.target.value) || 0))}
-                className="w-full bg-transparent py-3 text-sm outline-none"
-              />
-              <span className="text-sm font-bold text-gray-400">min</span>
-            </div>
-          </label>
+          <DeliveryNumberField
+            label="Tempo inicial"
+            value={initialTime}
+            onValueChange={setInitialTime}
+            min={0}
+            step={5}
+            decimals={0}
+            suffix="min"
+            hint="Prazo usado nas entregas mais próximas."
+          />
 
-          <label className="space-y-2">
-            <span className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">
-              Tempo no limite
-            </span>
-            <div className="flex min-h-11 items-center rounded-2xl border border-[var(--line)] bg-white px-4 focus-within:border-[var(--brand)]">
-              <input
-                type="number"
-                min={initialTime}
-                step="1"
-                value={timeAtLimit}
-                onChange={(event) => setTimeAtLimit(Math.max(initialTime, Number(event.target.value) || initialTime))}
-                className="w-full bg-transparent py-3 text-sm outline-none"
-              />
-              <span className="text-sm font-bold text-gray-400">min</span>
-            </div>
-          </label>
+          <DeliveryNumberField
+            label="Tempo no limite"
+            value={timeAtLimit}
+            onValueChange={setTimeAtLimit}
+            min={initialTime}
+            step={5}
+            decimals={0}
+            suffix="min"
+            hint="Prazo máximo aplicado na última faixa."
+          />
         </div>
 
-        <div className="mt-5 flex flex-col gap-3 rounded-2xl bg-[#fcfaf7] p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-5 flex flex-col gap-4 rounded-2xl bg-[#fcfaf7] p-4 lg:flex-row lg:items-center lg:justify-between">
           <p className="text-sm leading-6 text-gray-600">
             Exemplo: 2,4 km será incluído na faixa de 3 km e custará{" "}
             <span className="font-black text-gray-900">
@@ -343,7 +317,7 @@ export default function DeliverySettingsPage() {
           <button
             type="button"
             onClick={handleGenerateTiers}
-            className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-2xl bg-gray-950 px-5 text-sm font-bold text-white"
+            className="inline-flex min-h-12 w-full shrink-0 items-center justify-center gap-2 rounded-2xl bg-gray-950 px-5 text-sm font-bold text-white lg:w-auto"
           >
             <Calculator size={16} />
             Gerar faixas
@@ -351,7 +325,7 @@ export default function DeliverySettingsPage() {
         </div>
       </section>
 
-      <section className="surface-card rounded-[28px] p-5 sm:p-6">
+      <section className="surface-card min-w-0 rounded-[28px] p-5 sm:p-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.16em] text-[var(--brand)]">
@@ -359,7 +333,7 @@ export default function DeliverySettingsPage() {
             </p>
             <h2 className="mt-1 text-xl font-black text-gray-950">Faixas de distância</h2>
             <p className="mt-1 text-sm leading-6 text-gray-500">
-              Edite preço e prazo de qualquer quilometragem antes de salvar.
+              Toque no número para substituir o valor inteiro ou use os botões laterais.
             </p>
           </div>
           <span className="text-sm font-bold text-gray-500">
@@ -367,70 +341,50 @@ export default function DeliverySettingsPage() {
           </span>
         </div>
 
-        <div className="mt-5 space-y-3">
+        <div className="mt-5 space-y-4">
           {tiers.map((tier, index) => (
             <div
-              key={`${tier.distance}-${index}`}
-              className="grid items-end gap-3 rounded-2xl border border-[var(--line)] bg-white p-4 md:grid-cols-[1fr_1fr_1fr_auto]"
+              key={index}
+              className="grid min-w-0 gap-4 rounded-2xl border border-[var(--line)] bg-white p-4 lg:grid-cols-2 2xl:grid-cols-[1fr_1fr_1fr_auto] 2xl:items-end"
             >
-              <label className="space-y-2">
-                <span className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">
-                  Até quantos km
-                </span>
-                <div className="flex min-h-11 items-center rounded-xl border border-[var(--line)] px-3 focus-within:border-[var(--brand)]">
-                  <input
-                    type="number"
-                    min="0.1"
-                    step="0.1"
-                    value={tier.distance}
-                    onChange={(event) => updateTier(index, "distance", event.target.value)}
-                    className="w-full bg-transparent py-2 text-sm outline-none"
-                  />
-                  <span className="text-sm font-bold text-gray-400">km</span>
-                </div>
-              </label>
+              <DeliveryNumberField
+                label="Até quantos km"
+                value={tier.distance}
+                onValueChange={(value) => updateTier(index, "distance", value)}
+                min={0.1}
+                step={0.5}
+                decimals={1}
+                suffix="km"
+              />
 
-              <label className="space-y-2">
-                <span className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">
-                  Tempo estimado
-                </span>
-                <div className="flex min-h-11 items-center rounded-xl border border-[var(--line)] px-3 focus-within:border-[var(--brand)]">
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={tier.time}
-                    onChange={(event) => updateTier(index, "time", event.target.value)}
-                    className="w-full bg-transparent py-2 text-sm outline-none"
-                  />
-                  <span className="text-sm font-bold text-gray-400">min</span>
-                </div>
-              </label>
+              <DeliveryNumberField
+                label="Tempo estimado"
+                value={tier.time}
+                onValueChange={(value) => updateTier(index, "time", value)}
+                min={0}
+                step={5}
+                decimals={0}
+                suffix="min"
+              />
 
-              <label className="space-y-2">
-                <span className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400">
-                  Valor da entrega
-                </span>
-                <div className="flex min-h-11 items-center rounded-xl border border-[var(--line)] px-3 focus-within:border-[var(--brand)]">
-                  <span className="mr-2 text-sm font-bold text-gray-400">R$</span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={tier.price}
-                    onChange={(event) => updateTier(index, "price", event.target.value)}
-                    className="w-full bg-transparent py-2 text-sm outline-none"
-                  />
-                </div>
-              </label>
+              <DeliveryNumberField
+                label="Valor da entrega"
+                value={tier.price}
+                onValueChange={(value) => updateTier(index, "price", value)}
+                min={0}
+                step={0.5}
+                decimals={2}
+                prefix="R$"
+              />
 
               <button
                 type="button"
                 onClick={() => removeTier(index)}
                 aria-label={`Remover faixa de até ${tier.distance} km`}
-                className="inline-flex min-h-11 items-center justify-center rounded-xl p-3 text-gray-400 transition hover:bg-[#fff0e8] hover:text-[var(--brand)]"
+                className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-[var(--line)] px-4 text-sm font-bold text-gray-500 transition hover:border-orange-200 hover:bg-[#fff0e8] hover:text-[var(--brand)] 2xl:w-12 2xl:px-0"
               >
                 <Trash2 size={17} />
+                <span className="2xl:hidden">Remover faixa</span>
               </button>
             </div>
           ))}
@@ -447,7 +401,7 @@ export default function DeliverySettingsPage() {
           <button
             type="button"
             onClick={addTier}
-            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--line)] bg-white px-4 text-sm font-bold text-gray-600 sm:w-auto"
+            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--line)] bg-white px-4 text-sm font-bold text-gray-600 sm:w-auto"
           >
             <Plus size={16} />
             Adicionar faixa
