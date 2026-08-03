@@ -671,16 +671,16 @@ export default function DashboardPeriodWorkspace() {
         title="Dashboard"
         description={`Resumo da operação da ${restaurantName} em tempo real.`}
         action={
-          <div className={`dashboard-store-card flex w-full items-center gap-3 border px-4 py-3 shadow-sm sm:w-auto ${storeTone.shell}`}>
+          <div className={`dashboard-store-card flex items-center gap-3 border px-4 py-3 shadow-sm ${storeTone.shell}`}>
             <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${storeTone.icon}`}>
               <Store size={20} />
             </div>
             <div className="min-w-0 flex-1 sm:min-w-[150px]">
-              <p className={`font-black ${storeTone.title}`}>{storeTone.label}</p>
-              <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
-                <span>{storeTone.helper}</span>
+              <div className="flex items-center gap-2">
                 <LiveStatusDot className={storeTone.dot} />
+                <p className={`font-black ${storeTone.title}`}>{storeTone.label}</p>
               </div>
+              <p className="mt-1 text-xs text-gray-500">{storeTone.helper}</p>
             </div>
             <Link
               href={restaurantSlug ? `/${restaurantSlug}` : "/admin/settings"}

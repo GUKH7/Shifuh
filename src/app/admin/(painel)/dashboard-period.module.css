@@ -4,13 +4,13 @@
 
 .page :global(.dashboard-store-card),
 .page :global(.dashboard-period-control) {
+  width: min(100%, 21.5rem);
+  min-height: 4.5rem;
   border-radius: var(--admin-radius-card);
 }
 
 .page :global(.dashboard-period-control) {
   position: relative;
-  width: min(100%, 19rem);
-  min-width: 17.5rem;
   padding: 0.625rem 0.7rem 0.625rem 3rem;
   border: 1px solid rgba(225, 207, 192, 0.9);
   background: rgba(255, 255, 255, 0.96);

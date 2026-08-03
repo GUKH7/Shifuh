@@ -16,5 +16,8 @@ test("dashboard usa o shell e o cabeçalho compartilhados", () => {
 test("cards do cabeçalho e período usam classes semânticas", () => {
   assert.match(styles, /dashboard-store-card/);
   assert.match(styles, /dashboard-period-control/);
+  assert.match(styles, /width: min\(100%, 21\.5rem\)/);
+  assert.match(styles, /min-height: 4\.5rem/);
+  assert.match(dashboard, /LiveStatusDot className=\{storeTone\.dot\}[\s\S]{0,120}\{storeTone\.label\}/);
   assert.doesNotMatch(styles, /:has|first-child|last-child|nth-child/);
 });
