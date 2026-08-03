@@ -7,20 +7,18 @@ const sections = fs.readFileSync(
   "src/app/admin/(painel)/settings/SettingsSections.tsx",
   "utf8",
 );
-const deliveryPage = fs.readFileSync(
-  "src/app/admin/(painel)/settings/delivery/page.tsx",
-  "utf8",
-);
 const deliveryPricing = fs.readFileSync(
   "src/app/admin/(painel)/settings/delivery-pricing.ts",
   "utf8",
 );
 const geo = fs.readFileSync("src/lib/geo.ts", "utf8");
 
-test("configurações direcionam para o editor completo de taxas", () => {
+test("configurações mantêm o editor de taxas na própria página", () => {
   assert.match(settings, /Taxas de entrega/);
-  assert.match(sections, /\/admin\/settings\/delivery/);
+  assert.doesNotMatch(sections, /\/admin\/settings\/delivery/);
   assert.match(sections, /Gere valores por quilômetro e ajuste preço e prazo em cada faixa/);
+  assert.match(settings, /deliveryPricingMode === "per_km"/);
+  assert.match(settings, /delivery_tiers: deliveryRules/);
 });
 
 test("gerador cria preço acumulado e prazo progressivo por quilometragem", () => {
@@ -32,12 +30,11 @@ test("gerador cria preço acumulado e prazo progressivo por quilometragem", () =
 });
 
 test("faixas geradas permanecem editáveis antes de salvar", () => {
-  assert.match(deliveryPage, /Gerar faixas/);
-  assert.match(deliveryPage, /Ajustes individuais/);
-  assert.match(deliveryPage, /updateTier\(tier\.editorId, "time"/);
-  assert.match(deliveryPage, /updateTier\(tier\.editorId, "price"/);
-  assert.match(deliveryPage, /delivery_tiers: normalizedTiers/);
-  assert.match(deliveryPage, /legacyRule/);
+  assert.match(settings, /const updateTier =/);
+  assert.match(settings, /updateTier\(index, "time"/);
+  assert.match(settings, /updateTier\(index, "price"/);
+  assert.match(settings, /const addTier =/);
+  assert.match(settings, /const removeTier =/);
 });
 
 test("cálculo legado por km continua compatível até a conversão", () => {

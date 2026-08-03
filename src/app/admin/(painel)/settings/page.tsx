@@ -5,11 +5,14 @@ import { createBrowserClient } from "@supabase/ssr";
 import { useRouter } from "next/navigation";
 import {
   ArrowDownUp,
+  Building2,
   CheckCircle,
   Clock,
+  Hash,
   Image as ImageIcon,
   Loader2,
   MapPin,
+  MapPinned,
   Palette,
   Plus,
   QrCode,
@@ -17,6 +20,7 @@ import {
   Save,
   Scissors,
   ShoppingBag,
+  Signpost,
   Smartphone,
   Store,
   Trash2,
@@ -1095,13 +1099,41 @@ export default function SettingsPage() {
           description="Nome, WhatsApp e endereço da operação."
         >
           <div className="mt-6 grid gap-4 md:grid-cols-2">
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome da loja" className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]" />
-            <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="WhatsApp" className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]" />
-            <input value={address.zip} onChange={(e) => setAddress({ ...address, zip: e.target.value })} onBlur={handleBlurCep} placeholder="CEP" className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]" />
-            <input value={address.city} onChange={(e) => setAddress({ ...address, city: e.target.value })} placeholder="Cidade" className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]" />
-            <input value={address.street} onChange={(e) => setAddress({ ...address, street: e.target.value })} placeholder="Rua" className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)] md:col-span-2" />
-            <input value={address.number} onChange={(e) => setAddress({ ...address, number: e.target.value })} placeholder="Número" className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]" />
-            <input value={address.neighborhood} onChange={(e) => setAddress({ ...address, neighborhood: e.target.value })} placeholder="Bairro" className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--brand)]" />
+            <label className="relative min-w-0">
+              <span className="sr-only">Nome da loja</span>
+              <Store size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[var(--brand)]" />
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome da loja" className="w-full rounded-2xl border border-[var(--line)] bg-white py-3 pl-11 pr-4 text-sm outline-none focus:border-[var(--brand)]" />
+            </label>
+            <label className="relative min-w-0">
+              <span className="sr-only">WhatsApp</span>
+              <Smartphone size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[var(--brand)]" />
+              <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="WhatsApp" className="w-full rounded-2xl border border-[var(--line)] bg-white py-3 pl-11 pr-4 text-sm outline-none focus:border-[var(--brand)]" />
+            </label>
+            <label className="relative min-w-0">
+              <span className="sr-only">CEP</span>
+              <MapPin size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[var(--brand)]" />
+              <input value={address.zip} onChange={(e) => setAddress({ ...address, zip: e.target.value })} onBlur={handleBlurCep} placeholder="CEP" className="w-full rounded-2xl border border-[var(--line)] bg-white py-3 pl-11 pr-4 text-sm outline-none focus:border-[var(--brand)]" />
+            </label>
+            <label className="relative min-w-0">
+              <span className="sr-only">Cidade</span>
+              <Building2 size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[var(--brand)]" />
+              <input value={address.city} onChange={(e) => setAddress({ ...address, city: e.target.value })} placeholder="Cidade" className="w-full rounded-2xl border border-[var(--line)] bg-white py-3 pl-11 pr-4 text-sm outline-none focus:border-[var(--brand)]" />
+            </label>
+            <label className="relative min-w-0 md:col-span-2">
+              <span className="sr-only">Rua</span>
+              <Signpost size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[var(--brand)]" />
+              <input value={address.street} onChange={(e) => setAddress({ ...address, street: e.target.value })} placeholder="Rua" className="w-full rounded-2xl border border-[var(--line)] bg-white py-3 pl-11 pr-4 text-sm outline-none focus:border-[var(--brand)]" />
+            </label>
+            <label className="relative min-w-0">
+              <span className="sr-only">Número</span>
+              <Hash size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[var(--brand)]" />
+              <input value={address.number} onChange={(e) => setAddress({ ...address, number: e.target.value })} placeholder="Número" className="w-full rounded-2xl border border-[var(--line)] bg-white py-3 pl-11 pr-4 text-sm outline-none focus:border-[var(--brand)]" />
+            </label>
+            <label className="relative min-w-0">
+              <span className="sr-only">Bairro</span>
+              <MapPinned size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[var(--brand)]" />
+              <input value={address.neighborhood} onChange={(e) => setAddress({ ...address, neighborhood: e.target.value })} placeholder="Bairro" className="w-full rounded-2xl border border-[var(--line)] bg-white py-3 pl-11 pr-4 text-sm outline-none focus:border-[var(--brand)]" />
+            </label>
           </div>
         </CollapsibleSection>
 
@@ -2214,7 +2246,7 @@ export default function SettingsPage() {
           description="Use um horário geral ou ajuste cada dia separadamente."
           defaultOpen={false}
         >
-          <div className="mt-6 inline-flex w-full rounded-2xl border border-[var(--line)] bg-[#f7f5f2] p-1 sm:w-auto" role="group" aria-label="Modo de configuração dos horários">
+          <div className="mt-4 inline-flex w-full rounded-2xl border border-[var(--line)] bg-[#f7f5f2] p-1 sm:w-auto" role="group" aria-label="Modo de configuração dos horários">
             <button
               type="button"
               onClick={() => handleScheduleModeChange("shared")}
@@ -2292,11 +2324,11 @@ export default function SettingsPage() {
             </div>
           )}
 
-          <div className="mt-4 space-y-3">
+          <div className="mt-3 space-y-2">
             {schedule.map((item, index) => (
-              <div key={item.day_id} className="flex flex-col gap-3 rounded-2xl border border-[var(--line)] bg-white p-4 md:flex-row md:items-center md:justify-between">
+              <div key={item.day_id} className="flex flex-col gap-3 rounded-2xl border border-[var(--line)] bg-white p-3 md:flex-row md:items-center md:justify-between">
                 <label className="flex items-center gap-3">
-                  <input type="checkbox" checked={item.is_open} onChange={(e) => handleScheduleDayToggle(index, e.target.checked)} className="h-4 w-4 accent-[var(--brand)]" />
+                  <input type="checkbox" checked={item.is_open} onChange={(e) => handleScheduleDayToggle(index, e.target.checked)} aria-label={`${item.is_open ? "Fechar" : "Abrir"} ${item.day_label}`} />
                   <span className={`text-sm font-bold ${item.is_open ? "text-gray-950" : "text-gray-400"}`}>{item.day_label}</span>
                 </label>
                 {item.is_open && scheduleMode === "individual" && (
@@ -2372,16 +2404,32 @@ export default function SettingsPage() {
           </label>
 
           <div className="mt-5 rounded-[24px] border border-[var(--line)] bg-[#fcfaf7] p-4">
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-gray-400">Preview rápido</p>
-            <div
-              className="mt-3 rounded-2xl border border-dashed border-[var(--line)] bg-white px-4 py-4 text-gray-800"
-              style={{ fontFamily: "'Courier New', monospace", fontSize: `${printerFontSize}px`, fontWeight: printerFontWeight }}
-            >
-              <p className="text-center">{name || "Sua loja"}</p>
-              <p className="mt-2 text-center">Pedido #0042</p>
-              <p className="mt-3">1x Smash Burger ........ R$ 29,90</p>
-              <p>Entrega ..................... R$ 6,00</p>
-              <p className="mt-2">Total ....................... R$ 35,90</p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-gray-400">Prévia do recibo</p>
+              <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-[var(--brand)] shadow-sm">Papel {printerWidth} mm</span>
+            </div>
+            <div className="mt-3 overflow-x-auto rounded-2xl border border-dashed border-[var(--line)] bg-[#efe9e3] p-4">
+              <div
+                className="mx-auto bg-white px-4 py-5 text-gray-900 shadow-[0_8px_24px_rgba(55,42,34,0.12)]"
+                style={{
+                  width: `${printerWidth}mm`,
+                  maxWidth: "100%",
+                  fontFamily: "'Courier New', monospace",
+                  fontSize: `${printerFontSize}px`,
+                  fontWeight: printerFontWeight,
+                }}
+              >
+                <p className="break-words text-center font-bold uppercase">{name || "Sua loja"}</p>
+                <p className="mt-1 text-center">Pedido #0042</p>
+                <div className="my-3 border-t border-dashed border-gray-400" />
+                <div className="space-y-1.5">
+                  <div className="flex items-start justify-between gap-3"><span>1x Smash Burger</span><span className="shrink-0 tabular-nums">R$ 29,90</span></div>
+                  <div className="flex items-start justify-between gap-3"><span>Entrega</span><span className="shrink-0 tabular-nums">R$ 6,00</span></div>
+                </div>
+                <div className="my-3 border-t border-dashed border-gray-400" />
+                <div className="flex items-start justify-between gap-3 font-bold"><span>Total</span><span className="shrink-0 tabular-nums">R$ 35,90</span></div>
+                <p className="mt-4 text-center text-[0.85em]">Obrigado pela preferência!</p>
+              </div>
             </div>
           </div>
         </CollapsibleSection>

@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import Link from "next/link";
-import { ChevronDown, ChevronRight, CircleHelp } from "lucide-react";
+import { ChevronDown, CircleHelp } from "lucide-react";
 
 type SettingsCopy = {
   title: string;
@@ -37,10 +36,6 @@ const sectionCopyOverrides: Record<string, SettingsCopy> = {
     title: "Taxas de entrega",
     description: "Gere valores por quilômetro e ajuste preço e prazo em cada faixa.",
   },
-};
-
-const sectionRoutes: Record<string, string> = {
-  "Taxas de entrega": "/admin/settings/delivery",
 };
 
 function resolveCopy(
@@ -79,32 +74,8 @@ export function CollapsibleSection({
 }) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const copy = resolveCopy(title, description, sectionCopyOverrides);
-  const sectionRoute = sectionRoutes[title];
-
-  if (sectionRoute) {
-    return (
-      <section className={`surface-card rounded-[28px] p-6 ${className}`}>
-        <Link
-          href={sectionRoute}
-          className="flex w-full items-center justify-between gap-4 text-left"
-        >
-          <div className="flex items-center gap-3">
-            <div className="rounded-2xl bg-[var(--brand-soft)] p-3 text-[var(--brand)]">{icon}</div>
-            <div>
-              <h2 className="text-xl font-black text-gray-950">{copy.title}</h2>
-              <p className="text-sm text-gray-500">{copy.description}</p>
-            </div>
-          </div>
-          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-[var(--line)] bg-white text-gray-500">
-            <ChevronRight size={18} />
-          </span>
-        </Link>
-      </section>
-    );
-  }
-
   return (
-    <section className={`surface-card rounded-[28px] p-6 ${className}`}>
+    <section className={`surface-card rounded-[28px] p-4 sm:p-6 ${className}`}>
       <button
         type="button"
         onClick={() => setIsOpen((current) => !current)}
