@@ -1112,11 +1112,7 @@ export default function OrdersPage() {
               onClick={() => setIsFiltersOpen((current) => !current)}
               aria-expanded={isFiltersOpen}
               aria-controls="orders-filters-panel"
-              className={`inline-flex items-center justify-center gap-2 rounded-xl border bg-white px-4 py-2.5 text-sm font-bold shadow-sm transition ${
-                isFiltersOpen || activeFiltersCount > 0
-                  ? "border-orange-300 text-[var(--brand)]"
-                  : "border-[var(--line)] text-gray-700"
-              }`}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-orange-300 bg-white px-4 py-2.5 text-sm font-bold text-[var(--brand)] shadow-sm transition hover:border-[var(--brand)] hover:bg-orange-50"
             >
               <Filter size={17} />
               Filtros
@@ -1127,7 +1123,7 @@ export default function OrdersPage() {
               )}
               <ChevronDown
                 size={16}
-                className={`text-gray-400 transition-transform ${isFiltersOpen ? "rotate-180" : ""}`}
+                className={`text-[var(--brand)] transition-transform ${isFiltersOpen ? "rotate-180" : ""}`}
               />
             </button>
           </div>
@@ -1135,14 +1131,14 @@ export default function OrdersPage() {
           {isFiltersOpen && (
             <div
               id="orders-filters-panel"
-              className="grid gap-3 rounded-2xl border border-orange-100 bg-[#fffdfa] p-4 shadow-sm md:grid-cols-2 xl:grid-cols-[1fr_1fr_1.25fr_auto] xl:items-end"
+              className="admin-filter-panel grid gap-3 rounded-2xl p-4 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1.25fr_auto] xl:items-end"
             >
               <label className="grid gap-1.5 text-xs font-black uppercase tracking-[0.08em] text-gray-500">
                 Canal
                 <select
                   value={channelFilter}
                   onChange={(event) => setChannelFilter(event.target.value as ChannelFilter)}
-                  className="rounded-xl border border-[var(--line)] bg-white px-3 py-2.5 text-sm font-bold normal-case tracking-normal text-gray-700"
+                  className="admin-filter-control rounded-xl border bg-white px-3 py-2.5 text-sm font-bold normal-case tracking-normal text-gray-700"
                 >
                   <option value="all">Todos os canais</option>
                   <option value="ifood">iFood</option>
@@ -1156,7 +1152,7 @@ export default function OrdersPage() {
                 <select
                   value={fulfillmentFilter}
                   onChange={(event) => setFulfillmentFilter(event.target.value as FulfillmentFilter)}
-                  className="rounded-xl border border-[var(--line)] bg-white px-3 py-2.5 text-sm font-bold normal-case tracking-normal text-gray-700"
+                  className="admin-filter-control rounded-xl border bg-white px-3 py-2.5 text-sm font-bold normal-case tracking-normal text-gray-700"
                 >
                   <option value="all">Entrega e retirada</option>
                   <option value="delivery">Delivery</option>
@@ -1169,7 +1165,7 @@ export default function OrdersPage() {
                 <select
                   value={paymentFilter}
                   onChange={(event) => setPaymentFilter(event.target.value)}
-                  className="rounded-xl border border-[var(--line)] bg-white px-3 py-2.5 text-sm font-bold normal-case tracking-normal text-gray-700"
+                  className="admin-filter-control rounded-xl border bg-white px-3 py-2.5 text-sm font-bold normal-case tracking-normal text-gray-700"
                 >
                   <option value="all">Todos os pagamentos</option>
                   {paymentOptions.map((payment) => (
@@ -1182,15 +1178,10 @@ export default function OrdersPage() {
 
               <button
                 type="button"
-                onClick={() => {
-                  setChannelFilter("all");
-                  setFulfillmentFilter("all");
-                  setPaymentFilter("all");
-                }}
-                disabled={activeFiltersCount === 0}
-                className="rounded-xl border border-[var(--line)] bg-white px-4 py-2.5 text-sm font-bold text-gray-600 disabled:opacity-50"
+                onClick={clearAllFilters}
+                className="rounded-xl border border-orange-300 bg-white px-4 py-2.5 text-sm font-bold text-[var(--brand)] transition hover:border-[var(--brand)] hover:bg-orange-50"
               >
-                Limpar avançados
+                Limpar filtros
               </button>
             </div>
           )}
@@ -1217,7 +1208,7 @@ export default function OrdersPage() {
           </div>
 
           <div className="overflow-hidden rounded-[18px] border border-[var(--line)] bg-white shadow-sm">
-            <div className="orders-table-header hidden grid-cols-[96px_145px_100px_64px_78px_120px_104px_80px_145px] items-center gap-2 border-b border-[var(--line)] bg-[#fffdfa] px-4 py-3 text-center text-[10px] font-black uppercase tracking-[0.06em] text-gray-400 xl:grid">
+            <div className="orders-table-header admin-table-header hidden grid-cols-[96px_145px_100px_64px_78px_120px_104px_80px_145px] items-center gap-2 border-b border-[var(--line)] bg-[#fffdfa] px-4 py-3 text-center xl:grid">
               <span>Pedido</span>
               <span>Cliente</span>
               <span>Canal</span>

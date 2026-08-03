@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useRouter } from "next/navigation";
 import {
+  BadgePercent,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Filter,
@@ -226,8 +228,8 @@ export default function ReviewsWorkspace() {
         icon={<Star size={24} />}
       />
 
-      <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-        <div className="surface-card overflow-hidden rounded-[28px] p-5 sm:p-6">
+      <section className="grid gap-4 lg:grid-cols-[0.75fr_1.25fr]">
+        <div className="surface-card overflow-hidden rounded-[28px] border-orange-100 bg-[linear-gradient(145deg,#ffffff_0%,#fff6ef_100%)] p-5 sm:p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-sm font-medium text-gray-500">Nota média</p>
@@ -243,7 +245,12 @@ export default function ReviewsWorkspace() {
           </div>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            <MetricCard label="Taxa positiva" value={`${stats.positiveRate.toFixed(0)}%`} />
+            <MetricCard
+              label="Taxa positiva"
+              value={`${stats.positiveRate.toFixed(0)}%`}
+              icon={<BadgePercent size={18} />}
+              featured
+            />
             <MetricCard
               label="Média por pedido"
               value={stats.average.toFixed(1)}
@@ -288,38 +295,33 @@ export default function ReviewsWorkspace() {
               className="pl-11"
             />
           </label>
-          <AdminButton variant="secondary" onClick={() => setFiltersOpen((current) => !current)} aria-expanded={filtersOpen}>
-            <Filter size={16} /> Filtros e ordenação
+          <AdminButton variant="filter" onClick={() => setFiltersOpen((current) => !current)} aria-expanded={filtersOpen}>
+            <Filter size={16} /> Filtros
+            <ChevronDown size={16} className={`transition-transform ${filtersOpen ? "rotate-180" : ""}`} />
           </AdminButton>
         </div>
 
         {filtersOpen && (
-          <div className="mt-3 grid gap-3 rounded-2xl border border-[var(--line)] bg-[#fcfaf7] p-4 sm:grid-cols-3">
-            <AdminSelect value={filter} onChange={(event) => setFilter(event.target.value as ReviewFilter)}>
+          <div className="admin-filter-panel mt-3 grid gap-3 rounded-2xl p-4 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto]">
+            <AdminSelect className="admin-filter-control" value={filter} onChange={(event) => setFilter(event.target.value as ReviewFilter)}>
               {REVIEW_FILTERS.map((item) => (
                 <option key={item.value} value={item.value}>{item.label}</option>
               ))}
             </AdminSelect>
-            <AdminSelect value={sortKey} onChange={(event) => setSortKey(event.target.value as ReviewSortKey)} className="xl:hidden">
+            <AdminSelect value={sortKey} onChange={(event) => setSortKey(event.target.value as ReviewSortKey)} className="admin-filter-control xl:hidden">
               {SORT_OPTIONS.map((item) => (
                 <option key={item.value} value={item.value}>Ordenar por {item.label}</option>
               ))}
             </AdminSelect>
             <AdminButton
-              variant="secondary"
+              variant="filter"
               className="xl:hidden"
               onClick={() => setSortDirection((current) => (current === "asc" ? "desc" : "asc"))}
             >
               {sortDirection === "asc" ? "Crescente" : "Decrescente"}
             </AdminButton>
-          </div>
-        )}
-
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm font-semibold text-gray-500">
-          <span>{visibleReviews.length} {visibleReviews.length === 1 ? "avaliação encontrada" : "avaliações encontradas"}</span>
-          {(query || filter !== "all") && (
             <AdminButton
-              variant="ghost"
+              variant="filter"
               onClick={() => {
                 setQuery("");
                 setFilter("all");
@@ -327,11 +329,15 @@ export default function ReviewsWorkspace() {
             >
               Limpar filtros
             </AdminButton>
-          )}
+          </div>
+        )}
+
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm font-semibold text-gray-500">
+          <span>{visibleReviews.length} {visibleReviews.length === 1 ? "avaliação encontrada" : "avaliações encontradas"}</span>
         </div>
 
         <div className="mt-4 overflow-hidden rounded-[24px] border border-[var(--line)] bg-white">
-          <div className="hidden grid-cols-[minmax(180px,1fr)_110px_130px_155px_minmax(260px,1.5fr)] items-center gap-4 border-b border-[var(--line)] bg-[#fffdfa] px-5 py-4 text-xs uppercase tracking-[0.1em] xl:grid">
+          <div className="admin-table-header hidden grid-cols-[minmax(180px,1fr)_110px_130px_155px_minmax(260px,1.5fr)] items-center gap-4 border-b border-[var(--line)] bg-[#fffdfa] px-5 py-4 xl:grid">
             <SortableTableHeader label="Cliente" active={sortKey === "customer_name"} direction={sortKey === "customer_name" ? sortDirection : null} onClick={() => toggleSort("customer_name")} />
             <SortableTableHeader label="Pedido" active={sortKey === "order_id"} direction={sortKey === "order_id" ? sortDirection : null} onClick={() => toggleSort("order_id")} />
             <SortableTableHeader label="Nota" active={sortKey === "rating"} direction={sortKey === "rating" ? sortDirection : null} onClick={() => toggleSort("rating")} />
@@ -401,11 +407,21 @@ function RatingStars({ rating, compact = false }: { rating: number; compact?: bo
   );
 }
 
-function MetricCard({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) {
+function MetricCard({
+  label,
+  value,
+  icon,
+  featured = false,
+}: {
+  label: string;
+  value: string;
+  icon?: React.ReactNode;
+  featured?: boolean;
+}) {
   return (
-    <div className="rounded-[22px] bg-[#fcfaf7] px-4 py-4">
-      <p className="text-xs font-bold uppercase tracking-[0.14em] text-gray-400">{label}</p>
-      <p className="mt-2 inline-flex items-center gap-2 text-2xl font-black text-gray-950">{icon}{value}</p>
+    <div className={`rounded-[22px] px-4 py-4 ${featured ? "brand-gradient text-white shadow-[0_12px_26px_rgba(255,90,31,0.2)]" : "border border-orange-100 bg-[linear-gradient(145deg,#fff_0%,#fff8f3_100%)]"}`}>
+      <p className={`text-xs font-bold uppercase tracking-[0.14em] ${featured ? "text-orange-100" : "text-gray-400"}`}>{label}</p>
+      <p className={`mt-2 inline-flex items-center gap-2 text-2xl font-black ${featured ? "text-white" : "text-gray-950"}`}>{icon}{value}</p>
     </div>
   );
 }

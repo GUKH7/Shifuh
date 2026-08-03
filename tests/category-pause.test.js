@@ -10,7 +10,7 @@ const migration = fs.readFileSync(path.join(root, "supabase/migrations/202607291
 
 test("categorias podem ser pausadas sem alterar o estado individual dos produtos", () => {
   const categoryToggle = menu.match(
-    /const toggleCategoryStatus = async[\s\S]*?\n  };\n\n  const handleOpenCategoryModal/,
+    /const toggleCategoryStatus = async[\s\S]*?\r?\n  };\r?\n\r?\n  const handleOpenCategoryModal/,
   )?.[0] || "";
 
   assert.match(categoryToggle, /from\("categories"\)/);

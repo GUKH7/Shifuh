@@ -77,12 +77,14 @@ export const AdminSelect = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HT
   },
 );
 
-type AdminButtonVariant = "brand" | "secondary" | "ghost" | "danger";
+type AdminButtonVariant = "brand" | "secondary" | "filter" | "ghost" | "danger";
 
 const BUTTON_VARIANTS: Record<AdminButtonVariant, string> = {
   brand:
     "border border-[#ffd8ca] bg-[var(--brand-soft)] text-[var(--brand)] hover:border-[#ffc4ae] hover:bg-[#ffe8dc]",
   secondary: "border border-[var(--line)] bg-white text-gray-700 hover:bg-[#faf5ef] hover:text-gray-950",
+  filter:
+    "border border-orange-300 bg-white text-[var(--brand)] shadow-sm hover:border-[var(--brand)] hover:bg-orange-50",
   ghost: "border border-transparent bg-transparent text-gray-600 hover:bg-[#faf5ef] hover:text-gray-950",
   danger: "border border-red-200 bg-red-50 text-red-700 hover:bg-red-100",
 };

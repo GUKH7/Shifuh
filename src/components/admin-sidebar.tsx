@@ -197,9 +197,9 @@ export default function AdminSidebar({
           type="button"
           onClick={handleLogout}
           title={isCollapsed ? "Sair" : undefined}
-          className={`group flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-gray-500 transition-all hover:bg-[#faf5ef] hover:text-red-600 ${desktopItemLayout}`}
+          className={`group flex w-full items-center gap-3 rounded-2xl border border-red-700 bg-red-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition-all hover:bg-red-700 ${desktopItemLayout}`}
         >
-          <LogOut size={19} className="shrink-0 text-gray-400 transition-colors group-hover:text-red-600" />
+          <LogOut size={19} className="shrink-0 text-white" />
           <span className={desktopLabelVisibility}>Sair</span>
         </button>
       </div>

@@ -509,7 +509,7 @@ export function HistoryWorkspace() {
         icon={<History size={22} />}
         action={
           <AdminButton
-            variant="secondary"
+            variant="filter"
             onClick={() => exportExcel(visibleOrders)}
             aria-label="Exportar histórico"
             className="h-11 w-11 px-0 sm:w-auto sm:px-4"
@@ -553,10 +553,10 @@ export function HistoryWorkspace() {
         </div>
 
         {filtersOpen && (
-          <div className="mt-3 grid gap-3 rounded-2xl border border-[var(--line)] bg-[#fcfaf7] p-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="admin-filter-panel mt-3 grid gap-3 rounded-2xl p-4 sm:grid-cols-2 xl:grid-cols-4">
             <label className="space-y-2 text-sm font-bold text-gray-700">
               <span className="block">Situação</span>
-              <AdminSelect value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+              <AdminSelect className="admin-filter-control" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
                 {STATUS_FILTERS.map((item) => (
                   <option key={item.id} value={item.id}>{item.label}</option>
                 ))}
@@ -565,7 +565,7 @@ export function HistoryWorkspace() {
 
             <label className="space-y-2 text-sm font-bold text-gray-700">
               <span className="block">Período</span>
-              <AdminSelect value={period} onChange={(event) => selectPeriod(event.target.value as PeriodKey)}>
+              <AdminSelect className="admin-filter-control" value={period} onChange={(event) => selectPeriod(event.target.value as PeriodKey)}>
                 {PERIOD_OPTIONS.map((item) => (
                   <option key={item.id} value={item.id}>{item.label}</option>
                 ))}
@@ -574,7 +574,7 @@ export function HistoryWorkspace() {
 
             <label className="space-y-2 text-sm font-bold text-gray-700">
               <span className="block">Pagamento</span>
-              <AdminSelect value={paymentFilter} onChange={(event) => setPaymentFilter(event.target.value)}>
+              <AdminSelect className="admin-filter-control" value={paymentFilter} onChange={(event) => setPaymentFilter(event.target.value)}>
                 <option value="all">Todos</option>
                 {paymentOptions.map((payment) => (
                   <option key={payment} value={payment}>{payment}</option>
@@ -584,7 +584,7 @@ export function HistoryWorkspace() {
 
             <label className="space-y-2 text-sm font-bold text-gray-700 lg:hidden">
               <span className="block">Ordenar por</span>
-              <AdminSelect value={sortKey} onChange={(event) => setSortKey(event.target.value as SortKey)}>
+              <AdminSelect className="admin-filter-control" value={sortKey} onChange={(event) => setSortKey(event.target.value as SortKey)}>
                 {SORT_OPTIONS.map((item) => (
                   <option key={item.id} value={item.id}>{item.label}</option>
                 ))}
@@ -596,6 +596,7 @@ export function HistoryWorkspace() {
                 <label className="space-y-2 text-sm font-bold text-gray-700">
                   <span className="block">Data inicial</span>
                   <AdminInput
+                    className="admin-filter-control"
                     type="date"
                     value={customStartDate}
                     onChange={(event) => setCustomStartDate(event.target.value)}
@@ -604,6 +605,7 @@ export function HistoryWorkspace() {
                 <label className="space-y-2 text-sm font-bold text-gray-700">
                   <span className="block">Data final</span>
                   <AdminInput
+                    className="admin-filter-control"
                     type="date"
                     value={customEndDate}
                     min={customStartDate || undefined}
@@ -614,7 +616,7 @@ export function HistoryWorkspace() {
             )}
 
             <div className="flex items-end gap-2 sm:col-span-2 xl:col-span-4">
-              <AdminButton variant="secondary" onClick={clearFilters}>Limpar filtros</AdminButton>
+              <AdminButton variant="filter" onClick={clearFilters}>Limpar filtros</AdminButton>
               <AdminButton
                 variant="secondary"
                 onClick={() => setSortDirection((current) => (current === "asc" ? "desc" : "asc"))}

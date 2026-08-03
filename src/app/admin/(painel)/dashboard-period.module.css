@@ -13,9 +13,20 @@
   min-width: 17.5rem;
   padding: 0.625rem 0.7rem 0.625rem 3rem;
   border: 1px solid rgba(225, 207, 192, 0.9);
-  background: linear-gradient(135deg, rgba(255, 106, 0, 0.07), transparent 52%), rgba(255, 255, 255, 0.94);
+  background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 10px 26px rgba(77, 48, 29, 0.06);
   transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.page :global(.dashboard-metric-card) {
+  background: linear-gradient(145deg, #ffffff 0%, #fffaf6 100%);
+  border-color: rgba(255, 90, 31, 0.14);
+}
+
+.page :global(.dashboard-metric-card--featured) {
+  background: linear-gradient(135deg, #ff5a1f 0%, #ff7a1f 100%);
+  border-color: transparent;
+  box-shadow: 0 16px 34px rgba(255, 90, 31, 0.2);
 }
 
 .page :global(.dashboard-period-control)::before,

@@ -10,8 +10,8 @@ const tableGrid = "grid-cols-[96px_145px_100px_64px_78px_120px_104px_80px_145px]
 
 test("payment methods are translated into Portuguese", () => {
   assert.match(utils, /CASH: "Dinheiro"/);
-  assert.match(utils, /CREDIT: "Crédito"/);
-  assert.match(utils, /DEBIT: "Débito"/);
+  assert.match(utils, /CREDIT: "CRÉDITO"/);
+  assert.match(utils, /DEBIT: "DÉBITO"/);
   assert.match(utils, /PIX: "Pix"/);
   assert.match(utils, /OFFLINE: "Na entrega"/);
   assert.match(utils, /\.map\(\(part\) => formatPaymentTerm\(String\(part\)\)\)/);
@@ -29,7 +29,7 @@ test("orders table separates value and payment using one aligned grid", () => {
 
 test("order rows omit customer avatars and keep semantic labels on mobile", () => {
   assert.doesNotMatch(page, /getCustomerInitials/);
-  assert.match(page, /px-4 py-3 text-center text-\[10px\]/);
+  assert.match(page, /orders-table-header admin-table-header/);
   assert.match(page, /data-label="Cliente"/);
   assert.match(page, /data-label="Canal"/);
   assert.match(page, /data-label="Status"/);

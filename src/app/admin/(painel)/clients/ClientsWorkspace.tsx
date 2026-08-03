@@ -257,7 +257,7 @@ export default function ClientsWorkspace() {
           ["Pedidos associados", String(summary.totalOrders)],
           ["Faturamento da base", formatMoney(summary.totalRevenue)],
         ].map(([label, value]) => (
-          <div key={label} className="surface-card rounded-[24px] p-5">
+          <div key={label} className="surface-card rounded-[24px] border-orange-100 bg-[linear-gradient(145deg,#ffffff_0%,#fff8f3_100%)] p-5">
             <p className="text-sm font-medium text-gray-500">{label}</p>
             <p className="mt-3 text-3xl font-black text-gray-950">{value}</p>
           </div>
@@ -276,7 +276,7 @@ export default function ClientsWorkspace() {
               className="pl-11"
             />
           </label>
-          <AdminSelect value={sortKey} onChange={(event) => setSortKey(event.target.value as ClientSortKey)} className="xl:hidden">
+          <AdminSelect value={sortKey} onChange={(event) => setSortKey(event.target.value as ClientSortKey)} className="admin-filter-control xl:hidden">
             {SORT_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
                 Ordenar por {option.label}
@@ -284,7 +284,7 @@ export default function ClientsWorkspace() {
             ))}
           </AdminSelect>
           <AdminButton
-            variant="secondary"
+            variant="filter"
             className="xl:hidden"
             onClick={() => setSortDirection((current) => (current === "asc" ? "desc" : "asc"))}
           >
@@ -293,7 +293,7 @@ export default function ClientsWorkspace() {
         </div>
 
         <div className="mt-5 overflow-hidden rounded-[24px] border border-[var(--line)] bg-white">
-          <div className="hidden grid-cols-[minmax(220px,1.3fr)_minmax(160px,1fr)_120px_160px_150px_120px] items-center gap-4 border-b border-[var(--line)] bg-[#fffdfa] px-6 py-4 text-xs uppercase tracking-[0.12em] xl:grid">
+          <div className="admin-table-header hidden grid-cols-[minmax(220px,1.3fr)_minmax(160px,1fr)_120px_160px_150px_120px] items-center gap-4 border-b border-[var(--line)] bg-[#fffdfa] px-6 py-4 xl:grid">
             <SortableTableHeader label="Cliente" active={sortKey === "name"} direction={sortKey === "name" ? sortDirection : null} onClick={() => toggleSort("name")} />
             <SortableTableHeader label="Contato" active={sortKey === "phone"} direction={sortKey === "phone" ? sortDirection : null} onClick={() => toggleSort("phone")} />
             <SortableTableHeader label="Pedidos" active={sortKey === "orderCount"} direction={sortKey === "orderCount" ? sortDirection : null} onClick={() => toggleSort("orderCount")} />
@@ -396,7 +396,7 @@ function WhatsAppButton({ phone, full = false }: { phone: string; full?: boolean
   return (
     <AdminButton
       variant="secondary"
-      className={`${full ? "w-full" : "ml-auto"} border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100`}
+      className={`${full ? "w-full" : "ml-auto"} border-emerald-200 !bg-emerald-50 text-emerald-700 shadow-sm hover:!bg-emerald-100`}
       onClick={() => window.open(`https://wa.me/${phone.replace(/\D/g, "")}`, "_blank", "noopener,noreferrer")}
     >
       <MessageCircle size={14} /> WhatsApp

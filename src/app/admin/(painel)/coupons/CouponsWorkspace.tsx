@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useRouter } from "next/navigation";
 import {
+  ChevronDown,
   Filter,
   Loader2,
   Percent,
@@ -308,7 +309,7 @@ export default function CouponsWorkspace() {
           ["Receita convertida", formatMoney(summary.totalConvertedRevenue)],
           ["Retorno por desconto", summary.returnRate ? `${summary.returnRate.toFixed(1)}x` : "--"],
         ].map(([label, value]) => (
-          <div key={label} className="surface-card rounded-[24px] p-5">
+          <div key={label} className="surface-card rounded-[24px] border-orange-100 bg-[linear-gradient(145deg,#ffffff_0%,#fff8f3_100%)] p-5">
             <p className="text-sm font-medium text-gray-500">{label}</p>
             <p className="mt-3 text-3xl font-black text-gray-950">{value}</p>
           </div>
@@ -318,12 +319,16 @@ export default function CouponsWorkspace() {
       <section className="surface-card rounded-[28px] p-4 sm:p-5 md:p-6">
         <h2 className="text-lg font-black text-gray-950">Novo cupom</h2>
         <form onSubmit={handleCreate} className="mt-5 grid gap-4 md:grid-cols-[1.2fr_220px_180px_160px]">
-          <AdminInput
-            value={form.code}
-            onChange={(event) => setForm((current) => ({ ...current, code: event.target.value }))}
-            placeholder="Ex: PRIMEIRACOMPRA"
-            className="font-bold uppercase"
-          />
+          <label className="relative min-w-0">
+            <span className="sr-only">Código do cupom</span>
+            <Ticket size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[var(--brand)]" />
+            <AdminInput
+              value={form.code}
+              onChange={(event) => setForm((current) => ({ ...current, code: event.target.value }))}
+              placeholder="Ex: PRIMEIRACOMPRA"
+              className="pl-11 font-bold uppercase"
+            />
+          </label>
           <AdminSelect
             value={form.type}
             onChange={(event) => setForm((current) => ({ ...current, type: event.target.value }))}
@@ -331,12 +336,17 @@ export default function CouponsWorkspace() {
             <option value="percent">Porcentagem (%)</option>
             <option value="fixed">Valor fixo (R$)</option>
           </AdminSelect>
-          <AdminInput
-            inputMode="decimal"
-            value={form.value}
-            onChange={(event) => setForm((current) => ({ ...current, value: event.target.value }))}
-            placeholder="Valor"
-          />
+          <label className="relative min-w-0">
+            <span className="sr-only">Valor do cupom</span>
+            <Wallet size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[var(--brand)]" />
+            <AdminInput
+              inputMode="decimal"
+              value={form.value}
+              onChange={(event) => setForm((current) => ({ ...current, value: event.target.value }))}
+              placeholder="Valor"
+              className="pl-11"
+            />
+          </label>
           <AdminButton type="submit" disabled={creating} className="bg-[#171311] text-white hover:bg-black">
             {creating ? <Loader2 className="animate-spin" size={16} /> : <Plus size={16} />}
             Criar cupom
@@ -351,29 +361,39 @@ export default function CouponsWorkspace() {
             <Search size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
             <AdminInput value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar código do cupom" className="pl-11" />
           </label>
-          <AdminButton variant="secondary" onClick={() => setFiltersOpen((current) => !current)} aria-expanded={filtersOpen}>
-            <Filter size={16} /> Filtros e ordenação
+          <AdminButton variant="filter" onClick={() => setFiltersOpen((current) => !current)} aria-expanded={filtersOpen}>
+            <Filter size={16} /> Filtros
+            <ChevronDown size={16} className={`transition-transform ${filtersOpen ? "rotate-180" : ""}`} />
           </AdminButton>
         </div>
 
         {filtersOpen && (
-          <div className="mt-3 grid gap-3 rounded-2xl border border-[var(--line)] bg-[#fcfaf7] p-4 sm:grid-cols-3">
-            <AdminSelect value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}>
+          <div className="admin-filter-panel mt-3 grid gap-3 rounded-2xl p-4 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto]">
+            <AdminSelect className="admin-filter-control" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}>
               <option value="all">Todos os status</option>
               <option value="active">Ativos</option>
               <option value="paused">Pausados</option>
             </AdminSelect>
-            <AdminSelect value={sortKey} onChange={(event) => setSortKey(event.target.value as CouponSortKey)} className="xl:hidden">
+            <AdminSelect value={sortKey} onChange={(event) => setSortKey(event.target.value as CouponSortKey)} className="admin-filter-control xl:hidden">
               {SORT_OPTIONS.map((option) => <option key={option.value} value={option.value}>Ordenar por {option.label}</option>)}
             </AdminSelect>
-            <AdminButton variant="secondary" className="xl:hidden" onClick={() => setSortDirection((current) => (current === "asc" ? "desc" : "asc"))}>
+            <AdminButton variant="filter" className="xl:hidden" onClick={() => setSortDirection((current) => (current === "asc" ? "desc" : "asc"))}>
               {sortDirection === "asc" ? "Crescente" : "Decrescente"}
+            </AdminButton>
+            <AdminButton
+              variant="filter"
+              onClick={() => {
+                setQuery("");
+                setStatusFilter("all");
+              }}
+            >
+              Limpar filtros
             </AdminButton>
           </div>
         )}
 
         <div className="mt-5 overflow-hidden rounded-[24px] border border-[var(--line)] bg-white">
-          <div className="hidden grid-cols-[minmax(130px,1fr)_110px_110px_90px_90px_130px_130px_110px_92px] items-center gap-3 border-b border-[var(--line)] bg-[#fffdfa] px-5 py-4 text-xs uppercase tracking-[0.08em] xl:grid">
+          <div className="admin-table-header hidden grid-cols-[minmax(130px,1fr)_110px_110px_90px_90px_130px_130px_110px_92px] items-center gap-3 border-b border-[var(--line)] bg-[#fffdfa] px-5 py-4 xl:grid">
             <SortableTableHeader label="Código" active={sortKey === "code"} direction={sortKey === "code" ? sortDirection : null} onClick={() => toggleSort("code")} />
             <SortableTableHeader label="Desconto" active={sortKey === "value"} direction={sortKey === "value" ? sortDirection : null} onClick={() => toggleSort("value")} />
             <SortableTableHeader label="Status" active={sortKey === "active"} direction={sortKey === "active" ? sortDirection : null} onClick={() => toggleSort("active")} />

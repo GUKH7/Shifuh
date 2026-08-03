@@ -403,28 +403,29 @@ function DashboardSkeleton() {
 
 function MetricCardView({ card }: { card: MetricCard }) {
   const Icon = card.icon;
+  const isFeatured = card.id === "revenue";
   const isUp = (card.change || 0) >= 0;
   const isGood = card.change === null || card.change === 0 || (card.positiveIsGood ? isUp : !isUp);
   const TrendIcon = isUp ? ArrowUpRight : ArrowDownRight;
 
   return (
-    <article className="dashboard-metric-card surface-card p-5">
+    <article className={`dashboard-metric-card surface-card p-5 ${isFeatured ? "dashboard-metric-card--featured" : ""}`}>
       <div className="dashboard-metric-card-header flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="dashboard-metric-card-label text-sm font-semibold text-gray-500">{card.label}</p>
-          <p className="mt-3 truncate text-2xl font-black tracking-tight text-gray-950 sm:text-3xl">{card.value}</p>
+          <p className={`dashboard-metric-card-label text-sm font-semibold ${isFeatured ? "text-orange-50" : "text-gray-500"}`}>{card.label}</p>
+          <p className={`mt-3 truncate text-2xl font-black tracking-tight sm:text-3xl ${isFeatured ? "text-white" : "text-gray-950"}`}>{card.value}</p>
         </div>
-        <div className={`dashboard-metric-card-icon flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${card.iconClass}`}>
+        <div className={`dashboard-metric-card-icon flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${isFeatured ? "bg-white/20 text-white" : card.iconClass}`}>
           <Icon size={21} />
         </div>
       </div>
       {card.change === null ? (
-        <p className="mt-4 text-xs font-semibold text-gray-400">{card.comparisonLabel}</p>
+        <p className={`mt-4 text-xs font-semibold ${isFeatured ? "text-orange-100" : "text-gray-400"}`}>{card.comparisonLabel}</p>
       ) : (
-        <div className={`mt-4 inline-flex items-center gap-1 text-xs font-bold ${isGood ? "text-emerald-600" : "text-red-600"}`}>
+        <div className={`mt-4 inline-flex items-center gap-1 text-xs font-bold ${isFeatured ? "text-white" : isGood ? "text-emerald-600" : "text-red-600"}`}>
           <TrendIcon size={14} />
           {Math.abs(card.change).toFixed(1)}%
-          <span className="font-medium text-gray-400">{card.comparisonLabel}</span>
+          <span className={`font-medium ${isFeatured ? "text-orange-100" : "text-gray-400"}`}>{card.comparisonLabel}</span>
         </div>
       )}
     </article>
@@ -747,7 +748,7 @@ export default function DashboardPeriodWorkspace() {
         {dashboard.metrics.map((card) => <MetricCardView key={card.id} card={card} />)}
       </section>
 
-      <section className="dashboard-analytics-grid grid gap-4 xl:grid-cols-12">
+      <section className="dashboard-analytics-grid grid gap-4 border-t border-[var(--line)] pt-6 xl:grid-cols-12">
         <article className="surface-card rounded-[24px] p-4 sm:p-5 xl:col-span-5">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -920,7 +921,7 @@ export default function DashboardPeriodWorkspace() {
               <div className="hidden overflow-x-auto md:block">
                 <table className="w-full min-w-[680px] border-collapse text-sm">
                   <thead>
-                    <tr className="border-b border-[var(--line)] text-left text-[11px] font-black uppercase tracking-[0.12em] text-gray-400">
+                    <tr className="admin-table-header border-b border-[var(--line)] text-left">
                       <th className="px-5 py-3">Pedido</th>
                       <th className="px-3 py-3">Cliente</th>
                       <th className="px-3 py-3">Origem</th>

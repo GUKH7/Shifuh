@@ -12,9 +12,9 @@ const history = fs.readFileSync(
 test("histórico recolhe filtros secundários em todos os breakpoints", () => {
   assert.match(history, /filtersOpen/);
   assert.match(history, /aria-expanded=\{filtersOpen\}/);
-  assert.match(history, /<AdminSelect value=\{statusFilter\}/);
-  assert.match(history, /<AdminSelect value=\{period\}/);
-  assert.match(history, /<AdminSelect value=\{paymentFilter\}/);
+  assert.match(history, /<AdminSelect[^>]*value=\{statusFilter\}/);
+  assert.match(history, /<AdminSelect[^>]*value=\{period\}/);
+  assert.match(history, /<AdminSelect[^>]*value=\{paymentFilter\}/);
   assert.doesNotMatch(history, /hidden flex-wrap gap-2 md:flex/);
 });
 
