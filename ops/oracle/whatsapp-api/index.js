@@ -1,7 +1,7 @@
 
 const {
   default: makeWASocket,
-  useMultiFileAuthState,
+  useMultiFileAuthState: loadMultiFileAuthState,
   DisconnectReason,
   fetchLatestBaileysVersion,
 } = require('@whiskeysockets/baileys');
@@ -161,11 +161,12 @@ async function connectToWhatsApp() {
 
   isConnecting = true;
   clearReconnectTimer();
+  let connectionFailed = false;
 
   try {
     statusConexao = 'iniciando';
 
-    const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
+    const { state, saveCreds } = await loadMultiFileAuthState(AUTH_DIR);
     const version = await resolveWhatsappWebVersion();
 
     const nextSock = makeWASocket({
@@ -234,9 +235,13 @@ async function connectToWhatsApp() {
     });
   } catch (error) {
     console.error('Erro ao iniciar WhatsApp:', error);
-    scheduleReconnect('erro no connectToWhatsApp');
+    connectionFailed = true;
   } finally {
     isConnecting = false;
+  }
+
+  if (connectionFailed) {
+    scheduleReconnect('erro no connectToWhatsApp');
   }
 }
 
