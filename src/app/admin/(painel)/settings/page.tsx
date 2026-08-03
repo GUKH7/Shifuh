@@ -2404,6 +2404,7 @@ export default function SettingsPage() {
                 {wppStatus === "conectado" && <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">Conectado</span>}
                 {wppStatus === "aguardando_qr" && <span className="rounded-full bg-yellow-100 px-3 py-1 text-xs font-bold text-yellow-700">Aguardando leitura</span>}
                 {wppStatus === "iniciando" && <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700">Iniciando</span>}
+                {wppStatus === "reconectando" && <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700">Reconectando</span>}
                 {wppStatus === "nao_configurado" && <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-600">API não configurada</span>}
                 {(wppStatus === "desconectado" || wppStatus === "erro" || !wppStatus) && <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700">Desconectado</span>}
                 <button onClick={handleRestartWpp} disabled={isRestarting || wppStatus === "nao_configurado"} className="ml-auto rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-xs font-bold text-gray-600 disabled:opacity-60">
@@ -2427,6 +2428,13 @@ export default function SettingsPage() {
                 <div className="text-center text-emerald-600">
                   <CheckCircle className="mx-auto" size={44} />
                   <p className="mt-2 text-sm font-bold">Pronto para enviar</p>
+                </div>
+              ) : wppStatus === "iniciando" || wppStatus === "reconectando" ? (
+                <div className="text-center text-blue-500">
+                  <RefreshCw className="mx-auto animate-spin" size={40} />
+                  <p className="mt-2 text-sm font-medium">
+                    {wppStatus === "reconectando" ? "Reconectando ao WhatsApp" : "Iniciando conexão"}
+                  </p>
                 </div>
               ) : wppStatus === "nao_configurado" ? (
                 <div className="text-center text-gray-400">
