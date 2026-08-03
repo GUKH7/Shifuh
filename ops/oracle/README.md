@@ -2,6 +2,17 @@
 
 Scripts usados pelo bot principal do WhatsApp na VM Oracle.
 
+## API do WhatsApp
+
+O código implantado em `/home/ubuntu/whatsapp-api` está versionado em
+`ops/oracle/whatsapp-api`. A API consulta explicitamente a versão atual do
+WhatsApp Web antes de abrir o socket e renova essa informação após erros 405.
+Uma versão de fallback mantém a inicialização disponível durante falhas
+temporárias na consulta externa.
+
+Ao implantar uma atualização, preserve `baileys_auth_info`, as variáveis do PM2
+e os arquivos atuais como backup antes de reiniciar apenas `whatsapp-api`.
+
 ## Watchdog
 
 `whatsapp-watchdog.sh` consulta `http://127.0.0.1:3001/health`. Se a API nao

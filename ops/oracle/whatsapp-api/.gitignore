@@ -1,0 +1,6 @@
+node_modules/
+.env
+.env.*
+baileys_auth_info/
+baileys_auth_info.*/
+*.bak-*
