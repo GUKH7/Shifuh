@@ -1,10 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, MessageSquareText, Minus, Plus, ShoppingBag, X } from "lucide-react";
 import { formatMoney } from "./format";
-import { getAddonGroupLimits, getAddonSelectionInstruction } from "./product-options";
+import { getAddonGroupDisplayTitle, getAddonGroupLimits, getAddonSelectionInstruction } from "./product-options";
+import { ProductImage } from "./ProductImage";
 import type { Product } from "./types";
 import { useAccessibleDialog } from "./use-accessible-dialog";
 
@@ -63,7 +63,7 @@ export function ProductPicker({
         className="flex max-h-[100dvh] min-h-0 w-full max-w-2xl flex-col overflow-hidden rounded-t-[24px] bg-[#fffdfa] sm:max-h-[88vh] sm:rounded-[24px]"
         style={{ height: "min(92dvh, 820px)" }}
       >
-        <div className="relative flex h-52 shrink-0 items-center justify-center bg-white px-4 py-3 sm:h-72 sm:px-6 sm:py-4">
+        <div className={`relative flex shrink-0 items-center justify-center bg-white px-4 py-3 sm:h-72 sm:px-6 sm:py-4 ${product.image_url ? "h-52" : "h-32"}`}>
           <button
             ref={initialFocusRef as React.RefObject<HTMLButtonElement>}
             onClick={onClose}
@@ -74,7 +74,7 @@ export function ProductPicker({
           </button>
           {product.image_url ? (
             <div className="relative size-44 shrink-0 overflow-hidden rounded-2xl sm:size-64">
-              <Image src={product.image_url} alt={product.name} fill sizes="(max-width: 640px) 176px, 256px" className="object-cover" />
+              <ProductImage src={product.image_url} alt={product.name} sizes="(max-width: 640px) 176px, 256px" />
             </div>
           ) : (
             <div className="flex h-full w-full items-center justify-center text-gray-300">
@@ -111,7 +111,7 @@ export function ProductPicker({
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-base font-black text-gray-950 sm:text-lg">{group.title}</h3>
+                      <h3 className="text-base font-black text-gray-950 sm:text-lg">{getAddonGroupDisplayTitle(group.title)}</h3>
                       <span className="rounded-full bg-[#f3ede6] px-2 py-0.5 text-[10px] font-bold uppercase text-gray-500">
                         {minimum > 0 ? "Obrigatório" : "Opcional"}
                       </span>
@@ -210,10 +210,11 @@ export function ProductPicker({
               Complete as escolhas obrigatórias para continuar.
             </p>
           )}
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-4 rounded-2xl border border-[var(--line)] px-4 py-3">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="flex min-h-11 items-center gap-2 rounded-2xl border border-[var(--line)] px-2 sm:gap-4 sm:px-4 sm:py-3">
               <button
                 onClick={() => onQuantityChange(Math.max(1, quantity - 1))}
+                className="flex h-11 w-11 items-center justify-center"
                 style={{ color: primaryColor }}
                 aria-label={`Diminuir quantidade de ${product.name}`}
               >
@@ -222,6 +223,7 @@ export function ProductPicker({
               <span className="text-lg font-black text-gray-950">{quantity}</span>
               <button
                 onClick={() => onQuantityChange(quantity + 1)}
+                className="flex h-11 w-11 items-center justify-center"
                 style={{ color: primaryColor }}
                 aria-label={`Aumentar quantidade de ${product.name}`}
               >
@@ -232,11 +234,11 @@ export function ProductPicker({
             <button
               onClick={onAddToCart}
               disabled={missingRequiredGroups.length > 0}
-              className="flex-1 rounded-2xl px-5 py-4 font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
+              className="min-h-14 flex-1 rounded-2xl px-4 py-3 font-black text-white disabled:cursor-not-allowed disabled:opacity-50 sm:px-5 sm:py-4"
               style={{ backgroundColor: primaryColor }}
             >
               <span className="flex items-center justify-between gap-3">
-                <span>{missingRequiredGroups.length > 0 ? "Escolha os itens obrigatórios" : isEditing ? "Salvar alterações" : "Adicionar"}</span>
+                <span>{missingRequiredGroups.length > 0 ? "Continuar" : isEditing ? "Salvar alterações" : "Adicionar"}</span>
                 <span>{formatMoney(calculateProductTotal())}</span>
               </span>
             </button>

@@ -24,6 +24,7 @@ import { calculateDistance, calculateDeliveryFee, getCoordinates } from "@/lib/g
 import { useToast } from "@/components/ui/toast-provider";
 import { CheckoutDrawer } from "@/features/storefront/CheckoutDrawer";
 import { ProductPicker } from "@/features/storefront/ProductPicker";
+import { ProductImage } from "@/features/storefront/ProductImage";
 import { EMPTY_ADDRESS } from "@/features/storefront/constants";
 import { formatMoney, getContrastTextColor, hexToRgba } from "@/features/storefront/format";
 import {
@@ -108,13 +109,7 @@ export default function StorePage() {
     setCustomerPhone(formatPhone(profile.phone));
   }, []);
 
-  const handleMissingStore = useCallback(() => {
-    showToast({
-      title: "Loja não encontrada",
-      description: "Confira o link da vitrine e tente novamente.",
-      tone: "error",
-    });
-  }, [showToast]);
+  const handleMissingStore = useCallback(() => {}, []);
 
   const {
     supabase,
@@ -699,14 +694,14 @@ export default function StorePage() {
             Loja não encontrada
           </h1>
           <p className="mt-3 text-base leading-7 text-[var(--muted)]">
-            Confira se o link da vitrine está correto ou acesse novamente pelo painel.
+            Confira se o link da vitrine está correto ou volte ao início para acessar novamente.
           </p>
           <button
-            onClick={() => router.push("/admin")}
+            onClick={() => router.push("/")}
             className="mt-8 w-full rounded-2xl px-6 py-4 text-sm font-black text-white"
             style={{ backgroundColor: primaryColor }}
           >
-            Voltar ao painel
+            Ir para o início
           </button>
         </div>
       </div>
@@ -921,7 +916,7 @@ export default function StorePage() {
                 <section key={category.id} id={`cat-${category.id}`} data-category-section className="catalog-section w-full min-w-0 scroll-mt-28">
                   <div className="px-1 pb-2 pt-1 sm:px-1 sm:pb-3">
                     <h2 className="break-words text-[15px] font-black text-gray-950 sm:text-[17px]">{category.name}</h2>
-                    <p className="mt-0.5 text-[10px] font-medium text-gray-500 sm:text-[11px]">{categoryProducts.length} itens</p>
+                    <p className="mt-0.5 text-[10px] font-medium text-gray-500 sm:text-[11px]">{categoryProducts.length} {categoryProducts.length === 1 ? "item" : "itens"}</p>
                   </div>
 
                   <div
@@ -970,14 +965,11 @@ export default function StorePage() {
                           <div className={`relative aspect-square overflow-hidden rounded-xl ${
                             storefrontTheme.catalog_layout === "list" ? "w-20 flex-shrink-0 min-[380px]:w-24 sm:w-36" : "w-20 flex-shrink-0 min-[380px]:w-24 sm:mt-3 sm:w-full"
                           }`}>
-                            {product.image_url ? (
-                              <Image src={product.image_url} alt={product.name} fill sizes="(max-width: 379px) 80px, (max-width: 640px) 96px, (max-width: 1280px) 33vw, 320px" className="object-cover" />
-                            ) : (
-                              <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-gradient-to-br from-gray-50 to-gray-100 text-gray-400">
-                                <ImageIcon size={24} strokeWidth={1.7} />
-                                <span className="text-[9px] font-bold uppercase">Sem foto</span>
-                              </div>
-                            )}
+                            <ProductImage
+                              src={product.image_url}
+                              alt={product.name}
+                              sizes="(max-width: 379px) 80px, (max-width: 640px) 96px, (max-width: 1280px) 33vw, 320px"
+                            />
                             {product.is_active && (
                               <span className="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-[0_4px_12px_rgba(17,16,15,0.14)]" style={{ color: primaryColor }}><Plus size={17} /></span>
                             )}

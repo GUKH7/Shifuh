@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   getAddonSelectionInstruction,
+  getAddonGroupDisplayTitle,
   toggleAddonSelection,
 } from "../src/features/storefront/product-options.ts";
 
@@ -10,6 +11,11 @@ test("describes addon limits using customer-friendly language", () => {
   assert.equal(getAddonSelectionInstruction({ min_options: 0, max_options: 2 }), "Escolha até 2");
   assert.equal(getAddonSelectionInstruction({ min_options: 1, max_options: 0 }), "Escolha pelo menos 1");
   assert.equal(getAddonSelectionInstruction({ min_options: 1, max_options: 1 }), "Escolha 1 opção");
+});
+
+test("remove contagem editorial do título para manter min/max como fonte única", () => {
+  assert.equal(getAddonGroupDisplayTitle("Acompanhamentos (escolha 2)"), "Acompanhamentos");
+  assert.equal(getAddonGroupDisplayTitle("Tamanho"), "Tamanho");
 });
 
 test("single-choice groups replace the previous option", () => {

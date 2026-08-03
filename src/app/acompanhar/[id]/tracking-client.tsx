@@ -143,19 +143,30 @@ export function OrderTrackingClient({ orderId, token }: Props) {
   }
 
   if (!order) {
+    const canRetry = Boolean(token) && !error.includes("Não encontramos");
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#f5f6f7] px-4 py-10">
         <section className="w-full max-w-lg rounded-3xl border border-gray-200 bg-white p-7 text-center sm:p-10">
           <AlertCircle className="mx-auto text-rose-500" size={44} />
           <h1 className="mt-5 text-2xl font-black text-gray-950">Pedido não encontrado</h1>
           <p className="mt-3 leading-7 text-gray-600">{error}</p>
-          <button
-            type="button"
-            onClick={() => void loadOrder()}
-            className="mt-6 inline-flex items-center gap-2 rounded-xl border border-gray-200 px-5 py-3 font-bold text-gray-800"
-          >
-            <RefreshCw size={18} /> Tentar novamente
-          </button>
+          <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+            {canRetry && (
+              <button
+                type="button"
+                onClick={() => void loadOrder()}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 px-5 py-3 font-bold text-gray-800"
+              >
+                <RefreshCw size={18} /> Tentar novamente
+              </button>
+            )}
+            <Link
+              href="/"
+              className="inline-flex min-h-11 items-center justify-center rounded-xl bg-gray-950 px-5 py-3 font-bold text-white"
+            >
+              Ir para o início
+            </Link>
+          </div>
         </section>
       </main>
     );

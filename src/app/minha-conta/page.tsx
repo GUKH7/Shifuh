@@ -127,7 +127,7 @@ export default function MyAccountPage() {
                     <div className="bg-red-100 p-3 rounded-full text-red-600"><User size={24} /></div>
                     <div><h1 className="text-xl font-bold text-gray-900">Minha Conta</h1><p className="text-sm text-gray-500">{user?.email}</p></div>
                 </div>
-                <button onClick={handleLogout} className="text-red-600 font-bold text-sm hover:underline flex items-center gap-1"><LogOut size={16}/> Sair</button>
+                <button onClick={handleLogout} className="flex min-h-11 items-center gap-1 rounded-xl px-3 text-sm font-bold text-red-600 hover:bg-red-50"><LogOut size={16}/> Sair</button>
             </div>
         </div>
 
@@ -137,7 +137,7 @@ export default function MyAccountPage() {
             <div className="mb-4">
                 <button 
                     onClick={handleBackToMenu}
-                    className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-red-600 transition-colors font-medium bg-transparent border-0 cursor-pointer"
+                    className="inline-flex min-h-11 items-center gap-2 rounded-xl px-2 text-sm font-medium text-gray-500 transition-colors hover:bg-white hover:text-red-600"
                 >
                     <ArrowLeft size={18} />
                     Voltar para o Cardápio
@@ -152,8 +152,8 @@ export default function MyAccountPage() {
 
             {/* Abas */}
             <div className="flex gap-4 border-b border-gray-200 mb-6">
-                <button onClick={() => setActiveTab('orders')} className={`pb-3 px-4 font-bold text-sm transition-colors relative ${activeTab === 'orders' ? 'text-red-600' : 'text-gray-500 hover:text-gray-700'}`}><div className="flex items-center gap-2"><ShoppingBag size={18}/> Meus Pedidos</div>{activeTab === 'orders' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-red-600"></div>}</button>
-                <button onClick={() => setActiveTab('addresses')} className={`pb-3 px-4 font-bold text-sm transition-colors relative ${activeTab === 'addresses' ? 'text-red-600' : 'text-gray-500 hover:text-gray-700'}`}><div className="flex items-center gap-2"><MapPin size={18}/> Endereços</div>{activeTab === 'addresses' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-red-600"></div>}</button>
+                <button aria-pressed={activeTab === 'orders'} onClick={() => setActiveTab('orders')} className={`relative min-h-11 px-4 pb-3 font-bold text-sm transition-colors ${activeTab === 'orders' ? 'text-red-600' : 'text-gray-500 hover:text-gray-700'}`}><div className="flex items-center gap-2"><ShoppingBag size={18}/> Meus Pedidos</div>{activeTab === 'orders' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-red-600"></div>}</button>
+                <button aria-pressed={activeTab === 'addresses'} onClick={() => setActiveTab('addresses')} className={`relative min-h-11 px-4 pb-3 font-bold text-sm transition-colors ${activeTab === 'addresses' ? 'text-red-600' : 'text-gray-500 hover:text-gray-700'}`}><div className="flex items-center gap-2"><MapPin size={18}/> Endereços</div>{activeTab === 'addresses' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-red-600"></div>}</button>
             </div>
 
             {/* Pedidos */}
@@ -184,7 +184,7 @@ export default function MyAccountPage() {
                                     {canReview && (
                                         <button 
                                             onClick={() => handleOpenReview(order)}
-                                            className="text-xs font-bold px-3 py-1.5 rounded-lg bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border border-yellow-200 flex items-center gap-1 transition-colors"
+                                            className="flex min-h-11 items-center gap-1 rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-2 text-xs font-bold text-yellow-700 transition-colors hover:bg-yellow-100"
                                         >
                                             <Star size={14} fill="#A16207"/> Avaliar
                                         </button>

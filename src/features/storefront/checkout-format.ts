@@ -75,12 +75,12 @@ export const paymentMethodDetails: Record<
     timing: "Pagamento na entrega",
   },
   credit: {
-    label: "Crédito",
+    label: "CRÉDITO",
     description: "Pagamento na maquininha do entregador.",
     timing: "Pagamento na entrega",
   },
   debit: {
-    label: "Débito",
+    label: "DÉBITO",
     description: "Pagamento na maquininha do entregador.",
     timing: "Pagamento na entrega",
   },

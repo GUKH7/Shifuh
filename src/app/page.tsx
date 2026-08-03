@@ -23,20 +23,20 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen text-gray-950">
       <nav className="sticky top-0 z-50 border-b border-[#eadfd4] bg-[#f8f3ec]/95 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-          <div className="flex items-center gap-3">
+        <div className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-5 sm:flex sm:justify-between sm:px-6">
+          <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
             <div className="brand-gradient flex h-8 w-8 items-center justify-center rounded-md text-white">
               <Store size={16} />
             </div>
-            <span className="text-xl font-bold tracking-tight">GESTOR.</span>
+            <span className="truncate text-lg font-bold tracking-tight sm:text-xl">GESTOR.</span>
           </div>
-          <div className="flex items-center gap-4 text-sm font-medium">
-            <Link href="/admin/login" className="text-gray-700 transition-colors hover:text-black">
+          <div className="flex items-center gap-2 text-sm font-medium sm:gap-4">
+            <Link href="/admin/login" className="hidden min-h-11 items-center px-2 text-gray-700 transition-colors hover:text-black min-[420px]:inline-flex">
               Entrar
             </Link>
             <Link
               href="/admin/login"
-              className="inline-flex items-center gap-2 rounded-xl bg-[#171311] px-4 py-2.5 text-white transition-colors hover:bg-black"
+              className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#171311] px-3 py-2.5 text-white transition-colors hover:bg-black sm:px-4"
             >
               Criar conta grátis <ArrowRight size={15} />
             </Link>

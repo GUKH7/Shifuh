@@ -28,10 +28,11 @@ test("mobile cart separates order summary from its main action", () => {
   assert.match(storefront, /bg-\[#fffdfa\].*shadow/);
 });
 
-test("product modal preserves a stable image area on mobile", () => {
-  assert.match(productPicker, /relative flex h-52 shrink-0 items-center justify-center bg-white/);
+test("product modal preserves the image area without wasting space when no photo exists", () => {
+  assert.match(productPicker, /relative flex shrink-0 items-center justify-center bg-white/);
+  assert.match(productPicker, /product\.image_url \? "h-52" : "h-32"/);
   assert.match(productPicker, /relative size-44 shrink-0 overflow-hidden rounded-2xl sm:size-64/);
-  assert.match(productPicker, /className="object-cover"/);
+  assert.match(productPicker, /<ProductImage/);
 });
 
 test("product photos have rounded corners without a decorative frame", () => {
@@ -147,6 +148,6 @@ test("large catalogs show every product without expansion controls", () => {
   assert.match(storefront, /isCatalogNavCompact/);
   assert.match(storefront, /rating_count \|\| 0/);
   assert.doesNotMatch(storefront, /rating_average \? Number\(restaurant\.rating_average\)\.toFixed\(1\) : "Novo"/);
-  assert.match(storefront, />Sem foto</);
+  assert.match(storefront, /<ProductImage/);
   assert.match(storefront, /aria-label="Minha conta"/);
 });

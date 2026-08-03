@@ -25,6 +25,10 @@ export function getAddonSelectionInstruction(group: AddonGroup) {
   return "Escolha como preferir";
 }
 
+export function getAddonGroupDisplayTitle(title: string) {
+  return title.replace(/\s*\(\s*escolha\s+\d+\s*\)\s*$/i, "").trim();
+}
+
 export function toggleAddonSelection<T extends { name: string }>(
   current: T[],
   option: T,

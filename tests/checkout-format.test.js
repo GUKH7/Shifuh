@@ -11,6 +11,7 @@ import {
   isStorefrontPaymentMethod,
   isValidCep,
   isValidPhone,
+  paymentMethodDetails,
   parseCurrencyInput,
 } from "../src/features/storefront/checkout-format.ts";
 
@@ -60,4 +61,6 @@ test("accepts only supported storefront payment methods", () => {
   assert.equal(isStorefrontPaymentMethod("pix"), true);
   assert.equal(isStorefrontPaymentMethod("credit"), true);
   assert.equal(isStorefrontPaymentMethod("card"), false);
+  assert.equal(paymentMethodDetails.credit.label, "CRÉDITO");
+  assert.equal(paymentMethodDetails.debit.label, "DÉBITO");
 });
