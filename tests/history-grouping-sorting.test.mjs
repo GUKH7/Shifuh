@@ -14,6 +14,11 @@ test("histórico usa workspace renovado e componentes administrativos padronizad
   assert.match(workspace, /AdminPageHeader/);
   assert.match(workspace, /AdminInput/);
   assert.match(workspace, /AdminSelect/);
+  assert.match(workspace, /AdminEmptyState/);
+  assert.match(workspace, /AdminErrorState/);
+  assert.match(workspace, /admin-table-header/);
+  assert.match(workspace, /aria-controls="history-filters-panel"/);
+  assert.match(workspace, /const supabase = useMemo/);
 });
 
 test("histórico permite recolher grupos completos por data", () => {

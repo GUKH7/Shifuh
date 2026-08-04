@@ -12,7 +12,7 @@ test("pesquisa global e páginas usam o mesmo container de largura", () => {
   assert.match(layout, /admin-page-shell grid h-full grid-cols/);
   assert.match(layout, /admin-panel-content min-w-0 overflow-x-hidden px-3/);
   assert.doesNotMatch(layout, /mx-auto grid min-h-16 max-w-\[1460px\]/);
-  assert.match(history, /<AdminPageShell className="space-y-5">/);
+  assert.match(history, /<AdminPageShell className="space-y-4 pb-12">/);
 });
 
 test("histórico consulta e apresenta os produtos dos pedidos", () => {
@@ -29,4 +29,7 @@ test("busca e exportação também consideram os produtos", () => {
   assert.match(history, /getItemsText\(order\)/);
   assert.match(history, /Buscar pedido, cliente, telefone, pagamento ou produto/);
   assert.match(history, /"Produtos"/);
+  assert.match(history, /formatPaymentMethod\(order\.payment_method\)/);
+  assert.match(history, /CREDIT_CARD: "CRÉDITO"/);
+  assert.match(history, /DEBIT_CARD: "DÉBITO"/);
 });

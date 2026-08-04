@@ -749,7 +749,7 @@ export default function DashboardPeriodWorkspace() {
       </section>
 
       <section className="dashboard-analytics-grid grid gap-4 border-t border-[var(--line)] pt-6 xl:grid-cols-12">
-        <article className="surface-card rounded-[24px] p-4 sm:p-5 xl:col-span-5">
+        <article className="surface-card rounded-3xl p-4 sm:p-5 xl:col-span-5">
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-base font-black text-gray-950">Faturamento</p>
@@ -761,7 +761,7 @@ export default function DashboardPeriodWorkspace() {
             </div>
           </div>
           <div className="mt-5 h-[250px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <AreaChart data={dashboard.revenueSeries} margin={{ top: 12, right: 8, left: -16, bottom: 0 }}>
                 <defs>
                   <linearGradient id="dashboardRevenuePeriod" x1="0" y1="0" x2="0" y2="1">
@@ -791,7 +791,7 @@ export default function DashboardPeriodWorkspace() {
             <AdminEmptyState compact title="Nenhum produto vendido" description="Os produtos aparecerão aqui quando houver vendas no período." />
           ) : (
             <div className="mt-5 h-[250px] w-full overflow-visible">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <BarChart data={dashboard.topProducts} layout="vertical" margin={{ top: 4, right: 18, left: 4, bottom: 4 }}>
                   <XAxis type="number" hide />
                   <YAxis
@@ -834,7 +834,7 @@ export default function DashboardPeriodWorkspace() {
           ) : (
             <div className="mt-3 grid items-center gap-3 sm:grid-cols-[1fr_150px]">
               <div className="relative h-[250px] min-w-0">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                   <PieChart>
                     <Tooltip formatter={(value) => `${Number(value)} pedido(s)`} />
                     <Pie data={dashboard.sources} dataKey="count" nameKey="label" cx="50%" cy="50%" innerRadius={56} outerRadius={84} paddingAngle={1}>
@@ -865,7 +865,7 @@ export default function DashboardPeriodWorkspace() {
       </section>
 
       <section className="dashboard-secondary-grid grid gap-4 xl:grid-cols-12">
-        <article className="surface-card rounded-[24px] p-4 sm:p-5 xl:col-span-5">
+        <article className="surface-card rounded-3xl p-4 sm:p-5 xl:col-span-5">
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-base font-black text-gray-950">Atividade por horário</p>
@@ -875,7 +875,7 @@ export default function DashboardPeriodWorkspace() {
           </div>
           <div className="mt-4 grid gap-5 lg:grid-cols-[1fr_155px]">
             <div className="h-[245px] min-w-0">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <BarChart data={dashboard.hourlyActivity} margin={{ top: 12, right: 4, left: -26, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="4 4" stroke="#efe7df" vertical={false} />
                   <XAxis dataKey="label" axisLine={false} tickLine={false} interval={3} tick={{ fontSize: 10, fill: "#8c837c" }} />

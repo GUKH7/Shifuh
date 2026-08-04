@@ -8,18 +8,23 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronsUpDown,
+  CircleX,
+  ClipboardList,
   Copy,
   Download,
   History,
   MessageCircle,
   Package,
+  ReceiptText,
   Search,
   SlidersHorizontal,
+  WalletCards,
 } from "lucide-react";
 import { getCurrentRestaurant } from "@/lib/supabase/restaurant";
 import { PERIOD_OPTIONS, type PeriodKey, isWithinPeriod } from "@/lib/admin-period";
 import { useToast } from "@/components/ui/toast-provider";
 import { OrderStatusBadge } from "@/components/ui/order-status-badge";
+import { AdminEmptyState, AdminErrorState } from "@/components/ui/admin-page-states";
 import { getOrderStatusLabel } from "@/lib/order-status";
 import {
   AdminButton,
@@ -101,6 +106,26 @@ function formatMoney(value: number) {
     style: "currency",
     currency: "BRL",
   }).format(value);
+}
+
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  CASH: "Dinheiro",
+  CREDIT: "CRÉDITO",
+  CREDIT_CARD: "CRÉDITO",
+  CARD_CREDIT: "CRÉDITO",
+  DEBIT: "DÉBITO",
+  DEBIT_CARD: "DÉBITO",
+  CARD_DEBIT: "DÉBITO",
+  PIX: "Pix",
+  CARD: "Cartão",
+  ONLINE: "Online",
+};
+
+function formatPaymentMethod(value?: string | null) {
+  const rawValue = value?.trim() || "";
+  if (!rawValue) return "Não informado";
+  const normalizedValue = rawValue.toUpperCase().replace(/[\s-]+/g, "_");
+  return PAYMENT_METHOD_LABELS[normalizedValue] || rawValue;
 }
 
 function formatHour(date: string) {
@@ -208,7 +233,7 @@ function exportExcel(rows: HistoryOrder[]) {
     order.customer_phone,
     getItemsText(order) || "Não informado",
     getStatusLabel(order.status),
-    order.payment_method,
+    formatPaymentMethod(order.payment_method),
     Number(order.subtotal || 0).toFixed(2),
     Number(order.delivery_fee || 0).toFixed(2),
     Number(order.discount || 0).toFixed(2),
@@ -232,15 +257,26 @@ function exportExcel(rows: HistoryOrder[]) {
 
 function HistoryWorkspaceSkeleton() {
   return (
-    <AdminPageShell className="space-y-5">
-      <div className="flex items-center gap-4">
-        <AdminSkeleton className="h-14 w-14" />
-        <div className="space-y-2">
-          <AdminSkeleton className="h-7 w-40" />
-          <AdminSkeleton className="h-4 w-72 max-w-[70vw]" />
+    <AdminPageShell className="space-y-4 pb-12">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-4">
+          <AdminSkeleton className="h-14 w-14" />
+          <div className="space-y-2">
+            <AdminSkeleton className="h-7 w-40" />
+            <AdminSkeleton className="h-4 w-72 max-w-[70vw]" />
+          </div>
         </div>
+        <AdminSkeleton className="h-11 w-11 sm:w-28" />
       </div>
-      <AdminSkeleton className="h-32 w-full" />
+      <div className="flex flex-col gap-3 lg:flex-row">
+        <AdminSkeleton className="h-11 flex-1" />
+        <AdminSkeleton className="h-11 lg:w-40" />
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <AdminSkeleton key={index} className="h-[84px] w-full" />
+        ))}
+      </div>
       <AdminSkeleton className="h-[520px] w-full" />
     </AdminPageShell>
   );
@@ -248,9 +284,13 @@ function HistoryWorkspaceSkeleton() {
 
 export function HistoryWorkspace() {
   const router = useRouter();
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  const supabase = useMemo(
+    () =>
+      createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      ),
+    [],
   );
   const { showToast } = useToast();
 
@@ -315,7 +355,9 @@ export function HistoryWorkspace() {
             .map((order) => (order.payment_method || "").trim())
             .filter(Boolean),
         ),
-      ).sort((a, b) => a.localeCompare(b, "pt-BR")),
+      )
+        .map((value) => ({ value, label: formatPaymentMethod(value) }))
+        .sort((a, b) => a.label.localeCompare(b.label, "pt-BR")),
     [orders],
   );
 
@@ -354,7 +396,7 @@ export function HistoryWorkspace() {
           getOrderNumber(order).toLocaleLowerCase("pt-BR").includes(term) ||
           order.customer_name.toLocaleLowerCase("pt-BR").includes(term) ||
           order.customer_phone.toLocaleLowerCase("pt-BR").includes(term) ||
-          (order.payment_method || "").toLocaleLowerCase("pt-BR").includes(term) ||
+          `${order.payment_method || ""} ${formatPaymentMethod(order.payment_method)}`.toLocaleLowerCase("pt-BR").includes(term) ||
           productText.includes(term);
 
         return matchesPeriod && matchesStatus && matchesPayment && matchesSearch;
@@ -417,6 +459,12 @@ export function HistoryWorkspace() {
       canceled: visibleOrders.filter((order) => order.status === "canceled").length,
     };
   }, [visibleOrders]);
+
+  const activeFiltersCount = [
+    statusFilter !== "all",
+    paymentFilter !== "all",
+    period !== "30d",
+  ].filter(Boolean).length;
 
   const selectPeriod = (nextPeriod: PeriodKey) => {
     setPeriod(nextPeriod);
@@ -492,17 +540,11 @@ export function HistoryWorkspace() {
   if (loading) return <HistoryWorkspaceSkeleton />;
 
   if (errorMsg) {
-    return (
-      <AdminPageShell>
-        <div className="rounded-[24px] border border-red-200 bg-red-50 px-6 py-5 text-red-700">
-          {errorMsg}
-        </div>
-      </AdminPageShell>
-    );
+    return <AdminErrorState description={errorMsg} />;
   }
 
   return (
-    <AdminPageShell className="space-y-5">
+    <AdminPageShell className="space-y-4 pb-12">
       <AdminPageHeader
         title="Histórico"
         description="Consulte pedidos, produtos vendidos e valores agrupados por data."
@@ -512,6 +554,7 @@ export function HistoryWorkspace() {
             variant="filter"
             onClick={() => exportExcel(visibleOrders)}
             aria-label="Exportar histórico"
+            disabled={!visibleOrders.length}
             className="h-11 w-11 px-0 sm:w-auto sm:px-4"
           >
             <Download size={17} />
@@ -520,7 +563,7 @@ export function HistoryWorkspace() {
         }
       />
 
-      <section className="surface-card rounded-[24px] p-3 sm:rounded-[28px] sm:p-5 md:p-6">
+      <section className="space-y-4">
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
           <div className="relative min-w-0">
             <Search
@@ -536,14 +579,20 @@ export function HistoryWorkspace() {
           </div>
 
           <AdminButton
-            variant="secondary"
+            variant="filter"
             onClick={() => setFiltersOpen((current) => !current)}
             aria-expanded={filtersOpen}
-            className="justify-between lg:min-w-[250px]"
+            aria-controls="history-filters-panel"
+            className="justify-between lg:min-w-[160px]"
           >
             <span className="inline-flex items-center gap-2">
               <SlidersHorizontal size={17} />
               Filtros
+              {activeFiltersCount > 0 && (
+                <span className="rounded-full bg-orange-50 px-2 py-0.5 text-xs text-[var(--brand)]">
+                  {activeFiltersCount}
+                </span>
+              )}
             </span>
             <ChevronDown
               size={16}
@@ -553,7 +602,7 @@ export function HistoryWorkspace() {
         </div>
 
         {filtersOpen && (
-          <div className="admin-filter-panel mt-3 grid gap-3 rounded-2xl p-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div id="history-filters-panel" className="admin-filter-panel grid gap-3 rounded-2xl p-4 sm:grid-cols-2 xl:grid-cols-4">
             <label className="space-y-2 text-sm font-bold text-gray-700">
               <span className="block">Situação</span>
               <AdminSelect className="admin-filter-control" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
@@ -577,7 +626,7 @@ export function HistoryWorkspace() {
               <AdminSelect className="admin-filter-control" value={paymentFilter} onChange={(event) => setPaymentFilter(event.target.value)}>
                 <option value="all">Todos</option>
                 {paymentOptions.map((payment) => (
-                  <option key={payment} value={payment}>{payment}</option>
+                  <option key={payment.value} value={payment.value}>{payment.label}</option>
                 ))}
               </AdminSelect>
             </label>
@@ -615,7 +664,7 @@ export function HistoryWorkspace() {
               </>
             )}
 
-            <div className="flex items-end gap-2 sm:col-span-2 xl:col-span-4">
+            <div className="flex flex-col items-stretch gap-2 sm:col-span-2 sm:flex-row sm:items-end xl:col-span-4">
               <AdminButton variant="filter" onClick={clearFilters}>Limpar filtros</AdminButton>
               <AdminButton
                 variant="secondary"
@@ -629,21 +678,26 @@ export function HistoryWorkspace() {
           </div>
         )}
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {[
-            ["Pedidos", String(summary.count)],
-            ["Vendas", formatMoney(summary.value)],
-            ["Ticket médio", formatMoney(summary.average)],
-            ["Cancelados", String(summary.canceled)],
-          ].map(([label, value]) => (
-            <div key={label} className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
-              <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-gray-400">{label}</p>
-              <p className="mt-1 text-lg font-black text-gray-950">{value}</p>
+            { label: "Pedidos", value: String(summary.count), icon: <ClipboardList key="orders" size={18} />, tone: "bg-orange-50 text-[var(--brand)]" },
+            { label: "Vendas", value: formatMoney(summary.value), icon: <WalletCards key="sales" size={18} />, tone: "bg-emerald-50 text-emerald-600" },
+            { label: "Ticket médio", value: formatMoney(summary.average), icon: <ReceiptText key="ticket" size={18} />, tone: "bg-blue-50 text-blue-600" },
+            { label: "Cancelados", value: String(summary.canceled), icon: <CircleX key="canceled" size={18} />, tone: "bg-red-50 text-red-600" },
+          ].map((metric) => (
+            <div key={metric.label} className="surface-card flex min-h-[84px] items-center gap-3 rounded-2xl px-4 py-3">
+              <span className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${metric.tone}`}>
+                {metric.icon}
+              </span>
+              <div className="min-w-0">
+                <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-gray-400">{metric.label}</p>
+                <p className="mt-1 truncate text-lg font-black text-gray-950">{metric.value}</p>
+              </div>
             </div>
           ))}
         </div>
 
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm font-semibold text-gray-500">
             {visibleOrders.length} {visibleOrders.length === 1 ? "pedido encontrado" : "pedidos encontrados"}
           </p>
@@ -653,23 +707,24 @@ export function HistoryWorkspace() {
           </AdminButton>
         </div>
 
-        <div className="mt-4 overflow-hidden rounded-2xl border border-[var(--line)] bg-white">
-          <div className="hidden grid-cols-[96px_120px_minmax(180px,1fr)_150px_minmax(160px,0.8fr)_120px_70px] items-center gap-3 border-b border-[var(--line)] bg-[#fffdfa] px-5 py-3 lg:grid">
+        <div className="overflow-hidden rounded-2xl border border-[var(--line)] bg-white shadow-sm">
+          <div className="admin-table-header hidden grid-cols-[90px_110px_minmax(160px,1.2fr)_140px_minmax(140px,1fr)_110px_48px] items-center gap-3 border-b border-[var(--line)] bg-[#fffdfa] px-5 py-3 xl:grid">
             <SortableTableHeader label="Horário" active={sortKey === "created_at"} direction={sortKey === "created_at" ? sortDirection : null} onClick={() => toggleSort("created_at")} />
             <SortableTableHeader label="Pedido" active={sortKey === "id"} direction={sortKey === "id" ? sortDirection : null} onClick={() => toggleSort("id")} />
             <SortableTableHeader label="Cliente" active={sortKey === "customer_name"} direction={sortKey === "customer_name" ? sortDirection : null} onClick={() => toggleSort("customer_name")} />
             <SortableTableHeader label="Situação" active={sortKey === "status"} direction={sortKey === "status" ? sortDirection : null} onClick={() => toggleSort("status")} />
             <SortableTableHeader label="Pagamento" active={sortKey === "payment_method"} direction={sortKey === "payment_method" ? sortDirection : null} onClick={() => toggleSort("payment_method")} />
             <SortableTableHeader label="Valor" active={sortKey === "total"} direction={sortKey === "total" ? sortDirection : null} onClick={() => toggleSort("total")} className="justify-end" />
-            <span className="text-right text-xs font-bold uppercase tracking-[0.08em] text-gray-400">Detalhes</span>
+            <span className="text-right">Detalhes</span>
           </div>
 
           {paginatedOrders.length === 0 ? (
-            <div className="px-5 py-16 text-center">
-              <p className="font-black text-gray-950">Nenhum pedido encontrado</p>
-              <p className="mt-1 text-sm text-gray-500">Ajuste os filtros ou o período selecionado.</p>
-              <AdminButton variant="secondary" onClick={clearFilters} className="mt-5">Limpar filtros</AdminButton>
-            </div>
+            <AdminEmptyState
+              icon={<History size={22} />}
+              title="Nenhum pedido encontrado"
+              description="Ajuste a busca, os filtros ou o período selecionado."
+              action={<AdminButton variant="filter" onClick={clearFilters}>Limpar filtros</AdminButton>}
+            />
           ) : (
             groupedOrders.map((group) => {
               const isCollapsed = collapsedDates.includes(group.key);
@@ -703,39 +758,39 @@ export function HistoryWorkspace() {
                         return (
                           <details key={order.id} className="group bg-white">
                             <summary className="list-none cursor-pointer px-4 py-4 transition-colors hover:bg-[#fffdfa] sm:px-5 [&::-webkit-details-marker]:hidden">
-                              <div className="flex items-start justify-between gap-3 lg:grid lg:grid-cols-[96px_120px_minmax(180px,1fr)_150px_minmax(160px,0.8fr)_120px_70px] lg:items-center lg:gap-3">
-                                <div className="hidden text-sm font-bold text-gray-700 lg:block">{formatHour(order.created_at)}</div>
+                              <div className="flex items-start justify-between gap-3 xl:grid xl:grid-cols-[90px_110px_minmax(160px,1.2fr)_140px_minmax(140px,1fr)_110px_48px] xl:items-center xl:gap-3">
+                                <div className="hidden text-sm font-bold text-gray-700 xl:block">{formatHour(order.created_at)}</div>
                                 <div className="min-w-0">
                                   <p className="font-black text-gray-950">#{getOrderNumber(order)}</p>
-                                  <p className="mt-1 text-xs font-semibold text-gray-400 lg:hidden">
+                                  <p className="mt-1 text-xs font-semibold text-gray-400 xl:hidden">
                                     {formatHour(order.created_at)} · {formatDate(order.created_at)}
                                   </p>
                                 </div>
-                                <div className="hidden min-w-0 lg:block">
+                                <div className="hidden min-w-0 xl:block">
                                   <p className="truncate text-sm font-semibold text-gray-950">{order.customer_name}</p>
                                   <p className="mt-1 truncate text-xs text-gray-400">
                                     {firstItem ? `${Number(firstItem.quantity || 1)}x ${getItemName(firstItem)}` : "Itens não informados"}
                                     {orderItems.length > 1 ? ` +${orderItems.length - 1}` : ""}
                                   </p>
                                 </div>
-                                <div className="hidden lg:block">
+                                <div className="hidden xl:block">
                                   <OrderStatusBadge status={order.status} className="whitespace-nowrap" />
                                 </div>
-                                <p className="hidden truncate text-sm font-semibold text-gray-600 lg:block">{order.payment_method || "Não informado"}</p>
-                                <p className="hidden text-right text-sm font-black text-gray-950 lg:block">{formatMoney(Number(order.total || 0))}</p>
-                                <ChevronDown size={18} className="hidden justify-self-end text-gray-400 transition-transform group-open:rotate-180 lg:block" />
+                                <p className="hidden truncate text-sm font-semibold text-gray-600 xl:block">{formatPaymentMethod(order.payment_method)}</p>
+                                <p className="hidden text-right text-sm font-black text-gray-950 xl:block">{formatMoney(Number(order.total || 0))}</p>
+                                <ChevronDown size={18} className="hidden justify-self-end text-gray-400 transition-transform group-open:rotate-180 xl:block" />
 
-                                <div className="min-w-0 flex-1 lg:hidden">
+                                <div className="min-w-0 flex-1 xl:hidden">
                                   <p className="truncate text-sm font-semibold text-gray-700">{order.customer_name}</p>
                                   <p className="mt-1 truncate text-xs text-gray-400">
                                     {firstItem ? `${Number(firstItem.quantity || 1)}x ${getItemName(firstItem)}` : "Itens não informados"}
                                   </p>
                                   <div className="mt-2 flex flex-wrap items-center gap-2">
                                     <OrderStatusBadge status={order.status} className="whitespace-nowrap" />
-                                    <span className="text-xs font-semibold text-gray-400">{order.payment_method || "Não informado"}</span>
+                                    <span className="text-xs font-semibold text-gray-400">{formatPaymentMethod(order.payment_method)}</span>
                                   </div>
                                 </div>
-                                <div className="flex shrink-0 flex-col items-end gap-2 lg:hidden">
+                                <div className="flex shrink-0 flex-col items-end gap-2 xl:hidden">
                                   <p className="text-sm font-black text-gray-950">{formatMoney(Number(order.total || 0))}</p>
                                   <ChevronDown size={17} className="text-gray-400 transition-transform group-open:rotate-180" />
                                 </div>
@@ -784,7 +839,7 @@ export function HistoryWorkspace() {
                                   <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-1">
                                     {[
                                       ["Telefone", order.customer_phone || "Não informado"],
-                                      ["Pagamento", order.payment_method || "Não informado"],
+                                      ["Pagamento", formatPaymentMethod(order.payment_method)],
                                       ["Subtotal", formatMoney(Number(order.subtotal || 0))],
                                       ["Entrega", formatMoney(Number(order.delivery_fee || 0))],
                                       ["Desconto", formatMoney(Number(order.discount || 0))],

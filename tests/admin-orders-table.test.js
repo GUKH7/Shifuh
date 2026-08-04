@@ -6,7 +6,7 @@ const test = require("node:test");
 const root = path.join(__dirname, "..");
 const page = fs.readFileSync(path.join(root, "src", "app", "admin", "(painel)", "orders", "page.tsx"), "utf8");
 const utils = fs.readFileSync(path.join(root, "src", "app", "admin", "(painel)", "orders", "utils.ts"), "utf8");
-const tableGrid = "grid-cols-[96px_145px_100px_64px_78px_120px_104px_80px_145px]";
+const tableGrid = "grid-cols-[96px_minmax(145px,1.2fr)_100px_64px_88px_minmax(150px,1fr)_112px_90px_150px]";
 
 test("payment methods are translated into Portuguese", () => {
   assert.match(utils, /CASH: "Dinheiro"/);
@@ -18,12 +18,12 @@ test("payment methods are translated into Portuguese", () => {
 });
 
 test("orders table separates value and payment using one aligned grid", () => {
-  assert.match(page, /<span>Valor<\/span>\s+<span className="whitespace-nowrap">Método de pagamento<\/span>/);
+  assert.match(page, /<span>Valor<\/span>\s+<span>Pagamento<\/span>/);
   assert.doesNotMatch(page, /Método de<br \/>pagamento/);
   assert.equal((page.match(new RegExp(tableGrid.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g")) || []).length, 2);
   assert.match(page, /<span className="text-center">Ações<\/span>/);
   assert.match(page, /xl:justify-center/);
-  assert.match(page, /overflow-hidden rounded-\[18px\]/);
+  assert.match(page, /overflow-hidden rounded-2xl/);
   assert.doesNotMatch(page, /min-w-\[1280px\]/);
 });
 

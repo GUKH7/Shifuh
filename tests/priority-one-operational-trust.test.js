@@ -16,7 +16,9 @@ test("pedidos exibem apenas um estado vazio", () => {
 
 test("pedidos usam o horário real da loja", () => {
   assert.match(orders, /getStoreStatus\(restaurantConfig\?\.work_hours, storeClock\)/);
-  assert.match(orders, /storeStatus\.label\.toLowerCase\(\)/);
+  assert.match(orders, /storeStatus\.tone === "open"/);
+  assert.match(orders, /"Loja aberta"/);
+  assert.match(orders, /"Loja fechando em breve"/);
   assert.match(orders, /storeStatusClasses/);
 });
 

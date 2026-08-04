@@ -25,7 +25,7 @@ test("pedidos usam resumo compacto e detalhes expansíveis no mobile e desktop",
   assert.match(history, /group-open:rotate-180/);
   assert.match(
     history,
-    /lg:grid-cols-\[96px_120px_minmax\(180px,1fr\)_150px_minmax\(160px,0\.8fr\)_120px_70px\]/,
+    /xl:grid-cols-\[90px_110px_minmax\(160px,1\.2fr\)_140px_minmax\(140px,1fr\)_110px_48px\]/,
   );
   assert.match(history, /lg:grid-cols-\[minmax\(0,1\.45fr\)_minmax\(300px,0\.8fr\)\]/);
 });

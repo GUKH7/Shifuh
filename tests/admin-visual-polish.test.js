@@ -16,7 +16,7 @@ test("dashboard mantém cinco indicadores e cards analíticos sem seletores frá
 });
 
 test("pedidos mantém pagamento em uma linha e status real da loja", () => {
-  assert.match(orders, /whitespace-nowrap">Método de pagamento<\/span>/);
+  assert.match(orders, /<span>Pagamento<\/span>/);
   assert.match(orders, /getStoreStatus\(restaurantConfig\?\.work_hours, storeClock\)/);
 });
 
