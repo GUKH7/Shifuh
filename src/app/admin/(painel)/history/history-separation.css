@@ -13,11 +13,11 @@
 }
 
 .history-page-scope .admin-page-header-main {
-  gap: 0;
+  gap: 1rem;
 }
 
 .history-page-scope .admin-page-header-icon {
-  display: none;
+  display: flex;
 }
 
 .history-page-scope .admin-page-header h1 {
