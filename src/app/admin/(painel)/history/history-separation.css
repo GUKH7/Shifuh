@@ -1,0 +1,29 @@
+.history-page-scope .admin-table-header ~ section > button[aria-expanded] {
+  position: relative;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: #fff8f1;
+}
+
+.history-page-scope .admin-table-header + section > button[aria-expanded] {
+  border-top: 0;
+}
+
+.history-page-scope .admin-table-header ~ section > button[aria-expanded="true"] {
+  border-bottom-color: #fdba74;
+  background: #fff4e8;
+  box-shadow: inset 4px 0 0 var(--brand);
+}
+
+.history-page-scope .admin-table-header ~ section > button[aria-expanded="true"] + .divide-y {
+  border-top: 2px solid #fed7aa;
+  background: #ffffff;
+}
+
+.history-page-scope .admin-table-header ~ section > button[aria-expanded="true"] + .divide-y > details:first-child > summary {
+  padding-top: 1.125rem;
+}
+
+.history-page-scope .admin-table-header ~ section > button[aria-expanded="true"] + .divide-y > details:last-child > summary {
+  padding-bottom: 1.125rem;
+}
