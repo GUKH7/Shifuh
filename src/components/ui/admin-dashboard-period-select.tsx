@@ -112,7 +112,7 @@ export const AdminDashboardPeriodSelect = forwardRef<
   };
 
   return (
-    <div ref={containerRef} className="relative w-full">
+    <div ref={containerRef} className="w-full min-w-0">
       <select
         ref={ref}
         name={name}
@@ -157,7 +157,7 @@ export const AdminDashboardPeriodSelect = forwardRef<
           id={optionsId}
           role="listbox"
           aria-label="Opções de período"
-          className="absolute right-0 top-[calc(100%+0.65rem)] z-[130] w-full min-w-[280px] overflow-hidden rounded-[20px] border border-[#ead8c9] bg-white p-2 shadow-[0_24px_60px_rgba(63,43,29,0.2)]"
+          className="dashboard-period-options absolute inset-x-0 top-[calc(100%+0.65rem)] z-[130] w-full min-w-0 overflow-hidden rounded-[20px] border border-[#ead8c9] bg-white p-2 shadow-[0_24px_60px_rgba(63,43,29,0.2)]"
         >
           <div className="border-b border-[#f0e4da] px-3 pb-3 pt-2">
             <p className="text-sm font-black text-gray-950">Selecionar período</p>

@@ -675,17 +675,21 @@ export default function DashboardPeriodWorkspace() {
             <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${storeTone.icon}`}>
               <Store size={20} />
             </div>
-            <div className="min-w-0 flex-1 sm:min-w-[150px]">
-              <div className="flex items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 items-center gap-2">
                 <LiveStatusDot className={storeTone.dot} />
-                <p className={`font-black ${storeTone.title}`}>{storeTone.label}</p>
+                <p className={`min-w-0 truncate whitespace-nowrap text-[15px] font-black leading-5 ${storeTone.title}`}>
+                  {storeTone.label}
+                </p>
               </div>
-              <p className="mt-1 text-xs text-gray-500">{storeTone.helper}</p>
+              <p className="mt-0.5 truncate whitespace-nowrap text-xs leading-4 text-gray-500">
+                {storeTone.helper}
+              </p>
             </div>
             <Link
               href={restaurantSlug ? `/${restaurantSlug}` : "/admin/settings"}
               target={restaurantSlug ? "_blank" : undefined}
-              className="hidden min-h-10 items-center gap-2 rounded-xl border border-[var(--line)] bg-white px-3 text-xs font-bold text-gray-700 transition-colors hover:text-gray-950 sm:inline-flex"
+              className="hidden min-h-10 shrink-0 items-center gap-2 rounded-xl border border-[var(--line)] bg-white px-3 text-xs font-bold text-gray-700 transition-colors hover:text-gray-950 sm:inline-flex"
             >
               Ver loja <ExternalLink size={14} />
             </Link>
