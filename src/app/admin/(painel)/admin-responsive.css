@@ -126,6 +126,8 @@
   min-width: max-content;
   flex-wrap: nowrap;
   white-space: nowrap;
+  opacity: 1 !important;
+  visibility: visible;
 }
 
 .menu-product-edit {
