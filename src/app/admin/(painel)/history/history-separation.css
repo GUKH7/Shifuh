@@ -28,6 +28,7 @@
 
 .history-page-scope .admin-page-header p {
   margin-top: 0.25rem;
+  max-width: 30rem;
   color: #6b7280;
 }
 
@@ -212,7 +213,7 @@
 @media (min-width: 1280px) {
   .history-page-scope .admin-page-shell {
     display: grid;
-    grid-template-columns: minmax(19rem, 0.7fr) minmax(44rem, 1.7fr);
+    grid-template-columns: minmax(22rem, 0.8fr) minmax(42rem, 1.6fr);
     column-gap: 1.25rem;
     align-items: start;
   }
@@ -221,6 +222,20 @@
     grid-column: 1;
     grid-row: 1;
     align-self: center;
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .history-page-scope .admin-page-header-main {
+    width: 100%;
+    align-items: flex-start;
+  }
+
+  .history-page-scope .admin-page-header-action {
+    width: auto;
+    margin-left: 4.5rem;
+    align-self: flex-start;
   }
 
   .history-page-scope .admin-page-shell > section {
