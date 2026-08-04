@@ -27,7 +27,8 @@ test("histórico consulta e apresenta os produtos dos pedidos", () => {
 test("busca e exportação também consideram os produtos", () => {
   assert.match(history, /productText\.includes\(term\)/);
   assert.match(history, /getItemsText\(order\)/);
-  assert.match(history, /Buscar pedido, cliente, telefone, pagamento ou produto/);
+  assert.match(history, /placeholder="Buscar pedido, cliente ou produto"/);
+  assert.match(history, /aria-label="Buscar no histórico por pedido, cliente, telefone, pagamento ou produto"/);
   assert.match(history, /"Produtos"/);
   assert.match(history, /formatPaymentMethod\(order\.payment_method\)/);
   assert.match(history, /CREDIT_CARD: "CRÉDITO"/);

@@ -139,6 +139,20 @@ function formatDate(date: string) {
   return new Date(date).toLocaleDateString("pt-BR");
 }
 
+function formatPhone(value?: string | null) {
+  const digits = value?.replace(/\D/g, "") || "";
+
+  if (digits.length === 11) {
+    return digits.replace(/^(\d{2})(\d{5})(\d{4})$/, "($1) $2-$3");
+  }
+
+  if (digits.length === 10) {
+    return digits.replace(/^(\d{2})(\d{4})(\d{4})$/, "($1) $2-$3");
+  }
+
+  return value?.trim() || "Não informado";
+}
+
 function formatInputDate(date: Date) {
   return date.toISOString().slice(0, 10);
 }
@@ -157,11 +171,13 @@ function getDayLabel(date: string) {
   if (isSameDay(target, now)) return "Hoje";
   if (isSameDay(target, yesterday)) return "Ontem";
 
-  return target.toLocaleDateString("pt-BR", {
+  const label = target.toLocaleDateString("pt-BR", {
     weekday: "long",
     day: "2-digit",
     month: "2-digit",
   });
+
+  return label.charAt(0).toLocaleUpperCase("pt-BR") + label.slice(1);
 }
 
 function getStatusLabel(status: HistoryOrder["status"]) {
@@ -555,10 +571,10 @@ export function HistoryWorkspace() {
             onClick={() => exportExcel(visibleOrders)}
             aria-label="Exportar histórico"
             disabled={!visibleOrders.length}
-            className="h-11 w-11 px-0 sm:w-auto sm:px-4"
+            className="h-11 w-full px-4 sm:w-auto"
           >
             <Download size={17} />
-            <span className="hidden sm:inline">Exportar</span>
+            <span>Exportar</span>
           </AdminButton>
         }
       />
@@ -573,7 +589,8 @@ export function HistoryWorkspace() {
             <AdminInput
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Buscar pedido, cliente, telefone, pagamento ou produto"
+              placeholder="Buscar pedido, cliente ou produto"
+              aria-label="Buscar no histórico por pedido, cliente, telefone, pagamento ou produto"
               className="pl-11"
             />
           </div>
@@ -602,7 +619,10 @@ export function HistoryWorkspace() {
         </div>
 
         {filtersOpen && (
-          <div id="history-filters-panel" className="admin-filter-panel grid gap-3 rounded-2xl p-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div
+            id="history-filters-panel"
+            className="admin-filter-panel grid gap-3 rounded-2xl p-4 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] xl:items-end"
+          >
             <label className="space-y-2 text-sm font-bold text-gray-700">
               <span className="block">Situação</span>
               <AdminSelect className="admin-filter-control" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
@@ -640,6 +660,18 @@ export function HistoryWorkspace() {
               </AdminSelect>
             </label>
 
+            <div className="order-last flex flex-col items-stretch gap-2 sm:col-span-2 sm:flex-row sm:items-end xl:order-none xl:col-span-1 xl:justify-self-end">
+              <AdminButton variant="filter" onClick={clearFilters} className="xl:min-w-[150px]">Limpar filtros</AdminButton>
+              <AdminButton
+                variant="secondary"
+                onClick={() => setSortDirection((current) => (current === "asc" ? "desc" : "asc"))}
+                className="lg:hidden"
+              >
+                <ChevronsUpDown size={16} />
+                {sortDirection === "asc" ? "Crescente" : "Decrescente"}
+              </AdminButton>
+            </div>
+
             {period === "custom" && (
               <>
                 <label className="space-y-2 text-sm font-bold text-gray-700">
@@ -663,35 +695,23 @@ export function HistoryWorkspace() {
                 </label>
               </>
             )}
-
-            <div className="flex flex-col items-stretch gap-2 sm:col-span-2 sm:flex-row sm:items-end xl:col-span-4">
-              <AdminButton variant="filter" onClick={clearFilters}>Limpar filtros</AdminButton>
-              <AdminButton
-                variant="secondary"
-                onClick={() => setSortDirection((current) => (current === "asc" ? "desc" : "asc"))}
-                className="lg:hidden"
-              >
-                <ChevronsUpDown size={16} />
-                {sortDirection === "asc" ? "Crescente" : "Decrescente"}
-              </AdminButton>
-            </div>
           </div>
         )}
 
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
           {[
             { label: "Pedidos", value: String(summary.count), icon: <ClipboardList key="orders" size={18} />, tone: "bg-orange-50 text-[var(--brand)]" },
             { label: "Vendas", value: formatMoney(summary.value), icon: <WalletCards key="sales" size={18} />, tone: "bg-emerald-50 text-emerald-600" },
             { label: "Ticket médio", value: formatMoney(summary.average), icon: <ReceiptText key="ticket" size={18} />, tone: "bg-blue-50 text-blue-600" },
             { label: "Cancelados", value: String(summary.canceled), icon: <CircleX key="canceled" size={18} />, tone: "bg-red-50 text-red-600" },
           ].map((metric) => (
-            <div key={metric.label} className="surface-card flex min-h-[84px] items-center gap-3 rounded-2xl px-4 py-3">
-              <span className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${metric.tone}`}>
+            <div key={metric.label} className="surface-card flex min-h-[78px] items-center gap-2.5 rounded-2xl px-3 py-3 sm:min-h-[84px] sm:gap-3 sm:px-4">
+              <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl sm:h-10 sm:w-10 ${metric.tone}`}>
                 {metric.icon}
               </span>
               <div className="min-w-0">
-                <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-gray-400">{metric.label}</p>
-                <p className="mt-1 truncate text-lg font-black text-gray-950">{metric.value}</p>
+                <p className="truncate text-[10px] font-bold uppercase tracking-[0.08em] text-gray-400 sm:text-[11px] sm:tracking-[0.1em]">{metric.label}</p>
+                <p className="mt-1 truncate text-base font-black text-gray-950 sm:text-lg">{metric.value}</p>
               </div>
             </div>
           ))}
@@ -708,14 +728,14 @@ export function HistoryWorkspace() {
         </div>
 
         <div className="overflow-hidden rounded-2xl border border-[var(--line)] bg-white shadow-sm">
-          <div className="admin-table-header hidden grid-cols-[90px_110px_minmax(160px,1.2fr)_140px_minmax(140px,1fr)_110px_48px] items-center gap-3 border-b border-[var(--line)] bg-[#fffdfa] px-5 py-3 xl:grid">
+          <div className="admin-table-header hidden grid-cols-[84px_96px_minmax(220px,1.25fr)_minmax(132px,0.75fr)_minmax(128px,0.75fr)_112px_32px] items-center gap-3 border-b border-[var(--line)] bg-[#fffdfa] px-5 py-3 xl:grid">
             <SortableTableHeader label="Horário" active={sortKey === "created_at"} direction={sortKey === "created_at" ? sortDirection : null} onClick={() => toggleSort("created_at")} />
             <SortableTableHeader label="Pedido" active={sortKey === "id"} direction={sortKey === "id" ? sortDirection : null} onClick={() => toggleSort("id")} />
             <SortableTableHeader label="Cliente" active={sortKey === "customer_name"} direction={sortKey === "customer_name" ? sortDirection : null} onClick={() => toggleSort("customer_name")} />
             <SortableTableHeader label="Situação" active={sortKey === "status"} direction={sortKey === "status" ? sortDirection : null} onClick={() => toggleSort("status")} />
             <SortableTableHeader label="Pagamento" active={sortKey === "payment_method"} direction={sortKey === "payment_method" ? sortDirection : null} onClick={() => toggleSort("payment_method")} />
             <SortableTableHeader label="Valor" active={sortKey === "total"} direction={sortKey === "total" ? sortDirection : null} onClick={() => toggleSort("total")} className="justify-end" />
-            <span className="text-right">Detalhes</span>
+            <span className="sr-only">Detalhes</span>
           </div>
 
           {paginatedOrders.length === 0 ? (
@@ -735,18 +755,16 @@ export function HistoryWorkspace() {
                     type="button"
                     onClick={() => toggleDateGroup(group.key)}
                     aria-expanded={!isCollapsed}
-                    className="flex w-full items-center justify-between gap-3 bg-[#fcfaf7] px-4 py-3 text-left transition-colors hover:bg-orange-50/60 sm:px-5"
+                    className="grid w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 bg-[#fcfaf7] px-4 py-3 text-left transition-colors hover:bg-orange-50/60 sm:px-5 xl:grid-cols-[84px_96px_minmax(220px,1.25fr)_minmax(132px,0.75fr)_minmax(128px,0.75fr)_112px_32px]"
                   >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-black capitalize text-gray-950">{group.label}</p>
+                    <div className="min-w-0 xl:col-span-5">
+                      <p className="truncate text-sm font-black text-gray-950">{group.label}</p>
                       <p className="mt-0.5 text-xs text-gray-400">
                         {group.orders.length} {group.orders.length === 1 ? "pedido" : "pedidos"}
                       </p>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-bold text-gray-600">{formatMoney(group.total)}</span>
-                      <ChevronDown size={18} className={`text-gray-400 transition-transform ${isCollapsed ? "-rotate-90" : ""}`} />
-                    </div>
+                    <span className="text-sm font-bold text-gray-600 xl:text-right">{formatMoney(group.total)}</span>
+                    <ChevronDown size={18} className={`justify-self-end text-gray-400 transition-transform ${isCollapsed ? "-rotate-90" : ""}`} />
                   </button>
 
                   {!isCollapsed && (
@@ -754,11 +772,15 @@ export function HistoryWorkspace() {
                       {group.orders.map((order) => {
                         const orderItems = getOrderItems(order);
                         const firstItem = orderItems[0];
+                        const totalItemQuantity = orderItems.reduce(
+                          (sum, item) => sum + Number(item.quantity || 1),
+                          0,
+                        );
 
                         return (
                           <details key={order.id} className="group bg-white">
                             <summary className="list-none cursor-pointer px-4 py-4 transition-colors hover:bg-[#fffdfa] sm:px-5 [&::-webkit-details-marker]:hidden">
-                              <div className="flex items-start justify-between gap-3 xl:grid xl:grid-cols-[90px_110px_minmax(160px,1.2fr)_140px_minmax(140px,1fr)_110px_48px] xl:items-center xl:gap-3">
+                              <div className="flex items-start justify-between gap-3 xl:grid xl:grid-cols-[84px_96px_minmax(220px,1.25fr)_minmax(132px,0.75fr)_minmax(128px,0.75fr)_112px_32px] xl:items-center xl:gap-3">
                                 <div className="hidden text-sm font-bold text-gray-700 xl:block">{formatHour(order.created_at)}</div>
                                 <div className="min-w-0">
                                   <p className="font-black text-gray-950">#{getOrderNumber(order)}</p>
@@ -798,13 +820,13 @@ export function HistoryWorkspace() {
                             </summary>
 
                             <div className="border-t border-[var(--line)] bg-[#fcfaf7] px-4 py-4 sm:px-5">
-                              <div className="grid gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(300px,0.8fr)]">
+                              <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(300px,0.8fr)]">
                                 <section className="rounded-2xl border border-[var(--line)] bg-white p-4" aria-label={`Produtos do pedido ${getOrderNumber(order)}`}>
                                   <div className="flex items-center gap-2">
                                     <Package size={17} className="text-[var(--brand)]" />
                                     <h3 className="text-sm font-black text-gray-950">Itens do pedido</h3>
                                     <span className="rounded-full bg-[var(--brand-soft)] px-2 py-0.5 text-[11px] font-bold text-[var(--brand)]">
-                                      {orderItems.reduce((sum, item) => sum + Number(item.quantity || 1), 0)} item(ns)
+                                      {totalItemQuantity} {totalItemQuantity === 1 ? "item" : "itens"}
                                     </span>
                                   </div>
 
@@ -838,7 +860,7 @@ export function HistoryWorkspace() {
                                   <h3 className="text-sm font-black text-gray-950">Resumo do pedido</h3>
                                   <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-1">
                                     {[
-                                      ["Telefone", order.customer_phone || "Não informado"],
+                                      ["Telefone", formatPhone(order.customer_phone)],
                                       ["Pagamento", formatPaymentMethod(order.payment_method)],
                                       ["Subtotal", formatMoney(Number(order.subtotal || 0))],
                                       ["Entrega", formatMoney(Number(order.delivery_fee || 0))],
