@@ -15,6 +15,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { getCurrentRestaurant } from "@/lib/supabase/restaurant";
+import { AdminButton } from "@/components/ui/admin-primitives";
 
 type Client = {
   phone: string;
@@ -235,13 +236,14 @@ export default function ClientsPage() {
             </p>
           </div>
         </div>
-        <button
+        <AdminButton
+          variant="filter"
           onClick={() => exportClients(filteredClients)}
-          className="inline-flex items-center gap-2 rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700"
+          className="h-11 w-full justify-center px-4 sm:w-[160px]"
         >
-          <Download size={16} />
+          <Download size={17} />
           Exportar
-        </button>
+        </AdminButton>
       </div>
 
       <section className="grid gap-4 md:grid-cols-3">
