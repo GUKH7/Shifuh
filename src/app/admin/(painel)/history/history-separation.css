@@ -1,29 +1,266 @@
-.history-page-scope .admin-table-header ~ section > button[aria-expanded] {
-  position: relative;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-  background: #fff8f1;
+.history-page-scope {
+  --history-line: #e8e5e1;
+  --history-muted-surface: #f7f7f6;
+  --history-hover: #faf9f7;
 }
 
-.history-page-scope .admin-table-header + section > button[aria-expanded] {
-  border-top: 0;
+.history-page-scope .admin-page-shell {
+  row-gap: 1rem;
+}
+
+.history-page-scope .admin-page-header {
+  gap: 1rem;
+}
+
+.history-page-scope .admin-page-header-main {
+  gap: 0;
+}
+
+.history-page-scope .admin-page-header-icon {
+  display: none;
+}
+
+.history-page-scope .admin-page-header h1 {
+  font-size: 1.75rem;
+  line-height: 2.1rem;
+  letter-spacing: -0.035em;
+}
+
+.history-page-scope .admin-page-header p {
+  margin-top: 0.25rem;
+  color: #6b7280;
+}
+
+.history-page-scope .admin-page-header-action .admin-button {
+  min-height: 2.75rem;
+  border-color: var(--history-line);
+  color: #374151;
+  box-shadow: none;
+}
+
+.history-page-scope .admin-page-header-action .admin-button:hover {
+  border-color: #d6d3d1;
+  background: #f8f7f5;
+  color: #111827;
+}
+
+.history-page-scope section > div:first-child .admin-control,
+.history-page-scope section > div:first-child .admin-button {
+  min-height: 2.75rem;
+  border-color: var(--history-line);
+  box-shadow: none;
+}
+
+.history-page-scope section > div:first-child .admin-button {
+  color: #374151;
+}
+
+.history-page-scope .admin-filter-panel {
+  border: 1px solid var(--history-line);
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.history-page-scope [class*="grid-cols-2"][class*="xl:grid-cols-4"] {
+  gap: 0.75rem;
+}
+
+.history-page-scope .surface-card {
+  min-height: 4.5rem !important;
+  border: 1px solid var(--history-line);
+  background: #ffffff;
+  padding: 0.75rem 1rem !important;
+  box-shadow: none;
+}
+
+.history-page-scope .surface-card > span {
+  height: 2rem !important;
+  width: 2rem !important;
+  border-radius: 0.625rem !important;
+}
+
+.history-page-scope .surface-card p:first-child {
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  color: #9ca3af;
+}
+
+.history-page-scope .surface-card p:last-child {
+  margin-top: 0.2rem;
+  font-size: 1rem;
+  line-height: 1.25rem;
+  font-weight: 800;
+}
+
+.history-page-scope section > div.flex.items-center > p {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.history-page-scope section > div:has(> .admin-table-header) {
+  overflow: hidden;
+  border: 1px solid var(--history-line);
+  border-radius: 0.75rem;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.history-page-scope .admin-table-header {
+  border-color: var(--history-line);
+  background: #ffffff;
+  padding-top: 0.8rem;
+  padding-bottom: 0.8rem;
+}
+
+.history-page-scope .admin-table-header button {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #9ca3af;
+}
+
+.history-page-scope .admin-table-header button[aria-pressed="true"] {
+  color: var(--brand);
+}
+
+.history-page-scope .admin-table-header ~ section {
+  border-color: var(--history-line);
+}
+
+.history-page-scope .admin-table-header ~ section > button[aria-expanded] {
+  position: relative;
+  min-height: 3.75rem;
+  border: 0;
+  border-bottom: 1px solid var(--history-line);
+  background: var(--history-muted-surface);
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+.history-page-scope .admin-table-header ~ section:last-child > button[aria-expanded="false"] {
+  border-bottom: 0;
+}
+
+.history-page-scope .admin-table-header ~ section > button[aria-expanded]:hover {
+  background: #f3f3f2;
 }
 
 .history-page-scope .admin-table-header ~ section > button[aria-expanded="true"] {
-  border-bottom-color: #fdba74;
-  background: #fff4e8;
-  box-shadow: inset 4px 0 0 var(--brand);
+  background: #f6f6f5;
+  box-shadow: none;
+}
+
+.history-page-scope .admin-table-header ~ section > button[aria-expanded] p:first-child {
+  font-size: 0.875rem;
+  font-weight: 800;
+  color: #111827;
+}
+
+.history-page-scope .admin-table-header ~ section > button[aria-expanded] p:last-child {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.history-page-scope .admin-table-header ~ section > button[aria-expanded] > span {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #4b5563;
 }
 
 .history-page-scope .admin-table-header ~ section > button[aria-expanded="true"] + .divide-y {
-  border-top: 2px solid #fed7aa;
+  border-top: 0;
   background: #ffffff;
 }
 
-.history-page-scope .admin-table-header ~ section > button[aria-expanded="true"] + .divide-y > details:first-child > summary {
-  padding-top: 1.125rem;
+.history-page-scope .admin-table-header ~ section > button[aria-expanded="true"] + .divide-y > details {
+  border-color: var(--history-line);
 }
 
-.history-page-scope .admin-table-header ~ section > button[aria-expanded="true"] + .divide-y > details:last-child > summary {
-  padding-bottom: 1.125rem;
+.history-page-scope .admin-table-header ~ section > button[aria-expanded="true"] + .divide-y > details > summary {
+  padding-top: 0.875rem;
+  padding-bottom: 0.875rem;
+}
+
+.history-page-scope .admin-table-header ~ section > button[aria-expanded="true"] + .divide-y > details > summary:hover {
+  background: var(--history-hover);
+}
+
+.history-page-scope details > summary p {
+  line-height: 1.25rem;
+}
+
+.history-page-scope details > summary p.text-gray-950,
+.history-page-scope details > summary p.font-black {
+  font-weight: 750;
+}
+
+.history-page-scope details > summary p.text-gray-400 {
+  color: #9ca3af;
+}
+
+.history-page-scope details[open] > div {
+  border-color: var(--history-line);
+  background: #fafafa;
+}
+
+.history-page-scope details[open] > div section {
+  border-color: var(--history-line);
+  box-shadow: none;
+}
+
+@media (min-width: 1280px) {
+  .history-page-scope .admin-page-shell {
+    display: grid;
+    grid-template-columns: minmax(19rem, 0.7fr) minmax(44rem, 1.7fr);
+    column-gap: 1.25rem;
+    align-items: start;
+  }
+
+  .history-page-scope .admin-page-header {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: center;
+  }
+
+  .history-page-scope .admin-page-shell > section {
+    display: contents;
+  }
+
+  .history-page-scope [class*="grid-cols-2"][class*="xl:grid-cols-4"] {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .history-page-scope .admin-page-shell > section > div:first-child {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    margin-top: 0.25rem;
+  }
+
+  .history-page-scope .admin-page-shell > section > .admin-filter-panel,
+  .history-page-scope .admin-page-shell > section > div.flex.items-center,
+  .history-page-scope .admin-page-shell > section > div:has(> .admin-table-header) {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 1279px) {
+  .history-page-scope .admin-page-header h1 {
+    font-size: 1.625rem;
+  }
+}
+
+@media (max-width: 639px) {
+  .history-page-scope .admin-page-header-action .admin-button {
+    width: 100%;
+  }
+
+  .history-page-scope .surface-card {
+    min-height: 4.25rem !important;
+    padding: 0.7rem 0.8rem !important;
+  }
+
+  .history-page-scope .admin-table-header ~ section > button[aria-expanded] {
+    min-height: 3.5rem;
+  }
 }
