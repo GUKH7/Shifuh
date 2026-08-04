@@ -41,6 +41,18 @@ test("Clientes usa workspace padronizado com busca, paginação e cinco colunas 
   assert.match(clients, /xl:hidden/);
 });
 
+test("Clientes permite expandir os cinco pedidos mais recentes de cada contato", () => {
+  assert.match(clients, /recentOrders: RecentOrder\[\]/);
+  assert.match(clients, /client\.recentOrders\.length >= 5/);
+  assert.match(clients, /if \(order\.status === "canceled"\) return/);
+  assert.match(clients, /id, display_number, customer_name, customer_phone, total, created_at, address, status, payment_method/);
+  assert.match(clients, /expandedClientPhone === client\.phone/);
+  assert.match(clients, /<RecentOrdersPanel client=\{client\} \/>/);
+  assert.match(clients, /Últimos pedidos/);
+  assert.match(clients, /<OrderStatusBadge status=\{order\.status\}/);
+  assert.match(clients, /formatPaymentMethod\(order\.paymentMethod\)/);
+});
+
 test("Cupons ganha busca, filtro por status e oito critérios de ordenação", () => {
   assert.match(couponsLayout, /CouponsWorkspace/);
   assert.match(coupons, /Buscar código do cupom/);

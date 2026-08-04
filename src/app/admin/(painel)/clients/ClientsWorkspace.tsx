@@ -4,17 +4,21 @@ import { useEffect, useMemo, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useRouter } from "next/navigation";
 import {
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Download,
   MessageCircle,
   Phone,
+  ReceiptText,
   Search,
   ShoppingBag,
   Users,
   Wallet,
 } from "lucide-react";
 import { getCurrentRestaurant } from "@/lib/supabase/restaurant";
+import { OrderStatusBadge } from "@/components/ui/order-status-badge";
+import type { OrderStatus } from "@/lib/order-status";
 import {
   AdminButton,
   AdminInput,
@@ -33,6 +37,16 @@ type Client = {
   orderCount: number;
   lastOrderDate: string;
   addresses: string[];
+  recentOrders: RecentOrder[];
+};
+
+type RecentOrder = {
+  id: string;
+  displayNumber?: number | null;
+  total: number;
+  status: OrderStatus;
+  paymentMethod?: string | null;
+  createdAt: string;
 };
 
 type ClientSortKey = "name" | "phone" | "orderCount" | "totalSpent" | "lastOrderDate";
@@ -53,6 +67,40 @@ function formatMoney(value: number) {
 
 function formatDate(date: string) {
   return new Date(date).toLocaleDateString("pt-BR");
+}
+
+function formatDateTime(date: string) {
+  return new Date(date).toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  CASH: "Dinheiro",
+  CREDIT: "CRÉDITO",
+  CREDIT_CARD: "CRÉDITO",
+  CARD_CREDIT: "CRÉDITO",
+  DEBIT: "DÉBITO",
+  DEBIT_CARD: "DÉBITO",
+  CARD_DEBIT: "DÉBITO",
+  PIX: "Pix",
+  CARD: "Cartão",
+  ONLINE: "Online",
+};
+
+function formatPaymentMethod(value?: string | null) {
+  const rawValue = value?.trim() || "";
+  if (!rawValue) return "Não informado";
+  const normalizedValue = rawValue.toUpperCase().replace(/[\s-]+/g, "_");
+  return PAYMENT_METHOD_LABELS[normalizedValue] || rawValue;
+}
+
+function getOrderNumber(order: RecentOrder) {
+  return order.displayNumber ? String(order.displayNumber) : order.id.slice(0, 5);
 }
 
 function formatClientAddress(address: any) {
@@ -119,6 +167,7 @@ export default function ClientsWorkspace() {
   const [sortKey, setSortKey] = useState<ClientSortKey>("totalSpent");
   const [sortDirection, setSortDirection] = useState<Exclude<SortDirection, null>>("desc");
   const [page, setPage] = useState(1);
+  const [expandedClientPhone, setExpandedClientPhone] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchClients = async () => {
@@ -135,15 +184,16 @@ export default function ClientsWorkspace() {
 
         const { data, error } = await supabase
           .from("orders")
-          .select("customer_name, customer_phone, total, created_at, address, status")
+          .select("id, display_number, customer_name, customer_phone, total, created_at, address, status, payment_method")
           .eq("restaurant_id", restaurant.id)
-          .neq("status", "canceled")
           .order("created_at", { ascending: false });
 
         if (error) throw error;
 
         const grouped = new Map<string, Client>();
         (data || []).forEach((order: any) => {
+          if (order.status === "canceled") return;
+
           const phone = order.customer_phone;
           if (!phone) return;
           const address = formatClientAddress(order.address);
@@ -157,6 +207,7 @@ export default function ClientsWorkspace() {
               orderCount: 1,
               lastOrderDate: order.created_at,
               addresses: address ? [address] : [],
+              recentOrders: [],
             });
             return;
           }
@@ -169,6 +220,20 @@ export default function ClientsWorkspace() {
               address && !current.addresses.includes(address)
                 ? [...current.addresses, address]
                 : current.addresses,
+          });
+        });
+
+        (data || []).forEach((order: any) => {
+          const client = grouped.get(order.customer_phone);
+          if (!client || client.recentOrders.length >= 5) return;
+
+          client.recentOrders.push({
+            id: order.id,
+            displayNumber: order.display_number,
+            total: Number(order.total || 0),
+            status: order.status,
+            paymentMethod: order.payment_method,
+            createdAt: order.created_at,
           });
         });
 
@@ -222,7 +287,10 @@ export default function ClientsWorkspace() {
     [clients],
   );
 
-  useEffect(() => setPage(1), [search, sortDirection, sortKey]);
+  useEffect(() => {
+    setPage(1);
+    setExpandedClientPhone(null);
+  }, [search, sortDirection, sortKey]);
 
   const toggleSort = (key: ClientSortKey) => {
     if (sortKey === key) {
@@ -293,13 +361,13 @@ export default function ClientsWorkspace() {
         </div>
 
         <div className="mt-5 overflow-hidden rounded-[24px] border border-[var(--line)] bg-white">
-          <div className="admin-table-header hidden grid-cols-[minmax(220px,1.3fr)_minmax(160px,1fr)_120px_160px_150px_120px] items-center gap-4 border-b border-[var(--line)] bg-[#fffdfa] px-6 py-4 xl:grid">
+          <div className="admin-table-header hidden grid-cols-[minmax(220px,1.3fr)_minmax(160px,1fr)_120px_160px_150px_168px] items-center gap-4 border-b border-[var(--line)] bg-[#fffdfa] px-6 py-4 xl:grid">
             <SortableTableHeader label="Cliente" active={sortKey === "name"} direction={sortKey === "name" ? sortDirection : null} onClick={() => toggleSort("name")} />
             <SortableTableHeader label="Contato" active={sortKey === "phone"} direction={sortKey === "phone" ? sortDirection : null} onClick={() => toggleSort("phone")} />
             <SortableTableHeader label="Pedidos" active={sortKey === "orderCount"} direction={sortKey === "orderCount" ? sortDirection : null} onClick={() => toggleSort("orderCount")} />
             <SortableTableHeader label="Total gasto" active={sortKey === "totalSpent"} direction={sortKey === "totalSpent" ? sortDirection : null} onClick={() => toggleSort("totalSpent")} />
             <SortableTableHeader label="Última compra" active={sortKey === "lastOrderDate"} direction={sortKey === "lastOrderDate" ? sortDirection : null} onClick={() => toggleSort("lastOrderDate")} className="justify-center" />
-            <span className="text-right font-bold text-gray-400">Ação</span>
+            <span className="text-right font-bold text-gray-400">Ações</span>
           </div>
 
           {paginatedClients.length === 0 ? (
@@ -308,13 +376,21 @@ export default function ClientsWorkspace() {
             <div className="divide-y divide-[var(--line)]">
               {paginatedClients.map((client) => (
                 <article key={client.phone}>
-                  <div className="hidden grid-cols-[minmax(220px,1.3fr)_minmax(160px,1fr)_120px_160px_150px_120px] items-center gap-4 px-6 py-5 text-sm text-gray-700 xl:grid">
+                  <div className="hidden grid-cols-[minmax(220px,1.3fr)_minmax(160px,1fr)_120px_160px_150px_168px] items-center gap-4 px-6 py-5 text-sm text-gray-700 xl:grid">
                     <ClientIdentity client={client} />
                     <PhoneBadge phone={client.phone} />
                     <OrderBadge count={client.orderCount} />
                     <SpentBadge value={client.totalSpent} />
                     <div className="text-center font-semibold text-gray-600">{formatDate(client.lastOrderDate)}</div>
-                    <WhatsAppButton phone={client.phone} />
+                    <ClientActions
+                      client={client}
+                      expanded={expandedClientPhone === client.phone}
+                      onToggle={() =>
+                        setExpandedClientPhone((current) =>
+                          current === client.phone ? null : client.phone,
+                        )
+                      }
+                    />
                   </div>
 
                   <div className="p-4 xl:hidden">
@@ -329,8 +405,23 @@ export default function ClientsWorkspace() {
                         Última compra: {formatDate(client.lastOrderDate)}
                       </div>
                     </div>
-                    <div className="mt-4"><WhatsAppButton phone={client.phone} full /></div>
+                    <div className="mt-4">
+                      <ClientActions
+                        client={client}
+                        expanded={expandedClientPhone === client.phone}
+                        onToggle={() =>
+                          setExpandedClientPhone((current) =>
+                            current === client.phone ? null : client.phone,
+                          )
+                        }
+                        full
+                      />
+                    </div>
                   </div>
+
+                  {expandedClientPhone === client.phone && (
+                    <RecentOrdersPanel client={client} />
+                  )}
                 </article>
               ))}
             </div>
@@ -392,11 +483,98 @@ function SpentBadge({ value }: { value: number }) {
   return <div className="inline-flex w-fit items-center gap-2 rounded-xl bg-[#eefaf2] px-3 py-2 font-bold text-emerald-700"><Wallet size={14} />{formatMoney(value)}</div>;
 }
 
+function ClientActions({
+  client,
+  expanded,
+  onToggle,
+  full = false,
+}: {
+  client: Client;
+  expanded: boolean;
+  onToggle: () => void;
+  full?: boolean;
+}) {
+  const panelId = `client-orders-${client.phone.replace(/\D/g, "") || "unknown"}`;
+
+  return (
+    <div className={`grid gap-2 ${full ? "grid-cols-2" : "justify-items-end"}`}>
+      <AdminButton
+        variant="filter"
+        className={full ? "w-full" : "w-fit"}
+        onClick={onToggle}
+        aria-expanded={expanded}
+        aria-controls={panelId}
+      >
+        <ReceiptText size={14} />
+        Pedidos
+        <ChevronDown
+          size={14}
+          className={`transition-transform ${expanded ? "rotate-180" : ""}`}
+        />
+      </AdminButton>
+      <WhatsAppButton phone={client.phone} full={full} />
+    </div>
+  );
+}
+
+function RecentOrdersPanel({ client }: { client: Client }) {
+  const panelId = `client-orders-${client.phone.replace(/\D/g, "") || "unknown"}`;
+
+  return (
+    <section id={panelId} className="border-t border-[var(--line)] bg-[#fcfaf7] px-4 py-5 sm:px-6">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+        <div>
+          <h3 className="flex items-center gap-2 text-sm font-black text-gray-950">
+            <ReceiptText size={17} className="text-[var(--brand)]" />
+            Últimos pedidos
+          </h3>
+          <p className="mt-1 text-xs text-gray-500">
+            Histórico recente de {client.name}, do mais novo para o mais antigo.
+          </p>
+        </div>
+        <p className="text-xs font-bold uppercase tracking-[0.08em] text-gray-400">
+          {client.recentOrders.length} de até 5 pedidos
+        </p>
+      </div>
+
+      <div className="mt-4 grid gap-2">
+        {client.recentOrders.map((order) => (
+          <article
+            key={order.id}
+            className="grid gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-3 lg:grid-cols-[minmax(100px,0.7fr)_minmax(160px,1fr)_minmax(120px,0.8fr)_140px_minmax(100px,0.65fr)] lg:items-center"
+          >
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-gray-400 lg:hidden">Pedido</p>
+              <p className="mt-1 font-black text-gray-950 lg:mt-0">#{getOrderNumber(order)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-gray-400 lg:hidden">Data</p>
+              <p className="mt-1 text-sm font-semibold text-gray-600 lg:mt-0">{formatDateTime(order.createdAt)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-gray-400 lg:hidden">Pagamento</p>
+              <p className="mt-1 truncate text-sm font-semibold text-gray-600 lg:mt-0">{formatPaymentMethod(order.paymentMethod)}</p>
+            </div>
+            <div>
+              <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.1em] text-gray-400 lg:hidden">Situação</p>
+              <OrderStatusBadge status={order.status} className="whitespace-nowrap" />
+            </div>
+            <div className="lg:text-right">
+              <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-gray-400 lg:hidden">Valor</p>
+              <p className="mt-1 text-sm font-black text-gray-950 lg:mt-0">{formatMoney(order.total)}</p>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function WhatsAppButton({ phone, full = false }: { phone: string; full?: boolean }) {
   return (
     <AdminButton
       variant="secondary"
-      className={`${full ? "w-full" : "ml-auto"} border-emerald-200 !bg-emerald-50 text-emerald-700 shadow-sm hover:!bg-emerald-100`}
+      className={`${full ? "w-full" : "w-fit"} border-emerald-200 !bg-emerald-50 text-emerald-700 shadow-sm hover:!bg-emerald-100`}
       onClick={() => window.open(`https://wa.me/${phone.replace(/\D/g, "")}`, "_blank", "noopener,noreferrer")}
     >
       <MessageCircle size={14} /> WhatsApp
