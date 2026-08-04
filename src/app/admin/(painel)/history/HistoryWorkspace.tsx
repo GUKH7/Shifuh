@@ -323,7 +323,7 @@ export function HistoryWorkspace() {
   const [sortDirection, setSortDirection] = useState<Exclude<SortDirection, null>>("desc");
   const [page, setPage] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [collapsedDates, setCollapsedDates] = useState<string[]>([]);
+  const [expandedDateKey, setExpandedDateKey] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -434,7 +434,6 @@ export function HistoryWorkspace() {
 
   useEffect(() => {
     setPage(1);
-    setCollapsedDates([]);
   }, [customEndDate, customStartDate, paymentFilter, period, query, sortDirection, sortKey, statusFilter]);
 
   const totalPages = Math.max(1, Math.ceil(visibleOrders.length / PAGE_SIZE));
@@ -463,6 +462,40 @@ export function HistoryWorkspace() {
 
     return Array.from(groups.values());
   }, [paginatedOrders]);
+
+  const latestGroupKey = useMemo(() => {
+    let latestKey: string | null = null;
+    let latestTimestamp = Number.NEGATIVE_INFINITY;
+
+    groupedOrders.forEach((group) => {
+      const groupTimestamp = group.orders.reduce(
+        (latest, order) => Math.max(latest, new Date(order.created_at).getTime()),
+        Number.NEGATIVE_INFINITY,
+      );
+
+      if (groupTimestamp > latestTimestamp) {
+        latestTimestamp = groupTimestamp;
+        latestKey = group.key;
+      }
+    });
+
+    return latestKey;
+  }, [groupedOrders]);
+
+  useEffect(() => {
+    setExpandedDateKey(latestGroupKey);
+  }, [
+    latestGroupKey,
+    page,
+    customEndDate,
+    customStartDate,
+    paymentFilter,
+    period,
+    query,
+    sortDirection,
+    sortKey,
+    statusFilter,
+  ]);
 
   const summary = useMemo(() => {
     const validOrders = visibleOrders.filter((order) => order.status !== "canceled");
@@ -505,24 +538,7 @@ export function HistoryWorkspace() {
   };
 
   const toggleDateGroup = (key: string) => {
-    setCollapsedDates((current) =>
-      current.includes(key) ? current.filter((item) => item !== key) : [...current, key],
-    );
-  };
-
-  const allCurrentGroupsCollapsed =
-    groupedOrders.length > 0 && groupedOrders.every((group) => collapsedDates.includes(group.key));
-
-  const toggleAllGroups = () => {
-    const currentKeys = groupedOrders.map((group) => group.key);
-
-    setCollapsedDates((current) => {
-      if (allCurrentGroupsCollapsed) {
-        return current.filter((key) => !currentKeys.includes(key));
-      }
-
-      return Array.from(new Set([...current, ...currentKeys]));
-    });
+    setExpandedDateKey((current) => (current === key ? null : key));
   };
 
   const clearFilters = () => {
@@ -717,14 +733,10 @@ export function HistoryWorkspace() {
           ))}
         </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center">
           <p className="text-sm font-semibold text-gray-500">
             {visibleOrders.length} {visibleOrders.length === 1 ? "pedido encontrado" : "pedidos encontrados"}
           </p>
-          <AdminButton variant="secondary" onClick={toggleAllGroups} disabled={!groupedOrders.length}>
-            <ChevronsUpDown size={16} />
-            {allCurrentGroupsCollapsed ? "Expandir datas" : "Recolher datas"}
-          </AdminButton>
         </div>
 
         <div className="overflow-hidden rounded-2xl border border-[var(--line)] bg-white shadow-sm">
@@ -747,7 +759,7 @@ export function HistoryWorkspace() {
             />
           ) : (
             groupedOrders.map((group) => {
-              const isCollapsed = collapsedDates.includes(group.key);
+              const isCollapsed = expandedDateKey !== group.key;
 
               return (
                 <section key={group.key} className="border-b border-[var(--line)] last:border-b-0">
