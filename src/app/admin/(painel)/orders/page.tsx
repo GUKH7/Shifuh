@@ -104,6 +104,18 @@ const STATUS_META: Record<OrderStatus, {
   },
 };
 
+const STAT_CARDS: Array<{
+  id: OrderStatus;
+  title: string;
+  tone: string;
+}> = [
+  { id: "pending", title: "Pendentes", tone: "bg-orange-50 text-orange-600" },
+  { id: "preparing", title: "Em preparo", tone: "bg-slate-100 text-slate-600" },
+  { id: "delivering", title: "Em rota", tone: "bg-blue-50 text-blue-600" },
+  { id: "done", title: "Concluídos", tone: "bg-emerald-50 text-emerald-600" },
+  { id: "canceled", title: "Cancelados", tone: "bg-red-50 text-red-600" },
+];
+
 const LOCAL_CANCELLATION_REASONS: IfoodCancellationReason[] = [
   { code: "ITEM_UNAVAILABLE", description: "Um ou mais itens ficaram indisponíveis" },
   { code: "DELIVERY_UNAVAILABLE", description: "Não foi possível realizar a entrega" },
@@ -948,7 +960,7 @@ export default function OrdersPage() {
     <>
       {cancellationModalOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">
+          <div className="w-full max-w-lg rounded-[24px] bg-white p-6 shadow-2xl">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.22em] text-[var(--brand)]">
@@ -1029,7 +1041,7 @@ export default function OrdersPage() {
         </div>
       )}
 
-      <AdminPageShell className={`space-y-4 ${isSummaryOpen ? "pb-[18rem] sm:pb-[11rem]" : "pb-20"}`}>
+      <AdminPageShell className={`space-y-4 ${isSummaryOpen ? "pb-[26rem]" : "pb-24"}`}>
         <AdminPageHeader
           title="Pedidos"
           description={
@@ -1039,62 +1051,64 @@ export default function OrdersPage() {
           }
           icon={<ShoppingBag size={22} />}
           action={
-            <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
+            <div className="flex flex-wrap gap-3">
               <OrdersDatePicker value={selectedDate} label={selectedDateLabel} onChange={setSelectedDate} />
               <div
                 className={[
-                  "inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border px-3.5 py-2.5 text-sm font-black sm:flex-none",
+                  "inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-black",
                   isCurrentDate ? storeStatusClasses : "border-gray-200 bg-gray-50 text-gray-600",
                 ].join(" ")}
               >
                 {isCurrentDate ? <LiveStatusDot className={storeStatusDotClass} /> : <CalendarDays size={16} />}
-                {isCurrentDate
-                  ? storeStatus.tone === "open"
-                    ? "Loja aberta"
-                    : storeStatus.tone === "closed"
-                      ? "Loja fechada"
-                      : "Loja fechando em breve"
-                  : "Consulta histórica"}
+                {isCurrentDate ? "Loja " + storeStatus.label.toLowerCase() : "Consulta histórica"}
               </div>
-              {isCurrentDate && (
-                <button
-                  type="button"
-                  onClick={enableChime}
-                  className={`inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border px-3.5 py-2.5 text-sm font-black shadow-sm transition sm:flex-none ${
-                    isChimeEnabled
-                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                      : "border-orange-200 bg-white text-[var(--brand)] hover:bg-orange-50"
-                  }`}
-                >
-                  <BellRing size={17} />
-                  {isChimeEnabled ? "Campainha ativa" : "Ativar campainha"}
-                </button>
-              )}
             </div>
           }
         />
 
-        <section className="space-y-4">
-          <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Filtrar pedidos por situação">
-            {STATUS_FILTERS.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveStatus(tab.id)}
-                aria-pressed={activeStatus === tab.id}
-                className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl border px-3.5 py-2.5 text-sm font-bold transition-colors ${
-                  activeStatus === tab.id
-                    ? "border-[var(--brand)] bg-orange-50 text-[var(--brand)] shadow-sm"
-                    : "border-[var(--line)] bg-white text-gray-700 hover:border-orange-200"
-                }`}
-              >
-                {tab.label}
-                <span className={`rounded-full px-2 py-0.5 text-xs ${activeStatus === tab.id ? "bg-white text-[var(--brand)]" : "bg-gray-100 text-gray-600"}`}>
-                  {getCount(tab.id)}
+        <section className="grid gap-3 lg:grid-cols-[1fr_auto]">
+          <div className="rounded-2xl border border-orange-100 bg-white px-4 py-3 shadow-sm">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-sm font-black uppercase tracking-[0.14em] text-orange-500">
+                  {isCurrentDate ? "Operação de hoje" : "Operação da data selecionada"}
+                </p>
+                <p className="mt-1 text-sm text-gray-500">
+                  {isCurrentDate
+                    ? "Pedidos novos entram automaticamente na fila e ficam priorizados no topo."
+                    : `Exibindo os pedidos registrados ou agendados para ${selectedDateLabel.toLowerCase()}.`}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <span className="rounded-xl bg-orange-50 px-3 py-2 text-sm font-black text-orange-700">
+                  {summary.pending} pendentes
                 </span>
-              </button>
-            ))}
+                <span className="rounded-xl bg-blue-50 px-3 py-2 text-sm font-black text-blue-700">
+                  {summary.preparing} em preparo
+                </span>
+                <span className="rounded-xl bg-violet-50 px-3 py-2 text-sm font-black text-violet-700">
+                  {summary.delivering} em rota
+                </span>
+              </div>
+            </div>
           </div>
+          {isCurrentDate && (
+            <button
+              type="button"
+              onClick={enableChime}
+              className={`inline-flex items-center justify-center gap-2.5 rounded-2xl border px-4 py-3 text-sm font-black shadow-sm transition ${
+                isChimeEnabled
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                  : "border-orange-200 bg-white text-[var(--brand)] hover:bg-orange-50"
+              }`}
+            >
+              <BellRing size={18} />
+              {isChimeEnabled ? "Campainha ativa" : "Ativar campainha"}
+            </button>
+          )}
+        </section>
 
+        <section className="space-y-4">
           <div className="flex flex-col gap-3 xl:flex-row">
             <div className="flex flex-1 items-center gap-3 rounded-xl border border-[var(--line)] bg-white px-4 py-2.5 shadow-sm">
               <Search size={18} className="text-gray-400" />
@@ -1184,14 +1198,35 @@ export default function OrdersPage() {
             </div>
           )}
 
-          <div className="overflow-hidden rounded-2xl border border-[var(--line)] bg-white shadow-sm">
-            <div className="orders-table-header admin-table-header hidden grid-cols-[96px_minmax(145px,1.2fr)_100px_64px_88px_minmax(150px,1fr)_112px_90px_150px] items-center gap-2 border-b border-[var(--line)] bg-[#fffdfa] px-4 py-3 text-center xl:grid">
+          <div className="flex flex-wrap gap-3">
+            {STATUS_FILTERS.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveStatus(tab.id)}
+                className={`inline-flex min-w-[92px] items-center justify-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-sm font-bold transition-colors ${
+                  activeStatus === tab.id
+                    ? "border-[var(--brand)] bg-white text-[var(--brand)] shadow-sm"
+                    : "border-[var(--line)] bg-white text-gray-700 hover:border-orange-200"
+                }`}
+              >
+                {tab.label}
+                {getCount(tab.id) > 0 && (
+                  <span className="rounded-full bg-orange-50 px-2 py-0.5 text-xs text-[var(--brand)]">
+                    {getCount(tab.id)}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          <div className="overflow-hidden rounded-[18px] border border-[var(--line)] bg-white shadow-sm">
+            <div className="orders-table-header admin-table-header hidden grid-cols-[96px_145px_100px_64px_78px_120px_104px_80px_145px] items-center gap-2 border-b border-[var(--line)] bg-[#fffdfa] px-4 py-3 text-center xl:grid">
               <span>Pedido</span>
               <span>Cliente</span>
               <span>Canal</span>
               <span>Itens</span>
               <span>Valor</span>
-              <span>Pagamento</span>
+              <span className="whitespace-nowrap">Método de pagamento</span>
               <span>Status</span>
               <span>Horário</span>
               <span className="text-center">Ações</span>
@@ -1228,7 +1263,7 @@ export default function OrdersPage() {
 
                   return (
                     <div key={order.id} className={order.status === "pending" ? "bg-orange-50/25" : "bg-white"}>
-                      <div className="orders-table-row grid gap-4 px-5 py-4 xl:grid-cols-[96px_minmax(145px,1.2fr)_100px_64px_88px_minmax(150px,1fr)_112px_90px_150px] xl:items-center xl:gap-2 xl:px-4">
+                      <div className="orders-table-row grid gap-4 px-5 py-4 xl:grid-cols-[96px_145px_100px_64px_78px_120px_104px_80px_145px] xl:items-center xl:gap-2 xl:px-4">
                         <div className="orders-table-cell text-center" data-label="Pedido">
                           <p className="text-sm font-black text-gray-950">#{formatDisplayNumber(order)}</p>
                           <p className="mt-1 text-[11px] font-medium text-gray-500">
@@ -1603,25 +1638,70 @@ export default function OrdersPage() {
           </div>
         </section>
 
-        <section className="fixed bottom-2 left-2 right-2 z-40 overflow-hidden rounded-2xl border border-[var(--line)] bg-white/95 shadow-[0_14px_40px_rgba(17,16,15,0.12)] backdrop-blur md:left-[calc(var(--admin-sidebar-width)+1.5rem)] md:right-6 md:mx-auto md:max-w-[1460px]">
+        <section className="fixed bottom-3 left-3 right-3 z-40 overflow-hidden rounded-[18px] border border-[var(--line)] bg-white/95 shadow-[0_18px_55px_rgba(17,16,15,0.14)] backdrop-blur md:left-[calc(var(--admin-sidebar-width)+1.5rem)] md:right-6 md:mx-auto md:max-w-[1460px]">
         {isSummaryOpen && (
-          <div id="orders-day-summary" className="max-h-[55vh] overflow-y-auto border-b border-[var(--line)] bg-[#fffdfa] p-3 md:p-4">
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-              {[
-                { label: "Faturamento", value: formatPrice(summary.revenue), helper: "Sem pedidos cancelados", icon: <WalletCards key="revenue" size={18} />, tone: "bg-orange-50 text-[var(--brand)]" },
-                { label: "Ticket médio", value: formatPrice(summary.averageTicket), helper: `${summary.count} pedidos no período`, icon: <WalletCards key="average" size={18} />, tone: "bg-blue-50 text-blue-600" },
-                { label: "Cancelados", value: summary.canceled, helper: selectedDateLabel, icon: <XCircle key="canceled" size={18} />, tone: "bg-red-50 text-red-600" },
-                { label: "Pedidos visíveis", value: summary.visibleCount, helper: "Conforme filtros aplicados", icon: <Eye key="visible" size={18} />, tone: "bg-emerald-50 text-emerald-600" },
-              ].map((metric) => (
-                <div key={metric.label} className="flex min-h-[78px] items-center gap-3 rounded-2xl border border-[var(--line)] bg-white px-3.5 py-3">
-                  <span className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${metric.tone}`}>{metric.icon}</span>
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold uppercase tracking-[0.08em] text-gray-400">{metric.label}</p>
-                    <p className="mt-0.5 truncate text-lg font-black text-gray-950">{metric.value}</p>
-                    <p className="truncate text-[11px] font-semibold text-gray-500">{metric.helper}</p>
-                  </div>
+          <div className="max-h-[70vh] overflow-y-auto border-b border-[var(--line)] p-3 md:p-4">
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-6">
+              {STAT_CARDS.map((card) => {
+                const count = summary[card.id];
+                const meta = STATUS_META[card.id];
+
+                return (
+                  <button
+                    type="button"
+                    key={card.id}
+                    onClick={() => setActiveStatus(card.id)}
+                    className={`flex min-h-[64px] items-center justify-between rounded-[16px] border bg-white px-3 py-2.5 text-left transition hover:border-orange-200 ${
+                      activeStatus === card.id ? "border-orange-300 ring-2 ring-orange-50" : "border-[var(--line)]"
+                    }`}
+                  >
+                    <span className="flex min-w-0 items-center gap-3">
+                      <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${card.tone}`}>
+                        {meta.icon}
+                      </span>
+                      <span className="truncate text-sm font-bold text-gray-600">{card.title}</span>
+                    </span>
+                    <span className="rounded-full bg-gray-100 px-2.5 py-1 text-sm font-black text-gray-950">
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+
+              <div className="flex min-h-[70px] items-center gap-3 rounded-[16px] border border-[var(--line)] bg-white px-4 py-3">
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-orange-50 text-[var(--brand)]">
+                  <WalletCards size={18} />
+                </span>
+                <div>
+                  <p className="text-sm font-bold text-gray-500">{isCurrentDate ? "Valor de hoje" : "Valor do dia"}</p>
+                  <p className="text-lg font-black text-gray-950">{formatPrice(summary.revenue)}</p>
                 </div>
-              ))}
+              </div>
+            </div>
+
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-2xl border border-[var(--line)] p-4">
+                <p className="text-sm font-bold text-gray-500">Total de pedidos</p>
+                <p className="mt-2 text-2xl font-black text-gray-950">{summary.count}</p>
+                <p className="mt-1 text-xs font-bold text-emerald-600">
+                  {isCurrentDate ? "Online agora" : selectedDateLabel}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-[var(--line)] p-4">
+                <p className="text-sm font-bold text-gray-500">Faturamento</p>
+                <p className="mt-2 text-2xl font-black text-gray-950">{formatPrice(summary.revenue)}</p>
+                <p className="mt-1 text-xs font-bold text-emerald-600">Sem cancelados</p>
+              </div>
+              <div className="rounded-2xl border border-[var(--line)] p-4">
+                <p className="text-sm font-bold text-gray-500">Cancelados</p>
+                <p className="mt-2 text-2xl font-black text-gray-950">{summary.canceled}</p>
+                <p className="mt-1 text-xs font-bold text-gray-500">{selectedDateLabel}</p>
+              </div>
+              <div className="rounded-2xl border border-[var(--line)] p-4">
+                <p className="text-sm font-bold text-gray-500">Ticket médio</p>
+                <p className="mt-2 text-2xl font-black text-gray-950">{formatPrice(summary.averageTicket)}</p>
+                <p className="mt-1 text-xs font-bold text-gray-500">{summary.visibleCount} visíveis</p>
+              </div>
             </div>
           </div>
         )}
@@ -1629,21 +1709,27 @@ export default function OrdersPage() {
         <button
           type="button"
           onClick={() => setIsSummaryOpen((current) => !current)}
-          className="flex min-h-[52px] w-full items-center justify-between gap-3 px-3 py-2 text-left md:px-4"
+          className="flex w-full flex-col gap-2 px-3 py-2.5 text-left sm:flex-row sm:items-center sm:justify-between md:px-4"
           aria-expanded={isSummaryOpen}
-          aria-controls="orders-day-summary"
         >
-          <div className="flex min-w-0 items-center gap-2 text-sm">
-            <span className="shrink-0 font-black text-gray-950">{summary.count} {summary.count === 1 ? "pedido" : "pedidos"}</span>
-            <span className="text-gray-300" aria-hidden="true">·</span>
-            <span className="truncate font-black text-[var(--brand)]">{formatPrice(summary.revenue)}</span>
-            <span className="hidden text-gray-300 sm:inline" aria-hidden="true">·</span>
-            <span className="hidden truncate font-bold text-gray-500 sm:inline">Ticket {formatPrice(summary.averageTicket)}</span>
+          <div>
+            <p className="text-base font-black text-gray-950 md:text-lg">Resumo do dia</p>
+            <p className="text-xs text-gray-500 md:text-sm">
+              {isCurrentDate ? "Atualizado em tempo real" : selectedDateLabel}
+            </p>
           </div>
-          <div className="flex shrink-0 items-center gap-2 text-xs font-black text-[var(--brand)]">
-            <span className="hidden sm:inline">{isSummaryOpen ? "Ocultar resumo" : "Ver resumo"}</span>
-            <span className={`inline-flex h-8 w-8 items-center justify-center rounded-xl border border-orange-200 bg-orange-50 transition-transform ${isSummaryOpen ? "rotate-180" : ""}`}>
-              <ChevronDown size={16} />
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+            <span className="rounded-xl bg-orange-50 px-2.5 py-1.5 text-xs font-black text-[var(--brand)] md:px-3 md:py-2 md:text-sm">
+              {summary.count} {summary.count === 1 ? "pedido" : "pedidos"}
+            </span>
+            <span className="rounded-xl bg-emerald-50 px-2.5 py-1.5 text-xs font-black text-emerald-700 md:px-3 md:py-2 md:text-sm">
+              {formatPrice(summary.revenue)}
+            </span>
+            <span className="rounded-xl bg-red-50 px-2.5 py-1.5 text-xs font-black text-red-700 md:px-3 md:py-2 md:text-sm">
+              {summary.canceled} {summary.canceled === 1 ? "cancelado" : "cancelados"}
+            </span>
+            <span className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--line)] bg-white text-gray-600 transition-transform ${isSummaryOpen ? "rotate-180" : ""}`}>
+              <ChevronDown size={18} />
             </span>
           </div>
         </button>
