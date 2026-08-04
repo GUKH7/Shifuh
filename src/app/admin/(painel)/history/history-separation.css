@@ -213,29 +213,29 @@
 @media (min-width: 1280px) {
   .history-page-scope .admin-page-shell {
     display: grid;
-    grid-template-columns: minmax(22rem, 0.8fr) minmax(42rem, 1.6fr);
-    column-gap: 1.25rem;
+    grid-template-columns: minmax(0, 1fr);
     align-items: start;
   }
 
   .history-page-scope .admin-page-header {
     grid-column: 1;
     grid-row: 1;
+    width: 100%;
     align-self: center;
-    align-items: stretch;
-    flex-direction: column;
-    gap: 0.75rem;
+    align-items: center;
+    justify-content: space-between;
+    flex-direction: row;
   }
 
   .history-page-scope .admin-page-header-main {
-    width: 100%;
-    align-items: flex-start;
+    width: auto;
+    align-items: center;
   }
 
   .history-page-scope .admin-page-header-action {
     width: auto;
-    margin-left: 4.5rem;
-    align-self: flex-start;
+    margin-left: auto;
+    align-self: center;
   }
 
   .history-page-scope .admin-page-shell > section {
@@ -243,20 +243,20 @@
   }
 
   .history-page-scope [class*="grid-cols-2"][class*="xl:grid-cols-4"] {
-    grid-column: 2;
-    grid-row: 1;
+    grid-column: 1;
+    grid-row: 2;
   }
 
   .history-page-scope .admin-page-shell > section > div:first-child {
-    grid-column: 1 / -1;
-    grid-row: 2;
+    grid-column: 1;
+    grid-row: 3;
     margin-top: 0.25rem;
   }
 
   .history-page-scope .admin-page-shell > section > .admin-filter-panel,
   .history-page-scope .admin-page-shell > section > div.flex.items-center,
   .history-page-scope .admin-page-shell > section > div:has(> .admin-table-header) {
-    grid-column: 1 / -1;
+    grid-column: 1;
   }
 }
 
