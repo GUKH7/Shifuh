@@ -323,7 +323,7 @@ export function HistoryWorkspace() {
   const [sortDirection, setSortDirection] = useState<Exclude<SortDirection, null>>("desc");
   const [page, setPage] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [expandedDateKey, setExpandedDateKey] = useState<string | null>(null);
+  const [expandedDateKeys, setExpandedDateKeys] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -483,7 +483,7 @@ export function HistoryWorkspace() {
   }, [groupedOrders]);
 
   useEffect(() => {
-    setExpandedDateKey(latestGroupKey);
+    setExpandedDateKeys(latestGroupKey ? new Set([latestGroupKey]) : new Set());
   }, [
     latestGroupKey,
     page,
@@ -538,7 +538,15 @@ export function HistoryWorkspace() {
   };
 
   const toggleDateGroup = (key: string) => {
-    setExpandedDateKey((current) => (current === key ? null : key));
+    setExpandedDateKeys((current) => {
+      const next = new Set(current);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
   };
 
   const clearFilters = () => {
@@ -759,7 +767,7 @@ export function HistoryWorkspace() {
             />
           ) : (
             groupedOrders.map((group) => {
-              const isCollapsed = expandedDateKey !== group.key;
+              const isCollapsed = !expandedDateKeys.has(group.key);
 
               return (
                 <section key={group.key} className="border-b border-[var(--line)] last:border-b-0">
