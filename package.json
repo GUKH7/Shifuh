@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "node scripts/patch-history-multiple-dates.mjs",
     "dev": "next dev",
+    "prebuild": "node scripts/patch-history-multiple-dates.mjs",
     "build": "next build",
     "test": "node --test --test-concurrency=1",
     "test:e2e": "cross-env NEXT_DIST_DIR=.next-e2e next build && playwright test",
