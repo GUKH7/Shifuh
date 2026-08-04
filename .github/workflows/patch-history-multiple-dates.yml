@@ -1,0 +1,76 @@
+name: Patch history multiple dates
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/patch-history-multiple-dates.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Permitir múltiplas datas abertas
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/app/admin/(painel)/history/HistoryWorkspace.tsx')
+          content = path.read_text(encoding='utf-8')
+
+          replacements = {
+              'const [expandedDateKey, setExpandedDateKey] = useState<string | null>(null);':
+                  'const [expandedDateKeys, setExpandedDateKeys] = useState<string[]>([]);',
+              'setExpandedDateKey(latestGroupKey);':
+                  'setExpandedDateKeys(latestGroupKey ? [latestGroupKey] : []);',
+              '''const toggleDateGroup = (key: string) => {
+    setExpandedDateKey((current) => (current === key ? null : key));
+  };''':
+                  '''const toggleDateGroup = (key: string) => {
+    setExpandedDateKeys((current) =>
+      current.includes(key)
+        ? current.filter((item) => item !== key)
+        : [...current, key],
+    );
+  };''',
+              'const isCollapsed = expandedDateKey !== group.key;':
+                  'const isCollapsed = !expandedDateKeys.includes(group.key);',
+          }
+
+          for old, new in replacements.items():
+              if old not in content:
+                  raise SystemExit(f'Trecho esperado não encontrado: {old[:80]}')
+              content = content.replace(old, new, 1)
+
+          path.write_text(content, encoding='utf-8')
+          PY
+
+      - name: Atualizar teste de regressão
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('tests/admin-history-mobile-density.test.js')
+          content = path.read_text(encoding='utf-8')
+          marker = 'test("datas podem permanecer abertas simultaneamente", () => {'
+          if marker not in content:
+              content += '''\n\ntest("datas podem permanecer abertas simultaneamente", () => {\n  assert.match(history, /expandedDateKeys/);\n  assert.match(history, /current\.includes\(key\)/);\n  assert.match(history, /\.\.\.current, key/);\n  assert.doesNotMatch(history, /expandedDateKey !== group\.key/);\n});\n'''
+          path.write_text(content, encoding='utf-8')
+          PY
+
+      - name: Commitar correção e remover workflow temporário
+        run: |
+          git config user.name "GUKH7"
+          git config user.email "keiohirakawa@gmail.com"
+          git rm .github/workflows/patch-history-multiple-dates.yml
+          git add 'src/app/admin/(painel)/history/HistoryWorkspace.tsx' tests/admin-history-mobile-density.test.js
+          git commit -m "fix(history): permite múltiplas datas expandidas"
+          git push origin main
