@@ -132,37 +132,65 @@
 
 .menu-product-edit {
   display: inline-flex;
-  width: max-content;
-  min-width: 6rem !important;
+  width: var(--admin-control-height);
+  min-width: var(--admin-control-height) !important;
   min-height: var(--admin-control-height);
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  padding-inline: 1rem !important;
-  border-color: rgba(255, 90, 31, 0.28) !important;
-  background-color: #fff !important;
-  color: var(--brand) !important;
+  gap: 0;
+  overflow: hidden;
+  padding-inline: 0 !important;
+  border-color: var(--line) !important;
+  background-color: #fbf7f2 !important;
+  color: #6b7280 !important;
   line-height: 1;
   white-space: nowrap;
-  box-shadow: 0 1px 2px rgba(17, 16, 15, 0.05);
-  transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+  box-shadow: 0 1px 2px rgba(17, 16, 15, 0.04);
+  transition:
+    width 180ms ease,
+    min-width 180ms ease,
+    gap 180ms ease,
+    padding 180ms ease,
+    border-color 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
 }
 
-.menu-product-edit:hover {
+.menu-product-edit:hover,
+.menu-product-edit:focus-visible {
+  width: 6.25rem;
+  min-width: 6.25rem !important;
+  gap: 0.5rem;
+  padding-inline: 0.875rem !important;
   border-color: var(--brand) !important;
   background-color: var(--brand-soft) !important;
+  color: var(--brand) !important;
   box-shadow: 0 4px 12px rgba(255, 90, 31, 0.12);
   transform: translateY(-1px);
 }
 
 .menu-product-edit-label {
   display: inline-block;
-  width: max-content;
-  min-width: max-content;
+  width: auto;
+  max-width: 0;
+  min-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateX(-0.25rem);
   white-space: nowrap;
   overflow-wrap: normal;
   word-break: keep-all;
+  transition: max-width 180ms ease, opacity 150ms ease, transform 180ms ease;
+}
+
+.menu-product-edit:hover .menu-product-edit-label,
+.menu-product-edit:focus-visible .menu-product-edit-label {
+  max-width: 3.25rem;
+  opacity: 1;
+  transform: translateX(0);
 }
 
 @media (max-width: 1023px) {
@@ -191,9 +219,12 @@
     margin-left: auto;
   }
 
-  .menu-product-edit {
+  .menu-product-edit,
+  .menu-product-edit:hover,
+  .menu-product-edit:focus-visible {
     width: var(--admin-control-height);
     min-width: var(--admin-control-height) !important;
+    gap: 0;
     padding-inline: 0 !important;
   }
 
