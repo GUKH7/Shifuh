@@ -1,5 +1,5 @@
 import { HistoryWorkspace } from "./HistoryWorkspace";
-import "./history-separation.css";
+import "./history-divider.css";
 
 export default function HistoryLayout() {
   return (
