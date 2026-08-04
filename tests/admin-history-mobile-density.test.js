@@ -30,6 +30,18 @@ test("pedidos usam resumo compacto e detalhes expansíveis no mobile e desktop",
   assert.match(history, /grid items-start gap-4 lg:grid-cols-\[minmax\(0,1\.45fr\)_minmax\(300px,0\.8fr\)\]/);
 });
 
+test("apenas a data mais recente inicia expandida", () => {
+  assert.match(history, /expandedDateKey/);
+  assert.match(history, /const latestGroupKey = useMemo/);
+  assert.match(history, /const isCollapsed = expandedDateKey !== group\.key/);
+  assert.match(
+    history,
+    /setExpandedDateKey\(\(current\) => \(current === key \? null : key\)\)/,
+  );
+  assert.doesNotMatch(history, /Recolher datas/);
+  assert.doesNotMatch(history, /Expandir datas/);
+});
+
 test("exportação mantém rótulo visível e largura consistente no celular", () => {
   assert.match(history, /aria-label="Exportar histórico"/);
   assert.match(history, /h-11 w-full px-4 sm:w-auto/);
