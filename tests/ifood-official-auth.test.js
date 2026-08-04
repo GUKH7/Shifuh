@@ -4,6 +4,10 @@ const fs = require("node:fs");
 
 const catalog = fs.readFileSync("src/lib/ifood/catalog.ts", "utf8");
 const store = fs.readFileSync("src/lib/ifood/auth-store.ts", "utf8");
+const tokenConfig = fs.readFileSync(
+  "src/lib/ifood/token-encryption-config.ts",
+  "utf8",
+);
 const diagnostics = fs.readFileSync(
   "src/app/api/integrations/ifood/diagnostics/route.ts",
   "utf8",
@@ -15,7 +19,9 @@ test("token oficial do iFood possui cache persistente e renovação coordenada",
   assert.match(catalog, /persistIfoodToken/);
   assert.match(catalog, /tokenRequest/);
   assert.match(store, /aes-256-gcm/);
-  assert.match(store, /IFOOD_TOKEN_ENCRYPTION_KEY/);
+  assert.match(tokenConfig, /IFOOD_TOKEN_ENCRYPTION_KEY/);
+  assert.match(store, /requireIfoodTokenEncryptionKey/);
+  assert.match(catalog, /isIfoodTokenEncryptionKeyConfigured/);
 });
 
 test("diagnóstico não devolve segredo ou prévia do token", () => {

@@ -250,7 +250,7 @@ export default function OrdersWorkspace() {
       }
     };
 
-    const interval = window.setInterval(sync, 15_000);
+    const interval = window.setInterval(sync, 60_000);
     return () => window.clearInterval(interval);
   }, [fetchOrders, restaurant?.id]);
 

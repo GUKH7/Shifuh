@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { syncIfoodOrdersWithResilience } from "@/lib/ifood/order-sync-resilience";
+import {
+  summarizeIfoodCronResults,
+  type IfoodCronResult,
+} from "@/lib/ifood/cron-result";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -37,7 +41,7 @@ export async function GET(request: Request) {
     (integration: { restaurant_id?: string; merchant_id?: string }) =>
       Boolean(integration.restaurant_id && integration.merchant_id),
   );
-  const results: Array<Record<string, unknown>> = [];
+  const results: Array<IfoodCronResult & Record<string, unknown>> = [];
 
   for (let index = 0; index < queue.length; index += CONCURRENCY) {
     const batch = queue.slice(index, index + CONCURRENCY);
@@ -76,17 +80,15 @@ export async function GET(request: Request) {
     results.push(...batchResults);
   }
 
-  const succeeded = results.filter((result) => result.ok).length;
-  const failed = results.length - succeeded;
-  const status = failed === 0 ? "success" : succeeded > 0 ? "partial_success" : "error";
+  const { httpStatus, ...summary } = summarizeIfoodCronResults(results);
 
-  return NextResponse.json({
-    ok: failed === 0,
-    status,
-    integrationsChecked: queue.length,
-    integrationsSucceeded: succeeded,
-    integrationsFailed: failed,
-    durationMs: Date.now() - startedAt,
-    results,
-  });
+  return NextResponse.json(
+    {
+      ...summary,
+      integrationsChecked: queue.length,
+      durationMs: Date.now() - startedAt,
+      results,
+    },
+    { status: httpStatus },
+  );
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { syncIfoodOrdersForRestaurant } from "@/lib/ifood/order-sync";
 import { getIfoodMerchantStatus } from "@/lib/ifood/merchant";
+import { summarizeIfoodCronResults } from "@/lib/ifood/cron-result";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -18,6 +19,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
   }
 
+  const startedAt = Date.now();
   const admin = createAdminClient();
   const { data: integrations, error } = await admin
     .from("ifood_integrations")
@@ -66,9 +68,15 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({
-    ok: results.every((result) => result.ok),
-    integrationsChecked: integrations?.length || 0,
-    results,
-  });
+  const { httpStatus, ...summary } = summarizeIfoodCronResults(results);
+
+  return NextResponse.json(
+    {
+      ...summary,
+      integrationsChecked: integrations?.length || 0,
+      durationMs: Date.now() - startedAt,
+      results,
+    },
+    { status: httpStatus },
+  );
 }

@@ -80,6 +80,10 @@ type IfoodAction =
   | "cancellation_reasons"
   | "request_cancellation";
 
+const IFOOD_SYNC_BASE_DELAY_MS = 60_000;
+const IFOOD_SYNC_MAX_DELAY_MS = 5 * 60_000;
+const ORDERS_FALLBACK_REFRESH_MS = 60_000;
+
 const STATUS_META: Record<OrderStatus, {
   icon: ReactNode;
 }> = {
@@ -348,10 +352,13 @@ export default function OrdersPage() {
 
     let isRunning = false;
     let isCancelled = false;
+    let consecutiveFailures = 0;
+    let timeoutId: number | undefined;
 
     const syncIfoodOrders = async () => {
-      if (isRunning) return;
+      if (isRunning || isCancelled) return;
       isRunning = true;
+      let succeeded = false;
 
       try {
         const response = await fetch("/api/integrations/ifood/orders/sync", {
@@ -361,25 +368,30 @@ export default function OrdersPage() {
           },
           body: JSON.stringify({ restaurantId }),
         });
-
-        if (response.ok && !isCancelled) {
-          await fetchOrders(false);
-        }
-      } catch (error) {
-        console.warn("Falha ao sincronizar pedidos iFood automaticamente:", error);
+        succeeded = response.ok;
+      } catch {
+        succeeded = false;
       } finally {
         isRunning = false;
+
+        if (!isCancelled) {
+          consecutiveFailures = succeeded ? 0 : consecutiveFailures + 1;
+          const backoffMultiplier = 2 ** Math.max(0, consecutiveFailures - 1);
+          const delayMs = Math.min(
+            IFOOD_SYNC_BASE_DELAY_MS * backoffMultiplier,
+            IFOOD_SYNC_MAX_DELAY_MS,
+          );
+          timeoutId = window.setTimeout(syncIfoodOrders, delayMs);
+        }
       }
     };
 
     void syncIfoodOrders();
-    const intervalId = window.setInterval(syncIfoodOrders, 10000);
 
     return () => {
       isCancelled = true;
-      window.clearInterval(intervalId);
+      if (timeoutId) window.clearTimeout(timeoutId);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCurrentDate, restaurantId]);
 
   useEffect(() => {
@@ -392,7 +404,7 @@ export default function OrdersPage() {
       if (document.visibilityState === "visible") refreshOrders();
     };
 
-    const intervalId = window.setInterval(refreshOrders, 12000);
+    const intervalId = window.setInterval(refreshOrders, ORDERS_FALLBACK_REFRESH_MS);
     window.addEventListener("focus", refreshOrders);
     document.addEventListener("visibilitychange", handleVisibilityChange);
 

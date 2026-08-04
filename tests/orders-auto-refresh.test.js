@@ -13,8 +13,17 @@ test("cliente Supabase permanece estável durante renderizações", () => {
 });
 
 test("pedidos têm atualização de contingência e ao recuperar foco", () => {
-  assert.match(page, /window\.setInterval\(refreshOrders, 12000\)/);
+  assert.match(page, /ORDERS_FALLBACK_REFRESH_MS = 60_000/);
+  assert.match(page, /window\.setInterval\(refreshOrders, ORDERS_FALLBACK_REFRESH_MS\)/);
   assert.match(page, /window\.addEventListener\("focus", refreshOrders\)/);
   assert.match(page, /document\.addEventListener\("visibilitychange", handleVisibilityChange\)/);
   assert.match(page, /void fetchOrders\(false\)/);
+});
+
+test("sincronização do iFood usa intervalo maior e backoff progressivo", () => {
+  assert.match(page, /IFOOD_SYNC_BASE_DELAY_MS = 60_000/);
+  assert.match(page, /IFOOD_SYNC_MAX_DELAY_MS = 5 \* 60_000/);
+  assert.match(page, /consecutiveFailures/);
+  assert.match(page, /window\.setTimeout\(syncIfoodOrders, delayMs\)/);
+  assert.doesNotMatch(page, /setInterval\(syncIfoodOrders, 10000\)/);
 });

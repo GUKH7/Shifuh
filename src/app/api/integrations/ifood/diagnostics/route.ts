@@ -5,6 +5,7 @@ import {
   validateIfoodCredentials,
 } from "@/lib/ifood/catalog";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { isIfoodTokenEncryptionKeyConfigured } from "@/lib/ifood/token-encryption-config";
 
 export const runtime = "nodejs";
 
@@ -47,7 +48,7 @@ export async function GET(request: Request) {
           environment: process.env.VERCEL_ENV || process.env.NODE_ENV || "development",
           clientIdConfigured: Boolean(process.env.IFOOD_CLIENT_ID?.trim()),
           clientSecretConfigured: Boolean(process.env.IFOOD_CLIENT_SECRET?.trim()),
-          encryptionKeyConfigured: Boolean(process.env.IFOOD_TOKEN_ENCRYPTION_KEY?.trim()),
+          encryptionKeyConfigured: isIfoodTokenEncryptionKeyConfigured(),
         },
       },
       { status: safeError.code === "missing_credentials" ? 503 : 502 },

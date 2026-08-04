@@ -1,5 +1,6 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/server";
+import { requireIfoodTokenEncryptionKey } from "@/lib/ifood/token-encryption-config";
 
 const TOKEN_SCOPE = process.env.VERCEL_ENV || process.env.NODE_ENV || "development";
 const SAFETY_WINDOW_MS = 60_000;
@@ -10,10 +11,7 @@ type StoredToken = {
 };
 
 function encryptionKey() {
-  const secret = process.env.IFOOD_TOKEN_ENCRYPTION_KEY?.trim();
-  if (!secret || secret.length < 32) {
-    throw new Error("IFOOD_TOKEN_ENCRYPTION_KEY deve ter pelo menos 32 caracteres.");
-  }
+  const secret = requireIfoodTokenEncryptionKey();
   return createHash("sha256").update(secret).digest();
 }
 

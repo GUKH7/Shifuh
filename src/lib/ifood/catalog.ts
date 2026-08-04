@@ -3,6 +3,10 @@ import {
   persistIfoodToken,
   readPersistedIfoodToken,
 } from "@/lib/ifood/auth-store";
+import {
+  isIfoodTokenEncryptionKeyConfigured,
+  requireIfoodTokenEncryptionKey,
+} from "@/lib/ifood/token-encryption-config";
 
 const IFOOD_MERCHANT_API_BASE_URL =
   process.env.IFOOD_MERCHANT_API_BASE_URL || "https://merchant-api.ifood.com.br";
@@ -84,6 +88,17 @@ function memoryToken() {
 
 async function requestIfoodAccessToken(): Promise<CachedIfoodToken> {
   const { clientId, clientSecret } = getIfoodCredentials();
+  try {
+    requireIfoodTokenEncryptionKey();
+  } catch (error) {
+    throw new IfoodAuthenticationError(
+      "token_storage",
+      error instanceof Error
+        ? error.message
+        : "A chave de criptografia do token do iFood está inválida.",
+    );
+  }
+
   const response = await fetch(IFOOD_AUTH_URL, {
     method: "POST",
     headers: { Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded" },
@@ -108,8 +123,7 @@ async function requestIfoodAccessToken(): Promise<CachedIfoodToken> {
   const expiresAt = Date.now() + Math.max((data.expiresIn || 21_600) * 1000, 300_000);
   try {
     await persistIfoodToken(data.accessToken, expiresAt);
-  } catch (error) {
-    logAuthenticationFailure(error);
+  } catch {
     throw new IfoodAuthenticationError("token_storage", "O token foi obtido, mas não pôde ser armazenado com segurança.");
   }
 
@@ -150,7 +164,7 @@ export async function validateIfoodCredentials() {
     environment: getIfoodTokenEnvironment(),
     clientIdConfigured: Boolean(process.env.IFOOD_CLIENT_ID?.trim()),
     clientSecretConfigured: Boolean(process.env.IFOOD_CLIENT_SECRET?.trim()),
-    encryptionKeyConfigured: Boolean(process.env.IFOOD_TOKEN_ENCRYPTION_KEY?.trim()),
+    encryptionKeyConfigured: isIfoodTokenEncryptionKeyConfigured(),
     tokenSource: cachedToken?.source || "unknown",
     expiresAt: cachedToken ? new Date(cachedToken.expiresAt).toISOString() : null,
     latencyMs: Date.now() - startedAt,
