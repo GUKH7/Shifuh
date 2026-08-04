@@ -1,0 +1,7 @@
+.history-page-scope .admin-table-header ~ section > button[aria-expanded="true"] {
+  border-bottom: 1px solid var(--line);
+}
+
+.history-page-scope .admin-table-header ~ section > button[aria-expanded="true"] + .divide-y {
+  background: #ffffff;
+}
