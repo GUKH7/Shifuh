@@ -193,6 +193,86 @@
   transform: translateX(0);
 }
 
+.menu-product-actions > button[title="Pausar vendas"],
+.menu-product-actions > button[title="Ativar vendas"] {
+  display: inline-flex;
+  width: var(--admin-control-height);
+  min-width: var(--admin-control-height) !important;
+  min-height: var(--admin-control-height);
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  overflow: hidden;
+  padding: 0 !important;
+  border: 1px solid var(--line) !important;
+  background-color: #fbf7f2 !important;
+  color: #6b7280 !important;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(17, 16, 15, 0.04);
+  transition:
+    width 180ms ease,
+    min-width 180ms ease,
+    gap 180ms ease,
+    padding 180ms ease,
+    border-color 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.menu-product-actions > button[title="Pausar vendas"]::after {
+  content: "Pausar";
+}
+
+.menu-product-actions > button[title="Ativar vendas"]::after {
+  content: "Ativar";
+}
+
+.menu-product-actions > button[title="Pausar vendas"]::after,
+.menu-product-actions > button[title="Ativar vendas"]::after {
+  display: inline-block;
+  width: auto;
+  max-width: 0;
+  min-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateX(-0.25rem);
+  white-space: nowrap;
+  transition: max-width 180ms ease, opacity 150ms ease, transform 180ms ease;
+}
+
+.menu-product-actions > button[title="Pausar vendas"]:hover,
+.menu-product-actions > button[title="Pausar vendas"]:focus-visible,
+.menu-product-actions > button[title="Ativar vendas"]:hover,
+.menu-product-actions > button[title="Ativar vendas"]:focus-visible {
+  width: 6.5rem;
+  min-width: 6.5rem !important;
+  gap: 0.5rem;
+  padding-inline: 0.875rem !important;
+  border-color: var(--brand) !important;
+  background-color: var(--brand-soft) !important;
+  color: var(--brand) !important;
+  box-shadow: 0 4px 12px rgba(255, 90, 31, 0.12);
+  transform: translateY(-1px);
+}
+
+.menu-product-actions > button[title="Pausar vendas"]:hover::after,
+.menu-product-actions > button[title="Pausar vendas"]:focus-visible::after,
+.menu-product-actions > button[title="Ativar vendas"]:hover::after,
+.menu-product-actions > button[title="Ativar vendas"]:focus-visible::after {
+  max-width: 3.5rem;
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.menu-product-actions > button[title="Pausar vendas"] svg,
+.menu-product-actions > button[title="Ativar vendas"] svg {
+  flex-shrink: 0;
+}
+
 @media (max-width: 1023px) {
   .admin-page-shell .overflow-x-auto {
     -webkit-overflow-scrolling: touch;
@@ -221,14 +301,22 @@
 
   .menu-product-edit,
   .menu-product-edit:hover,
-  .menu-product-edit:focus-visible {
+  .menu-product-edit:focus-visible,
+  .menu-product-actions > button[title="Pausar vendas"],
+  .menu-product-actions > button[title="Pausar vendas"]:hover,
+  .menu-product-actions > button[title="Pausar vendas"]:focus-visible,
+  .menu-product-actions > button[title="Ativar vendas"],
+  .menu-product-actions > button[title="Ativar vendas"]:hover,
+  .menu-product-actions > button[title="Ativar vendas"]:focus-visible {
     width: var(--admin-control-height);
     min-width: var(--admin-control-height) !important;
     gap: 0;
     padding-inline: 0 !important;
   }
 
-  .menu-product-edit-label {
+  .menu-product-edit-label,
+  .menu-product-actions > button[title="Pausar vendas"]::after,
+  .menu-product-actions > button[title="Ativar vendas"]::after {
     display: none;
   }
 }
