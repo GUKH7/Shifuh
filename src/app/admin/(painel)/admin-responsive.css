@@ -122,6 +122,47 @@
   overflow-wrap: anywhere;
 }
 
+.menu-product-actions {
+  min-width: max-content;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.menu-product-edit {
+  display: inline-flex;
+  width: max-content;
+  min-width: 6rem !important;
+  min-height: var(--admin-control-height);
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding-inline: 1rem !important;
+  border-color: rgba(255, 90, 31, 0.28) !important;
+  background-color: #fff !important;
+  color: var(--brand) !important;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(17, 16, 15, 0.05);
+  transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.menu-product-edit:hover {
+  border-color: var(--brand) !important;
+  background-color: var(--brand-soft) !important;
+  box-shadow: 0 4px 12px rgba(255, 90, 31, 0.12);
+  transform: translateY(-1px);
+}
+
+.menu-product-edit-label {
+  display: inline-block;
+  width: max-content;
+  min-width: max-content;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: keep-all;
+}
+
 @media (max-width: 1023px) {
   .admin-page-shell .overflow-x-auto {
     -webkit-overflow-scrolling: touch;
@@ -150,8 +191,8 @@
 
   .menu-product-edit {
     width: var(--admin-control-height);
-    min-width: var(--admin-control-height);
-    padding-inline: 0;
+    min-width: var(--admin-control-height) !important;
+    padding-inline: 0 !important;
   }
 
   .menu-product-edit-label {
