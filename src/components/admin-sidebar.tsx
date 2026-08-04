@@ -177,7 +177,7 @@ export default function AdminSidebar({
             target="_blank"
             onClick={closeMobileSidebar}
             title={isCollapsed ? "Ver vitrine" : undefined}
-            className={`mb-2 flex w-full items-center gap-3 rounded-2xl bg-[#171311] px-4 py-3 text-sm font-bold text-white transition-all hover:bg-black ${desktopItemLayout}`}
+            className={`group mb-2 flex w-full items-center gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700 shadow-sm transition-colors hover:border-[#171311] hover:bg-[#171311] hover:text-white focus-visible:border-[#171311] focus-visible:bg-[#171311] focus-visible:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-200 ${desktopItemLayout}`}
           >
             <ExternalLink size={18} className="shrink-0" />
             <span className={desktopLabelVisibility}>Ver vitrine</span>
@@ -197,9 +197,9 @@ export default function AdminSidebar({
           type="button"
           onClick={handleLogout}
           title={isCollapsed ? "Sair" : undefined}
-          className={`group flex w-full items-center gap-3 rounded-2xl border border-red-700 bg-red-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition-all hover:bg-red-700 ${desktopItemLayout}`}
+          className={`group flex w-full items-center gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700 shadow-sm transition-colors hover:border-red-600 hover:bg-red-600 hover:text-white focus-visible:border-red-600 focus-visible:bg-red-600 focus-visible:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-100 ${desktopItemLayout}`}
         >
-          <LogOut size={19} className="shrink-0 text-white" />
+          <LogOut size={19} className="shrink-0" />
           <span className={desktopLabelVisibility}>Sair</span>
         </button>
       </div>
