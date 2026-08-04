@@ -9,6 +9,7 @@ permissions:
 
 jobs:
   restore:
+    # Este fluxo é temporário e se remove após restaurar somente a página de Pedidos.
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
