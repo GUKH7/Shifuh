@@ -9,6 +9,7 @@ import {
   getCheckoutAddressErrors,
   getChangeForError,
   isStorefrontPaymentMethod,
+  normalizeStorefrontPaymentMethods,
   parseCurrencyInput,
 } from "@/features/storefront/checkout-format";
 
@@ -174,7 +175,7 @@ export async function POST(request: Request) {
     const fulfillmentType = body.fulfillmentType === "pickup" ? "pickup" : "delivery";
 
     if (!body.restaurantId) {
-    return NextResponse.json({ error: "Loja inválida." }, { status: 400 });
+      return NextResponse.json({ error: "Loja inválida." }, { status: 400 });
     }
 
     if (!body.customerName?.trim() || !body.customerPhone?.trim()) {
@@ -222,16 +223,30 @@ export async function POST(request: Request) {
     } = await supabase.auth.getUser();
 
     const adminSupabase = createAdminClient();
-    const { data: restaurant, error: restaurantError } = await adminSupabase
+    const { data: restaurant, error: restaurantError } = await (adminSupabase as any)
       .from("restaurants")
       .select(
-        "id, name, phone, whatsapp_number, latitude, longitude, address_zip, address_street, address_number, address_neighborhood, address_city, address_state, delivery_tiers, work_hours, minimum_order_amount, scheduled_orders_enabled, scheduled_order_lead_minutes, pickup_enabled",
+        "id, name, phone, whatsapp_number, latitude, longitude, address_zip, address_street, address_number, address_neighborhood, address_city, address_state, delivery_tiers, work_hours, minimum_order_amount, scheduled_orders_enabled, scheduled_order_lead_minutes, pickup_enabled, accepted_payment_methods",
       )
       .eq("id", body.restaurantId)
       .maybeSingle();
 
     if (restaurantError || !restaurant) {
-    return NextResponse.json({ error: "Loja não encontrada." }, { status: 404 });
+      return NextResponse.json({ error: "Loja não encontrada." }, { status: 404 });
+    }
+
+    const acceptedPaymentMethods = normalizeStorefrontPaymentMethods(
+      restaurant.accepted_payment_methods,
+    );
+    if (!acceptedPaymentMethods.includes(paymentMethod)) {
+      return NextResponse.json(
+        {
+          code: "PAYMENT_METHOD_UNAVAILABLE",
+          error: "A forma de pagamento escolhida não está disponível nesta loja.",
+          acceptedPaymentMethods,
+        },
+        { status: 400 },
+      );
     }
 
     if (fulfillmentType === "pickup" && !restaurant.pickup_enabled) {
@@ -338,8 +353,6 @@ export async function POST(request: Request) {
       const quantity = Math.max(1, Math.floor(Number(item.quantity) || 1));
       const product = productsById.get(item.productId);
 
-      // Products are checked together above so every unavailable line from a
-      // persisted cart can be removed in a single retry.
       if (!product) continue;
 
       const { normalized, addonTotal } = resolveAddonSelection(
@@ -494,6 +507,7 @@ export async function POST(request: Request) {
       }
       normalizedChangeFor = changeAmount.toFixed(2);
     }
+
     const orderAddress = {
       ...(fulfillmentType === "pickup" ? {
         cep: restaurant.address_zip || "",
@@ -509,6 +523,7 @@ export async function POST(request: Request) {
       delivery_calculated: fulfillmentType === "delivery",
       distance_method: fulfillmentType === "delivery" ? "straight_line" : null,
     };
+
     const transactionItems = normalizedItems.map((item) => ({
       product_name: item.product_name,
       quantity: item.quantity,
@@ -562,7 +577,7 @@ export async function POST(request: Request) {
           updated_at: new Date().toISOString(),
         });
 
-        if (body.saveAddress === true && !body.usingSavedAddress) {
+        if (body.saveAddress === true && !body.usingSavedAddress && fulfillmentType === "delivery") {
           await (supabase as any).from("customer_addresses").insert({
             user_id: user!.id,
             cep: address.cep,
@@ -574,7 +589,6 @@ export async function POST(request: Request) {
             complement: address.complement,
           });
         }
-
       } catch (profileError) {
         console.error("Falha ao sincronizar perfil/endereço do cliente:", profileError);
       }
@@ -608,7 +622,7 @@ export async function POST(request: Request) {
       changeFor: normalizedChangeFor,
       scheduledFor: scheduledFor?.toISOString() || null,
       fulfillmentType,
-      address,
+      address: orderAddress,
       items: normalizedItems,
     });
     if (customerSession) {
