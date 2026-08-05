@@ -5,10 +5,17 @@ import type { PublicStorefrontData } from "@/features/storefront/public-storefro
 import type { Product } from "@/features/storefront/types";
 import { createClient } from "@/lib/supabase/server";
 
+export function isPublicStorefrontConfigured() {
+  return Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  );
+}
+
 export const getPublicStorefrontData = cache(
   async (slug: string): Promise<PublicStorefrontData | null> => {
     const normalizedSlug = slug.trim().toLowerCase();
-    if (!normalizedSlug) return null;
+    if (!normalizedSlug || !isPublicStorefrontConfigured()) return null;
 
     const supabase = (await createClient()) as any;
     const { data: restaurant, error: restaurantError } = await supabase
