@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { StorefrontInitialDataProvider } from "@/features/storefront/StorefrontInitialDataProvider";
-import { getPublicStorefrontData } from "@/lib/storefront/public-data";
+import { StorefrontUnavailableState } from "@/features/storefront/StorefrontUnavailableState";
+import {
+  getPublicStorefrontData,
+  isPublicStorefrontConfigured,
+} from "@/lib/storefront/public-data";
 import styles from "./layout.module.css";
 
 export const revalidate = 60;
@@ -26,9 +30,19 @@ function getPublicOrigin() {
 export async function generateMetadata({
   params,
 }: Pick<StorefrontLayoutProps, "params">): Promise<Metadata> {
+  const origin = getPublicOrigin();
+
+  if (!isPublicStorefrontConfigured()) {
+    return {
+      metadataBase: new URL(origin),
+      title: "Vitrine indisponível | Gestor Delivery",
+      description: "Ambiente sem configuração pública da vitrine.",
+      robots: { index: false, follow: false },
+    };
+  }
+
   const { slug } = await params;
   const data = await getPublicStorefrontData(slug);
-  const origin = getPublicOrigin();
 
   if (!data) {
     return {
@@ -82,6 +96,14 @@ export default async function StorefrontLayout({
   children,
   params,
 }: StorefrontLayoutProps) {
+  if (!isPublicStorefrontConfigured()) {
+    return (
+      <div className={styles.scope}>
+        <StorefrontUnavailableState />
+      </div>
+    );
+  }
+
   const { slug } = await params;
   const data = await getPublicStorefrontData(slug);
 
