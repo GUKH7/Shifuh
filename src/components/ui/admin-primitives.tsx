@@ -87,6 +87,16 @@ export function AdminPageHeader({
             white-space: nowrap;
           }
         }
+
+        @media (max-width: 767px) {
+          .admin-panel-content:has([aria-label="Filtrar pedidos por situação"]) {
+            padding-top: 0.5rem !important;
+          }
+
+          .admin-panel-content:has([aria-label="Filtrar pedidos por situação"]) > .admin-page-shell {
+            margin-top: 0 !important;
+          }
+        }
       `}</style>
     </>
   );
