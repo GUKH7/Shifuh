@@ -59,6 +59,7 @@ export interface OrderResponse {
   paymentMethod: string;
   changeFor?: string | null;
   scheduledFor?: string | null;
+  fulfillmentType: FulfillmentType;
   address: CheckoutAddress;
   items: Array<{
     product_name: string;
