@@ -18,6 +18,7 @@ export function getOrderApiErrorMessage(code?: string) {
     SCHEDULING_DISABLED: "Esta loja não está aceitando pedidos agendados.",
     INVALID_SCHEDULE: "Escolha uma data e um horário dentro do funcionamento da loja.",
     INVALID_PAYMENT_METHOD: "Escolha uma forma de pagamento para continuar.",
+    PAYMENT_METHOD_UNAVAILABLE: "A forma de pagamento escolhida foi desativada pela loja. Escolha outra opção.",
     INVALID_CHANGE_FOR: "Confira o valor informado para o troco.",
     ITEM_UNAVAILABLE: "Um item ficou indisponível e foi retirado da sacola. Confira o novo total antes de confirmar.",
     PRODUCT_VALIDATION_UNAVAILABLE: "Não conseguimos conferir os itens agora. Sua sacola foi mantida; tente novamente.",
