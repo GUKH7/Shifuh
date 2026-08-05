@@ -340,9 +340,174 @@
   }
 }
 
-@media (max-width: 639px) {
-  .orders-table-row { grid-template-columns: minmax(0, 1fr) !important; }
-  .orders-table-row > .orders-actions-cell { grid-column: auto; }
+@media (max-width: 767px) {
+  .admin-page-shell {
+    padding-bottom: calc(6.5rem + env(safe-area-inset-bottom)) !important;
+  }
+
+  .admin-page-header {
+    gap: 1rem !important;
+  }
+
+  .admin-page-header-main {
+    align-items: flex-start !important;
+    gap: 0.75rem !important;
+  }
+
+  .admin-page-header-icon {
+    width: 2.75rem !important;
+    height: 2.75rem !important;
+    border-radius: 0.875rem !important;
+  }
+
+  .admin-page-header-main h1 {
+    font-size: 1.5rem;
+    line-height: 1.75rem;
+  }
+
+  .admin-page-header-main p {
+    margin-top: 0.2rem;
+    font-size: 0.8125rem;
+    line-height: 1.2rem;
+  }
+
+  .admin-page-header-action > div {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem !important;
+  }
+
+  .admin-page-header-action > div > :first-child {
+    grid-column: 1 / -1;
+  }
+
+  .admin-page-header-action > div > * {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-page-header-action .admin-button,
+  .admin-page-header-action > div > div.inline-flex,
+  .admin-page-header-action > div > button {
+    min-height: 2.75rem;
+    padding: 0.625rem 0.7rem;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    white-space: nowrap;
+  }
+
+  [aria-label="Filtrar pedidos por situação"] {
+    margin-right: -0.5rem;
+    padding-right: 0.5rem;
+    scroll-padding-inline: 0.25rem;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  [aria-label="Filtrar pedidos por situação"]::-webkit-scrollbar {
+    display: none;
+  }
+
+  [aria-label="Filtrar pedidos por situação"] > button {
+    min-height: 2.5rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+    scroll-snap-align: start;
+  }
+
+  button[aria-controls="orders-filters-panel"] {
+    width: 100%;
+    min-height: 2.75rem;
+  }
+
+  #orders-filters-panel {
+    grid-template-columns: minmax(0, 1fr) !important;
+    padding: 0.875rem !important;
+  }
+
+  .orders-table-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.75rem 0.875rem !important;
+    margin: 0.625rem;
+    padding: 0.875rem !important;
+  }
+
+  .orders-table-row > .orders-table-cell {
+    min-height: 3rem;
+    align-content: flex-start;
+  }
+
+  .orders-table-row > .orders-table-cell::before {
+    margin-bottom: 0.2rem;
+    font-size: 0.5625rem;
+    letter-spacing: 0.07em;
+  }
+
+  .orders-table-row > .orders-table-cell p {
+    max-width: 100%;
+  }
+
+  .orders-table-row > .orders-table-cell[data-label="Canal"] {
+    gap: 0.5rem !important;
+  }
+
+  .orders-table-row > .orders-table-cell[data-label="Canal"] > span {
+    width: 2rem !important;
+    height: 2rem !important;
+    border-radius: 0.625rem !important;
+  }
+
+  .orders-table-row > .orders-table-cell[data-label="Valor"],
+  .orders-table-row > .orders-table-cell[data-label="Pagamento"],
+  .orders-table-row > .orders-table-cell[data-label="Status"] {
+    align-self: start;
+  }
+
+  .orders-table-row > .orders-actions-cell {
+    grid-column: 1 / -1;
+    align-items: center;
+    gap: 0.5rem;
+    padding-top: 0.125rem;
+  }
+
+  .orders-actions-cell > button:first-child:nth-last-child(3) {
+    min-width: 0;
+    flex: 1 1 auto;
+    padding-right: 0.75rem;
+    padding-left: 0.75rem;
+  }
+
+  .orders-actions-cell > button:not(:first-child) {
+    flex: 0 0 2.5rem;
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
+  .admin-page-shell > section:last-child {
+    right: 0.75rem !important;
+    bottom: max(0.75rem, env(safe-area-inset-bottom)) !important;
+    left: 0.75rem !important;
+    max-width: none !important;
+    margin: 0 !important;
+    border-radius: 1rem;
+  }
+
+  .admin-page-shell > section:last-child > button {
+    min-height: 3.25rem;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .admin-page-shell > section:last-child > button > div:first-child {
+    min-width: 0;
+    gap: 0.5rem;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  .admin-page-shell > section:last-child > button > div:last-child {
+    gap: 0.375rem;
+  }
 
   .orders-detail-drawer {
     inset: 0;
@@ -361,6 +526,31 @@
 
   .orders-detail-drawer > .grid {
     padding-right: 1rem;
+    padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
     padding-left: 1rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .orders-table-row {
+    gap: 0.625rem 0.75rem !important;
+    margin: 0.5rem;
+    padding: 0.75rem !important;
+  }
+
+  .orders-table-row > .orders-table-cell {
+    min-height: 2.875rem;
+  }
+
+  .orders-table-row > .orders-table-cell[data-label="Status"] > span {
+    min-width: 6.5rem;
+  }
+
+  .admin-page-header-action .admin-button,
+  .admin-page-header-action > div > div.inline-flex,
+  .admin-page-header-action > div > button {
+    padding-right: 0.5rem;
+    padding-left: 0.5rem;
+    font-size: 0.6875rem;
   }
 }
