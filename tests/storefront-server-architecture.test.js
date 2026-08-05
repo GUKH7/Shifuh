@@ -15,6 +15,7 @@ test("a rota da vitrine é um componente de servidor com metadata dinâmica", as
   assert.match(layout, /generateMetadata/);
   assert.match(layout, /getPublicStorefrontData/);
   assert.match(layout, /StorefrontInitialDataProvider/);
+  assert.match(layout, /StorefrontUnavailableState/);
   assert.match(layout, /revalidate\s*=\s*60/);
 });
 
@@ -27,9 +28,11 @@ test("consultas públicas ficam centralizadas no servidor e na API", async () =>
 
   assert.match(loader, /public_restaurants/);
   assert.match(loader, /public_storefront_products/);
+  assert.match(loader, /isPublicStorefrontConfigured/);
   assert.doesNotMatch(loader, /\.from\(["']restaurants["']\)/);
   assert.doesNotMatch(loader, /\.from\(["']products["']\)/);
   assert.match(route, /checkRateLimit/);
+  assert.match(route, /STOREFRONT_NOT_CONFIGURED/);
   assert.match(route, /Cache-Control/);
   assert.match(hook, /\/api\/storefront\//);
   assert.doesNotMatch(hook, /public_restaurants/);
