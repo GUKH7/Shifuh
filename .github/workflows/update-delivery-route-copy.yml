@@ -1,0 +1,51 @@
+name: Atualizar texto da distância por rota
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/update-delivery-route-copy.yml
+
+permissions:
+  contents: write
+
+jobs:
+  update-copy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Atualizar textos do cálculo de entrega
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          path = Path('src/features/storefront/DeliveryCalculator.tsx')
+          content = path.read_text()
+
+          replacements = {
+              '<span className="sm:hidden">{deliveryInfo.distance} km em linha reta</span>':
+                  '<span className="sm:hidden">{deliveryInfo.distance} km pela rota</span>',
+              '<span className="hidden sm:inline">Distância aproximada: {deliveryInfo.distance} km</span>':
+                  '<span className="hidden sm:inline">Distância pela rota: {deliveryInfo.distance} km</span>',
+          }
+
+          for old, new in replacements.items():
+              if old not in content:
+                  raise SystemExit(f'Texto esperado não encontrado: {old}')
+              content = content.replace(old, new, 1)
+
+          path.write_text(content)
+          PY
+
+          rm .github/workflows/update-delivery-route-copy.yml
+
+          git config user.name "Gestor Delivery Bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/features/storefront/DeliveryCalculator.tsx .github/workflows/update-delivery-route-copy.yml
+          git commit -m "fix(delivery): atualiza texto da distância por rota"
+          git push origin HEAD:main
