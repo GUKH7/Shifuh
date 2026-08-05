@@ -33,7 +33,7 @@ jobs:
               text,
               count=1,
           )
-          assert count == 1, 'toggleExpandedOrder pattern not found'
+          assert count == 1
 
           old_shell = '      <AdminPageShell className={`space-y-4 ${isSummaryOpen ? "pb-[18rem] sm:pb-[11rem]" : "pb-20"}`}>'
           new_shell = '''      <AdminPageShell
@@ -41,7 +41,7 @@ jobs:
               expandedOrders.length ? "orders-drawer-open" : ""
             }`}
           >'''
-          assert old_shell in text, 'AdminPageShell pattern not found'
+          assert old_shell in text
           text = text.replace(old_shell, new_shell, 1)
 
           text = text.replace(
@@ -53,7 +53,7 @@ jobs:
               'onClick={(event) => { event.stopPropagation(); handlePrint(order); }}',
           )
 
-          assert 'onClick={() => toggleExpandedOrder(order)}' in text, 'details button handler not found'
+          assert 'onClick={() => toggleExpandedOrder(order)}' in text
           text = text.replace(
               'onClick={() => toggleExpandedOrder(order)}',
               'onClick={(event) => { event.stopPropagation(); toggleExpandedOrder(order); }}',
@@ -70,19 +70,18 @@ jobs:
               1,
           )
 
-          old_row = '                      <div className="orders-table-row grid gap-4 px-5 py-4 xl:grid-cols-[96px_minmax(145px,1.2fr)_100px_64px_88px_minmax(150px,1fr)_112px_90px_150px] xl:items-center xl:gap-2 xl:px-4">'
-          new_row = '''                      <div
+          old_row = '<div className="orders-table-row grid gap-4 px-5 py-4 xl:grid-cols-[96px_minmax(145px,1.2fr)_100px_64px_88px_minmax(150px,1fr)_112px_90px_150px] xl:items-center xl:gap-2 xl:px-4">'
+          new_row = '''<div
                         className={`orders-table-row grid cursor-pointer gap-4 px-5 py-4 transition-colors xl:grid-cols-[96px_minmax(145px,1.2fr)_100px_64px_88px_minmax(150px,1fr)_112px_90px_150px] xl:items-center xl:gap-2 xl:px-4 ${
                           isExpanded ? "is-selected" : ""
                         }`}
                         onClick={() => toggleExpandedOrder(order)}
                       >'''
-          assert old_row in text, 'orders row pattern not found'
+          assert old_row in text
           text = text.replace(old_row, new_row, 1)
 
-          old_drawer = '''                        <div className="border-t border-[var(--line)] bg-[#fffdfa] px-5 py-5 xl:px-6">
-                          <div className="grid gap-5 xl:grid-cols-[1.25fr_0.9fr_260px]">'''
-          new_drawer = '''                        <div
+          old_drawer_open = '<div className="border-t border-[var(--line)] bg-[#fffdfa] px-5 py-5 xl:px-6">'
+          new_drawer_open = '''<div
                           className="orders-detail-drawer border-t border-[var(--line)] bg-[#fffdfa] px-5 py-5 xl:px-6"
                           onClick={(event) => event.stopPropagation()}
                           role="complementary"
@@ -111,25 +110,15 @@ jobs:
                             >
                               <XCircle size={19} />
                             </button>
-                          </div>
-
-                          <div className="grid gap-5 xl:grid-cols-[1.25fr_0.9fr_260px]">'''
-          assert old_drawer in text, 'expanded drawer pattern not found'
-          text = text.replace(old_drawer, new_drawer, 1)
-
+                          </div>'''
+          assert old_drawer_open in text
+          text = text.replace(old_drawer_open, new_drawer_open, 1)
           page_path.write_text(text)
 
-          css = r'''@media (min-width: 1280px) {
+          Path('src/app/admin/(painel)/orders/orders-responsive.css').write_text(r'''@media (min-width: 1280px) {
             .orders-table-header,
             .orders-table-row {
-              grid-template-columns:
-                110px
-                minmax(200px, 1.4fr)
-                minmax(135px, 0.9fr)
-                110px
-                minmax(135px, 0.9fr)
-                120px
-                88px !important;
+              grid-template-columns: 110px minmax(200px, 1.4fr) minmax(135px, 0.9fr) 110px minmax(135px, 0.9fr) 120px 88px !important;
             }
 
             .orders-table-header > :nth-child(4),
@@ -139,13 +128,8 @@ jobs:
               display: none !important;
             }
 
-            .orders-table-row {
-              padding: 1rem 1.25rem !important;
-            }
-
-            .orders-table-row > .orders-table-cell {
-              min-width: 0;
-            }
+            .orders-table-row { padding: 1rem 1.25rem !important; }
+            .orders-table-row > .orders-table-cell { min-width: 0; }
 
             .orders-table-row > .orders-table-cell[data-label="Pedido"],
             .orders-table-row > .orders-table-cell[data-label="Cliente"] {
@@ -184,9 +168,7 @@ jobs:
           }
 
           .orders-table-row:hover,
-          .orders-table-row.is-selected {
-            background: #fff7f1;
-          }
+          .orders-table-row.is-selected { background: #fff7f1; }
 
           .orders-table-row.is-selected {
             box-shadow: inset 3px 0 0 var(--brand);
@@ -230,17 +212,10 @@ jobs:
           }
 
           .orders-detail-drawer > .grid > div,
-          .orders-detail-drawer > .grid > div > div {
-            min-width: 0;
-          }
+          .orders-detail-drawer > .grid > div > div { min-width: 0; }
 
-          .orders-detail-drawer [class*="rounded-2xl"] {
-            border-radius: 0.875rem;
-          }
-
-          .orders-detail-drawer > .mt-5 {
-            margin: 0 1.125rem 1.25rem;
-          }
+          .orders-detail-drawer [class*="rounded-2xl"] { border-radius: 0.875rem; }
+          .orders-detail-drawer > .mt-5 { margin: 0 1.125rem 1.25rem; }
 
           @keyframes orders-drawer-enter {
             from { opacity: 0; transform: translateX(24px); }
@@ -291,9 +266,7 @@ jobs:
 
             .orders-table-row > .orders-table-cell[data-label="Canal"]::before,
             .orders-table-row > .orders-table-cell[data-label="Status"]::before,
-            .orders-table-row > .orders-actions-cell::before {
-              flex-basis: 100%;
-            }
+            .orders-table-row > .orders-actions-cell::before { flex-basis: 100%; }
 
             .orders-table-row > .orders-actions-cell {
               grid-column: 1 / -1;
@@ -313,13 +286,8 @@ jobs:
           }
 
           @media (max-width: 639px) {
-            .orders-table-row {
-              grid-template-columns: minmax(0, 1fr) !important;
-            }
-
-            .orders-table-row > .orders-actions-cell {
-              grid-column: auto;
-            }
+            .orders-table-row { grid-template-columns: minmax(0, 1fr) !important; }
+            .orders-table-row > .orders-actions-cell { grid-column: auto; }
 
             .orders-detail-drawer {
               inset: 0;
@@ -333,8 +301,7 @@ jobs:
               padding-top: max(1rem, env(safe-area-inset-top));
             }
           }
-          '''
-          Path('src/app/admin/(painel)/orders/orders-responsive.css').write_text(css)
+          ''')
           PY
 
           git rm '.github/workflows/apply-orders-side-panel.yml'
