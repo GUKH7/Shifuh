@@ -3,9 +3,8 @@
 }
 
 .scope img[alt^="Logo da "] {
-  border-radius: 14px;
-}
-
-.scope img[alt^="Logo da "][class*="p-1"] {
-  clip-path: inset(0.25rem round 0.75rem);
+  padding: 0 !important;
+  border-radius: 14px !important;
+  object-fit: cover !important;
+  clip-path: none !important;
 }
