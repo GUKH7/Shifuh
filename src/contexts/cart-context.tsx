@@ -4,7 +4,6 @@ import { createContext, useContext, useState, useEffect } from "react"
 import { createBrowserClient } from "@supabase/ssr"
 import { calculateDistance, calculateDeliveryFee } from "@/lib/distance"
 
-// --- CORREÇÃO: Adicionamos 'observation' aqui ---
 interface CartItem {
   id: string
   product_id: string
@@ -12,7 +11,7 @@ interface CartItem {
   price: number
   quantity: number
   image_url?: string
-  observation?: string 
+  observation?: string
 }
 
 interface RestaurantData {
@@ -37,35 +36,42 @@ interface CartContextType {
   restaurant: RestaurantData | null
 }
 
+type BrowserSupabaseClient = ReturnType<typeof createBrowserClient>
+
 const CartContext = createContext<CartContextType>({} as CartContextType)
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([])
   const [restaurant, setRestaurant] = useState<RestaurantData | null>(null)
-  
+  const [supabase, setSupabase] = useState<BrowserSupabaseClient | null>(null)
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [distance, setDistance] = useState(0)
   const [deliveryFee, setDeliveryFee] = useState(0)
   const [deliveryTime, setDeliveryTime] = useState(0)
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+  useEffect(() => {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (!supabaseUrl || !supabaseAnonKey) return
+    setSupabase(createBrowserClient(supabaseUrl, supabaseAnonKey))
+  }, [])
 
   useEffect(() => {
+    if (!supabase) return
+
     async function loadRestaurant() {
       const publicRestaurantResult = await supabase
-        .from('public_restaurants')
-        .select('id, name, latitude, longitude, delivery_tiers')
+        .from("public_restaurants")
+        .select("id, name, latitude, longitude, delivery_tiers")
         .limit(1)
         .maybeSingle()
       let data = publicRestaurantResult.data
 
       if (!data && publicRestaurantResult.error) {
         const { data: fallbackRestaurant } = await supabase
-          .from('restaurants')
-          .select('id, name, latitude, longitude, delivery_tiers')
+          .from("restaurants")
+          .select("id, name, latitude, longitude, delivery_tiers")
           .limit(1)
           .maybeSingle()
 
@@ -82,59 +88,70 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         })
       }
     }
-    loadRestaurant()
-  }, [])
+
+    void loadRestaurant()
+  }, [supabase])
 
   useEffect(() => {
     if (userLocation && restaurant) {
-        const lat1 = Number(userLocation.lat)
-        const lng1 = Number(userLocation.lng)
-        const lat2 = Number(restaurant.address_lat)
-        const lng2 = Number(restaurant.address_lng)
+      const lat1 = Number(userLocation.lat)
+      const lng1 = Number(userLocation.lng)
+      const lat2 = Number(restaurant.address_lat)
+      const lng2 = Number(restaurant.address_lng)
 
-        const dist = calculateDistance(lat1, lng1, lat2, lng2)
-        setDistance(dist)
-        
-        const { price, time } = calculateDeliveryFee(dist, restaurant.delivery_tiers)
-        setDeliveryFee(price)
-        setDeliveryTime(time)
+      const dist = calculateDistance(lat1, lng1, lat2, lng2)
+      setDistance(dist)
+
+      const { price, time } = calculateDeliveryFee(dist, restaurant.delivery_tiers)
+      setDeliveryFee(price)
+      setDeliveryTime(time)
     }
   }, [userLocation, restaurant])
 
   const addToCart = (product: any, quantity: number, observation?: string) => {
-    setItems(prev => {
-      const existingIndex = prev.findIndex(i => i.product_id === product.id && i.observation === observation)
-      
+    setItems((previous) => {
+      const existingIndex = previous.findIndex(
+        (item) => item.product_id === product.id && item.observation === observation,
+      )
+
       if (existingIndex > -1) {
-        const newItems = [...prev]
-        newItems[existingIndex].quantity += quantity
-        return newItems
+        const nextItems = [...previous]
+        nextItems[existingIndex].quantity += quantity
+        return nextItems
       }
-      
-      return [...prev, { 
-        id: crypto.randomUUID(), 
-        product_id: product.id, 
-        name: product.name, 
-        price: product.price, 
-        quantity: quantity, 
+
+      return [...previous, {
+        id: crypto.randomUUID(),
+        product_id: product.id,
+        name: product.name,
+        price: product.price,
+        quantity,
         image_url: product.image_url,
-        observation: observation 
+        observation,
       }]
     })
   }
 
   const removeFromCart = (id: string) => {
-    setItems(prev => prev.filter(i => i.product_id !== id))
+    setItems((previous) => previous.filter((item) => item.product_id !== id))
   }
 
   const clearCart = () => setItems([])
-
-  const total = items.reduce((acc, item) => acc + (item.price * item.quantity), 0)
+  const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
 
   return (
-    <CartContext.Provider value={{ 
-      items, addToCart, removeFromCart, clearCart, total,
-      deliveryFee, deliveryTime, distance, userLocation, setUserLocation, restaurant
+    <CartContext.Provider value={{
+      items,
+      addToCart,
+      removeFromCart,
+      clearCart,
+      total,
+      deliveryFee,
+      deliveryTime,
+      distance,
+      userLocation,
+      setUserLocation,
+      restaurant,
     }}>
       {children}
     </CartContext.Provider>
