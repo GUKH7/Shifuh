@@ -24,38 +24,12 @@ jobs:
           calculator_path = Path('src/features/storefront/DeliveryCalculator.tsx')
           calculator = calculator_path.read_text()
           replacements = [
-              (
-                  'Informe o endereço completo para consultar a taxa de entrega antes do pagamento.',
-                  'Informe o endereço completo para consultar a taxa e o prazo antes do pagamento.',
-              ),
-              (
-                  '<p>A taxa é calculada automaticamente conforme o endereço informado.</p>',
-                  '<p>A taxa e o prazo são calculados automaticamente conforme o endereço informado.</p>',
-              ),
-              (
-                  'canCalculate ? "Calcular taxa de entrega" : "Complete o endereço"',
-                  'canCalculate ? "Calcular taxa e prazo" : "Complete o endereço"',
-              ),
-              (
-                  '<p className="text-sm font-black leading-5 text-emerald-800 sm:text-base">Taxa de entrega</p>',
-                  '<p className="text-sm font-black leading-5 text-emerald-800 sm:text-base">Taxa e prazo estimados</p>\n              <p className="mt-1 text-xs leading-4 text-emerald-700 sm:text-sm">Previsão de {deliveryInfo.time} min</p>',
-              ),
-              (
-                  '<p className="font-black text-amber-900">Taxa de entrega estimada</p>',
-                  '<p className="font-black text-amber-900">Taxa e prazo estimados</p>',
-              ),
-              (
-                  '''              <p className="font-black text-amber-900">
-                {deliveryInfo.price === 0 ? "Grátis" : formatMoney(deliveryInfo.price)}
-              </p>
-              
-''',
-                  '''              <p className="font-black text-amber-900">
-                {deliveryInfo.price === 0 ? "Grátis" : formatMoney(deliveryInfo.price)}
-              </p>
-              <p className="mt-1 text-sm text-amber-800">Previsão de {deliveryInfo.time} min</p>
-''',
-              ),
+              ('Informe o endereço completo para consultar a taxa de entrega antes do pagamento.', 'Informe o endereço completo para consultar a taxa e o prazo antes do pagamento.'),
+              ('<p>A taxa é calculada automaticamente conforme o endereço informado.</p>', '<p>A taxa e o prazo são calculados automaticamente conforme o endereço informado.</p>'),
+              ('canCalculate ? "Calcular taxa de entrega" : "Complete o endereço"', 'canCalculate ? "Calcular taxa e prazo" : "Complete o endereço"'),
+              ('<p className="text-sm font-black leading-5 text-emerald-800 sm:text-base">Taxa de entrega</p>', '<p className="text-sm font-black leading-5 text-emerald-800 sm:text-base">Taxa e prazo estimados</p>\n              <p className="mt-1 text-xs leading-4 text-emerald-700 sm:text-sm">Previsão de {deliveryInfo.time} min</p>'),
+              ('<p className="font-black text-amber-900">Taxa de entrega estimada</p>', '<p className="font-black text-amber-900">Taxa e prazo estimados</p>'),
+              ('              <p className="font-black text-amber-900">\n                {deliveryInfo.price === 0 ? "Grátis" : formatMoney(deliveryInfo.price)}\n              </p>\n              \n', '              <p className="font-black text-amber-900">\n                {deliveryInfo.price === 0 ? "Grátis" : formatMoney(deliveryInfo.price)}\n              </p>\n              <p className="mt-1 text-sm text-amber-800">Previsão de {deliveryInfo.time} min</p>\n'),
           ]
 
           for old, new in replacements:
@@ -65,32 +39,16 @@ jobs:
 
           if 'deliveryInfo.distance' in calculator:
               raise SystemExit('A distância voltou a aparecer no DeliveryCalculator.tsx.')
-
           calculator_path.write_text(calculator)
 
           drawer_path = Path('src/features/storefront/CheckoutDrawer.tsx')
           drawer = drawer_path.read_text()
           drawer_replacements = [
-              (
-                  'Calcule a taxa de entrega antes de continuar.',
-                  'Calcule a taxa e o prazo da entrega antes de continuar.',
-              ),
-              (
-                  'Taxa de entrega: {formatMoney(feeValue)}',
-                  'Taxa de entrega: {formatMoney(feeValue)} · Prazo: {deliveryInfo.time} min',
-              ),
-              (
-                  '`Taxa de entrega: ${formatMoney(feeValue)}`',
-                  '`Taxa de entrega: ${formatMoney(feeValue)} · Prazo: ${deliveryInfo?.time} min`',
-              ),
-              (
-                  '<p className="mt-2 text-xs font-bold text-emerald-700">Taxa de entrega: {completedOrder.deliveryFee === 0 ? "Grátis" : formatMoney(completedOrder.deliveryFee)}</p>',
-                  '<p className="mt-2 text-xs font-bold text-emerald-700">Taxa de entrega: {completedOrder.deliveryFee === 0 ? "Grátis" : formatMoney(completedOrder.deliveryFee)} · Prazo aproximado: {completedOrder.deliveryTime} min</p>',
-              ),
-              (
-                  'Preencha o endereço e use “Calcular taxa de entrega” acima.',
-                  'Preencha o endereço e use “Calcular taxa e prazo” acima.',
-              ),
+              ('Calcule a taxa de entrega antes de continuar.', 'Calcule a taxa e o prazo da entrega antes de continuar.'),
+              ('Taxa de entrega: {formatMoney(feeValue)}', 'Taxa de entrega: {formatMoney(feeValue)} · Prazo: {deliveryInfo.time} min'),
+              ('`Taxa de entrega: ${formatMoney(feeValue)}`', '`Taxa de entrega: ${formatMoney(feeValue)} · Prazo: ${deliveryInfo?.time} min`'),
+              ('<p className="mt-2 text-xs font-bold text-emerald-700">Taxa de entrega: {completedOrder.deliveryFee === 0 ? "Grátis" : formatMoney(completedOrder.deliveryFee)}</p>', '<p className="mt-2 text-xs font-bold text-emerald-700">Taxa de entrega: {completedOrder.deliveryFee === 0 ? "Grátis" : formatMoney(completedOrder.deliveryFee)} · Prazo aproximado: {completedOrder.deliveryTime} min</p>'),
+              ('Preencha o endereço e use “Calcular taxa de entrega” acima.', 'Preencha o endereço e use “Calcular taxa e prazo” acima.'),
           ]
 
           for old, new in drawer_replacements:
@@ -100,7 +58,6 @@ jobs:
 
           if 'deliveryInfo.distance' in drawer or 'deliveryDistance' in drawer:
               raise SystemExit('A distância voltou a aparecer no CheckoutDrawer.tsx.')
-
           drawer_path.write_text(drawer)
 
           page_path = Path('src/app/[slug]/page.tsx')
