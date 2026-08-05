@@ -10,14 +10,16 @@ export function OrderStatusBadge({
   size?: "small" | "medium";
 }) {
   const meta = ORDER_STATUS_META[status];
-  const spacing = size === "medium" ? "gap-2 px-3 py-2 text-sm" : "gap-1.5 px-3 py-1.5 text-xs";
+  const dimensions = size === "medium"
+    ? "h-9 min-w-[120px] gap-2 px-3.5 text-sm"
+    : "h-8 min-w-[108px] gap-1.5 px-3 text-xs";
 
   return (
     <span
-      className={`inline-flex w-fit items-center rounded-full border font-bold ${spacing} ${meta.badge} ${className}`}
+      className={`inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full border font-bold leading-none ${dimensions} ${meta.badge} ${className}`}
     >
       <span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${meta.dot}`} />
-      {meta.label}
+      <span>{meta.label}</span>
     </span>
   );
 }
