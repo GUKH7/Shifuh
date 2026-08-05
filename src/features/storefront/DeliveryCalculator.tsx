@@ -328,8 +328,8 @@ export function DeliveryCalculator({
             <div className="min-w-0">
               <p className="text-sm font-black leading-5 text-emerald-800 sm:text-base">Taxa e prazo estimados</p>
               <p className="mt-1 text-xs leading-4 text-emerald-700 sm:text-sm">
-                <span className="sm:hidden">{deliveryInfo.distance} km em linha reta</span>
-                <span className="hidden sm:inline">Distância aproximada: {deliveryInfo.distance} km</span>
+                <span className="sm:hidden">{deliveryInfo.distance} km pela rota</span>
+                <span className="hidden sm:inline">Distância pela rota: {deliveryInfo.distance} km</span>
               </p>
             </div>
             <div className="shrink-0 text-right">
