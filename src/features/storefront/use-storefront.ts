@@ -4,7 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { getCoordinates } from "@/lib/geo";
 import { DEFAULT_STOREFRONT_THEME } from "./constants";
-import type { Product, StorefrontTheme } from "./types";
+import { useStorefrontInitialData } from "./StorefrontInitialDataProvider";
+import type { PublicStorefrontData } from "./public-storefront-types";
+import type { StorefrontTheme } from "./types";
+import { useStorefrontNavigation } from "./use-storefront-navigation";
+import { useStorefrontSession } from "./use-storefront-session";
 
 type UseStorefrontOptions = {
   slug: string;
@@ -13,6 +17,7 @@ type UseStorefrontOptions = {
 };
 
 export function useStorefront({ slug, onCustomerLoaded, onMissingStore }: UseStorefrontOptions) {
+  const initialData = useStorefrontInitialData();
   const supabase = useMemo(
     () =>
       createBrowserClient(
@@ -21,194 +26,120 @@ export function useStorefront({ slug, onCustomerLoaded, onMissingStore }: UseSto
       ),
     [],
   );
-
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
-  const [restaurant, setRestaurant] = useState<any>(null);
-  const [primaryColor, setPrimaryColor] = useState("#ff5a1f");
-  const [banners, setBanners] = useState<string[]>([]);
-  const [currentBanner, setCurrentBanner] = useState(0);
-  const [storefrontHeadline, setStorefrontHeadline] = useState("");
-  const [storefrontSubheadline, setStorefrontSubheadline] = useState("");
-  const [storefrontTheme, setStorefrontTheme] =
-    useState<StorefrontTheme>(DEFAULT_STOREFRONT_THEME);
-  const [categories, setCategories] = useState<any[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [deliveryTiers, setDeliveryTiers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [storefrontData, setStorefrontData] = useState<PublicStorefrontData | null>(
+    initialData || null,
+  );
+  const [loading, setLoading] = useState(initialData === undefined);
   const [restoCoords, setRestoCoords] = useState<{ lat: number; lon: number } | null>(null);
-  const [activeCategory, setActiveCategory] = useState("");
 
   useEffect(() => {
+    if (initialData) {
+      setStorefrontData(initialData);
+      setLoading(false);
+      return;
+    }
+
     let mounted = true;
+    const controller = new AbortController();
 
-    const checkUserSession = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+    const fetchStorefront = async () => {
+      setLoading(true);
 
-      if (!mounted) return;
+      try {
+        const response = await fetch(`/api/storefront/${encodeURIComponent(slug)}`, {
+          signal: controller.signal,
+          headers: { Accept: "application/json" },
+        });
 
-      if (!user) {
-        try {
-          const response = await fetch("/api/customer/profile", { credentials: "same-origin" });
-          const payload = await response.json();
-          if (!mounted || !payload?.customer) return;
-          onCustomerLoaded?.(payload.customer);
-          setSavedAddresses(Array.isArray(payload.addresses) ? payload.addresses : []);
-        } catch {
-          // The checkout remains usable when remembered customer data is unavailable.
+        if (response.status === 404) {
+          if (mounted) {
+            setStorefrontData(null);
+            onMissingStore?.();
+          }
+          return;
         }
-        return;
+
+        if (!response.ok) throw new Error("Não foi possível carregar a vitrine.");
+
+        const payload = (await response.json()) as PublicStorefrontData;
+        if (mounted) setStorefrontData(payload);
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        console.error(error);
+        if (mounted) setStorefrontData(null);
+      } finally {
+        if (mounted) setLoading(false);
       }
-
-      setCurrentUser(user);
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
-
-      if (profile) {
-        onCustomerLoaded?.({
-          name: profile.name || "",
-          phone: profile.phone || "",
-        });
-      }
-
-      const { data: addresses } = await supabase
-        .from("customer_addresses")
-        .select("*")
-        .eq("user_id", user.id);
-
-      if (addresses && addresses.length > 0) setSavedAddresses(addresses);
     };
 
-    const fetchStoreData = async () => {
-      const publicRestaurantResult = await supabase
-        .from("public_restaurants")
-        .select("*")
-        .eq("slug", slug)
-        .single();
-      let resto = publicRestaurantResult.data;
+    fetchStorefront();
 
-      if (!resto && publicRestaurantResult.error) {
-        const { data: fallbackRestaurant } = await supabase
-          .from("restaurants")
-          .select("*")
-          .eq("slug", slug)
-          .single();
-
-        resto = fallbackRestaurant;
-      }
-
-      if (!mounted) return;
-
-      if (!resto) {
-        onMissingStore?.();
-        setLoading(false);
-        return;
-      }
-
-      setRestaurant(resto);
-      if (resto.delivery_tiers) setDeliveryTiers(resto.delivery_tiers as any[]);
-      if (resto.primary_color) setPrimaryColor(resto.primary_color);
-      if (resto.banners && Array.isArray(resto.banners) && resto.banners.length > 0) {
-        setBanners(resto.banners as string[]);
-      }
-      setStorefrontHeadline(resto.storefront_headline || "");
-      setStorefrontSubheadline(resto.storefront_subheadline || "");
-      setStorefrontTheme({
-        ...DEFAULT_STOREFRONT_THEME,
-        ...((resto.storefront_theme || {}) as Partial<StorefrontTheme>),
-      });
-
-      if (resto.latitude && resto.longitude) {
-        setRestoCoords({
-          lat: Number(resto.latitude),
-          lon: Number(resto.longitude),
-        });
-      } else {
-        getCoordinates({
-          street: resto.address_street || resto.name,
-          number: resto.address_number || undefined,
-          neighborhood: resto.address_neighborhood || undefined,
-          city: resto.address_city || undefined,
-          state: resto.address_state || undefined,
-        }).then((coords) => {
-          if (coords && mounted) setRestoCoords(coords);
-        });
-      }
-
-      const [categoriesResult, storefrontProductsResult] = await Promise.all([
-        supabase
-          .from("categories")
-          .select("*")
-          .eq("restaurant_id", resto.id)
-          .eq("is_active", true)
-          .order("order"),
-        supabase
-          .from("public_storefront_products")
-          .select("*")
-          .eq("restaurant_id", resto.id),
-      ]);
-      const cats = categoriesResult.data;
-
-      if (cats && mounted) {
-        setCategories(cats);
-        if (cats.length > 0) setActiveCategory(cats[0].id);
-      }
-
-      let prods = storefrontProductsResult.data;
-
-      if (!prods && storefrontProductsResult.error) {
-        const fallbackProductsResult = await supabase
-          .from("products")
-          .select("*")
-          .eq("restaurant_id", resto.id)
-          .eq("is_active", true);
-        prods = fallbackProductsResult.data;
-      }
-
-      if (prods && mounted) setProducts(prods as Product[]);
-      if (mounted) setLoading(false);
+    return () => {
+      mounted = false;
+      controller.abort();
     };
+  }, [initialData, onMissingStore, slug]);
 
-    fetchStoreData();
-    checkUserSession();
+  const restaurant = storefrontData?.restaurant || null;
+  const categories = storefrontData?.categories || [];
+  const products = storefrontData?.products || [];
+  const primaryColor = restaurant?.primary_color || "#ff5a1f";
+  const banners = useMemo(
+    () => (Array.isArray(restaurant?.banners) ? restaurant.banners.filter(Boolean) : []),
+    [restaurant?.banners],
+  );
+  const storefrontHeadline = restaurant?.storefront_headline || "";
+  const storefrontSubheadline = restaurant?.storefront_subheadline || "";
+  const storefrontTheme = useMemo<StorefrontTheme>(
+    () => ({
+      ...DEFAULT_STOREFRONT_THEME,
+      ...((restaurant?.storefront_theme || {}) as Partial<StorefrontTheme>),
+    }),
+    [restaurant?.storefront_theme],
+  );
+  const deliveryTiers = Array.isArray(restaurant?.delivery_tiers)
+    ? (restaurant.delivery_tiers as any[])
+    : [];
+
+  const { currentUser, savedAddresses } = useStorefrontSession({
+    supabase,
+    onCustomerLoaded,
+  });
+  const { currentBanner, activeCategory, setActiveCategory } = useStorefrontNavigation({
+    categories,
+    bannerCount: banners.length,
+  });
+
+  useEffect(() => {
+    if (!restaurant) {
+      setRestoCoords(null);
+      return;
+    }
+
+    const latitude = Number(restaurant.latitude);
+    const longitude = Number(restaurant.longitude);
+    if (Number.isFinite(latitude) && Number.isFinite(longitude) && latitude && longitude) {
+      setRestoCoords({ lat: latitude, lon: longitude });
+      return;
+    }
+
+    let mounted = true;
+    setRestoCoords(null);
+
+    getCoordinates({
+      street: restaurant.address_street || restaurant.name,
+      number: restaurant.address_number || undefined,
+      neighborhood: restaurant.address_neighborhood || undefined,
+      city: restaurant.address_city || undefined,
+      state: restaurant.address_state || undefined,
+    }).then((coordinates) => {
+      if (mounted && coordinates) setRestoCoords(coordinates);
+    });
 
     return () => {
       mounted = false;
     };
-  }, [onCustomerLoaded, onMissingStore, slug, supabase]);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setBanners((prev) => {
-        if (prev.length > 1) {
-          setCurrentBanner((current) => (current + 1) % prev.length);
-        }
-        return prev;
-      });
-    }, 5000);
-
-    return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const offsets = categories.flatMap((cat) => {
-        const element = document.getElementById(`cat-${cat.id}`);
-        return element ? [{ id: cat.id, offset: element.offsetTop }] : [];
-      });
-      const current = offsets.findLast((item) => window.scrollY + 240 >= item.offset);
-      if (current) setActiveCategory(current.id);
-    };
-
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [categories]);
+  }, [restaurant]);
 
   return {
     supabase,
