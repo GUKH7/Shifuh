@@ -122,7 +122,7 @@ export function DeliveryCalculator({
       </p>
       <div className="mt-3 flex items-start gap-2 rounded-2xl bg-blue-50 px-3.5 py-3 text-xs leading-5 text-blue-800">
         <Info size={16} className="mt-0.5 shrink-0" />
-        <p>A distância é calculada pelo trajeto viário entre a loja e o endereço informado.</p>
+        <p>A taxa é calculada automaticamente conforme o endereço informado.</p>
       </div>
 
       {savedAddresses.length > 0 && (
@@ -326,19 +326,11 @@ export function DeliveryCalculator({
         <div role="status" aria-live="polite" className="mt-4 min-w-0 rounded-[18px] border border-emerald-200 bg-emerald-50 p-3 sm:mt-5 sm:rounded-[22px] sm:p-4">
           <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2.5 sm:gap-4">
             <div className="min-w-0">
-              <p className="text-sm font-black leading-5 text-emerald-800 sm:text-base">Taxa e prazo estimados</p>
-              <p className="mt-1 text-xs leading-4 text-emerald-700 sm:text-sm">
-                <span className="sm:hidden">{deliveryInfo.distance} km pela rota</span>
-                <span className="hidden sm:inline">Distância pela rota: {deliveryInfo.distance} km</span>
-              </p>
+              <p className="text-sm font-black leading-5 text-emerald-800 sm:text-base">Taxa de entrega</p>
             </div>
             <div className="shrink-0 text-right">
               <p className="whitespace-nowrap text-base font-black leading-5 text-emerald-800 sm:text-lg">
                 {deliveryInfo.price === 0 ? "Grátis" : formatMoney(deliveryInfo.price)}
-              </p>
-              <p className="mt-1 whitespace-nowrap text-xs leading-4 text-emerald-700 sm:text-sm">
-                <span className="sm:hidden">{deliveryInfo.time} min</span>
-                <span className="hidden sm:inline">Previsão: {deliveryInfo.time} min</span>
               </p>
             </div>
           </div>
@@ -349,16 +341,16 @@ export function DeliveryCalculator({
         <div className="mt-4 rounded-[18px] border border-amber-200 bg-amber-50 p-3.5 sm:mt-5 sm:rounded-[22px] sm:p-4">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="font-black text-amber-900">Estimativa pelo CEP</p>
+              <p className="font-black text-amber-900">Taxa de entrega estimada</p>
               <p className="mt-1 text-sm leading-6 text-amber-800">
-                Aproximadamente {deliveryInfo.distance} km. Complete o endereço para validar a entrega.
+                Complete o endereço para confirmar o valor da entrega.
               </p>
             </div>
             <div className="shrink-0 text-right">
               <p className="font-black text-amber-900">
                 {deliveryInfo.price === 0 ? "Grátis" : formatMoney(deliveryInfo.price)}
               </p>
-              <p className="mt-1 text-sm text-amber-800">{deliveryInfo.time} min</p>
+              
             </div>
           </div>
         </div>
@@ -370,7 +362,7 @@ export function DeliveryCalculator({
             {deliveryInfo.addressValidated ? "Endereço fora da área de entrega" : "CEP fora da área estimada"}
           </p>
           <p className="mt-1 text-sm leading-6 text-red-700">
-            A distância aproximada é de {deliveryInfo.distance} km, além do limite atendido pela loja.
+            O endereço informado está além do limite atendido pela loja.
             Confira os campos. Se estiverem corretos, este endereço realmente não é atendido.
           </p>
         </div>

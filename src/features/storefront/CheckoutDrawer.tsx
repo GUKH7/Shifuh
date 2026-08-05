@@ -550,7 +550,7 @@ export function CheckoutDrawer({
                     )}
                     {!isPickup && deliveryInfo?.valid && (
                       <p className="mt-2 text-xs font-bold text-emerald-700">
-                        {deliveryInfo.distance} km aproximadamente · previsão de {deliveryInfo.time} min
+                        Taxa de entrega: {formatMoney(feeValue)}
                       </p>
                     )}
                   </div>
@@ -831,7 +831,7 @@ export function CheckoutDrawer({
                   <div className="mt-2 flex items-end justify-between gap-4 border-t border-[var(--line)] pt-2">
                     <div className="min-w-0">
                       <p className="text-[11px] font-bold uppercase text-gray-400">Total do pedido</p>
-                      <p className="truncate text-[11px] text-gray-500">{isPickup ? "Retirada no endereço da loja" : `Previsão de ${deliveryInfo?.time} min · ${deliveryInfo?.distance} km aprox.`}</p>
+                      <p className="truncate text-[11px] text-gray-500">{isPickup ? "Retirada no endereço da loja" : `Taxa de entrega: ${formatMoney(feeValue)}`}</p>
                     </div>
                     <strong className="shrink-0 text-xl text-gray-950">{formatMoney(finalTotal)}</strong>
                   </div>
