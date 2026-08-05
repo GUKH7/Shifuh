@@ -7,11 +7,12 @@ const cssPath = new URL(
   import.meta.url,
 );
 
-test("a tabela de pedidos se adapta à largura útil do painel", async () => {
+test("a tabela de pedidos se adapta quando o sidebar está expandido", async () => {
   const css = await readFile(cssPath, "utf8");
 
-  assert.match(css, /container-name:\s*orders-panel/);
-  assert.match(css, /@container orders-panel \(max-width: 1160px\)/);
+  assert.match(css, /@media \(min-width: 1280px\) and \(max-width: 1439px\)/);
+  assert.match(css, /\.lg\\:ml-56 \.admin-panel-content \.orders-table-row/);
   assert.match(css, /\.orders-table-row[\s\S]*190px !important/);
   assert.match(css, /\.orders-drawer-open \.orders-table-row[\s\S]*170px !important/);
+  assert.doesNotMatch(css, /container-type:\s*inline-size/);
 });
