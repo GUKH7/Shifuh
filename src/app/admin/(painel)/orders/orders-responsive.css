@@ -123,6 +123,38 @@
   .orders-drawer-open .orders-table-row > :nth-child(6) {
     display: none !important;
   }
+
+  .orders-drawer-open > section:last-child {
+    right: 28rem !important;
+    max-width: none !important;
+    margin-right: 0 !important;
+    margin-left: 0 !important;
+    transition: right 180ms ease;
+  }
+
+  .orders-drawer-open > section:last-child > button {
+    gap: 0.75rem;
+  }
+
+  .orders-drawer-open > section:last-child > button > div:first-child {
+    flex-wrap: nowrap;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  .orders-drawer-open > section:last-child > button > div:first-child > span {
+    flex-shrink: 0;
+  }
+
+  .orders-drawer-open > section:last-child > button > div:first-child > span.truncate {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .orders-drawer-open > section:last-child #orders-day-summary > div {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
 }
 
 .orders-table-row:hover,
