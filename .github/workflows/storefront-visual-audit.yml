@@ -1,0 +1,60 @@
+name: Auditoria visual da vitrine
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: URL opcional para substituir a URL de produção
+        required: false
+        type: string
+      storefront_slug:
+        description: Slug do restaurante usado na auditoria
+        required: false
+        default: villa-costa
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: storefront-visual-audit
+  cancel-in-progress: true
+
+jobs:
+  visual-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      TEST_BASE_URL: ${{ inputs.base_url || vars.TEST_BASE_URL || 'https://gestor-delivery-tau.vercel.app' }}
+      STOREFRONT_VISUAL_SLUG: ${{ inputs.storefront_slug || 'villa-costa' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci --ignore-scripts
+
+      - name: Instalar Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Capturar e validar a vitrine
+        run: npm run visual:storefront
+
+      - name: Publicar screenshots e relatório
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: storefront-visual-audit-${{ github.run_number }}
+          path: |
+            test-results/storefront-visual
+            playwright-report/storefront-visual
+          if-no-files-found: warn
+          retention-days: 14
