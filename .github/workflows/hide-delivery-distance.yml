@@ -20,93 +20,67 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
 
           calculator_path = Path('src/features/storefront/DeliveryCalculator.tsx')
           calculator = calculator_path.read_text()
 
-          replacements = [
-              (
-                  '<p>A distância é calculada pelo trajeto viário entre a loja e o endereço informado.</p>',
-                  '<p>A taxa é calculada automaticamente conforme o endereço informado.</p>',
-              ),
-              (
-                  '''              <p className="text-sm font-black leading-5 text-emerald-800 sm:text-base">Taxa e prazo estimados</p>
-              <p className="mt-1 text-xs leading-4 text-emerald-700 sm:text-sm">
-                <span className="sm:hidden">{deliveryInfo.distance} km pela rota</span>
-                <span className="hidden sm:inline">Distância pela rota: {deliveryInfo.distance} km</span>
-              </p>''',
-                  '''              <p className="text-sm font-black leading-5 text-emerald-800 sm:text-base">Taxa de entrega</p>''',
-              ),
-              (
-                  '''            <div className="shrink-0 text-right">
-              <p className="whitespace-nowrap text-base font-black leading-5 text-emerald-800 sm:text-lg">
-                {deliveryInfo.price === 0 ? "Grátis" : formatMoney(deliveryInfo.price)}
-              </p>
-              <p className="mt-1 whitespace-nowrap text-xs leading-4 text-emerald-700 sm:text-sm">
-                <span className="sm:hidden">{deliveryInfo.time} min</span>
-                <span className="hidden sm:inline">Previsão: {deliveryInfo.time} min</span>
-              </p>
-            </div>''',
-                  '''            <div className="shrink-0 text-right">
-              <p className="whitespace-nowrap text-base font-black leading-5 text-emerald-800 sm:text-lg">
-                {deliveryInfo.price === 0 ? "Grátis" : formatMoney(deliveryInfo.price)}
-              </p>
-            </div>''',
-              ),
-              (
-                  '''              <p className="font-black text-amber-900">Estimativa pelo CEP</p>
-              <p className="mt-1 text-sm leading-6 text-amber-800">
-                Aproximadamente {deliveryInfo.distance} km. Complete o endereço para validar a entrega.
-              </p>''',
-                  '''              <p className="font-black text-amber-900">Taxa de entrega estimada</p>
-              <p className="mt-1 text-sm leading-6 text-amber-800">
-                Complete o endereço para confirmar o valor da entrega.
-              </p>''',
-              ),
-              (
-                  '''              <p className="mt-1 text-sm text-amber-800">{deliveryInfo.time} min</p>''',
-                  '',
-              ),
-              (
-                  '''            A distância aproximada é de {deliveryInfo.distance} km, além do limite atendido pela loja.
-            Confira os campos. Se estiverem corretos, este endereço realmente não é atendido.''',
-                  '''            O endereço informado está além do limite atendido pela loja.
-            Confira os campos. Se estiverem corretos, este endereço realmente não é atendido.''',
-              ),
-          ]
+          calculator = calculator.replace(
+              '<p>A distância é calculada pelo trajeto viário entre a loja e o endereço informado.</p>',
+              '<p>A taxa é calculada automaticamente conforme o endereço informado.</p>',
+          )
 
-          for old, new in replacements:
-              if old not in calculator:
-                  raise SystemExit(f'Trecho não encontrado em DeliveryCalculator.tsx: {old[:80]!r}')
-              calculator = calculator.replace(old, new, 1)
+          calculator, count = re.subn(
+              r'<p className="text-sm font-black leading-5 text-emerald-800 sm:text-base">Taxa e prazo estimados</p>\s*<p className="mt-1 text-xs leading-4 text-emerald-700 sm:text-sm">.*?</p>',
+              '<p className="text-sm font-black leading-5 text-emerald-800 sm:text-base">Taxa de entrega</p>',
+              calculator,
+              count=1,
+              flags=re.S,
+          )
+          if count != 1:
+              raise SystemExit('Não foi possível atualizar o card principal da taxa.')
 
+          calculator, count = re.subn(
+              r'(<p className="whitespace-nowrap text-base font-black leading-5 text-emerald-800 sm:text-lg">\s*\{deliveryInfo\.price === 0 \? "Grátis" : formatMoney\(deliveryInfo\.price\)\}\s*</p>)\s*<p className="mt-1 whitespace-nowrap text-xs leading-4 text-emerald-700 sm:text-sm">.*?</p>',
+              r'\1',
+              calculator,
+              count=1,
+              flags=re.S,
+          )
+          if count != 1:
+              raise SystemExit('Não foi possível remover o prazo do card principal.')
+
+          calculator = calculator.replace(
+              '<p className="font-black text-amber-900">Estimativa pelo CEP</p>',
+              '<p className="font-black text-amber-900">Taxa de entrega estimada</p>',
+          )
+          calculator = calculator.replace(
+              'Aproximadamente {deliveryInfo.distance} km. Complete o endereço para validar a entrega.',
+              'Complete o endereço para confirmar o valor da entrega.',
+          )
+          calculator = calculator.replace(
+              '<p className="mt-1 text-sm text-amber-800">{deliveryInfo.time} min</p>',
+              '',
+          )
+          calculator = calculator.replace(
+              'A distância aproximada é de {deliveryInfo.distance} km, além do limite atendido pela loja.',
+              'O endereço informado está além do limite atendido pela loja.',
+          )
           calculator_path.write_text(calculator)
 
           drawer_path = Path('src/features/storefront/CheckoutDrawer.tsx')
           drawer = drawer_path.read_text()
-          drawer_replacements = [
-              (
-                  '''                    {!isPickup && deliveryInfo?.valid && (
-                      <p className="mt-2 text-xs font-bold text-emerald-700">
-                        {deliveryInfo.distance} km aproximadamente · previsão de {deliveryInfo.time} min
-                      </p>
-                    )}''',
-                  '''                    {!isPickup && deliveryInfo?.valid && (
-                      <p className="mt-2 text-xs font-bold text-emerald-700">
-                        Taxa de entrega: {formatMoney(feeValue)}
-                      </p>
-                    )}''',
-              ),
-              (
-                  '''                      <p className="truncate text-[11px] text-gray-500">{isPickup ? "Retirada no endereço da loja" : `Previsão de ${deliveryInfo?.time} min · ${deliveryInfo?.distance} km aprox.`}</p>''',
-                  '''                      <p className="truncate text-[11px] text-gray-500">{isPickup ? "Retirada no endereço da loja" : `Taxa de entrega: ${formatMoney(feeValue)}`}</p>''',
-              ),
-          ]
+          drawer = drawer.replace(
+              '{deliveryInfo.distance} km aproximadamente · previsão de {deliveryInfo.time} min',
+              'Taxa de entrega: {formatMoney(feeValue)}',
+          )
+          drawer = drawer.replace(
+              '`Previsão de ${deliveryInfo?.time} min · ${deliveryInfo?.distance} km aprox.`',
+              '`Taxa de entrega: ${formatMoney(feeValue)}`',
+          )
 
-          for old, new in drawer_replacements:
-              if old not in drawer:
-                  raise SystemExit(f'Trecho não encontrado em CheckoutDrawer.tsx: {old[:80]!r}')
-              drawer = drawer.replace(old, new, 1)
+          if 'deliveryInfo.distance' in drawer:
+              raise SystemExit('Ainda existe distância visível em CheckoutDrawer.tsx.')
 
           drawer_path.write_text(drawer)
           PY
