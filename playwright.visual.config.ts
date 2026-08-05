@@ -2,6 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./tests/visual",
+  testMatch: "admin-visual-audit.spec.ts",
   fullyParallel: false,
   timeout: 120_000,
   expect: {
