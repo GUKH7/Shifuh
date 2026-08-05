@@ -197,7 +197,7 @@ export function CheckoutDrawer({
     ...(isPickup ? {} : addressFieldErrors),
     delivery: deliveryReady || deliveryInfo || deliveryError
       ? ""
-      : "Calcule a taxa de entrega antes de continuar.",
+      : "Calcule a taxa e o prazo da entrega antes de continuar.",
   };
   const hasAddressErrors = Object.values(addressErrors).some(Boolean) || !deliveryReady;
   const changeForError = paymentMethod === "cash" && cashNeedsChange
@@ -550,7 +550,7 @@ export function CheckoutDrawer({
                     )}
                     {!isPickup && deliveryInfo?.valid && (
                       <p className="mt-2 text-xs font-bold text-emerald-700">
-                        Taxa de entrega: {formatMoney(feeValue)}
+                        Taxa de entrega: {formatMoney(feeValue)} · Prazo: {deliveryInfo.time} min
                       </p>
                     )}
                   </div>
@@ -774,7 +774,7 @@ export function CheckoutDrawer({
                     {completedIsPickup ? (
                       <p className="mt-2 text-xs font-bold text-emerald-700">Retire o pedido neste endereço. Não há taxa de entrega.</p>
                     ) : (
-                      <p className="mt-2 text-xs font-bold text-emerald-700">Taxa de entrega: {completedOrder.deliveryFee === 0 ? "Grátis" : formatMoney(completedOrder.deliveryFee)}</p>
+                      <p className="mt-2 text-xs font-bold text-emerald-700">Taxa de entrega: {completedOrder.deliveryFee === 0 ? "Grátis" : formatMoney(completedOrder.deliveryFee)} · Prazo aproximado: {completedOrder.deliveryTime} min</p>
                     )}
                   </div>
                 </div>
@@ -831,7 +831,7 @@ export function CheckoutDrawer({
                   <div className="mt-2 flex items-end justify-between gap-4 border-t border-[var(--line)] pt-2">
                     <div className="min-w-0">
                       <p className="text-[11px] font-bold uppercase text-gray-400">Total do pedido</p>
-                      <p className="truncate text-[11px] text-gray-500">{isPickup ? "Retirada no endereço da loja" : `Taxa de entrega: ${formatMoney(feeValue)}`}</p>
+                      <p className="truncate text-[11px] text-gray-500">{isPickup ? "Retirada no endereço da loja" : `Taxa de entrega: ${formatMoney(feeValue)} · Prazo: ${deliveryInfo?.time} min`}</p>
                     </div>
                     <strong className="shrink-0 text-xl text-gray-950">{formatMoney(finalTotal)}</strong>
                   </div>
@@ -851,7 +851,7 @@ export function CheckoutDrawer({
                 <p role="alert" className="py-2 text-center text-sm font-bold text-rose-700">Endereço fora da área de entrega</p>
               ) : !deliveryInfo?.addressValidated ? (
                 <p className="py-2 text-center text-xs font-semibold text-gray-500">
-                  Preencha o endereço e use “Calcular taxa de entrega” acima.
+                  Preencha o endereço e use “Calcular taxa e prazo” acima.
                 </p>
               ) : (
                 <button

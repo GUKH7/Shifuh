@@ -118,11 +118,11 @@ export function DeliveryCalculator({
         <h3 className="text-lg font-black text-gray-950">Endereço de entrega</h3>
       </div>
       <p className="mt-2 text-sm leading-6 text-gray-500">
-        Informe o endereço completo para consultar a taxa de entrega antes do pagamento.
+        Informe o endereço completo para consultar a taxa e o prazo antes do pagamento.
       </p>
       <div className="mt-3 flex items-start gap-2 rounded-2xl bg-blue-50 px-3.5 py-3 text-xs leading-5 text-blue-800">
         <Info size={16} className="mt-0.5 shrink-0" />
-        <p>A taxa é calculada automaticamente conforme o endereço informado.</p>
+        <p>A taxa e o prazo são calculados automaticamente conforme o endereço informado.</p>
       </div>
 
       {savedAddresses.length > 0 && (
@@ -313,7 +313,7 @@ export function DeliveryCalculator({
             style={{ backgroundColor: primaryColor }}
           >
             {calculatingFee ? <Loader2 className="animate-spin" size={17} /> : <Search size={17} />}
-            {calculatingFee ? "Calculando entrega..." : canCalculate ? "Calcular taxa de entrega" : "Complete o endereço"}
+            {calculatingFee ? "Calculando entrega..." : canCalculate ? "Calcular taxa e prazo" : "Complete o endereço"}
           </button>
         </div>
       )}
@@ -326,7 +326,8 @@ export function DeliveryCalculator({
         <div role="status" aria-live="polite" className="mt-4 min-w-0 rounded-[18px] border border-emerald-200 bg-emerald-50 p-3 sm:mt-5 sm:rounded-[22px] sm:p-4">
           <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2.5 sm:gap-4">
             <div className="min-w-0">
-              <p className="text-sm font-black leading-5 text-emerald-800 sm:text-base">Taxa de entrega</p>
+              <p className="text-sm font-black leading-5 text-emerald-800 sm:text-base">Taxa e prazo estimados</p>
+              <p className="mt-1 text-xs leading-4 text-emerald-700 sm:text-sm">Previsão de {deliveryInfo.time} min</p>
             </div>
             <div className="shrink-0 text-right">
               <p className="whitespace-nowrap text-base font-black leading-5 text-emerald-800 sm:text-lg">
@@ -341,7 +342,7 @@ export function DeliveryCalculator({
         <div className="mt-4 rounded-[18px] border border-amber-200 bg-amber-50 p-3.5 sm:mt-5 sm:rounded-[22px] sm:p-4">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="font-black text-amber-900">Taxa de entrega estimada</p>
+              <p className="font-black text-amber-900">Taxa e prazo estimados</p>
               <p className="mt-1 text-sm leading-6 text-amber-800">
                 Complete o endereço para confirmar o valor da entrega.
               </p>
@@ -350,7 +351,7 @@ export function DeliveryCalculator({
               <p className="font-black text-amber-900">
                 {deliveryInfo.price === 0 ? "Grátis" : formatMoney(deliveryInfo.price)}
               </p>
-              
+              <p className="mt-1 text-sm text-amber-800">Previsão de {deliveryInfo.time} min</p>
             </div>
           </div>
         </div>
