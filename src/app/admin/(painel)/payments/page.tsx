@@ -16,13 +16,12 @@ import {
   type StorefrontPaymentMethod,
 } from "@/features/storefront/checkout-format";
 
+type BrowserSupabaseClient = ReturnType<typeof createBrowserClient>;
+
 export default function PaymentsPage() {
   const router = useRouter();
   const { showToast } = useToast();
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  );
+  const [supabase, setSupabase] = useState<BrowserSupabaseClient | null>(null);
   const [restaurantId, setRestaurantId] = useState("");
   const [paymentMethods, setPaymentMethods] = useState<StorefrontPaymentMethod[]>(
     defaultStorefrontPaymentMethods,
@@ -31,12 +30,14 @@ export default function PaymentsPage() {
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  const loadSettings = async () => {
+  const loadSettings = async (client: BrowserSupabaseClient | null = supabase) => {
+    if (!client) return;
+
     setLoading(true);
     setErrorMessage("");
 
     try {
-      const { restaurant, user } = await getCurrentRestaurant(supabase);
+      const { restaurant, user } = await getCurrentRestaurant(client);
       if (!user) {
         router.push("/admin/login");
         return;
@@ -56,9 +57,22 @@ export default function PaymentsPage() {
   };
 
   useEffect(() => {
-    void loadSettings();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      setErrorMessage("A conexão com o Supabase não está configurada neste ambiente.");
+      setLoading(false);
+      return;
+    }
+
+    setSupabase(createBrowserClient(supabaseUrl, supabaseAnonKey));
   }, []);
+
+  useEffect(() => {
+    if (supabase) void loadSettings(supabase);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supabase]);
 
   const togglePaymentMethod = (method: StorefrontPaymentMethod) => {
     setPaymentMethods((current) => {
@@ -81,7 +95,7 @@ export default function PaymentsPage() {
   };
 
   const handleSave = async () => {
-    if (!restaurantId || paymentMethods.length === 0) return;
+    if (!supabase || !restaurantId || paymentMethods.length === 0) return;
 
     setSaving(true);
     const { error } = await supabase
@@ -110,7 +124,9 @@ export default function PaymentsPage() {
   };
 
   if (loading) return <AdminPageSkeleton ariaLabel="Carregando formas de pagamento" metrics={2} />;
-  if (errorMessage) return <AdminErrorState description={errorMessage} onRetry={() => void loadSettings()} />;
+  if (errorMessage) {
+    return <AdminErrorState description={errorMessage} onRetry={() => void loadSettings()} />;
+  }
 
   return (
     <AdminPageShell className="space-y-6 pb-20">
