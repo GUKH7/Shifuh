@@ -94,7 +94,7 @@ export function AdminPageHeader({
           }
 
           .admin-panel-content:has([aria-label="Filtrar pedidos por situação"]) > .admin-page-shell {
-            margin-top: 0 !important;
+            margin-top: -5.5rem !important;
           }
         }
       `}</style>
