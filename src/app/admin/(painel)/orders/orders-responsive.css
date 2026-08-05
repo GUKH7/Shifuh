@@ -1,7 +1,7 @@
 @media (min-width: 1280px) {
   .orders-table-header,
   .orders-table-row {
-    grid-template-columns: 110px minmax(200px, 1.4fr) minmax(135px, 0.9fr) 110px minmax(135px, 0.9fr) 120px 88px !important;
+    grid-template-columns: 110px minmax(200px, 1.4fr) minmax(135px, 0.9fr) 110px minmax(135px, 0.9fr) 120px 174px !important;
   }
 
   .orders-table-header > :nth-child(4),
@@ -29,7 +29,9 @@
   }
 
   .orders-actions-cell > button:first-child:nth-last-child(3) {
-    display: none !important;
+    min-width: 5.75rem;
+    padding-right: 0.75rem;
+    padding-left: 0.75rem;
   }
 
   .orders-drawer-open {
@@ -39,7 +41,7 @@
 
   .orders-drawer-open .orders-table-header,
   .orders-drawer-open .orders-table-row {
-    grid-template-columns: 100px minmax(180px, 1fr) 105px 118px 84px !important;
+    grid-template-columns: 100px minmax(180px, 1fr) 105px 118px 164px !important;
   }
 
   .orders-drawer-open .orders-table-header > :nth-child(3),
@@ -220,7 +222,9 @@
   }
 
   .orders-actions-cell > button:first-child:nth-last-child(3) {
-    display: none !important;
+    min-width: 6.5rem;
+    padding-right: 0.875rem;
+    padding-left: 0.875rem;
   }
 
   .orders-detail-drawer {
