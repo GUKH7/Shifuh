@@ -20,24 +20,22 @@ jobs:
         run: |
           python <<'PY'
           from pathlib import Path
+          import re
 
           page_path = Path('src/app/admin/(painel)/orders/page.tsx')
           text = page_path.read_text()
 
-          old_toggle = '''  const toggleExpandedOrder = (order: Order) => {
-            setExpandedOrders((current) =>
-              current.includes(order.id)
-                ? current.filter((item) => item !== order.id)
-                : [...current, order.id],
-            );
-          };'''
-          new_toggle = '''  const toggleExpandedOrder = (order: Order) => {
+          text, count = re.subn(
+              r'  const toggleExpandedOrder = \(order: Order\) => \{\n(?:.|\n)*?\n  \};',
+              '''  const toggleExpandedOrder = (order: Order) => {
             setExpandedOrders((current) => (current.includes(order.id) ? [] : [order.id]));
-          };'''
-          assert old_toggle in text, 'toggleExpandedOrder pattern not found'
-          text = text.replace(old_toggle, new_toggle, 1)
+          };''',
+              text,
+              count=1,
+          )
+          assert count == 1, 'toggleExpandedOrder pattern not found'
 
-          old_shell = '''      <AdminPageShell className={`space-y-4 ${isSummaryOpen ? "pb-[18rem] sm:pb-[11rem]" : "pb-20"}`}>'''
+          old_shell = '      <AdminPageShell className={`space-y-4 ${isSummaryOpen ? "pb-[18rem] sm:pb-[11rem]" : "pb-20"}`}>'
           new_shell = '''      <AdminPageShell
             className={`space-y-4 ${isSummaryOpen ? "pb-[18rem] sm:pb-[11rem]" : "pb-20"} ${
               expandedOrders.length ? "orders-drawer-open" : ""
@@ -46,7 +44,33 @@ jobs:
           assert old_shell in text, 'AdminPageShell pattern not found'
           text = text.replace(old_shell, new_shell, 1)
 
-          old_row = '''                      <div className="orders-table-row grid gap-4 px-5 py-4 xl:grid-cols-[96px_minmax(145px,1.2fr)_100px_64px_88px_minmax(150px,1fr)_112px_90px_150px] xl:items-center xl:gap-2 xl:px-4">'''
+          text = text.replace(
+              'onClick={() => void handlePrimaryAction(order)}',
+              'onClick={(event) => { event.stopPropagation(); void handlePrimaryAction(order); }}',
+          )
+          text = text.replace(
+              'onClick={() => handlePrint(order)}',
+              'onClick={(event) => { event.stopPropagation(); handlePrint(order); }}',
+          )
+
+          old_eye = '''                          <button
+                            type="button"
+                            onClick={() => toggleExpandedOrder(order)}
+                            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--line)] bg-white text-gray-600 hover:border-orange-200 hover:text-[var(--brand)]"
+                            aria-label="Ver detalhes do pedido"
+                            title="Ver detalhes"
+                          >'''
+          new_eye = '''                          <button
+                            type="button"
+                            onClick={(event) => { event.stopPropagation(); toggleExpandedOrder(order); }}
+                            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--line)] bg-white text-gray-600 hover:border-orange-200 hover:text-[var(--brand)]"
+                            aria-label={isExpanded ? "Fechar detalhes do pedido" : "Ver detalhes do pedido"}
+                            title={isExpanded ? "Fechar detalhes" : "Ver detalhes"}
+                          >'''
+          assert old_eye in text, 'eye button pattern not found'
+          text = text.replace(old_eye, new_eye, 1)
+
+          old_row = '                      <div className="orders-table-row grid gap-4 px-5 py-4 xl:grid-cols-[96px_minmax(145px,1.2fr)_100px_64px_88px_minmax(150px,1fr)_112px_90px_150px] xl:items-center xl:gap-2 xl:px-4">'
           new_row = '''                      <div
                         className={`orders-table-row grid cursor-pointer gap-4 px-5 py-4 transition-colors xl:grid-cols-[96px_minmax(145px,1.2fr)_100px_64px_88px_minmax(150px,1fr)_112px_90px_150px] xl:items-center xl:gap-2 xl:px-4 ${
                           isExpanded ? "is-selected" : ""
@@ -56,25 +80,12 @@ jobs:
           assert old_row in text, 'orders row pattern not found'
           text = text.replace(old_row, new_row, 1)
 
-          text = text.replace(
-            'onClick={() => void handlePrimaryAction(order)}',
-            'onClick={(event) => { event.stopPropagation(); void handlePrimaryAction(order); }}',
-          )
-          text = text.replace(
-            'onClick={() => handlePrint(order)}',
-            'onClick={(event) => { event.stopPropagation(); handlePrint(order); }}',
-          )
-          text = text.replace(
-            'onClick={() => toggleExpandedOrder(order)}',
-            'onClick={(event) => { event.stopPropagation(); toggleExpandedOrder(order); }}',
-            1,
-          )
-
           old_drawer = '''                        <div className="border-t border-[var(--line)] bg-[#fffdfa] px-5 py-5 xl:px-6">
                           <div className="grid gap-5 xl:grid-cols-[1.25fr_0.9fr_260px]">'''
-          new_drawer = '''                        <div
+          new_drawer = '''                        <aside
                           className="orders-detail-drawer border-t border-[var(--line)] bg-[#fffdfa] px-5 py-5 xl:px-6"
                           onClick={(event) => event.stopPropagation()}
+                          aria-label={`Detalhes do pedido ${formatDisplayNumber(order)}`}
                         >
                           <div className="orders-detail-drawer-header">
                             <div className="min-w-0">
@@ -104,6 +115,17 @@ jobs:
                           <div className="grid gap-5 xl:grid-cols-[1.25fr_0.9fr_260px]">'''
           assert old_drawer in text, 'expanded drawer pattern not found'
           text = text.replace(old_drawer, new_drawer, 1)
+
+          old_close = '''                        </div>
+                      )}
+                    </div>
+                  );'''
+          new_close = '''                        </aside>
+                      )}
+                    </div>
+                  );'''
+          assert old_close in text, 'drawer closing pattern not found'
+          text = text.replace(old_close, new_close, 1)
 
           page_path.write_text(text)
 
@@ -231,14 +253,8 @@ jobs:
           }
 
           @keyframes orders-drawer-enter {
-            from {
-              opacity: 0;
-              transform: translateX(24px);
-            }
-            to {
-              opacity: 1;
-              transform: translateX(0);
-            }
+            from { opacity: 0; transform: translateX(24px); }
+            to { opacity: 1; transform: translateX(0); }
           }
 
           @media (max-width: 1279px) {
@@ -332,11 +348,12 @@ jobs:
           PY
 
           git rm '.github/workflows/apply-orders-side-panel.yml'
+          test ! -f '.github/orders-side-panel-trigger' || git rm '.github/orders-side-panel-trigger'
 
       - name: Commit changes
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add 'src/app/admin/(painel)/orders/page.tsx' 'src/app/admin/(painel)/orders/orders-responsive.css'
+          git add -A
           git commit -m 'feat(orders): abre detalhes em painel lateral'
           git push
