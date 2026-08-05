@@ -9,6 +9,7 @@ import { AdminHeaderActions } from "@/components/admin-header-actions";
 import { AdminSkeleton } from "@/components/ui/admin-primitives";
 import { getRestaurantByUserId } from "@/lib/supabase/restaurant";
 import "./admin-responsive.css";
+import "./admin-logo-radius.css";
 
 const ADMIN_SEARCH_ITEMS = [
   { label: "Dashboard", href: "/admin", keywords: ["inicio", "dashboard", "resumo", "painel"] },
