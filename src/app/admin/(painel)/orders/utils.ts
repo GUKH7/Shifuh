@@ -205,12 +205,12 @@ export function formatPaymentTerm(value: string) {
   const translations: Record<string, string> = {
     CASH: "Dinheiro",
     DINHEIRO: "Dinheiro",
-    CREDIT: "CRÉDITO",
-    CREDIT_CARD: "CRÉDITO",
-    CREDITO: "CRÉDITO",
-    DEBIT: "DÉBITO",
-    DEBIT_CARD: "DÉBITO",
-    DEBITO: "DÉBITO",
+    CREDIT: "Crédito",
+    CREDIT_CARD: "Crédito",
+    CREDITO: "Crédito",
+    DEBIT: "Débito",
+    DEBIT_CARD: "Débito",
+    DEBITO: "Débito",
     PIX: "Pix",
     ONLINE: "Online",
     OFFLINE: "Na entrega",
@@ -218,7 +218,10 @@ export function formatPaymentTerm(value: string) {
     NAO_INFORMADO: "Não informado",
   };
 
-  return translations[normalized] || value;
+  if (translations[normalized]) return translations[normalized];
+
+  const readable = value.trim().replace(/[_-]+/g, " ").toLocaleLowerCase("pt-BR");
+  return readable ? readable.charAt(0).toLocaleUpperCase("pt-BR") + readable.slice(1) : "Não informado";
 }
 
 export function getIfoodCancellation(order: Order) {
