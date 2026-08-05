@@ -20,7 +20,6 @@ import {
 } from "lucide-react";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
-import { calculateDistance, calculateDeliveryFee, getCoordinates } from "@/lib/geo";
 import { useToast } from "@/components/ui/toast-provider";
 import { CheckoutDrawer } from "@/features/storefront/CheckoutDrawer";
 import { ProductPicker } from "@/features/storefront/ProductPicker";
@@ -126,7 +125,6 @@ export default function StorePage() {
     products,
     deliveryTiers,
     loading,
-    restoCoords,
     activeCategory,
     setActiveCategory,
   } = useStorefront({
@@ -189,59 +187,57 @@ export default function StorePage() {
   });
 
   const calculateDeliveryForAddress = async (addressData: typeof EMPTY_ADDRESS) => {
-    if (!isCompleteCheckoutAddress(addressData)) {
+  if (!isCompleteCheckoutAddress(addressData)) {
+    setDeliveryInfo(null);
+    setDeliveryError("Complete CEP, rua, número, bairro, cidade e UF para calcular a entrega.");
+    return;
+  }
+  if (!restaurant?.id) {
+    setDeliveryInfo(null);
+    setDeliveryError("A loja não conseguiu calcular a entrega agora. Tente novamente em instantes.");
+    return;
+  }
+
+  setCalculatingFee(true);
+  setDeliveryError("");
+
+  try {
+    const response = await fetch("/api/storefront/delivery-quote", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ restaurantId: restaurant.id, address: addressData }),
+    });
+    const result = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
       setDeliveryInfo(null);
-      setDeliveryError("Complete CEP, rua, número, bairro, cidade e UF para calcular a entrega.");
+      trackError(
+        typeof result.code === "string"
+          ? result.code.toLowerCase()
+          : "delivery_quote_failed",
+      );
+      setDeliveryError(
+        result.error || "Não foi possível calcular a rota de entrega agora. Tente novamente.",
+      );
       return;
     }
-    if (!restoCoords) {
-      setDeliveryInfo(null);
-      setDeliveryError("A loja não conseguiu calcular a entrega agora. Tente novamente em instantes.");
-      return;
-    }
 
-    setCalculatingFee(true);
-    setDeliveryError("");
-
-    try {
-      const clientCoords = await getCoordinates({
-        postalCode: addressData.cep,
-        street: addressData.street,
-        number: addressData.number === "S/N" ? undefined : addressData.number,
-        neighborhood: addressData.neighborhood,
-        city: addressData.city,
-        state: addressData.state,
-      });
-
-      if (clientCoords) {
-        const dist = calculateDistance(
-          restoCoords.lat,
-          restoCoords.lon,
-          clientCoords.lat,
-          clientCoords.lon,
-        );
-        const feeData = calculateDeliveryFee(dist, deliveryTiers);
-        setDeliveryInfo({
-          price: feeData.price,
-          time: feeData.time,
-          distance: dist,
-          valid: feeData.valid,
-          addressValidated: true,
-        });
-      } else {
-        setDeliveryInfo(null);
-        trackError("address_not_found");
-        setDeliveryError("Não encontramos uma localização compatível com este endereço. Confira os campos e tente novamente.");
-      }
-    } catch (error) {
-      console.error(error);
-      setDeliveryInfo(null);
-      trackError("geocoding_unavailable");
-      setDeliveryError(getFriendlyStorefrontError("delivery"));
-    } finally {
-      setCalculatingFee(false);
-    }
-  };
+    setDeliveryInfo({
+      price: Number(result.price) || 0,
+      time: Number(result.time) || 0,
+      distance: Number(result.distance) || 0,
+      valid: result.valid === true,
+      addressValidated: result.addressValidated === true,
+    });
+  } catch (error) {
+    console.error(error);
+    setDeliveryInfo(null);
+    trackError("routing_unavailable");
+    setDeliveryError(getFriendlyStorefrontError("delivery"));
+  } finally {
+    setCalculatingFee(false);
+  }
+};
 
   const handleBlurCep = async () => {
     const cepLimpo = address.cep.replace(/\D/g, "");
