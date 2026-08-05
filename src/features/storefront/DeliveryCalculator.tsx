@@ -118,7 +118,7 @@ export function DeliveryCalculator({
         <h3 className="text-lg font-black text-gray-950">Endereço de entrega</h3>
       </div>
       <p className="mt-2 text-sm leading-6 text-gray-500">
-        Informe o endereço completo para consultar a taxa e o prazo antes do pagamento.
+        Informe o endereço completo para consultar a taxa de entrega antes do pagamento.
       </p>
       <div className="mt-3 flex items-start gap-2 rounded-2xl bg-blue-50 px-3.5 py-3 text-xs leading-5 text-blue-800">
         <Info size={16} className="mt-0.5 shrink-0" />
@@ -313,7 +313,7 @@ export function DeliveryCalculator({
             style={{ backgroundColor: primaryColor }}
           >
             {calculatingFee ? <Loader2 className="animate-spin" size={17} /> : <Search size={17} />}
-            {calculatingFee ? "Calculando entrega..." : canCalculate ? "Calcular taxa e prazo" : "Complete o endereço"}
+            {calculatingFee ? "Calculando entrega..." : canCalculate ? "Calcular taxa de entrega" : "Complete o endereço"}
           </button>
         </div>
       )}

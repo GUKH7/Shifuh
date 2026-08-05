@@ -197,7 +197,7 @@ export function CheckoutDrawer({
     ...(isPickup ? {} : addressFieldErrors),
     delivery: deliveryReady || deliveryInfo || deliveryError
       ? ""
-      : "Calcule a taxa e o prazo da entrega antes de continuar.",
+      : "Calcule a taxa de entrega antes de continuar.",
   };
   const hasAddressErrors = Object.values(addressErrors).some(Boolean) || !deliveryReady;
   const changeForError = paymentMethod === "cash" && cashNeedsChange
@@ -774,7 +774,7 @@ export function CheckoutDrawer({
                     {completedIsPickup ? (
                       <p className="mt-2 text-xs font-bold text-emerald-700">Retire o pedido neste endereço. Não há taxa de entrega.</p>
                     ) : (
-                      <p className="mt-2 text-xs font-bold text-emerald-700">Previsão aproximada: {completedOrder.deliveryTime} min</p>
+                      <p className="mt-2 text-xs font-bold text-emerald-700">Taxa de entrega: {completedOrder.deliveryFee === 0 ? "Grátis" : formatMoney(completedOrder.deliveryFee)}</p>
                     )}
                   </div>
                 </div>
@@ -851,7 +851,7 @@ export function CheckoutDrawer({
                 <p role="alert" className="py-2 text-center text-sm font-bold text-rose-700">Endereço fora da área de entrega</p>
               ) : !deliveryInfo?.addressValidated ? (
                 <p className="py-2 text-center text-xs font-semibold text-gray-500">
-                  Preencha o endereço e use “Calcular taxa e prazo” acima.
+                  Preencha o endereço e use “Calcular taxa de entrega” acima.
                 </p>
               ) : (
                 <button

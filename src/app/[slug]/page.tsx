@@ -369,7 +369,7 @@ export default function StorePage() {
     }
     if (!isPickup && (!deliveryInfo?.valid || !deliveryInfo.addressValidated)) {
       setStep("address");
-      setDeliveryError("Calcule novamente a taxa e o prazo para continuar.");
+      setDeliveryError("Calcule novamente a taxa de entrega para continuar.");
       showToast({
         title: "Entrega ainda não validada",
         description: "Confira o endereço e calcule a entrega antes de confirmar.",
