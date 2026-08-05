@@ -17,3 +17,7 @@
   white-space: normal !important;
   overflow-wrap: anywhere;
 }
+
+.scope [data-product-card] > div:has(> [data-product-image-unavailable]) {
+  display: none;
+}
