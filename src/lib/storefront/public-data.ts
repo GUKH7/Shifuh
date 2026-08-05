@@ -3,14 +3,14 @@ import "server-only";
 import { cache } from "react";
 import type { PublicStorefrontData } from "@/features/storefront/public-storefront-types";
 import type { Product } from "@/features/storefront/types";
-import { createAdminClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 
 export const getPublicStorefrontData = cache(
   async (slug: string): Promise<PublicStorefrontData | null> => {
     const normalizedSlug = slug.trim().toLowerCase();
     if (!normalizedSlug) return null;
 
-    const supabase = createAdminClient() as any;
+    const supabase = (await createClient()) as any;
     const { data: restaurant, error: restaurantError } = await supabase
       .from("public_restaurants")
       .select("*")
