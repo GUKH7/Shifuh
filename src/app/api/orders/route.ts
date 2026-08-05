@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { calculateDeliveryFee, calculateDistance, getCoordinates } from "@/lib/geo";
+import { calculateDeliveryQuote, DeliveryQuoteError } from "@/lib/delivery-quote";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { getStoreStatus } from "@/features/storefront/store-summary";
@@ -435,64 +435,29 @@ export async function POST(request: Request) {
     }
 
     let deliveryFee = 0;
-    let deliveryTime = 0;
-    let deliveryDistance: number | null = null;
-    const tiers = Array.isArray(restaurant.delivery_tiers) ? restaurant.delivery_tiers : [];
+  let deliveryTime = 0;
+  let deliveryDistance: number | null = null;
 
-    if (fulfillmentType === "delivery") {
-      let restaurantCoords =
-        restaurant.latitude !== null && restaurant.longitude !== null
-          ? { lat: Number(restaurant.latitude), lon: Number(restaurant.longitude) }
-          : null;
-
-      if (!restaurantCoords && restaurant.address_street && restaurant.address_city && restaurant.address_state) {
-        restaurantCoords = await getCoordinates({
-          postalCode: restaurant.address_zip || undefined,
-          street: restaurant.address_street || undefined,
-          number: restaurant.address_number || undefined,
-          neighborhood: restaurant.address_neighborhood || undefined,
-          city: restaurant.address_city || undefined,
-          state: restaurant.address_state || undefined,
-        });
-      }
-
-      if (!restaurantCoords) {
+  if (fulfillmentType === "delivery") {
+    try {
+      const quote = await calculateDeliveryQuote(restaurant, address);
+      deliveryFee = quote.price;
+      deliveryTime = quote.time;
+      deliveryDistance = quote.distance;
+    } catch (error) {
+      if (error instanceof DeliveryQuoteError) {
         return NextResponse.json(
-          { code: "DELIVERY_CALCULATION_UNAVAILABLE", error: "A loja não conseguiu calcular a entrega agora. Tente novamente." },
-          { status: 503 },
+          {
+            code: error.code,
+            error: error.message,
+            ...(error.details || {}),
+          },
+          { status: error.status },
         );
       }
-
-      const clientCoords = await getCoordinates({
-        postalCode: address.cep,
-        street: address.street,
-        number: address.number === "S/N" ? undefined : address.number,
-        neighborhood: address.neighborhood,
-        city: address.city,
-        state: address.state,
-      });
-
-      if (!clientCoords) {
-        return NextResponse.json(
-          { code: "ADDRESS_NOT_FOUND", error: "Não foi possível localizar o endereço informado." },
-          { status: 422 },
-        );
-      }
-
-      const distance = calculateDistance(restaurantCoords.lat, restaurantCoords.lon, clientCoords.lat, clientCoords.lon);
-      const fee = calculateDeliveryFee(distance, tiers);
-      deliveryDistance = distance;
-      deliveryTime = fee.time;
-
-      if (!fee.valid && tiers.length > 0) {
-        return NextResponse.json(
-          { code: "OUTSIDE_DELIVERY_AREA", error: "O endereço informado está fora da área de entrega.", distance },
-          { status: 422 },
-        );
-      }
-
-      deliveryFee = roundMoney(fee.price);
+      throw error;
     }
+  }
 
     const total = roundMoney(subtotal + deliveryFee - discount);
     let normalizedChangeFor: string | null = null;
@@ -521,7 +486,7 @@ export async function POST(request: Request) {
       fulfillment_type: fulfillmentType,
       distance: deliveryDistance,
       delivery_calculated: fulfillmentType === "delivery",
-      distance_method: fulfillmentType === "delivery" ? "straight_line" : null,
+      distance_method: fulfillmentType === "delivery" ? "road_route" : null,
     };
 
     const transactionItems = normalizedItems.map((item) => ({
