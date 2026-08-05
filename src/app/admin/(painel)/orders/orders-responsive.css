@@ -1,7 +1,21 @@
 @media (min-width: 1280px) {
   .orders-table-header,
   .orders-table-row {
-    grid-template-columns: 110px minmax(200px, 1.4fr) minmax(135px, 0.9fr) 110px minmax(135px, 0.9fr) 120px 174px !important;
+    grid-template-columns:
+      116px
+      minmax(180px, 1.3fr)
+      minmax(145px, 0.95fr)
+      120px
+      125px
+      135px
+      190px !important;
+    align-items: center;
+    column-gap: 1rem !important;
+  }
+
+  .orders-table-header {
+    min-height: 3.25rem;
+    padding: 0.75rem 1.25rem !important;
   }
 
   .orders-table-header > :nth-child(4),
@@ -11,19 +25,77 @@
     display: none !important;
   }
 
-  .orders-table-row { padding: 1rem 1.25rem !important; }
-  .orders-table-row > .orders-table-cell { min-width: 0; }
+  .orders-table-header > :nth-child(1),
+  .orders-table-header > :nth-child(2),
+  .orders-table-header > :nth-child(3) {
+    text-align: left;
+  }
+
+  .orders-table-header > :nth-child(5),
+  .orders-table-header > :nth-child(6),
+  .orders-table-header > :nth-child(7) {
+    text-align: center;
+  }
+
+  .orders-table-header > :nth-child(9) {
+    text-align: right !important;
+  }
+
+  .orders-table-row {
+    min-height: 4.75rem;
+    padding: 0.875rem 1.25rem !important;
+  }
+
+  .orders-table-row > .orders-table-cell {
+    display: flex;
+    min-width: 0;
+    min-height: 3rem;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .orders-table-row > .orders-table-cell:not([data-label="Canal"]):not([data-label="Status"]):not([data-label="Ações"]) {
+    flex-direction: column;
+  }
 
   .orders-table-row > .orders-table-cell[data-label="Pedido"],
   .orders-table-row > .orders-table-cell[data-label="Cliente"] {
+    align-items: flex-start;
+    justify-content: center;
     text-align: left !important;
+  }
+
+  .orders-table-row > .orders-table-cell[data-label="Pedido"] p,
+  .orders-table-row > .orders-table-cell[data-label="Cliente"] p {
+    max-width: 100%;
   }
 
   .orders-table-row > .orders-table-cell[data-label="Canal"] {
     justify-content: flex-start !important;
+    gap: 0.625rem !important;
+    text-align: left;
+  }
+
+  .orders-table-row > .orders-table-cell[data-label="Canal"] > div {
+    min-width: 0;
+    text-align: left;
+  }
+
+  .orders-table-row > .orders-table-cell[data-label="Valor"],
+  .orders-table-row > .orders-table-cell[data-label="Pagamento"],
+  .orders-table-row > .orders-table-cell[data-label="Status"] {
+    align-items: center;
+    justify-content: center !important;
+    text-align: center !important;
+  }
+
+  .orders-table-row > .orders-table-cell[data-label="Pagamento"] p {
+    max-width: 7.5rem;
+    line-height: 1.25rem;
   }
 
   .orders-table-row > .orders-actions-cell {
+    min-height: 3rem;
     justify-content: flex-end !important;
     gap: 0.5rem;
   }
@@ -41,7 +113,8 @@
 
   .orders-drawer-open .orders-table-header,
   .orders-drawer-open .orders-table-row {
-    grid-template-columns: 100px minmax(180px, 1fr) 105px 118px 164px !important;
+    grid-template-columns: 104px minmax(170px, 1fr) 112px 120px 170px !important;
+    column-gap: 0.75rem !important;
   }
 
   .orders-drawer-open .orders-table-header > :nth-child(3),
