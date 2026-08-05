@@ -26,6 +26,7 @@ export function ProductImage({
   if (!src || failed) {
     return (
       <div
+        data-product-image-unavailable
         role="img"
         aria-label={`Imagem indisponível para ${alt}`}
         className={`flex h-full w-full flex-col items-center justify-center gap-1 bg-gradient-to-br from-gray-50 to-gray-100 text-gray-400 ${fallbackClassName}`}
