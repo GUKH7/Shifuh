@@ -922,12 +922,8 @@ export default function OrdersPage() {
   };
 
   const toggleExpandedOrder = (order: Order) => {
-    setExpandedOrders((current) =>
-      current.includes(order.id)
-        ? current.filter((item) => item !== order.id)
-        : [...current, order.id],
-    );
-  };
+  setExpandedOrders((current) => (current.includes(order.id) ? [] : [order.id]));
+};
 
   const toggleTechnicalDetails = (order: Order) => {
     setExpandedTechnicalOrders((current) =>
@@ -1029,7 +1025,11 @@ export default function OrdersPage() {
         </div>
       )}
 
-      <AdminPageShell className={`space-y-4 ${isSummaryOpen ? "pb-[18rem] sm:pb-[11rem]" : "pb-20"}`}>
+      <AdminPageShell
+  className={`space-y-4 ${isSummaryOpen ? "pb-[18rem] sm:pb-[11rem]" : "pb-20"} ${
+    expandedOrders.length ? "orders-drawer-open" : ""
+  }`}
+>
         <AdminPageHeader
           title="Pedidos"
           description={
@@ -1228,7 +1228,12 @@ export default function OrdersPage() {
 
                   return (
                     <div key={order.id} className={order.status === "pending" ? "bg-orange-50/25" : "bg-white"}>
-                      <div className="orders-table-row grid gap-4 px-5 py-4 xl:grid-cols-[96px_minmax(145px,1.2fr)_100px_64px_88px_minmax(150px,1fr)_112px_90px_150px] xl:items-center xl:gap-2 xl:px-4">
+                      <div
+              className={`orders-table-row grid cursor-pointer gap-4 px-5 py-4 transition-colors xl:grid-cols-[96px_minmax(145px,1.2fr)_100px_64px_88px_minmax(150px,1fr)_112px_90px_150px] xl:items-center xl:gap-2 xl:px-4 ${
+                isExpanded ? "is-selected" : ""
+              }`}
+              onClick={() => toggleExpandedOrder(order)}
+            >
                         <div className="orders-table-cell text-center" data-label="Pedido">
                           <p className="text-sm font-black text-gray-950">#{formatDisplayNumber(order)}</p>
                           <p className="mt-1 text-[11px] font-medium text-gray-500">
@@ -1287,7 +1292,7 @@ export default function OrdersPage() {
                           {primaryActionLabel && (
                             <button
                               type="button"
-                              onClick={() => void handlePrimaryAction(order)}
+                              onClick={(event) => { event.stopPropagation(); void handlePrimaryAction(order); }}
                               disabled={busyIfoodAction.startsWith(`${order.id}:`)}
                               className="inline-flex h-9 min-w-0 items-center justify-center rounded-xl bg-[var(--brand)] px-2 text-[11px] font-black text-white shadow-sm disabled:opacity-50"
                               aria-label={primaryActionLabel}
@@ -1297,7 +1302,7 @@ export default function OrdersPage() {
                           )}
                           <button
                             type="button"
-                            onClick={() => handlePrint(order)}
+                            onClick={(event) => { event.stopPropagation(); handlePrint(order); }}
                             className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--line)] bg-white text-gray-600 hover:border-orange-200 hover:text-[var(--brand)]"
                             aria-label="Imprimir pedido"
                           >
@@ -1305,10 +1310,10 @@ export default function OrdersPage() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => toggleExpandedOrder(order)}
+                            onClick={(event) => { event.stopPropagation(); toggleExpandedOrder(order); }}
                             className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--line)] bg-white text-gray-600 hover:border-orange-200 hover:text-[var(--brand)]"
-                            aria-label="Ver detalhes do pedido"
-                            title="Ver detalhes"
+                            aria-label={isExpanded ? "Fechar detalhes do pedido" : "Ver detalhes do pedido"}
+                            title={isExpanded ? "Fechar detalhes" : "Ver detalhes"}
                           >
                             <Eye size={16} />
                           </button>
@@ -1316,7 +1321,36 @@ export default function OrdersPage() {
                       </div>
 
                       {isExpanded && (
-                        <div className="border-t border-[var(--line)] bg-[#fffdfa] px-5 py-5 xl:px-6">
+                        <div
+                className="orders-detail-drawer border-t border-[var(--line)] bg-[#fffdfa] px-5 py-5 xl:px-6"
+                onClick={(event) => event.stopPropagation()}
+                role="complementary"
+                aria-label={`Detalhes do pedido ${formatDisplayNumber(order)}`}
+              >
+                <div className="orders-detail-drawer-header">
+                  <div className="min-w-0">
+                    <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--brand)]">
+                      Detalhes do pedido
+                    </p>
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                      <h2 className="text-xl font-black text-gray-950">
+                        #{formatDisplayNumber(order)}
+                      </h2>
+                      <OrderStatusBadge status={order.status} className="font-black" />
+                    </div>
+                    <p className="mt-1 truncate text-sm font-semibold text-gray-600">
+                      {order.customer_name} · {formatTime(order.created_at)}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => toggleExpandedOrder(order)}
+                    className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--line)] bg-white text-gray-500 transition hover:border-orange-200 hover:text-[var(--brand)]"
+                    aria-label="Fechar detalhes do pedido"
+                  >
+                    <XCircle size={19} />
+                  </button>
+                </div>
                           <div className="grid gap-5 xl:grid-cols-[1.25fr_0.9fr_260px]">
                             <div>
                               <div className="mb-3 flex items-center justify-between gap-3">
@@ -1477,7 +1511,7 @@ export default function OrdersPage() {
 
                               <button
                                 type="button"
-                                onClick={() => handlePrint(order)}
+                                onClick={(event) => { event.stopPropagation(); handlePrint(order); }}
                                 className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700"
                               >
                                 <Printer size={15} />
@@ -1487,7 +1521,7 @@ export default function OrdersPage() {
                               {primaryActionLabel && (
                                 <button
                                   type="button"
-                                  onClick={() => void handlePrimaryAction(order)}
+                                  onClick={(event) => { event.stopPropagation(); void handlePrimaryAction(order); }}
                                   disabled={busyIfoodAction.startsWith(`${order.id}:`) || statusUpdatingOrderId === order.id}
                                   className="brand-gradient w-full rounded-2xl px-4 py-3 text-sm font-black text-white disabled:opacity-60"
                                 >
