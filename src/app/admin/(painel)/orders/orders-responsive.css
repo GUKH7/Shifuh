@@ -64,12 +64,15 @@
   right: 1rem;
   bottom: 1rem;
   width: min(26rem, calc(100vw - 2rem));
+  overflow-x: hidden;
   overflow-y: auto;
   border: 1px solid var(--line) !important;
   border-radius: 1.25rem;
   background: #fff !important;
   padding: 0 !important;
   box-shadow: 0 24px 70px rgba(15, 23, 42, 0.18);
+  clip-path: inset(0 round 1.25rem);
+  isolation: isolate;
   animation: orders-drawer-enter 180ms ease-out;
 }
 
@@ -178,6 +181,7 @@
     max-width: none;
     border: 0 !important;
     border-radius: 0;
+    clip-path: none;
   }
 
   .orders-detail-drawer-header {
