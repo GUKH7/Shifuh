@@ -67,9 +67,8 @@
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
-  scrollbar-gutter: stable;
-  scrollbar-width: thin;
-  scrollbar-color: #bdb6af transparent;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
   border: 1px solid #e8ddd3 !important;
   border-radius: 1.25rem;
   background: #fff !important;
@@ -89,26 +88,6 @@
 }
 
 .orders-detail-drawer::-webkit-scrollbar {
-  width: 10px;
-}
-
-.orders-detail-drawer::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.orders-detail-drawer::-webkit-scrollbar-thumb {
-  border: 3px solid transparent;
-  border-radius: 999px;
-  background: #bdb6af;
-  background-clip: content-box;
-}
-
-.orders-detail-drawer::-webkit-scrollbar-thumb:hover {
-  background: #928a83;
-  background-clip: content-box;
-}
-
-.orders-detail-drawer::-webkit-scrollbar-button {
   display: none;
   width: 0;
   height: 0;
@@ -263,7 +242,6 @@
     border: 0 !important;
     border-radius: 0;
     clip-path: none;
-    scrollbar-gutter: auto;
   }
 
   .orders-detail-drawer-header {
