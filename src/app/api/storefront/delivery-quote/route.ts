@@ -40,7 +40,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ code: "INVALID_STORE", error: "Loja inválida." }, { status: 400 });
     }
 
-    const addressErrors = getCheckoutAddressErrors({ ...address, complement: "" });
+    const addressErrors = getCheckoutAddressErrors(address);
     const invalidFields = Object.entries(addressErrors)
       .filter(([, message]) => Boolean(message))
       .map(([field]) => field);
