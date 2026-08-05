@@ -79,6 +79,14 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
   useEffect(() => setIsMobileSidebarOpen(false), [pathname]);
 
   useEffect(() => {
+    if (pathname !== "/admin/orders") return;
+    const frameId = window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    });
+    return () => window.cancelAnimationFrame(frameId);
+  }, [pathname]);
+
+  useEffect(() => {
     if (!isMobileSidebarOpen) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -174,7 +182,7 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
         style={{ "--admin-sidebar-width": isCollapsed ? "4rem" : "14rem" } as React.CSSProperties}
       >
         <header className="admin-panel-header sticky top-0 z-30 bg-[#fbf7f2]/95 backdrop-blur">
-          <div className="min-h-16 px-3 py-2 sm:h-20 sm:px-4 sm:py-0 lg:px-6">
+          <div className="h-16 px-3 py-2 sm:h-20 sm:px-4 sm:py-0 lg:px-6">
             <div className="admin-page-shell grid h-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 sm:gap-3">
               <button
                 type="button"
@@ -231,7 +239,7 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
           </div>
         </header>
 
-        <main className="admin-panel-content min-w-0 overflow-x-hidden px-3 py-4 sm:px-4 sm:py-5 md:px-5 lg:px-6">
+        <main className="admin-panel-content min-w-0 overflow-x-hidden px-3 py-3 sm:px-4 sm:py-5 md:px-5 lg:px-6">
           {children}
         </main>
       </div>
