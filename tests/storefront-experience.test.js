@@ -110,6 +110,12 @@ test("checkout confirms and persists an order before leaving the storefront", ()
   assert.match(checkout, /Acompanhar pedido <ArrowRight/);
 });
 
+test("checkout confirms pickup without presenting a delivery forecast", () => {
+  assert.match(checkout, /completedOrder\?\.fulfillmentType === "pickup"/);
+  assert.match(checkout, /completedIsPickup \? "Retirada na loja" : "Entrega"/);
+  assert.match(checkout, /Retire o pedido neste endereço\. Não há taxa de entrega\./);
+});
+
 test("checkout recovers from products removed after the cart was saved", () => {
   assert.match(storefront, /result\?\.code === "ITEM_UNAVAILABLE"/);
   assert.match(storefront, /setCart\(\(current\) => current\.filter/);
@@ -122,11 +128,13 @@ test("tracking delays the reassurance notice for five minutes", () => {
   assert.match(tracking, /Seu pedido está registrado com segurança/);
 });
 
-test("payment requires a conscious choice and keeps coupon details collapsed", () => {
+test("payment requires a conscious configured choice and keeps coupon details collapsed", () => {
   assert.match(storefront, /useState<StorefrontPaymentMethod \| "">\(""\)/);
   assert.match(checkout, /Tenho um cupom/);
   assert.match(checkout, /aria-expanded=\{isCouponOpen\}/);
-  assert.match(checkout, /Todas as formas disponíveis são pagas diretamente ao receber o pedido/);
+  assert.match(checkout, /useStorefrontPaymentMethods\(\)/);
+  assert.match(checkout, /availablePaymentMethods\.map/);
+  assert.match(checkout, /As formas disponíveis são definidas pela loja/);
   assert.match(checkout, /paymentMethod \? paymentMethodDetails\[paymentMethod\]\.label/);
   assert.match(checkout, /bg-\[#f5f6f7\]/);
 });
