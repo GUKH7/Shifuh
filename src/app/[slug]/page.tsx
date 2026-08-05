@@ -123,6 +123,7 @@ export default function StorePage() {
     storefrontTheme,
     categories,
     products,
+    deliveryTiers,
     loading,
     activeCategory,
     setActiveCategory,
