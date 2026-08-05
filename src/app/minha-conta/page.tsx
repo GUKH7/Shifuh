@@ -9,10 +9,11 @@ import { OrderStatusBadge } from "@/components/ui/order-status-badge"
 
 export default function MyAccountPage() {
   const router = useRouter()
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const supabase = supabaseUrl && supabaseAnonKey
+    ? createBrowserClient(supabaseUrl, supabaseAnonKey)
+    : null
 
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
@@ -24,11 +25,16 @@ export default function MyAccountPage() {
   const [reviewModalOpen, setReviewModalOpen] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<any>(null)
 
-  useEffect(() => { 
-      checkSession() 
+  useEffect(() => {
+      if (!supabase) {
+          setLoading(false)
+          return
+      }
+      checkSession()
   }, [])
 
   const checkSession = async () => {
+    if (!supabase) return
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
         const currentPath = typeof window !== 'undefined' ? window.location.pathname : ''
@@ -44,6 +50,7 @@ export default function MyAccountPage() {
   }
 
   const fetchUserData = async (userId: string) => {
+    if (!supabase) return
     try {
         const { data: myOrders } = await supabase
             .from('orders')
@@ -70,7 +77,7 @@ export default function MyAccountPage() {
 
   const handleLogout = async () => { 
     try {
-      await supabase.auth.signOut(); 
+      if (supabase) await supabase.auth.signOut(); 
       handleBackToMenu(); 
     } catch (error) {
       console.error("Erro ao sair:", error);
