@@ -28,21 +28,31 @@ export function OrderStatusBadge({
     <span
       className={`inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full border font-bold leading-none ${dimensions} ${meta.badge} ${className}`}
     >
-      <span
-        className="relative inline-flex h-2.5 w-2.5 shrink-0 items-center justify-center overflow-visible"
+      <svg
         aria-hidden="true"
+        className="h-3.5 w-3.5 shrink-0 overflow-visible"
+        viewBox="0 0 14 14"
       >
         {isActive && (
-          <span
-            className="absolute h-2.5 w-2.5 animate-ping rounded-full opacity-45 motion-reduce:hidden"
-            style={{ backgroundColor: dotColor }}
-          />
+          <circle cx="7" cy="7" r="3" fill="none" stroke={dotColor} strokeWidth="1.5">
+            <animate
+              attributeName="r"
+              values="3;6;3"
+              keyTimes="0;0.72;1"
+              dur="1.35s"
+              repeatCount="indefinite"
+            />
+            <animate
+              attributeName="opacity"
+              values="0.85;0;0.85"
+              keyTimes="0;0.72;1"
+              dur="1.35s"
+              repeatCount="indefinite"
+            />
+          </circle>
         )}
-        <span
-          className={`relative z-[1] inline-flex h-2 w-2 rounded-full ${isActive ? "animate-pulse motion-reduce:animate-none" : ""}`}
-          style={{ backgroundColor: dotColor }}
-        />
-      </span>
+        <circle cx="7" cy="7" r="3" fill={dotColor} />
+      </svg>
       <span>{meta.label}</span>
     </span>
   );
