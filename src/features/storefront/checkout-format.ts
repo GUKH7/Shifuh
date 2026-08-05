@@ -65,6 +65,18 @@ export const storefrontPaymentMethods = ["pix", "credit", "debit", "cash"] as co
 
 export type StorefrontPaymentMethod = (typeof storefrontPaymentMethods)[number];
 
+export const defaultStorefrontPaymentMethods: StorefrontPaymentMethod[] = [
+  ...storefrontPaymentMethods,
+];
+
+export function normalizeStorefrontPaymentMethods(value: unknown): StorefrontPaymentMethod[] {
+  if (!Array.isArray(value)) return [...defaultStorefrontPaymentMethods];
+
+  const normalized = value.filter(isStorefrontPaymentMethod);
+  const unique = [...new Set(normalized)];
+  return unique.length > 0 ? unique : [...defaultStorefrontPaymentMethods];
+}
+
 export const paymentMethodDetails: Record<
   StorefrontPaymentMethod,
   { label: string; description: string; timing: string }
@@ -90,6 +102,13 @@ export const paymentMethodDetails: Record<
     timing: "Pagamento na entrega",
   },
 };
+
+export function formatStorefrontPaymentMethods(methods: StorefrontPaymentMethod[]) {
+  const labels = methods.map((method) => paymentMethodDetails[method].label);
+  if (labels.length <= 1) return labels[0] || "Pagamento indisponível";
+  if (labels.length === 2) return labels.join(" e ");
+  return `${labels.slice(0, -1).join(", ")} e ${labels.at(-1)}`;
+}
 
 export function isStorefrontPaymentMethod(value: unknown): value is StorefrontPaymentMethod {
   return typeof value === "string" && storefrontPaymentMethods.includes(value as StorefrontPaymentMethod);
