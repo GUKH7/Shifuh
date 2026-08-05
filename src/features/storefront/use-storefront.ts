@@ -80,12 +80,15 @@ export function useStorefront({ slug, onCustomerLoaded, onMissingStore }: UseSto
     };
   }, [initialData, onMissingStore, slug]);
 
-  const restaurant = storefrontData?.restaurant || null;
+  const restaurant: any = storefrontData?.restaurant || null;
   const categories = storefrontData?.categories || [];
   const products = storefrontData?.products || [];
   const primaryColor = restaurant?.primary_color || "#ff5a1f";
-  const banners = useMemo(
-    () => (Array.isArray(restaurant?.banners) ? restaurant.banners.filter(Boolean) : []),
+  const banners = useMemo<string[]>(
+    () =>
+      Array.isArray(restaurant?.banners)
+        ? restaurant.banners.filter((banner: unknown): banner is string => Boolean(banner))
+        : [],
     [restaurant?.banners],
   );
   const storefrontHeadline = restaurant?.storefront_headline || "";
