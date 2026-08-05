@@ -1,0 +1,342 @@
+name: Apply orders side panel
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply side panel layout
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          page_path = Path('src/app/admin/(painel)/orders/page.tsx')
+          text = page_path.read_text()
+
+          old_toggle = '''  const toggleExpandedOrder = (order: Order) => {
+            setExpandedOrders((current) =>
+              current.includes(order.id)
+                ? current.filter((item) => item !== order.id)
+                : [...current, order.id],
+            );
+          };'''
+          new_toggle = '''  const toggleExpandedOrder = (order: Order) => {
+            setExpandedOrders((current) => (current.includes(order.id) ? [] : [order.id]));
+          };'''
+          assert old_toggle in text, 'toggleExpandedOrder pattern not found'
+          text = text.replace(old_toggle, new_toggle, 1)
+
+          old_shell = '''      <AdminPageShell className={`space-y-4 ${isSummaryOpen ? "pb-[18rem] sm:pb-[11rem]" : "pb-20"}`}>'''
+          new_shell = '''      <AdminPageShell
+            className={`space-y-4 ${isSummaryOpen ? "pb-[18rem] sm:pb-[11rem]" : "pb-20"} ${
+              expandedOrders.length ? "orders-drawer-open" : ""
+            }`}
+          >'''
+          assert old_shell in text, 'AdminPageShell pattern not found'
+          text = text.replace(old_shell, new_shell, 1)
+
+          old_row = '''                      <div className="orders-table-row grid gap-4 px-5 py-4 xl:grid-cols-[96px_minmax(145px,1.2fr)_100px_64px_88px_minmax(150px,1fr)_112px_90px_150px] xl:items-center xl:gap-2 xl:px-4">'''
+          new_row = '''                      <div
+                        className={`orders-table-row grid cursor-pointer gap-4 px-5 py-4 transition-colors xl:grid-cols-[96px_minmax(145px,1.2fr)_100px_64px_88px_minmax(150px,1fr)_112px_90px_150px] xl:items-center xl:gap-2 xl:px-4 ${
+                          isExpanded ? "is-selected" : ""
+                        }`}
+                        onClick={() => toggleExpandedOrder(order)}
+                      >'''
+          assert old_row in text, 'orders row pattern not found'
+          text = text.replace(old_row, new_row, 1)
+
+          text = text.replace(
+            'onClick={() => void handlePrimaryAction(order)}',
+            'onClick={(event) => { event.stopPropagation(); void handlePrimaryAction(order); }}',
+          )
+          text = text.replace(
+            'onClick={() => handlePrint(order)}',
+            'onClick={(event) => { event.stopPropagation(); handlePrint(order); }}',
+          )
+          text = text.replace(
+            'onClick={() => toggleExpandedOrder(order)}',
+            'onClick={(event) => { event.stopPropagation(); toggleExpandedOrder(order); }}',
+            1,
+          )
+
+          old_drawer = '''                        <div className="border-t border-[var(--line)] bg-[#fffdfa] px-5 py-5 xl:px-6">
+                          <div className="grid gap-5 xl:grid-cols-[1.25fr_0.9fr_260px]">'''
+          new_drawer = '''                        <div
+                          className="orders-detail-drawer border-t border-[var(--line)] bg-[#fffdfa] px-5 py-5 xl:px-6"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <div className="orders-detail-drawer-header">
+                            <div className="min-w-0">
+                              <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--brand)]">
+                                Detalhes do pedido
+                              </p>
+                              <div className="mt-1 flex flex-wrap items-center gap-2">
+                                <h2 className="text-xl font-black text-gray-950">
+                                  #{formatDisplayNumber(order)}
+                                </h2>
+                                <OrderStatusBadge status={order.status} className="font-black" />
+                              </div>
+                              <p className="mt-1 truncate text-sm font-semibold text-gray-600">
+                                {order.customer_name} · {formatTime(order.created_at)}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => toggleExpandedOrder(order)}
+                              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--line)] bg-white text-gray-500 transition hover:border-orange-200 hover:text-[var(--brand)]"
+                              aria-label="Fechar detalhes do pedido"
+                            >
+                              <XCircle size={19} />
+                            </button>
+                          </div>
+
+                          <div className="grid gap-5 xl:grid-cols-[1.25fr_0.9fr_260px]">'''
+          assert old_drawer in text, 'expanded drawer pattern not found'
+          text = text.replace(old_drawer, new_drawer, 1)
+
+          page_path.write_text(text)
+
+          css = r'''@media (min-width: 1280px) {
+            .orders-table-header,
+            .orders-table-row {
+              grid-template-columns:
+                110px
+                minmax(200px, 1.4fr)
+                minmax(135px, 0.9fr)
+                110px
+                minmax(135px, 0.9fr)
+                120px
+                88px !important;
+            }
+
+            .orders-table-header > :nth-child(4),
+            .orders-table-header > :nth-child(8),
+            .orders-table-row > :nth-child(4),
+            .orders-table-row > :nth-child(8) {
+              display: none !important;
+            }
+
+            .orders-table-row {
+              padding: 1rem 1.25rem !important;
+            }
+
+            .orders-table-row > .orders-table-cell {
+              min-width: 0;
+            }
+
+            .orders-table-row > .orders-table-cell[data-label="Pedido"],
+            .orders-table-row > .orders-table-cell[data-label="Cliente"] {
+              text-align: left !important;
+            }
+
+            .orders-table-row > .orders-table-cell[data-label="Canal"] {
+              justify-content: flex-start !important;
+            }
+
+            .orders-table-row > .orders-actions-cell {
+              justify-content: flex-end !important;
+              gap: 0.5rem;
+            }
+
+            .orders-actions-cell > button:first-child:nth-last-child(3) {
+              display: none !important;
+            }
+
+            .orders-drawer-open {
+              padding-right: 27.5rem;
+              transition: padding-right 180ms ease;
+            }
+
+            .orders-drawer-open .orders-table-header,
+            .orders-drawer-open .orders-table-row {
+              grid-template-columns: 100px minmax(180px, 1fr) 105px 118px 84px !important;
+            }
+
+            .orders-drawer-open .orders-table-header > :nth-child(3),
+            .orders-drawer-open .orders-table-header > :nth-child(6),
+            .orders-drawer-open .orders-table-row > :nth-child(3),
+            .orders-drawer-open .orders-table-row > :nth-child(6) {
+              display: none !important;
+            }
+          }
+
+          .orders-table-row:hover,
+          .orders-table-row.is-selected {
+            background: #fff7f1;
+          }
+
+          .orders-table-row.is-selected {
+            box-shadow: inset 3px 0 0 var(--brand);
+          }
+
+          .orders-detail-drawer {
+            position: fixed;
+            z-index: 70;
+            top: 5.75rem;
+            right: 1rem;
+            bottom: 1rem;
+            width: min(26rem, calc(100vw - 2rem));
+            overflow-y: auto;
+            border: 1px solid var(--line) !important;
+            border-radius: 1.25rem;
+            background: #fff !important;
+            padding: 0 !important;
+            box-shadow: 0 24px 70px rgba(15, 23, 42, 0.18);
+            animation: orders-drawer-enter 180ms ease-out;
+          }
+
+          .orders-detail-drawer-header {
+            position: sticky;
+            top: 0;
+            z-index: 3;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 1rem;
+            border-bottom: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.96);
+            padding: 1rem 1.125rem;
+            backdrop-filter: blur(10px);
+          }
+
+          .orders-detail-drawer > .grid {
+            display: flex !important;
+            flex-direction: column;
+            gap: 1rem !important;
+            padding: 1rem 1.125rem 1.25rem;
+          }
+
+          .orders-detail-drawer > .grid > div,
+          .orders-detail-drawer > .grid > div > div {
+            min-width: 0;
+          }
+
+          .orders-detail-drawer [class*="rounded-2xl"] {
+            border-radius: 0.875rem;
+          }
+
+          .orders-detail-drawer > .mt-5 {
+            margin: 0 1.125rem 1.25rem;
+          }
+
+          @keyframes orders-drawer-enter {
+            from {
+              opacity: 0;
+              transform: translateX(24px);
+            }
+            to {
+              opacity: 1;
+              transform: translateX(0);
+            }
+          }
+
+          @media (max-width: 1279px) {
+            .orders-table-row {
+              display: grid !important;
+              grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+              gap: 0.875rem 1rem !important;
+              margin: 0.75rem;
+              padding: 1rem !important;
+              border: 1px solid var(--line);
+              border-radius: 1rem;
+              background: #fff;
+            }
+
+            .orders-table-row > .orders-table-cell[data-label="Itens"],
+            .orders-table-row > .orders-table-cell[data-label="Horário"] {
+              display: none !important;
+            }
+
+            .orders-table-row > .orders-table-cell {
+              min-width: 0;
+              justify-content: flex-start !important;
+              text-align: left !important;
+            }
+
+            .orders-table-row > .orders-table-cell::before {
+              display: block;
+              margin-bottom: 0.3rem;
+              color: #9ca3af;
+              content: attr(data-label);
+              font-size: 0.625rem;
+              font-weight: 800;
+              letter-spacing: 0.08em;
+              line-height: 1rem;
+              text-transform: uppercase;
+            }
+
+            .orders-table-row > .orders-table-cell[data-label="Canal"],
+            .orders-table-row > .orders-table-cell[data-label="Status"],
+            .orders-table-row > .orders-actions-cell {
+              display: flex;
+              flex-wrap: wrap;
+            }
+
+            .orders-table-row > .orders-table-cell[data-label="Canal"]::before,
+            .orders-table-row > .orders-table-cell[data-label="Status"]::before,
+            .orders-table-row > .orders-actions-cell::before {
+              flex-basis: 100%;
+            }
+
+            .orders-table-row > .orders-actions-cell {
+              grid-column: 1 / -1;
+              gap: 0.5rem;
+            }
+
+            .orders-actions-cell > button:first-child:nth-last-child(3) {
+              display: none !important;
+            }
+
+            .orders-detail-drawer {
+              top: 1rem;
+              right: 1rem;
+              bottom: 1rem;
+              width: min(29rem, calc(100vw - 2rem));
+            }
+          }
+
+          @media (max-width: 639px) {
+            .orders-table-row {
+              grid-template-columns: minmax(0, 1fr) !important;
+            }
+
+            .orders-table-row > .orders-actions-cell {
+              grid-column: auto;
+            }
+
+            .orders-detail-drawer {
+              inset: 0;
+              width: 100vw;
+              max-width: none;
+              border: 0 !important;
+              border-radius: 0;
+            }
+
+            .orders-detail-drawer-header {
+              padding-top: max(1rem, env(safe-area-inset-top));
+            }
+          }
+          '''
+          Path('src/app/admin/(painel)/orders/orders-responsive.css').write_text(css)
+          PY
+
+          git rm '.github/workflows/apply-orders-side-panel.yml'
+
+      - name: Commit changes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add 'src/app/admin/(painel)/orders/page.tsx' 'src/app/admin/(painel)/orders/orders-responsive.css'
+          git commit -m 'feat(orders): abre detalhes em painel lateral'
+          git push
