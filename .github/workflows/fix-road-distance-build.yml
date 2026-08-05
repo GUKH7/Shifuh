@@ -1,0 +1,41 @@
+name: Corrigir build da rota viária
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/fix-road-distance-build.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Restaurar dados das faixas para indicadores
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          path = Path("src/app/[slug]/page.tsx")
+          content = path.read_text()
+          old = "    categories,\n    products,\n    loading,"
+          new = "    categories,\n    products,\n    deliveryTiers,\n    loading,"
+          if content.count(old) != 1:
+              raise SystemExit(f"Ponto de inserção inesperado: {content.count(old)}")
+          path.write_text(content.replace(old, new, 1))
+          PY
+
+          rm .github/workflows/fix-road-distance-build.yml
+          git config user.name "Gestor Delivery Bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/app/[slug]/page.tsx .github/workflows/fix-road-distance-build.yml
+          git commit -m "fix(delivery): preserva indicadores das faixas"
+          git push origin HEAD:main
