@@ -123,7 +123,6 @@ export default function StorePage() {
     storefrontTheme,
     categories,
     products,
-    deliveryTiers,
     loading,
     activeCategory,
     setActiveCategory,
@@ -187,57 +186,57 @@ export default function StorePage() {
   });
 
   const calculateDeliveryForAddress = async (addressData: typeof EMPTY_ADDRESS) => {
-  if (!isCompleteCheckoutAddress(addressData)) {
-    setDeliveryInfo(null);
-    setDeliveryError("Complete CEP, rua, número, bairro, cidade e UF para calcular a entrega.");
-    return;
-  }
-  if (!restaurant?.id) {
-    setDeliveryInfo(null);
-    setDeliveryError("A loja não conseguiu calcular a entrega agora. Tente novamente em instantes.");
-    return;
-  }
-
-  setCalculatingFee(true);
-  setDeliveryError("");
-
-  try {
-    const response = await fetch("/api/storefront/delivery-quote", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ restaurantId: restaurant.id, address: addressData }),
-    });
-    const result = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
+    if (!isCompleteCheckoutAddress(addressData)) {
       setDeliveryInfo(null);
-      trackError(
-        typeof result.code === "string"
-          ? result.code.toLowerCase()
-          : "delivery_quote_failed",
-      );
-      setDeliveryError(
-        result.error || "Não foi possível calcular a rota de entrega agora. Tente novamente.",
-      );
+      setDeliveryError("Complete CEP, rua, número, bairro, cidade e UF para calcular a entrega.");
+      return;
+    }
+    if (!restaurant?.id) {
+      setDeliveryInfo(null);
+      setDeliveryError("A loja não conseguiu calcular a entrega agora. Tente novamente em instantes.");
       return;
     }
 
-    setDeliveryInfo({
-      price: Number(result.price) || 0,
-      time: Number(result.time) || 0,
-      distance: Number(result.distance) || 0,
-      valid: result.valid === true,
-      addressValidated: result.addressValidated === true,
-    });
-  } catch (error) {
-    console.error(error);
-    setDeliveryInfo(null);
-    trackError("routing_unavailable");
-    setDeliveryError(getFriendlyStorefrontError("delivery"));
-  } finally {
-    setCalculatingFee(false);
-  }
-};
+    setCalculatingFee(true);
+    setDeliveryError("");
+
+    try {
+      const response = await fetch("/api/storefront/delivery-quote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ restaurantId: restaurant.id, address: addressData }),
+      });
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setDeliveryInfo(null);
+        trackError(
+          typeof result.code === "string"
+            ? result.code.toLowerCase()
+            : "delivery_quote_failed",
+        );
+        setDeliveryError(
+          result.error || "Não foi possível calcular a rota de entrega agora. Tente novamente.",
+        );
+        return;
+      }
+
+      setDeliveryInfo({
+        price: Number(result.price) || 0,
+        time: Number(result.time) || 0,
+        distance: Number(result.distance) || 0,
+        valid: result.valid === true,
+        addressValidated: result.addressValidated === true,
+      });
+    } catch (error) {
+      console.error(error);
+      setDeliveryInfo(null);
+      trackError("routing_unavailable");
+      setDeliveryError(getFriendlyStorefrontError("delivery"));
+    } finally {
+      setCalculatingFee(false);
+    }
+  };
 
   const handleBlurCep = async () => {
     const cepLimpo = address.cep.replace(/\D/g, "");
