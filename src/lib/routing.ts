@@ -1,3 +1,9 @@
+import {
+  getGoogleDrivingRoute,
+  requiresGoogleMaps,
+  shouldUseGoogleMaps,
+} from "@/lib/google-maps";
+
 export type RouteCoordinates = {
   lat: number;
   lon: number;
@@ -6,7 +12,7 @@ export type RouteCoordinates = {
 export type RoadRoute = {
   distanceKm: number;
   durationMinutes: number;
-  provider: "osrm";
+  provider: "google" | "osrm";
 };
 
 type OsrmRouteResponse = {
@@ -49,16 +55,10 @@ function rememberRoute(cacheKey: string, value: RoadRoute) {
   return value;
 }
 
-export async function getRoadRoute(
+async function getOsrmRoadRoute(
   origin: RouteCoordinates,
   destination: RouteCoordinates,
 ): Promise<RoadRoute | null> {
-  if (!isValidCoordinates(origin) || !isValidCoordinates(destination)) return null;
-
-  const cacheKey = `${coordinateKey(origin)}>${coordinateKey(destination)}`;
-  const cached = routeCache.get(cacheKey);
-  if (cached && cached.expiresAt > Date.now()) return cached.value;
-
   const coordinates = `${origin.lon},${origin.lat};${destination.lon},${destination.lat}`;
   const url = `${getRoutingBaseUrl()}/route/v1/driving/${coordinates}?alternatives=false&overview=false&steps=false`;
 
@@ -88,13 +88,40 @@ export async function getRoadRoute(
       return null;
     }
 
-    return rememberRoute(cacheKey, {
+    return {
       distanceKm: Math.round((distanceMeters / 1000) * 10) / 10,
       durationMinutes: Math.max(1, Math.ceil(durationSeconds / 60)),
       provider: "osrm",
-    });
+    };
   } catch (error) {
-    console.error("Erro ao calcular rota viária:", error);
+    console.error("Erro ao calcular rota viária pelo OSRM:", error);
     return null;
   }
+}
+
+export async function getRoadRoute(
+  origin: RouteCoordinates,
+  destination: RouteCoordinates,
+): Promise<RoadRoute | null> {
+  if (!isValidCoordinates(origin) || !isValidCoordinates(destination)) return null;
+
+  const preferredProvider = shouldUseGoogleMaps() ? "google" : "osrm";
+  const cacheKey = `${preferredProvider}:${coordinateKey(origin)}>${coordinateKey(destination)}`;
+  const cached = routeCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+
+  if (preferredProvider === "google") {
+    const googleRoute = await getGoogleDrivingRoute(origin, destination);
+    if (googleRoute) {
+      return rememberRoute(cacheKey, {
+        ...googleRoute,
+        provider: "google",
+      });
+    }
+
+    if (requiresGoogleMaps()) return null;
+  }
+
+  const osrmRoute = await getOsrmRoadRoute(origin, destination);
+  return osrmRoute ? rememberRoute(cacheKey, osrmRoute) : null;
 }
