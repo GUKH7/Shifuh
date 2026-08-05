@@ -24,20 +24,71 @@ export function AdminPageHeader({
   className?: string;
 }) {
   return (
-    <div className={cx("admin-page-header flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between", className)}>
-      <div className="admin-page-header-main flex min-w-0 items-center gap-4">
-        {icon ? (
-          <div className="admin-page-header-icon brand-gradient flex h-12 w-12 shrink-0 items-center justify-center text-white shadow-sm sm:h-14 sm:w-14">
-            {icon}
+    <>
+      <div className={cx("admin-page-header flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between", className)}>
+        <div className="admin-page-header-main flex min-w-0 items-center gap-4">
+          {icon ? (
+            <div className="admin-page-header-icon brand-gradient flex h-12 w-12 shrink-0 items-center justify-center text-white shadow-sm sm:h-14 sm:w-14">
+              {icon}
+            </div>
+          ) : null}
+          <div className="min-w-0">
+            <h1 className="text-2xl font-black tracking-tight text-gray-950 sm:text-3xl">{title}</h1>
+            {description ? <p className="mt-1 text-sm text-[var(--muted)]">{description}</p> : null}
           </div>
-        ) : null}
-        <div className="min-w-0">
-          <h1 className="text-2xl font-black tracking-tight text-gray-950 sm:text-3xl">{title}</h1>
-          {description ? <p className="mt-1 text-sm text-[var(--muted)]">{description}</p> : null}
         </div>
+        {action ? <div className="admin-page-header-action w-full sm:w-auto sm:shrink-0">{action}</div> : null}
       </div>
-      {action ? <div className="admin-page-header-action w-full sm:w-auto sm:shrink-0">{action}</div> : null}
-    </div>
+
+      <style>{`
+        @media (min-width: 1280px) {
+          .orders-drawer-open .admin-page-header {
+            flex-wrap: nowrap;
+            gap: 0.75rem;
+          }
+
+          .orders-drawer-open .admin-page-header-main {
+            flex: 0 0 auto;
+            gap: 0.75rem;
+          }
+
+          .orders-drawer-open .admin-page-header-main > div:last-child {
+            min-width: max-content;
+          }
+
+          .orders-drawer-open .admin-page-header-main h1,
+          .orders-drawer-open .admin-page-header-main p {
+            white-space: nowrap;
+          }
+
+          .orders-drawer-open .admin-page-header-action {
+            min-width: 0;
+          }
+
+          .orders-drawer-open .admin-page-header-action > div {
+            flex-wrap: nowrap;
+            gap: 0.5rem;
+          }
+
+          .orders-drawer-open .admin-page-header-action .admin-button,
+          .orders-drawer-open .admin-page-header-action > div > div.inline-flex,
+          .orders-drawer-open .admin-page-header-action > div > button {
+            gap: 0.375rem;
+            padding-left: 0.625rem;
+            padding-right: 0.625rem;
+            white-space: nowrap;
+          }
+
+          .orders-drawer-open .orders-table-header > *,
+          .orders-drawer-open .orders-table-row .orders-table-cell > p,
+          .orders-drawer-open .orders-table-row .orders-table-cell > div > p {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+        }
+      `}</style>
+    </>
   );
 }
 
