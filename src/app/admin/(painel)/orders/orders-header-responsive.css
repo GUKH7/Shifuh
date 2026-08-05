@@ -1,0 +1,18 @@
+@media (min-width: 1280px) {
+  .orders-drawer-open .admin-page-header-action button:has(.lucide-bell-ring) {
+    width: 2.75rem;
+    min-width: 2.75rem;
+    flex: 0 0 2.75rem !important;
+    gap: 0 !important;
+    padding-right: 0 !important;
+    padding-left: 0 !important;
+    overflow: hidden;
+    font-size: 0;
+    white-space: nowrap;
+  }
+
+  .orders-drawer-open .admin-page-header-action button:has(.lucide-bell-ring) .lucide-bell-ring {
+    width: 1.0625rem;
+    height: 1.0625rem;
+  }
+}
