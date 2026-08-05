@@ -53,22 +53,22 @@ jobs:
               'onClick={(event) => { event.stopPropagation(); handlePrint(order); }}',
           )
 
-          old_eye = '''                          <button
-                            type="button"
-                            onClick={() => toggleExpandedOrder(order)}
-                            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--line)] bg-white text-gray-600 hover:border-orange-200 hover:text-[var(--brand)]"
-                            aria-label="Ver detalhes do pedido"
-                            title="Ver detalhes"
-                          >'''
-          new_eye = '''                          <button
-                            type="button"
-                            onClick={(event) => { event.stopPropagation(); toggleExpandedOrder(order); }}
-                            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--line)] bg-white text-gray-600 hover:border-orange-200 hover:text-[var(--brand)]"
-                            aria-label={isExpanded ? "Fechar detalhes do pedido" : "Ver detalhes do pedido"}
-                            title={isExpanded ? "Fechar detalhes" : "Ver detalhes"}
-                          >'''
-          assert old_eye in text, 'eye button pattern not found'
-          text = text.replace(old_eye, new_eye, 1)
+          assert 'onClick={() => toggleExpandedOrder(order)}' in text, 'details button handler not found'
+          text = text.replace(
+              'onClick={() => toggleExpandedOrder(order)}',
+              'onClick={(event) => { event.stopPropagation(); toggleExpandedOrder(order); }}',
+              1,
+          )
+          text = text.replace(
+              'aria-label="Ver detalhes do pedido"',
+              'aria-label={isExpanded ? "Fechar detalhes do pedido" : "Ver detalhes do pedido"}',
+              1,
+          )
+          text = text.replace(
+              'title="Ver detalhes"',
+              'title={isExpanded ? "Fechar detalhes" : "Ver detalhes"}',
+              1,
+          )
 
           old_row = '                      <div className="orders-table-row grid gap-4 px-5 py-4 xl:grid-cols-[96px_minmax(145px,1.2fr)_100px_64px_88px_minmax(150px,1fr)_112px_90px_150px] xl:items-center xl:gap-2 xl:px-4">'
           new_row = '''                      <div
@@ -82,9 +82,10 @@ jobs:
 
           old_drawer = '''                        <div className="border-t border-[var(--line)] bg-[#fffdfa] px-5 py-5 xl:px-6">
                           <div className="grid gap-5 xl:grid-cols-[1.25fr_0.9fr_260px]">'''
-          new_drawer = '''                        <aside
+          new_drawer = '''                        <div
                           className="orders-detail-drawer border-t border-[var(--line)] bg-[#fffdfa] px-5 py-5 xl:px-6"
                           onClick={(event) => event.stopPropagation()}
+                          role="complementary"
                           aria-label={`Detalhes do pedido ${formatDisplayNumber(order)}`}
                         >
                           <div className="orders-detail-drawer-header">
@@ -115,17 +116,6 @@ jobs:
                           <div className="grid gap-5 xl:grid-cols-[1.25fr_0.9fr_260px]">'''
           assert old_drawer in text, 'expanded drawer pattern not found'
           text = text.replace(old_drawer, new_drawer, 1)
-
-          old_close = '''                        </div>
-                      )}
-                    </div>
-                  );'''
-          new_close = '''                        </aside>
-                      )}
-                    </div>
-                  );'''
-          assert old_close in text, 'drawer closing pattern not found'
-          text = text.replace(old_close, new_close, 1)
 
           page_path.write_text(text)
 
