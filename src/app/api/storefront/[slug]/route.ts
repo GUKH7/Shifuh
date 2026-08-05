@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { getPublicStorefrontData } from "@/lib/storefront/public-data";
+import {
+  getPublicStorefrontData,
+  isPublicStorefrontConfigured,
+} from "@/lib/storefront/public-data";
 
 export const revalidate = 60;
 
@@ -14,6 +17,16 @@ export async function GET(
     windowMs: 60_000,
   });
   if (rateLimitResponse) return rateLimitResponse;
+
+  if (!isPublicStorefrontConfigured()) {
+    return NextResponse.json(
+      {
+        code: "STOREFRONT_NOT_CONFIGURED",
+        error: "A vitrine pública não está configurada neste ambiente.",
+      },
+      { status: 503 },
+    );
+  }
 
   const { slug } = await params;
   if (!slug?.trim()) {
