@@ -1,0 +1,121 @@
+name: Ocultar distância da entrega
+
+on:
+  push:
+    paths:
+      - .github/workflows/hide-delivery-distance.yml
+
+permissions:
+  contents: write
+
+jobs:
+  update-copy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Remover distância visível do checkout
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          calculator_path = Path('src/features/storefront/DeliveryCalculator.tsx')
+          calculator = calculator_path.read_text()
+
+          replacements = [
+              (
+                  '<p>A distância é calculada pelo trajeto viário entre a loja e o endereço informado.</p>',
+                  '<p>A taxa é calculada automaticamente conforme o endereço informado.</p>',
+              ),
+              (
+                  '''              <p className="text-sm font-black leading-5 text-emerald-800 sm:text-base">Taxa e prazo estimados</p>
+              <p className="mt-1 text-xs leading-4 text-emerald-700 sm:text-sm">
+                <span className="sm:hidden">{deliveryInfo.distance} km pela rota</span>
+                <span className="hidden sm:inline">Distância pela rota: {deliveryInfo.distance} km</span>
+              </p>''',
+                  '''              <p className="text-sm font-black leading-5 text-emerald-800 sm:text-base">Taxa de entrega</p>''',
+              ),
+              (
+                  '''            <div className="shrink-0 text-right">
+              <p className="whitespace-nowrap text-base font-black leading-5 text-emerald-800 sm:text-lg">
+                {deliveryInfo.price === 0 ? "Grátis" : formatMoney(deliveryInfo.price)}
+              </p>
+              <p className="mt-1 whitespace-nowrap text-xs leading-4 text-emerald-700 sm:text-sm">
+                <span className="sm:hidden">{deliveryInfo.time} min</span>
+                <span className="hidden sm:inline">Previsão: {deliveryInfo.time} min</span>
+              </p>
+            </div>''',
+                  '''            <div className="shrink-0 text-right">
+              <p className="whitespace-nowrap text-base font-black leading-5 text-emerald-800 sm:text-lg">
+                {deliveryInfo.price === 0 ? "Grátis" : formatMoney(deliveryInfo.price)}
+              </p>
+            </div>''',
+              ),
+              (
+                  '''              <p className="font-black text-amber-900">Estimativa pelo CEP</p>
+              <p className="mt-1 text-sm leading-6 text-amber-800">
+                Aproximadamente {deliveryInfo.distance} km. Complete o endereço para validar a entrega.
+              </p>''',
+                  '''              <p className="font-black text-amber-900">Taxa de entrega estimada</p>
+              <p className="mt-1 text-sm leading-6 text-amber-800">
+                Complete o endereço para confirmar o valor da entrega.
+              </p>''',
+              ),
+              (
+                  '''              <p className="mt-1 text-sm text-amber-800">{deliveryInfo.time} min</p>''',
+                  '',
+              ),
+              (
+                  '''            A distância aproximada é de {deliveryInfo.distance} km, além do limite atendido pela loja.
+            Confira os campos. Se estiverem corretos, este endereço realmente não é atendido.''',
+                  '''            O endereço informado está além do limite atendido pela loja.
+            Confira os campos. Se estiverem corretos, este endereço realmente não é atendido.''',
+              ),
+          ]
+
+          for old, new in replacements:
+              if old not in calculator:
+                  raise SystemExit(f'Trecho não encontrado em DeliveryCalculator.tsx: {old[:80]!r}')
+              calculator = calculator.replace(old, new, 1)
+
+          calculator_path.write_text(calculator)
+
+          drawer_path = Path('src/features/storefront/CheckoutDrawer.tsx')
+          drawer = drawer_path.read_text()
+          drawer_replacements = [
+              (
+                  '''                    {!isPickup && deliveryInfo?.valid && (
+                      <p className="mt-2 text-xs font-bold text-emerald-700">
+                        {deliveryInfo.distance} km aproximadamente · previsão de {deliveryInfo.time} min
+                      </p>
+                    )}''',
+                  '''                    {!isPickup && deliveryInfo?.valid && (
+                      <p className="mt-2 text-xs font-bold text-emerald-700">
+                        Taxa de entrega: {formatMoney(feeValue)}
+                      </p>
+                    )}''',
+              ),
+              (
+                  '''                      <p className="truncate text-[11px] text-gray-500">{isPickup ? "Retirada no endereço da loja" : `Previsão de ${deliveryInfo?.time} min · ${deliveryInfo?.distance} km aprox.`}</p>''',
+                  '''                      <p className="truncate text-[11px] text-gray-500">{isPickup ? "Retirada no endereço da loja" : `Taxa de entrega: ${formatMoney(feeValue)}`}</p>''',
+              ),
+          ]
+
+          for old, new in drawer_replacements:
+              if old not in drawer:
+                  raise SystemExit(f'Trecho não encontrado em CheckoutDrawer.tsx: {old[:80]!r}')
+              drawer = drawer.replace(old, new, 1)
+
+          drawer_path.write_text(drawer)
+          PY
+
+      - name: Commitar alteração
+        run: |
+          git config user.name "Gestor Delivery Bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/hide-delivery-distance.yml
+          git add src/features/storefront/DeliveryCalculator.tsx src/features/storefront/CheckoutDrawer.tsx
+          git commit -m "fix(delivery): oculta distância do cliente"
+          git push
