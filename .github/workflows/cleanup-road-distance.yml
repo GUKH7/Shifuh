@@ -1,0 +1,104 @@
+name: Finalizar rota viária
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/cleanup-road-distance.yml
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Limpar integração
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          import re
+
+          page_path = Path("src/app/[slug]/page.tsx")
+          page = page_path.read_text()
+          if page.count("    deliveryTiers,\n") != 1:
+              raise SystemExit("deliveryTiers não encontrado uma única vez")
+          page = page.replace("    deliveryTiers,\n", "", 1)
+
+          function_lines = [
+              '  const calculateDeliveryForAddress = async (addressData: typeof EMPTY_ADDRESS) => {',
+              '    if (!isCompleteCheckoutAddress(addressData)) {',
+              '      setDeliveryInfo(null);',
+              '      setDeliveryError("Complete CEP, rua, número, bairro, cidade e UF para calcular a entrega.");',
+              '      return;',
+              '    }',
+              '    if (!restaurant?.id) {',
+              '      setDeliveryInfo(null);',
+              '      setDeliveryError("A loja não conseguiu calcular a entrega agora. Tente novamente em instantes.");',
+              '      return;',
+              '    }',
+              '',
+              '    setCalculatingFee(true);',
+              '    setDeliveryError("");',
+              '',
+              '    try {',
+              '      const response = await fetch("/api/storefront/delivery-quote", {',
+              '        method: "POST",',
+              '        headers: { "Content-Type": "application/json" },',
+              '        body: JSON.stringify({ restaurantId: restaurant.id, address: addressData }),',
+              '      });',
+              '      const result = await response.json().catch(() => ({}));',
+              '',
+              '      if (!response.ok) {',
+              '        setDeliveryInfo(null);',
+              '        trackError(',
+              '          typeof result.code === "string"',
+              '            ? result.code.toLowerCase()',
+              '            : "delivery_quote_failed",',
+              '        );',
+              '        setDeliveryError(',
+              '          result.error || "Não foi possível calcular a rota de entrega agora. Tente novamente.",',
+              '        );',
+              '        return;',
+              '      }',
+              '',
+              '      setDeliveryInfo({',
+              '        price: Number(result.price) || 0,',
+              '        time: Number(result.time) || 0,',
+              '        distance: Number(result.distance) || 0,',
+              '        valid: result.valid === true,',
+              '        addressValidated: result.addressValidated === true,',
+              '      });',
+              '    } catch (error) {',
+              '      console.error(error);',
+              '      setDeliveryInfo(null);',
+              '      trackError("routing_unavailable");',
+              '      setDeliveryError(getFriendlyStorefrontError("delivery"));',
+              '    } finally {',
+              '      setCalculatingFee(false);',
+              '    }',
+              '  };',
+          ]
+          normalized_function = "\n".join(function_lines)
+          pattern = re.compile(
+              r'  const calculateDeliveryForAddress = async \(addressData: typeof EMPTY_ADDRESS\) => \{.*?^\};',
+              re.MULTILINE | re.DOTALL,
+          )
+          page, count = pattern.subn(normalized_function, page, count=1)
+          if count != 1:
+              raise SystemExit(f"Bloco de cotação não normalizado: {count}")
+          page_path.write_text(page)
+          PY
+
+          rm .github/workflows/cleanup-road-distance.yml
+          git config user.name "Gestor Delivery Bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/app/[slug]/page.tsx .github/workflows/cleanup-road-distance.yml
+          git commit -m "refactor(delivery): finaliza integração da rota"
+          git push origin HEAD:main
