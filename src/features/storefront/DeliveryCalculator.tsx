@@ -122,7 +122,7 @@ export function DeliveryCalculator({
       </p>
       <div className="mt-3 flex items-start gap-2 rounded-2xl bg-blue-50 px-3.5 py-3 text-xs leading-5 text-blue-800">
         <Info size={16} className="mt-0.5 shrink-0" />
-        <p>A distância é aproximada e calculada em linha reta entre a loja e o endereço informado.</p>
+        <p>A distância é calculada pelo trajeto viário entre a loja e o endereço informado.</p>
       </div>
 
       {savedAddresses.length > 0 && (
