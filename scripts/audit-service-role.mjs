@@ -7,6 +7,7 @@ const PUBLIC_ROUTE_PATTERNS = [
   /src\/app\/api\/orders\/\[id\]\/tracking\/route\.ts$/,
   /src\/app\/api\/customer\/profile\/route\.ts$/,
   /src\/app\/api\/storefront\/checkout-events\/route\.ts$/,
+  /src\/app\/api\/storefront\/payment-methods\/route\.ts$/,
   /src\/app\/api\/health(?:\/.*)?\/route\.ts$/,
   /src\/app\/api\/integrations\/ifood\/.*public.*\/route\.ts$/,
 ];
@@ -55,6 +56,7 @@ for (const file of files) {
   const resolvesRestaurant = hasAny(source, [
     /\.eq\(\s*["']user_id["']/,
     /\.eq\(\s*["']restaurant_id["']/,
+    /\.eq\(\s*["']slug["']/,
     /p_restaurant_id\s*:/,
     /restaurant\.id/,
     /restaurantId/,

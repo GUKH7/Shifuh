@@ -1,0 +1,10 @@
+.scope {
+  display: contents;
+}
+
+.scope img[alt^="Logo da "] {
+  padding: 0 !important;
+  border-radius: 14px !important;
+  object-fit: cover !important;
+  clip-path: none !important;
+}

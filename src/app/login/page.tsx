@@ -1,25 +1,39 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/toast-provider";
 
+type BrowserSupabaseClient = ReturnType<typeof createBrowserClient>;
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [supabase, setSupabase] = useState<BrowserSupabaseClient | null>(null);
   const router = useRouter();
   const { showToast } = useToast();
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  );
+  useEffect(() => {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseAnonKey) return;
+    setSupabase(createBrowserClient(supabaseUrl, supabaseAnonKey));
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!supabase) {
+      showToast({
+        title: "Conexão indisponível",
+        description: "O Supabase não está configurado neste ambiente.",
+        tone: "error",
+      });
+      return;
+    }
+
     setLoading(true);
 
     const { error } = await supabase.auth.signInWithPassword({
@@ -75,7 +89,7 @@ export default function LoginPage() {
 
           <button
             disabled={loading}
-            className="flex w-full items-center justify-center rounded-lg bg-red-600 py-3 font-bold text-white transition-all hover:bg-red-700"
+            className="flex w-full items-center justify-center rounded-lg bg-red-600 py-3 font-bold text-white transition-all hover:bg-red-700 disabled:opacity-60"
           >
             {loading ? <Loader2 className="animate-spin" /> : "Entrar no painel"}
           </button>

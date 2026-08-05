@@ -9,6 +9,7 @@ import { AdminHeaderActions } from "@/components/admin-header-actions";
 import { AdminSkeleton } from "@/components/ui/admin-primitives";
 import { getRestaurantByUserId } from "@/lib/supabase/restaurant";
 import "./admin-responsive.css";
+import "./admin-logo-radius.css";
 
 const ADMIN_SEARCH_ITEMS = [
   { label: "Dashboard", href: "/admin", keywords: ["inicio", "dashboard", "resumo", "painel"] },
@@ -17,9 +18,12 @@ const ADMIN_SEARCH_ITEMS = [
   { label: "Cardápios", href: "/admin/menu", keywords: ["cardapio", "menu", "produtos", "categorias"] },
   { label: "Clientes", href: "/admin/clients", keywords: ["clientes", "crm", "contatos"] },
   { label: "Cupons", href: "/admin/coupons", keywords: ["cupons", "descontos"] },
+  { label: "Pagamentos", href: "/admin/payments", keywords: ["pagamentos", "pix", "cartao", "dinheiro"] },
   { label: "Avaliações", href: "/admin/reviews", keywords: ["reviews", "avaliacoes", "notas"] },
   { label: "Configurações", href: "/admin/settings", keywords: ["configuracoes", "ajustes", "loja"] },
 ];
+
+type BrowserSupabaseClient = ReturnType<typeof createBrowserClient>;
 
 function AdminGuardSkeleton() {
   return (
@@ -56,16 +60,16 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isGuardLoading, setIsGuardLoading] = useState(true);
   const [panelSearch, setPanelSearch] = useState("");
+  const [supabase, setSupabase] = useState<BrowserSupabaseClient | null>(null);
   const router = useRouter();
   const pathname = usePathname();
-  const supabase = useMemo(
-    () =>
-      createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      ),
-    [],
-  );
+
+  useEffect(() => {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseAnonKey) return;
+    setSupabase(createBrowserClient(supabaseUrl, supabaseAnonKey));
+  }, []);
 
   useEffect(() => {
     const savedState = window.localStorage.getItem("admin-sidebar-collapsed");
@@ -84,20 +88,22 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
   }, [isMobileSidebarOpen]);
 
   useEffect(() => {
+    if (!supabase) return;
     let isMounted = true;
+    const client = supabase;
 
     const guardAdminAccess = async () => {
       try {
         const {
           data: { user },
-        } = await supabase.auth.getUser();
+        } = await client.auth.getUser();
 
         if (!user) {
           router.replace("/admin/login");
           return;
         }
 
-        const { restaurant } = await getRestaurantByUserId(supabase, user.id);
+        const { restaurant } = await getRestaurantByUserId(client, user.id);
         const isSetupPage = pathname === "/admin/setup";
 
         if (!restaurant && !isSetupPage) {

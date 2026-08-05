@@ -1,20 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Loader2, Store } from "lucide-react";
 
+type BrowserSupabaseClient = ReturnType<typeof createBrowserClient>;
+
 export default function AdminLogin() {
   const router = useRouter();
-  const supabase = useMemo(
-    () => createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    ),
-    [],
-  );
-
+  const [supabase, setSupabase] = useState<BrowserSupabaseClient | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [restaurantName, setRestaurantName] = useState("");
@@ -22,6 +17,13 @@ export default function AdminLogin() {
   const [loading, setLoading] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+
+  useEffect(() => {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseAnonKey) return;
+    setSupabase(createBrowserClient(supabaseUrl, supabaseAnonKey));
+  }, []);
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newName = e.target.value;
@@ -71,6 +73,9 @@ export default function AdminLogin() {
 
     try {
       if (isRegistering) {
+        if (!supabase) {
+          throw new Error("A conexão com o Supabase não está configurada neste ambiente.");
+        }
         if (!restaurantName.trim() || !restaurantSlug.trim()) {
           throw new Error("Preencha o nome e o link da sua loja.");
         }

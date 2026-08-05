@@ -17,6 +17,7 @@ import {
   type StorefrontPaymentMethod,
 } from "./checkout-format";
 import { useAccessibleDialog } from "./use-accessible-dialog";
+import { useStorefrontPaymentMethods } from "./use-payment-methods";
 
 type CheckoutDrawerProps = {
   isOpen: boolean;
@@ -72,7 +73,7 @@ type CheckoutDrawerProps = {
   onCouponCodeChange: (value: string) => void;
   onApplyCoupon: () => void;
   onRemoveCoupon: () => void;
-  onPaymentMethodChange: (value: StorefrontPaymentMethod) => void;
+  onPaymentMethodChange: (value: StorefrontPaymentMethod | "") => void;
   onChangeForChange: (value: string) => void;
   onCashNeedsChange: (value: boolean) => void;
   onScheduledForChange: (value: string) => void;
@@ -149,11 +150,32 @@ export function CheckoutDrawer({
   const [paymentAttempted, setPaymentAttempted] = useState(false);
   const [isCouponOpen, setIsCouponOpen] = useState(false);
   const { dialogRef, initialFocusRef } = useAccessibleDialog(isOpen, onClose);
+  const { paymentMethods: availablePaymentMethods, loading: paymentMethodsLoading } =
+    useStorefrontPaymentMethods();
 
   useEffect(() => {
     if (!isOpen) return;
     window.requestAnimationFrame(() => initialFocusRef.current?.focus());
   }, [initialFocusRef, isOpen, step]);
+
+  useEffect(() => {
+    if (
+      paymentMethod &&
+      !paymentMethodsLoading &&
+      !availablePaymentMethods.includes(paymentMethod)
+    ) {
+      onPaymentMethodChange("");
+      onCashNeedsChange(false);
+      onChangeForChange("");
+    }
+  }, [
+    availablePaymentMethods,
+    onCashNeedsChange,
+    onChangeForChange,
+    onPaymentMethodChange,
+    paymentMethod,
+    paymentMethodsLoading,
+  ]);
 
   if (!isOpen) return null;
   const brandTextColor = getContrastTextColor(primaryColor);
@@ -167,6 +189,7 @@ export function CheckoutDrawer({
   const scheduleMissing = scheduleRequired && !scheduledFor;
   const addressFieldErrors = getCheckoutAddressErrors(address);
   const isPickup = fulfillmentType === "pickup";
+  const completedIsPickup = completedOrder?.fulfillmentType === "pickup";
   const deliveryReady = isPickup || Boolean(deliveryInfo?.valid && deliveryInfo.addressValidated);
   const addressErrors = {
     customerName: customerName.trim().length >= 2 ? "" : "Informe seu nome.",
@@ -180,7 +203,11 @@ export function CheckoutDrawer({
   const changeForError = paymentMethod === "cash" && cashNeedsChange
     ? getChangeForError(changeFor, finalTotal)
     : "";
-  const paymentError = !paymentMethod ? "Escolha uma forma de pagamento." : "";
+  const paymentError = paymentMethodsLoading
+    ? "Aguarde o carregamento das formas de pagamento."
+    : !paymentMethod || !availablePaymentMethods.includes(paymentMethod)
+      ? "Escolha uma forma de pagamento disponível."
+      : "";
   const scheduleError = scheduleMissing ? "Escolha a data e o horário do pedido." : "";
   const hasPaymentErrors = Boolean(paymentError || changeForError || scheduleError);
 
@@ -616,50 +643,56 @@ export function CheckoutDrawer({
               <div id="checkout-payment" className="surface-card scroll-mt-4 rounded-[20px] p-4 sm:rounded-[24px] sm:p-5">
                 <h3 className="text-lg font-black text-gray-950">Pagamento</h3>
                 <div className="mt-3 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3">
-                  <p className="text-sm font-black text-blue-950">Pagamento na entrega</p>
-                  <p className="mt-1 text-xs leading-5 text-blue-800">Todas as formas disponíveis são pagas diretamente ao receber o pedido.</p>
+                  <p className="text-sm font-black text-blue-950">Pagamento {isPickup ? "na retirada" : "na entrega"}</p>
+                  <p className="mt-1 text-xs leading-5 text-blue-800">As formas disponíveis são definidas pela loja e pagas diretamente no recebimento.</p>
                 </div>
-                <p className="mt-4 text-sm text-gray-500">Escolha conscientemente como prefere pagar.</p>
+                <p className="mt-4 text-sm text-gray-500">Escolha como prefere pagar.</p>
                 <div className="mt-4 space-y-3">
-                  {(["pix", "credit", "debit", "cash"] as StorefrontPaymentMethod[]).map((value) => {
-                    const method = paymentMethodDetails[value];
-                    const MethodIcon = value === "pix" ? QrCode : value === "cash" ? Banknote : CreditCard;
-                    return (
-                    <label
-                      key={value}
-                      className="flex cursor-pointer items-start gap-3 rounded-2xl border bg-white px-4 py-4"
-                      style={
-                        paymentMethod === value
-                          ? {
-                              borderColor: primaryColor,
-                              backgroundColor: `${primaryColor}10`,
-                            }
-                          : { borderColor: "var(--line)" }
-                      }
-                    >
-                      <input
-                        type="radio"
-                        checked={paymentMethod === value}
-                        onChange={() => onPaymentMethodChange(value)}
-                        style={{ accentColor: primaryColor }}
-                        className="mt-1"
-                      />
-                      <MethodIcon size={19} className="mt-0.5 shrink-0 text-gray-500" />
-                      <span className="min-w-0 flex-1">
-                        <span className="block font-black text-gray-900">{method.label}</span>
-                        <span className="mt-0.5 block text-xs leading-5 text-gray-500">{method.description}</span>
-                      </span>
-                      <span className="shrink-0 rounded-full bg-[#f4f0eb] px-2 py-1 text-[10px] font-black uppercase text-gray-600">
-                        Na entrega
-                      </span>
-                    </label>
-                    );
-                  })}
+                  {paymentMethodsLoading ? (
+                    <p role="status" className="flex items-center gap-2 rounded-2xl border border-[var(--line)] bg-white px-4 py-4 text-sm font-bold text-gray-600">
+                      <Loader2 className="animate-spin" size={17} /> Carregando formas de pagamento...
+                    </p>
+                  ) : (
+                    availablePaymentMethods.map((value) => {
+                      const method = paymentMethodDetails[value];
+                      const MethodIcon = value === "pix" ? QrCode : value === "cash" ? Banknote : CreditCard;
+                      return (
+                        <label
+                          key={value}
+                          className="flex cursor-pointer items-start gap-3 rounded-2xl border bg-white px-4 py-4"
+                          style={
+                            paymentMethod === value
+                              ? {
+                                  borderColor: primaryColor,
+                                  backgroundColor: `${primaryColor}10`,
+                                }
+                              : { borderColor: "var(--line)" }
+                          }
+                        >
+                          <input
+                            type="radio"
+                            checked={paymentMethod === value}
+                            onChange={() => onPaymentMethodChange(value)}
+                            style={{ accentColor: primaryColor }}
+                            className="mt-1"
+                          />
+                          <MethodIcon size={19} className="mt-0.5 shrink-0 text-gray-500" />
+                          <span className="min-w-0 flex-1">
+                            <span className="block font-black text-gray-900">{method.label}</span>
+                            <span className="mt-0.5 block text-xs leading-5 text-gray-500">{method.description}</span>
+                          </span>
+                          <span className="shrink-0 rounded-full bg-[#f4f0eb] px-2 py-1 text-[10px] font-black uppercase text-gray-600">
+                            {isPickup ? "Na retirada" : "Na entrega"}
+                          </span>
+                        </label>
+                      );
+                    })
+                  )}
                   {paymentAttempted && paymentError && (
                     <p role="alert" className="text-xs font-bold text-rose-600">{paymentError}</p>
                   )}
 
-                  {paymentMethod === "cash" && (
+                  {paymentMethod === "cash" && availablePaymentMethods.includes("cash") && (
                     <div className="rounded-2xl border border-[var(--line)] bg-[#faf8f5] p-3.5">
                       <p className="text-sm font-black text-gray-900">Você precisa de troco?</p>
                       <div className="mt-3 grid grid-cols-2 gap-2">
@@ -735,10 +768,14 @@ export function CheckoutDrawer({
                     </strong>
                   </div>
                   <div className="border-t border-[var(--line)] pt-3">
-                    <p className="font-black text-gray-950">Entrega</p>
+                    <p className="font-black text-gray-950">{completedIsPickup ? "Retirada na loja" : "Entrega"}</p>
                     <p className="mt-1">{completedOrder.address.street}, {completedOrder.address.number}{completedOrder.address.complement ? `, ${completedOrder.address.complement}` : ""}</p>
                     <p>{completedOrder.address.neighborhood} · {completedOrder.address.city}/{completedOrder.address.state}</p>
-                    <p className="mt-2 text-xs font-bold text-emerald-700">Previsão aproximada: {completedOrder.deliveryTime} min</p>
+                    {completedIsPickup ? (
+                      <p className="mt-2 text-xs font-bold text-emerald-700">Retire o pedido neste endereço. Não há taxa de entrega.</p>
+                    ) : (
+                      <p className="mt-2 text-xs font-bold text-emerald-700">Previsão aproximada: {completedOrder.deliveryTime} min</p>
+                    )}
                   </div>
                 </div>
               </section>
@@ -839,15 +876,17 @@ export function CheckoutDrawer({
               </div>
               <button
                 onClick={submitOrder}
-                disabled={isSubmitting || !minimumReached || storeClosedWithoutScheduling}
+                disabled={isSubmitting || paymentMethodsLoading || !minimumReached || storeClosedWithoutScheduling}
                 className="w-full rounded-2xl px-5 py-3.5 text-sm font-black disabled:opacity-60 sm:py-4 sm:text-base"
                 style={{ backgroundColor: primaryColor, color: brandTextColor }}
               >
                 {isSubmitting
                   ? "Enviando pedido..."
-                  : scheduleMissing
-                    ? "Escolha o horário do pedido"
-                    : "Confirmar pedido"}
+                  : paymentMethodsLoading
+                    ? "Carregando pagamentos..."
+                    : scheduleMissing
+                      ? "Escolha o horário do pedido"
+                      : "Confirmar pedido"}
               </button>
             </div>
           )}

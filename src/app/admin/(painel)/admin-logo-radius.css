@@ -1,0 +1,7 @@
+.admin-panel-content div[class~="h-24"][class~="w-24"][class~="border-dashed"] > img {
+  border-radius: 1.5rem;
+}
+
+.admin-panel-content div[class~="h-14"][class~="w-14"][class~="rounded-[18px]"] > img {
+  border-radius: 1.125rem;
+}
