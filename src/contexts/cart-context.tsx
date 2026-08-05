@@ -59,9 +59,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!supabase) return
+    const client = supabase
 
     async function loadRestaurant() {
-      const publicRestaurantResult = await supabase
+      const publicRestaurantResult = await client
         .from("public_restaurants")
         .select("id, name, latitude, longitude, delivery_tiers")
         .limit(1)
@@ -69,7 +70,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       let data = publicRestaurantResult.data
 
       if (!data && publicRestaurantResult.error) {
-        const { data: fallbackRestaurant } = await supabase
+        const { data: fallbackRestaurant } = await client
           .from("restaurants")
           .select("id, name, latitude, longitude, delivery_tiers")
           .limit(1)
