@@ -49,5 +49,5 @@ select
   accepted_payment_methods
 from public.restaurants;
 
-revoke all on public.public_restaurants from public;
+revoke all privileges on public.public_restaurants from public, anon, authenticated;
 grant select on public.public_restaurants to anon, authenticated;
