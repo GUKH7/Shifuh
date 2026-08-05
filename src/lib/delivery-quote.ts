@@ -1,4 +1,9 @@
 import { calculateDeliveryFee, getCoordinates, type GeocodingAddress } from "@/lib/geo";
+import {
+  geocodeAddressWithGoogle,
+  requiresGoogleMaps,
+  shouldUseGoogleMaps,
+} from "@/lib/google-maps";
 import { getRoadRoute } from "@/lib/routing";
 
 export type DeliveryQuoteErrorCode =
@@ -54,7 +59,8 @@ export type DeliveryQuote = {
   routeDurationMinutes: number;
   valid: true;
   addressValidated: true;
-  distanceMethod: "road_route";
+  distanceMethod: "google_route" | "osrm_route";
+  routeProvider: "google" | "osrm";
 };
 
 function roundMoney(value: number) {
@@ -86,22 +92,43 @@ function toGeocodingAddress(address: DeliveryQuoteAddress): GeocodingAddress {
   };
 }
 
+function getRestaurantAddress(restaurant: DeliveryQuoteRestaurant): GeocodingAddress {
+  return {
+    postalCode: restaurant.address_zip || undefined,
+    street: restaurant.address_street || undefined,
+    number: restaurant.address_number || undefined,
+    neighborhood: restaurant.address_neighborhood || undefined,
+    city: restaurant.address_city || undefined,
+    state: restaurant.address_state || undefined,
+  };
+}
+
+async function resolveCoordinates(
+  address: GeocodingAddress,
+  storedCoordinates?: { lat: number; lon: number } | null,
+) {
+  if (shouldUseGoogleMaps()) {
+    const googleCoordinates = await geocodeAddressWithGoogle(address);
+    if (googleCoordinates) return googleCoordinates;
+    if (requiresGoogleMaps()) return null;
+  }
+
+  if (storedCoordinates) return storedCoordinates;
+  return getCoordinates(address);
+}
+
 export async function calculateDeliveryQuote(
   restaurant: DeliveryQuoteRestaurant,
   address: DeliveryQuoteAddress,
 ): Promise<DeliveryQuote> {
-  const restaurantCoordinates = hasValidStoredCoordinates(restaurant)
+  const storedRestaurantCoordinates = hasValidStoredCoordinates(restaurant)
     ? { lat: Number(restaurant.latitude), lon: Number(restaurant.longitude) }
-    : restaurant.address_street && restaurant.address_city && restaurant.address_state
-      ? await getCoordinates({
-          postalCode: restaurant.address_zip || undefined,
-          street: restaurant.address_street || undefined,
-          number: restaurant.address_number || undefined,
-          neighborhood: restaurant.address_neighborhood || undefined,
-          city: restaurant.address_city || undefined,
-          state: restaurant.address_state || undefined,
-        })
-      : null;
+    : null;
+
+  const restaurantAddress = getRestaurantAddress(restaurant);
+  const restaurantCoordinates = restaurantAddress.street && restaurantAddress.city && restaurantAddress.state
+    ? await resolveCoordinates(restaurantAddress, storedRestaurantCoordinates)
+    : storedRestaurantCoordinates;
 
   if (!restaurantCoordinates) {
     throw new DeliveryQuoteError(
@@ -111,7 +138,7 @@ export async function calculateDeliveryQuote(
     );
   }
 
-  const customerCoordinates = await getCoordinates(toGeocodingAddress(address));
+  const customerCoordinates = await resolveCoordinates(toGeocodingAddress(address));
   if (!customerCoordinates) {
     throw new DeliveryQuoteError(
       "ADDRESS_NOT_FOUND",
@@ -148,6 +175,7 @@ export async function calculateDeliveryQuote(
     routeDurationMinutes: route.durationMinutes,
     valid: true,
     addressValidated: true,
-    distanceMethod: "road_route",
+    distanceMethod: route.provider === "google" ? "google_route" : "osrm_route",
+    routeProvider: route.provider,
   };
 }
