@@ -18,7 +18,6 @@ import {
   Store,
   Users,
   UtensilsCrossed,
-  WalletCards,
   X,
 } from "lucide-react";
 import { getCurrentRestaurant } from "@/lib/supabase/restaurant";
@@ -31,7 +30,6 @@ const MENU_ITEMS = [
   { name: "Cardápios", href: "/admin/menu", icon: UtensilsCrossed },
   { name: "Clientes", href: "/admin/clients", icon: Users },
   { name: "Cupons", href: "/admin/coupons", icon: Percent },
-  { name: "Pagamentos", href: "/admin/payments", icon: WalletCards },
   { name: "Avaliações", href: "/admin/reviews", icon: Star },
   { name: "Configurações", href: "/admin/settings", icon: Settings },
 ];
@@ -122,7 +120,10 @@ export default function AdminSidebar({
       <div className="px-3 py-3 sm:py-4 lg:px-3">
         <nav className="space-y-1">
           {MENU_ITEMS.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive =
+              item.href === "/admin/settings"
+                ? pathname.startsWith("/admin/settings")
+                : pathname === item.href;
 
             return (
               <Link
