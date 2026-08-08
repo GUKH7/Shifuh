@@ -2,51 +2,46 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Settings, WalletCards } from "lucide-react";
-
-const items = [
-  {
-    href: "/admin/settings",
-    label: "Configurações gerais",
-    icon: Settings,
-  },
-  {
-    href: "/admin/settings/payments",
-    label: "Formas de pagamento",
-    icon: WalletCards,
-  },
-];
+import { ChevronRight, WalletCards } from "lucide-react";
 
 export function SettingsNavigation() {
   const pathname = usePathname();
 
-  return (
-    <div className="px-3 pt-4 sm:px-4 md:px-5 lg:px-6">
-      <nav
-        aria-label="Seções de configurações"
-        className="admin-page-shell flex gap-2 overflow-x-auto rounded-2xl border border-[var(--line)] bg-white p-2 shadow-sm"
-      >
-        {items.map((item) => {
-          const active = pathname === item.href;
-          const Icon = item.icon;
+  if (pathname !== "/admin/settings") return null;
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-current={active ? "page" : undefined}
-              className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold transition-colors ${
-                active
-                  ? "bg-[var(--brand-soft)] text-[var(--brand)]"
-                  : "text-gray-500 hover:bg-[#faf7f3] hover:text-gray-950"
-              }`}
-            >
-              <Icon size={17} />
-              {item.label}
-            </Link>
-          );
-        })}
-      </nav>
+  return (
+    <div className="settings-payments-shortcut px-3 pb-20 sm:px-4 md:px-5 lg:px-6">
+      <div className="admin-page-shell">
+        <div className="px-1 pt-3">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-[var(--brand)]">
+            Pagamentos
+          </p>
+          <h2 className="mt-1 text-lg font-black text-gray-950">Formas de pagamento</h2>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-gray-500">
+            Defina quais opções o cliente poderá selecionar ao finalizar o pedido na vitrine.
+          </p>
+        </div>
+
+        <Link
+          href="/admin/settings/payments"
+          className="surface-card mt-5 flex items-center justify-between gap-4 rounded-[28px] p-4 transition-colors hover:bg-[#fcfaf7] sm:p-6"
+        >
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="rounded-2xl bg-[var(--brand-soft)] p-3 text-[var(--brand)]">
+              <WalletCards size={20} />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-xl font-black text-gray-950">Métodos aceitos</h3>
+              <p className="text-sm text-gray-500">
+                Configure Pix, dinheiro e cartões disponíveis para o cliente.
+              </p>
+            </div>
+          </div>
+          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-[var(--line)] bg-white text-gray-500">
+            <ChevronRight size={18} />
+          </span>
+        </Link>
+      </div>
     </div>
   );
 }
