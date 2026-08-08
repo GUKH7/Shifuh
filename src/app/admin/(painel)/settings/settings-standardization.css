@@ -16,6 +16,10 @@
   width: 100%;
 }
 
+.settings-route-content > .admin-page-shell:has(+ .settings-payments-shortcut) {
+  padding-bottom: 1.25rem !important;
+}
+
 .settings-route-content input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="color"]):not([type="range"]):not([type="hidden"]),
 .settings-route-content select,
 .settings-route-content textarea {

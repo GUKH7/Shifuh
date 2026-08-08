@@ -10,8 +10,8 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
         <SettingsPageSkeleton />
       </div>
       <div className="settings-route-content">
-        <SettingsNavigation />
         {children}
+        <SettingsNavigation />
       </div>
     </div>
   );
