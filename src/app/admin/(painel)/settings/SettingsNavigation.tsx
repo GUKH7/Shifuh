@@ -16,16 +16,12 @@ export function SettingsNavigation() {
       return;
     }
 
-    const rulesHeading = Array.from(document.querySelectorAll("h2")).find(
-      (heading) => heading.textContent?.trim() === "Regras de atendimento",
-    );
-    const headingBlock = rulesHeading?.parentElement;
-
-    if (!headingBlock) return;
+    const firstServiceRule = document.getElementById("orders");
+    if (!firstServiceRule?.parentElement) return;
 
     const host = document.createElement("div");
     host.className = "settings-payments-shortcut";
-    headingBlock.insertAdjacentElement("afterend", host);
+    firstServiceRule.parentElement.insertBefore(host, firstServiceRule);
     setMountNode(host);
 
     return () => {
