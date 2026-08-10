@@ -1,14 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
-import { useSearchParams } from "next/navigation";
 
 export function SettingsWhatsappDeepLink() {
-  const searchParams = useSearchParams();
-  const shouldOpenWhatsapp = searchParams.get("section") === "whatsapp";
-
   useEffect(() => {
-    if (!shouldOpenWhatsapp) return;
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.get("section") !== "whatsapp") return;
 
     let stopped = false;
     let timeoutId: number | undefined;
@@ -48,7 +45,7 @@ export function SettingsWhatsappDeepLink() {
       observer.disconnect();
       if (timeoutId) window.clearTimeout(timeoutId);
     };
-  }, [shouldOpenWhatsapp]);
+  }, []);
 
   return null;
 }
