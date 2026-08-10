@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { SettingsPageSkeleton } from "@/components/ui/admin-page-skeletons";
+import { SettingsWhatsappDeepLink } from "./SettingsWhatsappDeepLink";
 import "./settings-standardization.css";
 
 export default function SettingsLayout({ children }: { children: ReactNode }) {
@@ -9,6 +10,7 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
         <SettingsPageSkeleton />
       </div>
       <div className="settings-route-content">{children}</div>
+      <SettingsWhatsappDeepLink />
     </div>
   );
 }
