@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { ChevronDown, ChevronRight, CircleHelp, WalletCards } from "lucide-react";
+import { DeliveryRulesEnhancer } from "./DeliveryRulesEnhancer";
 
 type SettingsCopy = {
   title: string;
@@ -35,7 +36,7 @@ const sectionCopyOverrides: Record<string, SettingsCopy> = {
   },
   "Taxas de entrega": {
     title: "Taxas de entrega",
-    description: "Gere valores por quilômetro e ajuste preço e prazo em cada faixa.",
+    description: "Crie uma regra padrão, ajuste cada faixa e defina condições promocionais.",
   },
 };
 
@@ -75,6 +76,8 @@ export function CollapsibleSection({
 }) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const copy = resolveCopy(title, description, sectionCopyOverrides);
+  const showDeliveryRules = title === "Taxas de entrega";
+
   return (
     <section className={`surface-card rounded-[28px] p-4 sm:p-6 ${className}`}>
       <button
@@ -98,7 +101,12 @@ export function CollapsibleSection({
         </span>
       </button>
 
-      {isOpen && children}
+      {isOpen && (
+        <>
+          {showDeliveryRules && <DeliveryRulesEnhancer />}
+          {children}
+        </>
+      )}
     </section>
   );
 }
