@@ -226,7 +226,7 @@ export async function POST(request: Request) {
     const { data: restaurant, error: restaurantError } = await (adminSupabase as any)
       .from("restaurants")
       .select(
-        "id, name, phone, whatsapp_number, latitude, longitude, address_zip, address_street, address_number, address_neighborhood, address_city, address_state, delivery_tiers, work_hours, minimum_order_amount, scheduled_orders_enabled, scheduled_order_lead_minutes, pickup_enabled, accepted_payment_methods",
+        "id, name, phone, whatsapp_number, latitude, longitude, address_zip, address_street, address_number, address_neighborhood, address_city, address_state, delivery_tiers, delivery_rules, work_hours, minimum_order_amount, scheduled_orders_enabled, scheduled_order_lead_minutes, pickup_enabled, accepted_payment_methods",
       )
       .eq("id", body.restaurantId)
       .maybeSingle();
@@ -435,29 +435,29 @@ export async function POST(request: Request) {
     }
 
     let deliveryFee = 0;
-  let deliveryTime = 0;
-  let deliveryDistance: number | null = null;
+    let deliveryTime = 0;
+    let deliveryDistance: number | null = null;
 
-  if (fulfillmentType === "delivery") {
-    try {
-      const quote = await calculateDeliveryQuote(restaurant, address);
-      deliveryFee = quote.price;
-      deliveryTime = quote.time;
-      deliveryDistance = quote.distance;
-    } catch (error) {
-      if (error instanceof DeliveryQuoteError) {
-        return NextResponse.json(
-          {
-            code: error.code,
-            error: error.message,
-            ...(error.details || {}),
-          },
-          { status: error.status },
-        );
+    if (fulfillmentType === "delivery") {
+      try {
+        const quote = await calculateDeliveryQuote(restaurant, address, { subtotal });
+        deliveryFee = quote.price;
+        deliveryTime = quote.time;
+        deliveryDistance = quote.distance;
+      } catch (error) {
+        if (error instanceof DeliveryQuoteError) {
+          return NextResponse.json(
+            {
+              code: error.code,
+              error: error.message,
+              ...(error.details || {}),
+            },
+            { status: error.status },
+          );
+        }
+        throw error;
       }
-      throw error;
     }
-  }
 
     const total = roundMoney(subtotal + deliveryFee - discount);
     let normalizedChangeFor: string | null = null;
