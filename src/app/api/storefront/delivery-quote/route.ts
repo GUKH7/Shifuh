@@ -11,6 +11,7 @@ import {
 type DeliveryQuotePayload = {
   restaurantId?: string;
   address?: DeliveryQuoteAddress;
+  subtotal?: number;
 };
 
 function normalizeAddress(address: DeliveryQuoteAddress = {}) {
@@ -22,6 +23,18 @@ function normalizeAddress(address: DeliveryQuoteAddress = {}) {
     city: address.city?.trim() || "",
     state: address.state?.trim().toUpperCase() || "",
   };
+}
+
+function getSubtotalFromCookie(request: Request) {
+  const cookie = request.headers.get("cookie") || "";
+  const entry = cookie
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith("gestor_cart_subtotal="));
+  if (!entry) return null;
+
+  const parsed = Number(decodeURIComponent(entry.slice("gestor_cart_subtotal=".length)));
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
 export async function POST(request: Request) {
@@ -60,7 +73,7 @@ export async function POST(request: Request) {
     const { data: restaurant, error } = await (adminSupabase as any)
       .from("restaurants")
       .select(
-        "id, latitude, longitude, address_zip, address_street, address_number, address_neighborhood, address_city, address_state, delivery_tiers",
+        "id, latitude, longitude, address_zip, address_street, address_number, address_neighborhood, address_city, address_state, delivery_tiers, delivery_rules",
       )
       .eq("id", body.restaurantId)
       .maybeSingle();
@@ -69,7 +82,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ code: "STORE_NOT_FOUND", error: "Loja não encontrada." }, { status: 404 });
     }
 
-    const quote = await calculateDeliveryQuote(restaurant, address);
+    const bodySubtotal = Number(body.subtotal);
+    const subtotal = Number.isFinite(bodySubtotal) && bodySubtotal >= 0
+      ? bodySubtotal
+      : getSubtotalFromCookie(request);
+
+    const quote = await calculateDeliveryQuote(restaurant, address, { subtotal });
     return NextResponse.json(quote, {
       headers: { "Cache-Control": "no-store" },
     });

@@ -41,6 +41,7 @@ export type DeliveryQuoteRestaurant = {
   address_city?: string | null;
   address_state?: string | null;
   delivery_tiers?: unknown;
+  delivery_rules?: unknown;
 };
 
 export type DeliveryQuoteAddress = {
@@ -54,6 +55,13 @@ export type DeliveryQuoteAddress = {
 
 export type DeliveryQuote = {
   price: number;
+  originalPrice: number;
+  promotionApplied: boolean;
+  promotion?: {
+    type: "free_delivery_threshold";
+    minimumOrder: number;
+    maxFee: number;
+  };
   time: number;
   distance: number;
   routeDurationMinutes: number;
@@ -63,8 +71,70 @@ export type DeliveryQuote = {
   routeProvider: "google" | "osrm";
 };
 
+type DeliveryQuoteOptions = {
+  subtotal?: number | null;
+};
+
+type FreeDeliveryRule = {
+  enabled: boolean;
+  minimumOrder: number;
+  maxFee: number;
+};
+
 function roundMoney(value: number) {
   return Math.round(value * 100) / 100;
+}
+
+function getFreeDeliveryRule(value: unknown): FreeDeliveryRule | null {
+  if (!value || typeof value !== "object") return null;
+  const rules = value as Record<string, unknown>;
+  const freeDelivery = rules.free_delivery;
+  if (!freeDelivery || typeof freeDelivery !== "object") return null;
+
+  const rule = freeDelivery as Record<string, unknown>;
+  const minimumOrder = Math.max(0, Number(rule.minimum_order) || 0);
+  const maxFee = Math.max(0, Number(rule.max_fee) || 0);
+
+  return {
+    enabled: Boolean(rule.enabled),
+    minimumOrder,
+    maxFee,
+  };
+}
+
+function applyDeliveryPromotion(
+  price: number,
+  deliveryRules: unknown,
+  subtotal?: number | null,
+) {
+  const originalPrice = roundMoney(Math.max(0, price));
+  const freeDelivery = getFreeDeliveryRule(deliveryRules);
+  const normalizedSubtotal = Number(subtotal);
+
+  if (
+    !freeDelivery?.enabled ||
+    !Number.isFinite(normalizedSubtotal) ||
+    normalizedSubtotal < freeDelivery.minimumOrder ||
+    originalPrice > freeDelivery.maxFee
+  ) {
+    return {
+      price: originalPrice,
+      originalPrice,
+      promotionApplied: false,
+      promotion: undefined,
+    };
+  }
+
+  return {
+    price: 0,
+    originalPrice,
+    promotionApplied: true,
+    promotion: {
+      type: "free_delivery_threshold" as const,
+      minimumOrder: freeDelivery.minimumOrder,
+      maxFee: freeDelivery.maxFee,
+    },
+  };
 }
 
 function hasValidStoredCoordinates(restaurant: DeliveryQuoteRestaurant) {
@@ -120,6 +190,7 @@ async function resolveCoordinates(
 export async function calculateDeliveryQuote(
   restaurant: DeliveryQuoteRestaurant,
   address: DeliveryQuoteAddress,
+  options: DeliveryQuoteOptions = {},
 ): Promise<DeliveryQuote> {
   const storedRestaurantCoordinates = hasValidStoredCoordinates(restaurant)
     ? { lat: Number(restaurant.latitude), lon: Number(restaurant.longitude) }
@@ -168,8 +239,17 @@ export async function calculateDeliveryQuote(
     );
   }
 
+  const promotedFee = applyDeliveryPromotion(
+    Number(fee.price) || 0,
+    restaurant.delivery_rules,
+    options.subtotal,
+  );
+
   return {
-    price: roundMoney(fee.price),
+    price: promotedFee.price,
+    originalPrice: promotedFee.originalPrice,
+    promotionApplied: promotedFee.promotionApplied,
+    ...(promotedFee.promotion ? { promotion: promotedFee.promotion } : {}),
     time: Math.max(0, Number(fee.time) || 0),
     distance: route.distanceKm,
     routeDurationMinutes: route.durationMinutes,
