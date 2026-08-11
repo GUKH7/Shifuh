@@ -161,6 +161,12 @@ export function useCart(storageKey: string) {
     [cart],
   );
 
+  useEffect(() => {
+    if (!cartHydrated) return;
+    const subtotal = Number.isFinite(cartSubtotal) ? Math.max(0, cartSubtotal) : 0;
+    document.cookie = `gestor_cart_subtotal=${encodeURIComponent(subtotal.toFixed(2))}; Path=/; Max-Age=86400; SameSite=Lax`;
+  }, [cartHydrated, cartSubtotal]);
+
   return {
     selectedProduct,
     addonSelections,
