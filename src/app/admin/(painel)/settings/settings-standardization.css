@@ -28,6 +28,17 @@
   transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
 }
 
+.settings-route-content input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.settings-route-content input[type="number"]::-webkit-outer-spin-button,
+.settings-route-content input[type="number"]::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
 .settings-route-content input:focus-visible,
 .settings-route-content select:focus-visible,
 .settings-route-content textarea:focus-visible {
