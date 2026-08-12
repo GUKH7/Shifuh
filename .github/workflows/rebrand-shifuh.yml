@@ -1,0 +1,86 @@
+name: Rebranding para Shifuh
+
+on:
+  push:
+    paths:
+      - .github/workflows/rebrand-shifuh.yml
+
+permissions:
+  contents: write
+
+jobs:
+  rebrand:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Substituir marca antiga em arquivos de texto
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          root = Path('.')
+          excluded_parts = {'.git', '.next', 'node_modules', '.vercel'}
+          replacements = [
+              ('GESTOR DELIVERY', 'SHIFUH'),
+              ('Gestor Delivery', 'Shifuh'),
+              ('gestor delivery', 'Shifuh'),
+          ]
+          changed = []
+
+          for path in root.rglob('*'):
+              if not path.is_file():
+                  continue
+              if any(part in excluded_parts for part in path.parts):
+                  continue
+              if path.as_posix() == '.github/workflows/rebrand-shifuh.yml':
+                  continue
+              try:
+                  text = path.read_text(encoding='utf-8')
+              except (UnicodeDecodeError, OSError):
+                  continue
+
+              updated = text
+              for old, new in replacements:
+                  updated = updated.replace(old, new)
+
+              if updated != text:
+                  path.write_text(updated, encoding='utf-8')
+                  changed.append(path.as_posix())
+
+          print('Arquivos alterados:')
+          for item in changed:
+              print(f'- {item}')
+
+          leftovers = []
+          needles = ('Gestor Delivery', 'GESTOR DELIVERY', 'gestor delivery')
+          for path in root.rglob('*'):
+              if not path.is_file() or any(part in excluded_parts for part in path.parts):
+                  continue
+              if path.as_posix() == '.github/workflows/rebrand-shifuh.yml':
+                  continue
+              try:
+                  text = path.read_text(encoding='utf-8')
+              except (UnicodeDecodeError, OSError):
+                  continue
+              if any(needle in text for needle in needles):
+                  leftovers.append(path.as_posix())
+
+          if leftovers:
+              raise SystemExit('Ainda existem ocorrências da marca antiga em: ' + ', '.join(leftovers))
+          PY
+
+      - name: Commitar rebranding
+        run: |
+          git config user.name "Shifuh Bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/rebrand-shifuh.yml
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Nenhuma ocorrência textual encontrada."
+            exit 0
+          fi
+          git commit -m "refactor(brand): substitui Gestor Delivery por Shifuh"
+          git push
