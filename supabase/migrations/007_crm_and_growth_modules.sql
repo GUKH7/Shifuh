@@ -1,4 +1,4 @@
--- Gestor Delivery - modulos CRM e crescimento
+-- Shifuh - modulos CRM e crescimento
 -- Cria estruturas base para profiles, customer_addresses, coupons e reviews.
 
 CREATE TABLE IF NOT EXISTS public.profiles (

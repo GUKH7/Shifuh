@@ -57,7 +57,7 @@ export default function AdminLogin() {
       }
 
       if (error instanceof TypeError && error.message.toLowerCase().includes("fetch")) {
-        throw new Error("Não foi possível conectar ao Gestor Delivery. Verifique sua internet e tente novamente.");
+        throw new Error("Não foi possível conectar ao Shifuh. Verifique sua internet e tente novamente.");
       }
 
       throw error;

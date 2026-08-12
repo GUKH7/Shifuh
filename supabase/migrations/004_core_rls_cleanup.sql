@@ -1,4 +1,4 @@
--- Gestor Delivery - limpeza e consolidacao das politicas RLS do nucleo
+-- Shifuh - limpeza e consolidacao das politicas RLS do nucleo
 -- Remove policies antigas/duplicadas e recria um conjunto canonico para o MVP.
 
 ALTER TABLE public.restaurants ENABLE ROW LEVEL SECURITY;

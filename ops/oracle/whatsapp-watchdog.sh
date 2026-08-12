@@ -49,7 +49,7 @@ send_telegram_alert() {
 if "$CURL_BIN" --fail --silent --show-error --max-time 10 "$HEALTH_URL" >/dev/null; then
   if [[ "$previous_state" == "unhealthy" ]]; then
     send_telegram_alert \
-      "RECUPERADO: WhatsApp do Gestor Delivery voltou a responder em ${HOST_LABEL}." || true
+      "RECUPERADO: WhatsApp do Shifuh voltou a responder em ${HOST_LABEL}." || true
   fi
 
   save_state "healthy"
@@ -68,7 +68,7 @@ if ! "$CURL_BIN" --fail --silent --show-error --max-time 10 "$HEALTH_URL" >/dev/
 
   if [[ "$previous_state" != "unhealthy" ]]; then
     send_telegram_alert \
-      "ALERTA: WhatsApp do Gestor Delivery continua indisponivel apos reinicio automatico em ${HOST_LABEL}. Verifique a Oracle e o PM2." || true
+      "ALERTA: WhatsApp do Shifuh continua indisponivel apos reinicio automatico em ${HOST_LABEL}. Verifique a Oracle e o PM2." || true
   fi
 
   save_state "unhealthy"
@@ -80,7 +80,7 @@ fi
 
 if [[ "$previous_state" == "unhealthy" ]]; then
   send_telegram_alert \
-    "RECUPERADO: WhatsApp do Gestor Delivery voltou apos reinicio automatico em ${HOST_LABEL}." || true
+    "RECUPERADO: WhatsApp do Shifuh voltou apos reinicio automatico em ${HOST_LABEL}." || true
 fi
 
 save_state "healthy"

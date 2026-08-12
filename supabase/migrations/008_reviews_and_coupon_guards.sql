@@ -1,4 +1,4 @@
--- Gestor Delivery - regras de review e cupom
+-- Shifuh - regras de review e cupom
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_reviews_order_unique
   ON public.reviews (order_id);

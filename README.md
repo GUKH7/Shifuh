@@ -1,4 +1,4 @@
-# Gestor Delivery
+# Shifuh
 
 Sistema SaaS multi-tenant para restaurantes venderem por vitrine pública, receberem pedidos, operarem integrações e gerenciarem a rotina do delivery.
 

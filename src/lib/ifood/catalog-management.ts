@@ -205,7 +205,7 @@ function buildHomologationItemPayload(params: {
         name: itemName,
         description: isChanged
           ? "Produto alterado para o cenário de homologação Catalog."
-          : "Produto criado pelo Gestor Delivery para homologação Catalog.",
+          : "Produto criado pelo Shifuh para homologação Catalog.",
         externalCode: `GESTOR_HOMOLOG_PRODUCT_${externalCodeSuffix}`,
         ...(params.imagePath ? { imagePath: params.imagePath } : { image: SAMPLE_IMAGE }),
         optionGroups: [

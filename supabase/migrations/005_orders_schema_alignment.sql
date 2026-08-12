@@ -1,4 +1,4 @@
--- Gestor Delivery - alinhamento defensivo de orders/order_items
+-- Shifuh - alinhamento defensivo de orders/order_items
 -- Necessario para bancos onde a tabela orders ja existia antes da migration 002.
 
 ALTER TABLE public.orders

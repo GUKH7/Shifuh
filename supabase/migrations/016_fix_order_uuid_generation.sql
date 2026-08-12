@@ -2,7 +2,7 @@
 create extension if not exists "uuid-ossp";
 create extension if not exists pgcrypto;
 
--- Gestor Delivery - correcao UUID para criacao transacional de pedidos
+-- Shifuh - correcao UUID para criacao transacional de pedidos
 
 create or replace function public.create_order_transaction(
   p_restaurant_id uuid,

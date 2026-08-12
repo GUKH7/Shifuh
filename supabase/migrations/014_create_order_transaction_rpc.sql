@@ -1,4 +1,4 @@
--- Gestor Delivery - criacao transacional completa de pedidos
+-- Shifuh - criacao transacional completa de pedidos
 
 create or replace function public.create_order_transaction(
   p_restaurant_id uuid,

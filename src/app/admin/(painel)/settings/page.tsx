@@ -124,7 +124,7 @@ export default function SettingsPage() {
   const [ifoodMerchantSnapshot, setIfoodMerchantSnapshot] =
     useState<IfoodMerchantSnapshot | null>(null);
   const [ifoodPauseDescription, setIfoodPauseDescription] =
-    useState("Pausa de homologação Gestor Delivery");
+    useState("Pausa de homologação Shifuh");
   const [ifoodPauseStart, setIfoodPauseStart] = useState("");
   const [ifoodPauseEnd, setIfoodPauseEnd] = useState("");
   const [ifoodPublicUrl, setIfoodPublicUrl] = useState("");

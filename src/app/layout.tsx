@@ -13,7 +13,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Gestor Delivery",
+  title: "Shifuh",
   description: "Vitrine digital com pedidos direto no WhatsApp",
   icons: {
     icon: "/icon.svg",

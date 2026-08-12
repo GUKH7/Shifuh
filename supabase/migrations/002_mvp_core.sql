@@ -1,4 +1,4 @@
--- Gestor Delivery - core MVP schema alignment
+-- Shifuh - core MVP schema alignment
 -- Expande o schema inicial para compatibilizar onboarding, cardápio, configurações e pedidos.
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";

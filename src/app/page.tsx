@@ -135,7 +135,7 @@ export default function LandingPage() {
       </main>
 
       <footer className="border-t border-[var(--line)] px-6 py-10 text-center text-sm text-[var(--muted)]">
-        © {new Date().getFullYear()} Gestor Delivery
+        © {new Date().getFullYear()} Shifuh
       </footer>
     </div>
   );

@@ -19,7 +19,7 @@ begin
         or coalesce(qual, '') ilike '%menu-images%'
         or coalesce(with_check, '') ilike '%restaurant-images%'
         or coalesce(with_check, '') ilike '%menu-images%'
-        or policyname like 'Gestor Delivery %'
+        or policyname like 'Shifuh %'
       )
   loop
     execute format('drop policy if exists %I on storage.objects', policy_row.policyname);
@@ -27,12 +27,12 @@ begin
 end;
 $$;
 
-create policy "Gestor Delivery public image read"
+create policy "Shifuh public image read"
 on storage.objects for select
 to public
 using (bucket_id in ('restaurant-images', 'menu-images'));
 
-create policy "Gestor Delivery restaurant image insert"
+create policy "Shifuh restaurant image insert"
 on storage.objects for insert
 to authenticated
 with check (
@@ -44,7 +44,7 @@ with check (
   )
 );
 
-create policy "Gestor Delivery restaurant image update"
+create policy "Shifuh restaurant image update"
 on storage.objects for update
 to authenticated
 using (
@@ -64,7 +64,7 @@ with check (
   )
 );
 
-create policy "Gestor Delivery restaurant image delete"
+create policy "Shifuh restaurant image delete"
 on storage.objects for delete
 to authenticated
 using (

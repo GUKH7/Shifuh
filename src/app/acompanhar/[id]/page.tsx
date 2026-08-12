@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { OrderTrackingClient } from "./tracking-client";
 
 export const metadata: Metadata = {
-  title: "Acompanhar pedido | Gestor Delivery",
+  title: "Acompanhar pedido | Shifuh",
   description: "Acompanhe o preparo e a entrega do seu pedido.",
   robots: { index: false, follow: false },
   referrer: "no-referrer",

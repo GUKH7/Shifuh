@@ -1,4 +1,4 @@
--- Gestor Delivery - geração atômica do número visível do pedido
+-- Shifuh - geração atômica do número visível do pedido
 
 create table if not exists public.order_display_counters (
   restaurant_id uuid primary key references public.restaurants (id) on delete cascade,

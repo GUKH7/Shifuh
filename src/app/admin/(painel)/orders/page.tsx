@@ -779,7 +779,7 @@ export default function OrdersPage() {
         <div class="flex"><span>Desconto</span><strong>R$ ${Number(order.discount || 0).toFixed(2)}</strong></div>
         <div class="flex"><span>Total</span><strong>R$ ${Number(order.total || 0).toFixed(2)}</strong></div>
         <div class="line"></div>
-        <div class="center muted">Impresso pelo Gestor Delivery</div>
+        <div class="center muted">Impresso pelo Shifuh</div>
       </body>
       </html>
     `);
