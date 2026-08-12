@@ -28,7 +28,7 @@ export default function LandingPage() {
             <div className="brand-gradient flex h-8 w-8 items-center justify-center rounded-md text-white">
               <Store size={16} />
             </div>
-            <span className="truncate text-lg font-bold tracking-tight sm:text-xl">GESTOR.</span>
+            <span className="truncate text-lg font-bold tracking-tight sm:text-xl">SHIFUH</span>
           </div>
           <div className="flex items-center gap-2 text-sm font-medium sm:gap-4">
             <Link href="/admin/login" className="hidden min-h-11 items-center px-2 text-gray-700 transition-colors hover:text-black min-[420px]:inline-flex">
