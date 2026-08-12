@@ -102,7 +102,7 @@ export default function AdminSidebar({
             <Store size={17} />
           </div>
           <div className={desktopLabelVisibility}>
-            <p className="text-base font-black tracking-tight text-gray-950">GESTOR.</p>
+            <p className="text-base font-black tracking-tight text-gray-950">SHIFUH</p>
             <p className="text-[11px] text-gray-500">Portal da loja</p>
           </div>
         </div>
