@@ -122,7 +122,7 @@ export default function AdminLogin() {
             <div className="brand-gradient flex h-10 w-10 items-center justify-center rounded-xl text-white">
               <Store size={18} />
             </div>
-            <span className="text-2xl font-black tracking-tight text-gray-950">GESTOR.</span>
+            <span className="text-2xl font-black tracking-tight text-gray-950">SHIFUH</span>
           </div>
           <h1 className="mt-8 max-w-xl text-6xl font-black leading-[0.95] tracking-[-0.05em] text-gray-950">
             Gerencie sua loja com pedidos direto no <span className="italic text-[var(--brand)]">WhatsApp.</span>
@@ -145,7 +145,7 @@ export default function AdminLogin() {
             <div className="brand-gradient mx-auto flex h-12 w-12 items-center justify-center rounded-xl text-white">
               <Store size={20} />
             </div>
-            <p className="mt-4 text-2xl font-black tracking-tight text-gray-950">GESTOR.</p>
+            <p className="mt-4 text-2xl font-black tracking-tight text-gray-950">SHIFUH</p>
           </div>
 
           <div>
@@ -183,7 +183,7 @@ export default function AdminLogin() {
                   <label className="mb-1.5 block text-sm font-bold text-gray-700">Link do cardápio</label>
                   <div className="flex overflow-hidden rounded-2xl border border-[var(--line)] bg-white">
                     <span className="inline-flex items-center border-r border-[var(--line)] bg-[#fbf7f2] px-3 text-sm text-gray-500">
-                      gestordelivery.com.br/
+                      shifuh.com.br/
                     </span>
                     <input
                       type="text"
