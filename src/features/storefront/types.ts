@@ -10,7 +10,6 @@ export interface Product {
   is_promotional?: boolean;
   is_vegetarian?: boolean;
   is_best_seller?: boolean;
-  sold_quantity?: number;
 }
 
 export interface CartItem {

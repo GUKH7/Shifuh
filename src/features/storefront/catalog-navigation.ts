@@ -6,6 +6,7 @@ type SearchableProduct = {
 
 type SellableProduct = {
   id: string;
+  is_best_seller?: boolean | null;
   sold_quantity?: number | null;
 };
 
@@ -52,6 +53,9 @@ export function productMatchesSearch(product: SearchableProduct, search: string)
 }
 
 export function getBestSellerProductId(products: SellableProduct[], minimumSales = 3) {
+  const explicitLeader = products.find((product) => product.is_best_seller === true);
+  if (explicitLeader) return explicitLeader.id;
+
   const leader = products.reduce<SellableProduct | null>((current, product) => {
     if (!current) return product;
     return Number(product.sold_quantity || 0) > Number(current.sold_quantity || 0)

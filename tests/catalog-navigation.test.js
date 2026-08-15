@@ -32,6 +32,13 @@ test("searches products by name, description, addon group and addon option", () 
   assert.equal(productMatchesSearch(product, "sobremesa"), false);
 });
 
+test("prefers the sanitized best seller flag returned by the storefront view", () => {
+  assert.equal(getBestSellerProductId([
+    { id: "a", is_best_seller: false },
+    { id: "b", is_best_seller: true },
+  ]), "b");
+});
+
 test("selects one best seller only after real sales reach the minimum", () => {
   assert.equal(getBestSellerProductId([
     { id: "a", sold_quantity: 2 },
