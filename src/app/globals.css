@@ -64,19 +64,19 @@ a {
   }
 
   .admin-page-shell
-    :where(input, select, textarea):not([type="checkbox"]):not([type="radio"]):not([type="file"]):not(.bg-transparent) {
+    :where(input, select, textarea):not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([class~="bg-transparent"]) {
     min-height: 2.75rem;
   }
 
   .admin-page-shell
-    :where(input, select, textarea):not([type="checkbox"]):not([type="radio"]):not([type="file"]):not(.bg-transparent):focus-visible {
+    :where(input, select, textarea):not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([class~="bg-transparent"]):focus-visible {
     border-color: var(--brand) !important;
     outline: none;
     box-shadow: 0 0 0 3px rgba(255, 90, 31, 0.12);
   }
 
-  .admin-page-shell :where(div, label):has(> input.bg-transparent:focus-visible),
-  .admin-page-shell :where(div, label):has(> textarea.bg-transparent:focus-visible) {
+  .admin-page-shell :where(div, label):has(> input[class~="bg-transparent"]:focus-visible),
+  .admin-page-shell :where(div, label):has(> textarea[class~="bg-transparent"]:focus-visible) {
     border-color: var(--brand) !important;
     box-shadow: 0 0 0 3px rgba(255, 90, 31, 0.12);
   }
