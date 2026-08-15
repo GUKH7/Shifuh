@@ -2,8 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type RestaurantMembership = {
   restaurant_id: string;
-  role: "owner" | "admin" | "staff";
-  is_default: boolean;
+  role: "owner";
+  is_default: true;
   created_at: string;
 };
 
@@ -15,8 +15,7 @@ export async function getRestaurantMembershipsByUserId(
     .from("restaurant_members")
     .select("restaurant_id, role, is_default, created_at")
     .eq("user_id", userId)
-    .order("is_default", { ascending: false })
-    .order("created_at", { ascending: true });
+    .limit(1);
 
   return {
     memberships: (data ?? []) as RestaurantMembership[],
@@ -26,8 +25,9 @@ export async function getRestaurantMembershipsByUserId(
 
 export async function getRestaurantsByUserId(supabase: SupabaseClient<any>, userId: string) {
   const { memberships, error: membershipError } = await getRestaurantMembershipsByUserId(supabase, userId);
+  const membership = memberships[0] ?? null;
 
-  if (membershipError || memberships.length === 0) {
+  if (membershipError || !membership) {
     return {
       restaurants: [],
       memberships,
@@ -38,26 +38,21 @@ export async function getRestaurantsByUserId(supabase: SupabaseClient<any>, user
   const { data, error } = await supabase
     .from("restaurants")
     .select("*")
-    .in("id", memberships.map((membership) => membership.restaurant_id));
+    .eq("id", membership.restaurant_id)
+    .maybeSingle();
 
-  if (error) {
-    return { restaurants: [], memberships, error };
-  }
-
-  const restaurantsById = new Map((data ?? []).map((restaurant) => [restaurant.id, restaurant]));
-  const restaurants = memberships
-    .map((membership) => restaurantsById.get(membership.restaurant_id))
-    .filter(Boolean);
-
-  return { restaurants, memberships, error: null };
+  return {
+    restaurants: data ? [data] : [],
+    memberships,
+    error,
+  };
 }
 
 /**
- * Compatibility helper used across the current admin panel.
+ * Resolves the single restaurant owned by the authenticated account.
  *
- * The canonical relationship is restaurant_members. For accounts with more
- * than one store, the default membership wins; otherwise the oldest
- * membership is selected deterministically.
+ * The database currently enforces a strict 1 user <-> 1 restaurant relation.
+ * restaurant_members remains the canonical authorization mapping used by RLS.
  */
 export async function getRestaurantByUserId(supabase: SupabaseClient<any>, userId: string) {
   const { memberships, error: membershipError } = await getRestaurantMembershipsByUserId(supabase, userId);
