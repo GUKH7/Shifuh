@@ -17,6 +17,7 @@ export default function AdminLogin() {
   const [loading, setLoading] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
 
   useEffect(() => {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -70,6 +71,7 @@ export default function AdminLogin() {
     e.preventDefault();
     setLoading(true);
     setErrorMsg("");
+    setSuccessMsg("");
 
     try {
       if (isRegistering) {
@@ -80,26 +82,41 @@ export default function AdminLogin() {
           throw new Error("Preencha o nome e o link da sua loja.");
         }
 
-        const { data: existingSlug } = await supabase
-          .from("restaurants")
-          .select("id")
-          .eq("slug", restaurantSlug)
-          .maybeSingle();
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              onboarding_restaurant_name: restaurantName.trim(),
+              onboarding_restaurant_slug: restaurantSlug.trim(),
+            },
+          },
+        });
 
-        if (existingSlug) throw new Error("Este link já está em uso.");
-
-        const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
         if (authError) throw authError;
         if (!authData.user) throw new Error("Não foi possível criar o usuário.");
 
-        const { error: dbError } = await supabase.from("restaurants").insert({
-          name: restaurantName.trim(),
-          slug: restaurantSlug.trim(),
-          user_id: authData.user.id,
-          phone: "",
+        if (!authData.session) {
+          setSuccessMsg("Conta criada. Confirme seu e-mail e depois entre no painel para concluir a configuração da loja.");
+          setIsRegistering(false);
+          return;
+        }
+
+        const { error: onboardingError } = await supabase.rpc("create_onboarding_restaurant", {
+          p_name: restaurantName.trim(),
+          p_slug: restaurantSlug.trim(),
         });
 
-        if (dbError) throw dbError;
+        if (onboardingError) {
+          if (onboardingError.code === "23505") {
+            window.location.replace("/admin/setup");
+            return;
+          }
+          if (onboardingError.code === "22023") {
+            throw new Error("Revise o nome e o link da loja antes de continuar.");
+          }
+          throw onboardingError;
+        }
 
         await handleLogin();
         router.replace("/admin/settings");
@@ -162,6 +179,12 @@ export default function AdminLogin() {
           {errorMsg && (
             <div className="mt-6 rounded-2xl bg-[#fff0e8] px-4 py-3 text-sm font-medium text-[var(--brand)]">
               {errorMsg}
+            </div>
+          )}
+
+          {successMsg && (
+            <div className="mt-6 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+              {successMsg}
             </div>
           )}
 
@@ -244,6 +267,7 @@ export default function AdminLogin() {
               onClick={() => {
                 setIsRegistering(!isRegistering);
                 setErrorMsg("");
+                setSuccessMsg("");
               }}
               className="text-sm font-bold text-gray-600 transition-colors hover:text-[var(--brand)]"
             >

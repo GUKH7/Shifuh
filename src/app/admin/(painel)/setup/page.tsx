@@ -21,19 +21,34 @@ export default function SetupPage() {
   );
 
   useEffect(() => {
-    checkStatus();
+    void checkStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const checkStatus = async () => {
     const {
-      data: { user },
+      data: { user: currentUser },
     } = await supabase.auth.getUser();
-    if (!user) return router.push("/admin/login");
-    setUser(user);
 
-    const { restaurant } = await getRestaurantByUserId(supabase, user.id);
-    if (restaurant) router.push("/admin");
-    else setLoading(false);
+    if (!currentUser) {
+      router.push("/admin/login");
+      return;
+    }
+
+    setUser(currentUser);
+
+    const { restaurant } = await getRestaurantByUserId(supabase, currentUser.id);
+    if (restaurant) {
+      router.push("/admin");
+      return;
+    }
+
+    const pendingName = currentUser.user_metadata?.onboarding_restaurant_name;
+    const pendingSlug = currentUser.user_metadata?.onboarding_restaurant_slug;
+
+    if (typeof pendingName === "string") setName(pendingName);
+    if (typeof pendingSlug === "string") setSlug(pendingSlug);
+    setLoading(false);
   };
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -45,7 +60,7 @@ export default function SetupPage() {
   const handleSetup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !slug.trim()) {
-      setError("Preencha todos os campos obrigatorios.");
+      setError("Preencha todos os campos obrigatórios.");
       return;
     }
     if (!user?.id) {
@@ -57,45 +72,26 @@ export default function SetupPage() {
     setError("");
 
     try {
-      const { data: existingSlug } = await supabase.from("restaurants").select("id").eq("slug", slug).maybeSingle();
-      if (existingSlug) {
-      setError("Este link já está em uso. Tente outra variação.");
-        setIsSaving(false);
-        return;
-      }
-
-      const { error: insertError } = await supabase.from("restaurants").insert({
-        name: name.trim(),
-        slug: slug.trim(),
-        user_id: user.id,
-        phone: "",
+      const { error: onboardingError } = await supabase.rpc("create_onboarding_restaurant", {
+        p_name: name.trim(),
+        p_slug: slug.trim(),
       });
 
-      if (insertError) throw insertError;
-
-      let createdRestaurant = null;
-
-      for (let attempt = 0; attempt < 6; attempt += 1) {
-        const { restaurant } = await getRestaurantByUserId(supabase, user.id);
-
-        if (restaurant) {
-          createdRestaurant = restaurant;
-          break;
+      if (onboardingError) {
+        if (onboardingError.code === "23505") {
+          throw new Error("Este link já está em uso. Tente outra variação.");
         }
-
-        await new Promise((resolve) => setTimeout(resolve, 300));
-      }
-
-      if (!createdRestaurant) {
-      setError("A loja foi criada, mas o painel ainda não conseguiu carregar. Atualize a página.");
-        return;
+        if (onboardingError.code === "22023") {
+          throw new Error("Revise o nome e o link da loja antes de continuar.");
+        }
+        throw onboardingError;
       }
 
       router.refresh();
       window.location.replace("/admin/settings");
     } catch (err) {
       console.error(err);
-      setError(err instanceof Error ? err.message : "Ocorreu um erro ao criar o restaurante.");
+      setError(err instanceof Error ? err.message : "Ocorreu um erro ao criar a loja.");
     } finally {
       setIsSaving(false);
     }
@@ -117,13 +113,13 @@ export default function SetupPage() {
             <div className="brand-gradient flex h-10 w-10 items-center justify-center rounded-xl text-white">
               <Store size={18} />
             </div>
-            <span className="text-2xl font-black tracking-tight text-gray-950">GESTOR.</span>
+            <span className="text-2xl font-black tracking-tight text-gray-950">SHIFUH</span>
           </div>
           <h1 className="mt-8 max-w-xl text-6xl font-black leading-[0.95] tracking-[-0.05em] text-gray-950">
             Configure sua loja e publique sua vitrine digital.
           </h1>
           <p className="mt-6 max-w-lg text-lg leading-8 text-[var(--muted)]">
-          Defina nome, link e identidade inicial da operação para começar a vender com pedidos direto no WhatsApp.
+            Defina nome, link e identidade inicial da operação para começar a vender com pedidos direto no WhatsApp.
           </p>
         </div>
 
@@ -132,12 +128,12 @@ export default function SetupPage() {
             <div className="brand-gradient mx-auto flex h-12 w-12 items-center justify-center rounded-xl text-white">
               <Store size={20} />
             </div>
-            <p className="mt-4 text-2xl font-black tracking-tight text-gray-950">GESTOR.</p>
+            <p className="mt-4 text-2xl font-black tracking-tight text-gray-950">SHIFUH</p>
           </div>
 
-              <h2 className="text-3xl font-black tracking-tight text-gray-950">Primeira configuração</h2>
+          <h2 className="text-3xl font-black tracking-tight text-gray-950">Primeira configuração</h2>
           <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-              Escolha o nome do negócio e o slug que vai virar o link público do seu cardápio.
+            Escolha o nome do negócio e o slug que vai virar o link público do seu cardápio.
           </p>
 
           {error && <div className="mt-6 rounded-2xl bg-[#fff0e8] px-4 py-3 text-sm font-medium text-[var(--brand)]">{error}</div>}
@@ -156,10 +152,10 @@ export default function SetupPage() {
             </div>
 
             <div>
-                  <label className="mb-1.5 block text-sm font-bold text-gray-700">Link do cardápio</label>
+              <label className="mb-1.5 block text-sm font-bold text-gray-700">Link do cardápio</label>
               <div className="flex overflow-hidden rounded-2xl border border-[var(--line)] bg-white">
                 <span className="inline-flex items-center border-r border-[var(--line)] bg-[#fbf7f2] px-3 text-sm text-gray-500">
-                  gestordelivery.com.br/
+                  shifuh.com.br/
                 </span>
                 <input
                   type="text"
