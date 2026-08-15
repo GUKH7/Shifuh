@@ -1,63 +1,67 @@
-# Onboarding e arquitetura multi-loja
+# Onboarding e arquitetura de tenancy
 
-## Decisão arquitetural
+## Decisão atual
 
-O Shifuh adota formalmente a relação **usuários/membros ↔ várias lojas**.
+O Shifuh opera, por enquanto, no modelo estrito **1 usuário ↔ 1 restaurante**.
 
-- Um usuário autenticado pode ser membro de zero, uma ou várias lojas.
-- Uma loja pode ter vários membros.
-- `public.restaurant_members` é a fonte canônica de autorização e vínculo entre usuário e loja.
-- `public.restaurants.user_id` existe apenas como compatibilidade temporária com código legado e representa o criador/origem da loja. Ele **não deve ser usado em RLS, autorização ou resolução da loja atual**.
+- Cada usuário autenticado pode administrar somente um restaurante.
+- Cada restaurante possui somente um usuário, sempre com papel `owner`.
+- Não há convite de equipe, papéis `admin`/`staff`, troca de loja ou múltiplas unidades na experiência atual.
+- `public.restaurant_members` continua sendo a fonte canônica usada pelas policies de RLS, mas o banco impõe unicidade dos dois lados da relação.
+- `public.restaurants.user_id` também possui unicidade por usuário como defesa adicional.
 
-## Papéis
+A estrutura de memberships foi preservada porque mantém a autorização já endurecida e permite uma evolução futura sem reescrever todas as policies. Ela não significa que multiusuário esteja habilitado.
 
-Cada vínculo em `restaurant_members` possui um papel:
+## Restrições de banco
 
-- `owner`: proprietário do estabelecimento.
-- `admin`: administrador da operação.
-- `staff`: membro operacional.
+O PostgreSQL garante a regra 1:1, não apenas a interface:
 
-Nesta etapa, todos os papéis de membro preservam o mesmo acesso operacional que o antigo proprietário tinha. A tabela já permite evoluir para uma matriz de permissões sem alterar a relação de tenancy.
+- `restaurant_members.user_id` é único;
+- `restaurant_members.restaurant_id` é único;
+- `restaurants.user_id` é único quando preenchido;
+- todo vínculo em `restaurant_members` deve ter `role = 'owner'`;
+- todo vínculo deve permanecer `is_default = true`.
 
-## Loja atual
-
-Um usuário pode ter no máximo uma associação marcada como `is_default = true`.
-
-A seleção da loja atual segue esta ordem:
-
-1. associação marcada como padrão;
-2. associação mais antiga, de forma determinística.
-
-A RPC `set_default_restaurant(uuid)` é o mecanismo formal para trocar a loja padrão quando a interface de múltiplas lojas for exposta.
+Assim, uma chamada direta à API ou código server-side incorreto também não consegue criar um segundo usuário para a loja nem um segundo restaurante para o mesmo usuário.
 
 ## Regra de onboarding
 
-Criar uma conta de autenticação **não cria uma loja**.
+Criar uma conta de autenticação **não cria uma loja automaticamente**.
 
 O trigger `app_private.handle_new_user()` cria/atualiza somente o perfil em `public.profiles`.
 
-A primeira loja é criada exclusivamente pela RPC autenticada `create_onboarding_restaurant(name, slug)`. A implementação privilegiada fica em `app_private`; a função exposta em `public` é apenas um wrapper `SECURITY INVOKER`.
+A loja é criada exclusivamente pela RPC autenticada `create_onboarding_restaurant(name, slug)`.
 
 O onboarding é idempotente:
 
 - a execução é serializada por usuário;
-- se o usuário já possui qualquer associação a loja, a RPC devolve a loja existente e não cria outra;
-- a criação da loja e do vínculo `owner` ocorre na mesma transação;
-- `restaurants` não possui policy de `INSERT` para usuários autenticados, impedindo que o cliente contorne o fluxo oficial com um insert direto.
-
-Uma futura ação explícita **Adicionar loja** deve usar um fluxo separado do onboarding. Ela não deve reutilizar `create_onboarding_restaurant`, pois essa RPC é deliberadamente limitada à primeira associação do usuário.
+- se o usuário já possui restaurante, a RPC devolve a loja existente e não cria outra;
+- a criação de `restaurants` e do vínculo `restaurant_members` como `owner` ocorre na mesma transação;
+- não existe policy de `INSERT` direto em `restaurants` para o cliente autenticado.
 
 ## Cadastro com confirmação de e-mail
 
-O formulário administrativo grava temporariamente `onboarding_restaurant_name` e `onboarding_restaurant_slug` em `auth.users.user_metadata` no `signUp`.
+O formulário administrativo grava temporariamente `onboarding_restaurant_name` e `onboarding_restaurant_slug` no metadata do usuário.
 
-- Se o Supabase devolver uma sessão imediatamente, a mesma tela chama a RPC de onboarding.
-- Se a confirmação de e-mail for obrigatória, nenhuma loja é criada antes da autenticação. Após o primeiro login, `/admin/setup` recupera os dados do metadata e conclui o onboarding pela mesma RPC.
-
-Isso garante um único escritor de loja independentemente da configuração de confirmação de e-mail.
+- Se o cadastro já devolver uma sessão autenticada, a mesma tela conclui o onboarding.
+- Se a confirmação de e-mail for obrigatória, `/admin/setup` recupera esses dados após o primeiro login e conclui a criação pela mesma RPC.
 
 ## Autorização
 
-As policies de RLS das entidades de restaurante consultam `restaurant_members`, incluindo pedidos, produtos, categorias, cupons, CRM, avaliações, analytics, integração iFood e uploads no Storage.
+As policies das entidades de restaurante continuam consultando `restaurant_members`, incluindo pedidos, produtos, categorias, cupons, CRM, avaliações, analytics, iFood e Storage.
 
-Policies de consumidor final continuam independentes e baseadas no próprio `auth.uid()` quando apropriado.
+Como existe no máximo um vínculo por usuário e um vínculo por restaurante, essa camada de autorização funciona atualmente como uma relação 1:1.
+
+## Funcionalidades adiadas
+
+Multi-loja e multiusuário ficam explicitamente **desativados** nesta fase.
+
+Não devem ser adicionados ao produto, por enquanto:
+
+- botão `Adicionar loja`;
+- seletor/troca de restaurante;
+- convite de usuários;
+- papéis `admin` e `staff`;
+- limites de usuários por plano.
+
+Quando o Shifuh decidir reativar essas capacidades, será necessária uma migration explícita removendo as constraints 1:1 e uma nova revisão de autorização, billing e UX.
