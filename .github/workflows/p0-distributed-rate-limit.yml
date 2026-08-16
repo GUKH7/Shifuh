@@ -1,0 +1,496 @@
+name: P0 Distributed Rate Limit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/p0-distributed-rate-limit.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Apply distributed rate limit
+        shell: python
+        run: |
+          from pathlib import Path
+
+          rate_limit = '''import { createHmac } from "node:crypto";
+          import { NextResponse } from "next/server";
+          import { createAdminClient } from "@/lib/supabase/server";
+
+          type RateLimitOptions = {
+            keyPrefix: string;
+            limit?: number;
+            windowMs?: number;
+          };
+
+          type DistributedRateLimitResult = {
+            allowed: boolean;
+            remaining: number;
+            reset_at: string;
+          };
+
+          function readPositiveInteger(value: string | undefined, fallback: number) {
+            const parsed = Number(value);
+            return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : fallback;
+          }
+
+          function getClientIp(request: Request) {
+            const vercelForwardedFor = request.headers
+              .get("x-vercel-forwarded-for")
+              ?.split(",")[0]
+              ?.trim();
+            const forwardedFor = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+
+            return (
+              vercelForwardedFor ||
+              forwardedFor ||
+              request.headers.get("x-real-ip") ||
+              request.headers.get("cf-connecting-ip") ||
+              "unknown"
+            );
+          }
+
+          function getHashSecret() {
+            const secret = process.env.RATE_LIMIT_HASH_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY;
+            if (!secret) {
+              throw new Error("Rate limit hash secret is not configured.");
+            }
+            return secret;
+          }
+
+          function normalizeResult(data: unknown): DistributedRateLimitResult | null {
+            const value = Array.isArray(data) ? data[0] : data;
+            if (!value || typeof value !== "object") return null;
+
+            const row = value as Record<string, unknown>;
+            const remaining = Number(row.remaining);
+            const resetAt = typeof row.reset_at === "string" ? row.reset_at : "";
+            if (typeof row.allowed !== "boolean" || !Number.isFinite(remaining) || !resetAt) {
+              return null;
+            }
+
+            return {
+              allowed: row.allowed,
+              remaining: Math.max(0, Math.floor(remaining)),
+              reset_at: resetAt,
+            };
+          }
+
+          function unavailableResponse() {
+            return NextResponse.json(
+              { error: "Não foi possível validar a requisição agora. Tente novamente em instantes." },
+              {
+                status: 503,
+                headers: {
+                  "Retry-After": "5",
+                  "Cache-Control": "no-store",
+                },
+              },
+            );
+          }
+
+          export async function checkRateLimit(request: Request, options: RateLimitOptions) {
+            if (process.env.PUBLIC_API_RATE_LIMIT_DISABLED === "true") {
+              return null;
+            }
+
+            const limit = readPositiveInteger(
+              process.env.PUBLIC_API_RATE_LIMIT_MAX,
+              options.limit ?? 20,
+            );
+            const windowMs = readPositiveInteger(
+              process.env.PUBLIC_API_RATE_LIMIT_WINDOW_MS,
+              options.windowMs ?? 60_000,
+            );
+            const windowSeconds = Math.max(1, Math.ceil(windowMs / 1000));
+
+            try {
+              const identity = getClientIp(request);
+              const keyHash = createHmac("sha256", getHashSecret())
+                .update(`${options.keyPrefix}:${identity}`)
+                .digest("hex");
+              const admin = createAdminClient();
+              const { data, error } = await (admin as any).rpc("consume_api_rate_limit", {
+                p_key_hash: keyHash,
+                p_limit: limit,
+                p_window_seconds: windowSeconds,
+              });
+
+              if (error) {
+                throw new Error(error.message || "Distributed rate limit RPC failed.");
+              }
+
+              const result = normalizeResult(data);
+              if (!result) {
+                throw new Error("Distributed rate limit returned an invalid result.");
+              }
+
+              if (result.allowed) {
+                return null;
+              }
+
+              const parsedResetAt = new Date(result.reset_at).getTime();
+              const resetAt = Number.isFinite(parsedResetAt) ? parsedResetAt : Date.now() + windowMs;
+              const resetSeconds = Math.max(1, Math.ceil((resetAt - Date.now()) / 1000));
+              const headers = {
+                "Retry-After": String(resetSeconds),
+                "X-RateLimit-Limit": String(limit),
+                "X-RateLimit-Remaining": String(result.remaining),
+                "X-RateLimit-Reset": String(Math.ceil(resetAt / 1000)),
+                "Cache-Control": "no-store",
+              };
+
+              return NextResponse.json(
+                { error: "Muitas tentativas. Aguarde alguns instantes e tente novamente." },
+                { status: 429, headers },
+              );
+            } catch (error) {
+              console.error(`Rate limit distribuído indisponível (${options.keyPrefix}):`, error);
+              return unavailableResponse();
+            }
+          }
+
+          // Mantido temporariamente apenas para compatibilidade com testes legados.
+          // O estado real do limiter não vive mais no processo Node.
+          export function resetRateLimitForTests() {}
+          '''
+          # Remove indentation introduced by the YAML/Python block.
+          rate_limit = "\n".join(line[10:] if line.startswith("          ") else line for line in rate_limit.splitlines()) + "\n"
+          Path("src/lib/rate-limit.ts").write_text(rate_limit, encoding="utf-8")
+
+          # Every protected API route must await the distributed RPC.
+          protected = []
+          for path in Path("src/app/api").rglob("route.ts"):
+            text = path.read_text(encoding="utf-8")
+            if 'from "@/lib/rate-limit"' not in text:
+              continue
+            text = text.replace(
+              "const rateLimitResponse = checkRateLimit(request, {",
+              "const rateLimitResponse = await checkRateLimit(request, {",
+            )
+            if "const rateLimitResponse = checkRateLimit(request, {" in text:
+              raise SystemExit(f"Unawaited rate limit remains in {path}")
+            path.write_text(text, encoding="utf-8")
+            protected.append(str(path))
+
+          # Login had no application-level rate limit. Add it now.
+          login = Path("src/app/api/admin/login/route.ts")
+          text = login.read_text(encoding="utf-8")
+          if 'from "@/lib/rate-limit"' not in text:
+            marker = 'import type { CookieOptions } from "@supabase/ssr";\n'
+            text = text.replace(marker, marker + 'import { checkRateLimit } from "@/lib/rate-limit";\n')
+          guard = '''    const rateLimitResponse = await checkRateLimit(request, {
+              keyPrefix: "admin:login",
+              limit: 10,
+              windowMs: 60_000,
+            });
+            if (rateLimitResponse) return rateLimitResponse;
+
+          '''
+          guard = "\n".join(line[4:] if line.startswith("    ") else line for line in guard.splitlines()) + "\n"
+          if 'keyPrefix: "admin:login"' not in text:
+            marker = "export async function POST(request: Request) {\n  try {\n"
+            text = text.replace(marker, marker + guard)
+          login.write_text(text, encoding="utf-8")
+
+          # Mirror the migrations already applied to production Supabase.
+          migrations = Path("supabase/migrations")
+          migrations.mkdir(parents=True, exist_ok=True)
+          migrations.joinpath("20260816142608_distributed_api_rate_limits.sql").write_text('''create table if not exists public.api_rate_limits (
+            key_hash text primary key,
+            window_started_at timestamptz not null,
+            request_count integer not null default 0 check (request_count >= 0),
+            expires_at timestamptz not null,
+            updated_at timestamptz not null default now()
+          );
+
+          create index if not exists api_rate_limits_expires_at_idx
+            on public.api_rate_limits (expires_at);
+
+          alter table public.api_rate_limits enable row level security;
+
+          revoke all on table public.api_rate_limits from public, anon, authenticated;
+          grant select, insert, update, delete on table public.api_rate_limits to service_role;
+
+          create or replace function public.consume_api_rate_limit(
+            p_key_hash text,
+            p_limit integer,
+            p_window_seconds integer
+          )
+          returns table (
+            allowed boolean,
+            remaining integer,
+            reset_at timestamptz
+          )
+          language plpgsql
+          security invoker
+          set search_path = pg_catalog, public
+          as $$
+          declare
+            v_now timestamptz := clock_timestamp();
+          begin
+            if p_key_hash is null or p_key_hash !~ '^[0-9a-f]{64}$' then
+              raise exception 'invalid_rate_limit_key';
+            end if;
+
+            if p_limit is null or p_limit < 1 or p_limit > 100000 then
+              raise exception 'invalid_rate_limit_limit';
+            end if;
+
+            if p_window_seconds is null or p_window_seconds < 1 or p_window_seconds > 86400 then
+              raise exception 'invalid_rate_limit_window';
+            end if;
+
+            if pg_catalog.random() < 0.01 then
+              with stale as (
+                select key_hash
+                from public.api_rate_limits
+                where expires_at < v_now - interval '1 hour'
+                order by expires_at asc
+                limit 200
+              )
+              delete from public.api_rate_limits rl
+              using stale
+              where rl.key_hash = stale.key_hash;
+            end if;
+
+            return query
+            insert into public.api_rate_limits as rl (
+              key_hash, window_started_at, request_count, expires_at, updated_at
+            )
+            values (
+              p_key_hash, v_now, 1,
+              v_now + pg_catalog.make_interval(secs => p_window_seconds), v_now
+            )
+            on conflict (key_hash) do update
+            set
+              window_started_at = case when rl.expires_at <= v_now then v_now else rl.window_started_at end,
+              request_count = case when rl.expires_at <= v_now then 1 else rl.request_count + 1 end,
+              expires_at = case
+                when rl.expires_at <= v_now then v_now + pg_catalog.make_interval(secs => p_window_seconds)
+                else rl.expires_at
+              end,
+              updated_at = v_now
+            returning
+              rl.request_count <= p_limit,
+              pg_catalog.greatest(p_limit - rl.request_count, 0),
+              rl.expires_at;
+          end;
+          $$;
+
+          revoke all on function public.consume_api_rate_limit(text, integer, integer) from public, anon, authenticated;
+          grant execute on function public.consume_api_rate_limit(text, integer, integer) to service_role;
+
+          comment on table public.api_rate_limits is
+            'Distributed API rate-limit windows. Stores only SHA-256 keys, never raw client IPs.';
+          comment on function public.consume_api_rate_limit(text, integer, integer) is
+            'Atomically consumes one request from a distributed fixed-window rate limit. Service-role only.';
+          ''', encoding="utf-8")
+
+          migrations.joinpath("20260816142638_fix_distributed_api_rate_limit_return.sql").write_text('''create or replace function public.consume_api_rate_limit(
+            p_key_hash text,
+            p_limit integer,
+            p_window_seconds integer
+          )
+          returns table (
+            allowed boolean,
+            remaining integer,
+            reset_at timestamptz
+          )
+          language plpgsql
+          security invoker
+          set search_path = pg_catalog, public
+          as $$
+          declare
+            v_now timestamptz := clock_timestamp();
+          begin
+            if p_key_hash is null or p_key_hash !~ '^[0-9a-f]{64}$' then
+              raise exception 'invalid_rate_limit_key';
+            end if;
+
+            if p_limit is null or p_limit < 1 or p_limit > 100000 then
+              raise exception 'invalid_rate_limit_limit';
+            end if;
+
+            if p_window_seconds is null or p_window_seconds < 1 or p_window_seconds > 86400 then
+              raise exception 'invalid_rate_limit_window';
+            end if;
+
+            if pg_catalog.random() < 0.01 then
+              with stale as (
+                select key_hash
+                from public.api_rate_limits
+                where expires_at < v_now - interval '1 hour'
+                order by expires_at asc
+                limit 200
+              )
+              delete from public.api_rate_limits rl
+              using stale
+              where rl.key_hash = stale.key_hash;
+            end if;
+
+            return query
+            insert into public.api_rate_limits as rl (
+              key_hash, window_started_at, request_count, expires_at, updated_at
+            )
+            values (
+              p_key_hash, v_now, 1,
+              v_now + pg_catalog.make_interval(secs => p_window_seconds), v_now
+            )
+            on conflict (key_hash) do update
+            set
+              window_started_at = case when rl.expires_at <= v_now then v_now else rl.window_started_at end,
+              request_count = case when rl.expires_at <= v_now then 1 else rl.request_count + 1 end,
+              expires_at = case
+                when rl.expires_at <= v_now then v_now + pg_catalog.make_interval(secs => p_window_seconds)
+                else rl.expires_at
+              end,
+              updated_at = v_now
+            returning
+              rl.request_count <= p_limit,
+              greatest(p_limit - rl.request_count, 0),
+              rl.expires_at;
+          end;
+          $$;
+
+          revoke all on function public.consume_api_rate_limit(text, integer, integer) from public, anon, authenticated;
+          grant execute on function public.consume_api_rate_limit(text, integer, integer) to service_role;
+          ''', encoding="utf-8")
+
+          migrations.joinpath("20260816143253_service_role_api_rate_limit_policy.sql").write_text('''drop policy if exists "Service role manages API rate limits" on public.api_rate_limits;
+          create policy "Service role manages API rate limits"
+          on public.api_rate_limits
+          for all
+          to service_role
+          using (true)
+          with check (true);
+          ''', encoding="utf-8")
+
+          # Keep the orders route tests exercising the real distributed helper,
+          # but emulate its Supabase RPC instead of a process-global production Map.
+          orders_test = Path("tests/api-orders.test.js")
+          text = orders_test.read_text(encoding="utf-8")
+          if "RATE_LIMIT_HASH_SECRET" not in text:
+            text = text.replace(
+              'process.env.ORDER_TRACKING_SECRET = "test-order-tracking-secret-with-at-least-32-bytes";\n',
+              'process.env.ORDER_TRACKING_SECRET = "test-order-tracking-secret-with-at-least-32-bytes";\nprocess.env.RATE_LIMIT_HASH_SECRET = "test-rate-limit-secret-with-at-least-32-bytes";\n',
+            )
+          if "rateLimitBuckets: new Map()" not in text:
+            text = text.replace("    savedAddresses: [],\n", "    savedAddresses: [],\n    rateLimitBuckets: new Map(),\n")
+          rpc_marker = '''    rpc: async (name, args) => {
+                assert.equal(name, "create_storefront_order_transaction");
+          '''
+          rpc_marker = "\n".join(line[4:] if line.startswith("    ") else line for line in rpc_marker.splitlines()) + "\n"
+          if 'name === "consume_api_rate_limit"' not in text:
+            replacement = '''    rpc: async (name, args) => {
+                if (name === "consume_api_rate_limit") {
+                  const now = Date.now();
+                  const windowMs = Number(args.p_window_seconds) * 1000;
+                  const existing = mockState.rateLimitBuckets.get(args.p_key_hash);
+                  const bucket = !existing || existing.resetAt <= now
+                    ? { count: 1, resetAt: now + windowMs }
+                    : { count: existing.count + 1, resetAt: existing.resetAt };
+                  mockState.rateLimitBuckets.set(args.p_key_hash, bucket);
+                  return {
+                    data: [{
+                      allowed: bucket.count <= Number(args.p_limit),
+                      remaining: Math.max(Number(args.p_limit) - bucket.count, 0),
+                      reset_at: new Date(bucket.resetAt).toISOString(),
+                    }],
+                    error: null,
+                  };
+                }
+
+                assert.equal(name, "create_storefront_order_transaction");
+          '''
+            replacement = "\n".join(line[4:] if line.startswith("    ") else line for line in replacement.splitlines()) + "\n"
+            if rpc_marker not in text:
+              raise SystemExit("Could not patch order test RPC mock")
+            text = text.replace(rpc_marker, replacement)
+          orders_test.write_text(text, encoding="utf-8")
+
+          Path("tests/distributed-rate-limit.test.js").write_text('''const assert = require("node:assert/strict");
+          const fs = require("node:fs");
+          const path = require("node:path");
+          const test = require("node:test");
+
+          const root = path.resolve(__dirname, "..");
+          const limiter = fs.readFileSync(path.join(root, "src/lib/rate-limit.ts"), "utf8");
+
+          test("rate limit usa contador distribuído e não mantém buckets no processo", () => {
+            assert.match(limiter, /export async function checkRateLimit/);
+            assert.match(limiter, /consume_api_rate_limit/);
+            assert.match(limiter, /createAdminClient/);
+            assert.match(limiter, /createHmac\("sha256"/);
+            assert.doesNotMatch(limiter, /new Map/);
+            assert.doesNotMatch(limiter, /const buckets/);
+          });
+
+          test("rotas críticas aguardam o limiter e login administrativo está protegido", () => {
+            const routes = [
+              "src/app/api/orders/route.ts",
+              "src/app/api/storefront/delivery-quote/route.ts",
+              "src/app/api/storefront/postal-code/route.ts",
+              "src/app/api/storefront/checkout-events/route.ts",
+              "src/app/api/reviews/route.ts",
+              "src/app/api/orders/[id]/tracking/route.ts",
+              "src/app/api/admin/login/route.ts",
+            ];
+
+            for (const route of routes) {
+              const source = fs.readFileSync(path.join(root, route), "utf8");
+              assert.match(source, /await checkRateLimit\(request,/i, route);
+            }
+
+            const login = fs.readFileSync(path.join(root, "src/app/api/admin/login/route.ts"), "utf8");
+            assert.match(login, /keyPrefix: "admin:login"/);
+          });
+
+          test("migration mantém estado inacessível ao cliente e RPC restrita ao service role", () => {
+            const migration = fs.readFileSync(
+              path.join(root, "supabase/migrations/20260816142608_distributed_api_rate_limits.sql"),
+              "utf8",
+            );
+            assert.match(migration, /enable row level security/i);
+            assert.match(migration, /revoke all on table public\.api_rate_limits from public, anon, authenticated/i);
+            assert.match(migration, /security invoker/i);
+            assert.match(migration, /revoke all on function public\.consume_api_rate_limit[^;]+from public, anon, authenticated/is);
+            assert.match(migration, /grant execute on function public\.consume_api_rate_limit[^;]+to service_role/is);
+          });
+          ''', encoding="utf-8")
+
+          print("Protected routes:")
+          for route in protected:
+            print(" -", route)
+
+      - name: Validate changed security path
+        run: |
+          npm run audit:service-role
+          node --test --test-concurrency=1 tests/distributed-rate-limit.test.js tests/api-orders.test.js tests/admin-login-server-route.test.js
+          npm run typecheck
+          npm run build
+
+      - name: Commit implementation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/p0-distributed-rate-limit.yml
+          git add src/lib/rate-limit.ts src/app/api tests supabase/migrations
+          git commit -m "security(rate-limit): distribui contadores no Supabase"
+          git push origin HEAD:main
