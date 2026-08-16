@@ -7,6 +7,7 @@ const ts = require("typescript");
 const fs = require("node:fs");
 
 process.env.ORDER_TRACKING_SECRET = "test-order-tracking-secret-with-at-least-32-bytes";
+process.env.RATE_LIMIT_HASH_SECRET = "test-rate-limit-secret-with-at-least-32-bytes";
 
 const routePath = path.join(__dirname, "..", "src", "app", "api", "orders", "route.ts");
 let mockState;
@@ -49,6 +50,7 @@ function baseState(overrides = {}) {
     orderItems: [],
     customers: [],
     savedAddresses: [],
+    rateLimitBuckets: new Map(),
     rpcCounter: 0,
     publicRpcCalls: 0,
     adminRpcCalls: 0,
@@ -176,6 +178,24 @@ function createSupabaseMock(role = "public") {
     },
     from: (table) => new QueryBuilder(table),
     rpc: async (name, args) => {
+      if (name === "consume_api_rate_limit") {
+        const now = Date.now();
+        const windowMs = Number(args.p_window_seconds) * 1000;
+        const existing = mockState.rateLimitBuckets.get(args.p_key_hash);
+        const bucket = !existing || existing.resetAt <= now
+          ? { count: 1, resetAt: now + windowMs }
+          : { count: existing.count + 1, resetAt: existing.resetAt };
+        mockState.rateLimitBuckets.set(args.p_key_hash, bucket);
+        return {
+          data: [{
+            allowed: bucket.count <= Number(args.p_limit),
+            remaining: Math.max(Number(args.p_limit) - bucket.count, 0),
+            reset_at: new Date(bucket.resetAt).toISOString(),
+          }],
+          error: null,
+        };
+      }
+
       assert.equal(name, "create_storefront_order_transaction");
       if (role === "admin") mockState.adminRpcCalls += 1;
       else mockState.publicRpcCalls += 1;

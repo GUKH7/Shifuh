@@ -4,7 +4,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { createAdminClient } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
-  const rateLimitResponse = checkRateLimit(request, {
+  const rateLimitResponse = await checkRateLimit(request, {
     keyPrefix: "public:storefront:payment-methods",
     limit: 60,
     windowMs: 60_000,

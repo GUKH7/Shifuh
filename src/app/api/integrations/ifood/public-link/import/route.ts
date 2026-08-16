@@ -53,7 +53,7 @@ function normalizeMoney(value: unknown) {
 
 export async function POST(request: Request) {
   try {
-    const rateLimitResponse = checkRateLimit(request, {
+    const rateLimitResponse = await checkRateLimit(request, {
       keyPrefix: "ifood-public-link-import",
       limit: 6,
       windowMs: 10 * 60_000,

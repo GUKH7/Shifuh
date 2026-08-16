@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { CUSTOMER_SESSION_COOKIE, hashCustomerSessionToken } from "@/lib/customer-account";
 
 export async function GET(request: Request) {
-  const rateLimitResponse = checkRateLimit(request, {
+  const rateLimitResponse = await checkRateLimit(request, {
     keyPrefix: "public:customer:profile",
     limit: 30,
     windowMs: 60_000,
@@ -46,7 +46,7 @@ export async function GET(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const rateLimitResponse = checkRateLimit(request, {
+  const rateLimitResponse = await checkRateLimit(request, {
     keyPrefix: "public:customer:profile:delete",
     limit: 10,
     windowMs: 60_000,

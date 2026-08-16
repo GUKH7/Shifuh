@@ -1,0 +1,2 @@
+-- Historical production migration retained so repository history matches Supabase.
+-- The corrected function body is already present in the preceding migration for fresh databases.

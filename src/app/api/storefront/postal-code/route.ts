@@ -32,7 +32,7 @@ function isValidText(value: string, minimum: number, maximum: number) {
 }
 
 export async function POST(request: Request) {
-  const rateLimitResponse = checkRateLimit(request, {
+  const rateLimitResponse = await checkRateLimit(request, {
     keyPrefix: "public:postal-code-search",
     limit: 15,
     windowMs: 60_000,

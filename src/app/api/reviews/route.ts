@@ -15,7 +15,7 @@ function round(value: number) {
 
 export async function POST(request: Request) {
   try {
-    const rateLimitResponse = checkRateLimit(request, {
+    const rateLimitResponse = await checkRateLimit(request, {
       keyPrefix: "public:reviews:create",
       limit: 20,
       windowMs: 60_000,

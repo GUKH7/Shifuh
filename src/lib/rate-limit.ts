@@ -1,4 +1,6 @@
+import { createHmac } from "node:crypto";
 import { NextResponse } from "next/server";
+import { createAdminClient } from "@/lib/supabase/server";
 
 type RateLimitOptions = {
   keyPrefix: string;
@@ -6,12 +8,11 @@ type RateLimitOptions = {
   windowMs?: number;
 };
 
-type RateLimitBucket = {
-  count: number;
-  resetAt: number;
+type DistributedRateLimitResult = {
+  allowed: boolean;
+  remaining: number;
+  reset_at: string;
 };
-
-const buckets = new Map<string, RateLimitBucket>();
 
 function readPositiveInteger(value: string | undefined, fallback: number) {
   const parsed = Number(value);
@@ -19,8 +20,14 @@ function readPositiveInteger(value: string | undefined, fallback: number) {
 }
 
 function getClientIp(request: Request) {
+  const vercelForwardedFor = request.headers
+    .get("x-vercel-forwarded-for")
+    ?.split(",")[0]
+    ?.trim();
   const forwardedFor = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+
   return (
+    vercelForwardedFor ||
     forwardedFor ||
     request.headers.get("x-real-ip") ||
     request.headers.get("cf-connecting-ip") ||
@@ -28,61 +35,96 @@ function getClientIp(request: Request) {
   );
 }
 
-function cleanupExpiredBuckets(now: number) {
-  if (buckets.size < 5000) return;
-
-  for (const [key, bucket] of buckets) {
-    if (bucket.resetAt <= now) {
-      buckets.delete(key);
-    }
-  }
+function getHashSecret() {
+  const secret = process.env.RATE_LIMIT_HASH_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!secret) throw new Error("Rate limit hash secret is not configured.");
+  return secret;
 }
 
-export function checkRateLimit(request: Request, options: RateLimitOptions) {
-  if (process.env.PUBLIC_API_RATE_LIMIT_DISABLED === "true") {
+function normalizeResult(data: unknown): DistributedRateLimitResult | null {
+  const value = Array.isArray(data) ? data[0] : data;
+  if (!value || typeof value !== "object") return null;
+
+  const row = value as Record<string, unknown>;
+  const remaining = Number(row.remaining);
+  const resetAt = typeof row.reset_at === "string" ? row.reset_at : "";
+  if (typeof row.allowed !== "boolean" || !Number.isFinite(remaining) || !resetAt) {
     return null;
   }
 
-  const now = Date.now();
-  const limit = readPositiveInteger(process.env.PUBLIC_API_RATE_LIMIT_MAX, options.limit ?? 20);
+  return {
+    allowed: row.allowed,
+    remaining: Math.max(0, Math.floor(remaining)),
+    reset_at: resetAt,
+  };
+}
+
+function unavailableResponse() {
+  return NextResponse.json(
+    { error: "Não foi possível validar a requisição agora. Tente novamente em instantes." },
+    {
+      status: 503,
+      headers: {
+        "Retry-After": "5",
+        "Cache-Control": "no-store",
+      },
+    },
+  );
+}
+
+export async function checkRateLimit(request: Request, options: RateLimitOptions) {
+  if (process.env.PUBLIC_API_RATE_LIMIT_DISABLED === "true") return null;
+
+  const limit = readPositiveInteger(
+    process.env.PUBLIC_API_RATE_LIMIT_MAX,
+    options.limit ?? 20,
+  );
   const windowMs = readPositiveInteger(
     process.env.PUBLIC_API_RATE_LIMIT_WINDOW_MS,
     options.windowMs ?? 60_000,
   );
-  const identity = getClientIp(request);
-  const key = `${options.keyPrefix}:${identity}`;
-  const existing = buckets.get(key);
-  const bucket =
-    existing && existing.resetAt > now
-      ? existing
-      : {
-          count: 0,
-          resetAt: now + windowMs,
-        };
+  const windowSeconds = Math.max(1, Math.ceil(windowMs / 1000));
 
-  bucket.count += 1;
-  buckets.set(key, bucket);
-  cleanupExpiredBuckets(now);
+  try {
+    const identity = getClientIp(request);
+    const keyHash = createHmac("sha256", getHashSecret())
+      .update(`${options.keyPrefix}:${identity}`)
+      .digest("hex");
+    const admin = createAdminClient();
+    const { data, error } = await (admin as any).rpc("consume_api_rate_limit", {
+      p_key_hash: keyHash,
+      p_limit: limit,
+      p_window_seconds: windowSeconds,
+    });
 
-  const remaining = Math.max(0, limit - bucket.count);
-  const resetSeconds = Math.max(1, Math.ceil((bucket.resetAt - now) / 1000));
-  const headers = {
-    "Retry-After": String(resetSeconds),
-    "X-RateLimit-Limit": String(limit),
-    "X-RateLimit-Remaining": String(remaining),
-    "X-RateLimit-Reset": String(Math.ceil(bucket.resetAt / 1000)),
-  };
+    if (error) throw new Error(error.message || "Distributed rate limit RPC failed.");
 
-  if (bucket.count <= limit) {
-    return null;
+    const result = normalizeResult(data);
+    if (!result) throw new Error("Distributed rate limit returned an invalid result.");
+    if (result.allowed) return null;
+
+    const parsedResetAt = new Date(result.reset_at).getTime();
+    const resetAt = Number.isFinite(parsedResetAt) ? parsedResetAt : Date.now() + windowMs;
+    const resetSeconds = Math.max(1, Math.ceil((resetAt - Date.now()) / 1000));
+
+    return NextResponse.json(
+      { error: "Muitas tentativas. Aguarde alguns instantes e tente novamente." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(resetSeconds),
+          "X-RateLimit-Limit": String(limit),
+          "X-RateLimit-Remaining": String(result.remaining),
+          "X-RateLimit-Reset": String(Math.ceil(resetAt / 1000)),
+          "Cache-Control": "no-store",
+        },
+      },
+    );
+  } catch (error) {
+    console.error(`Rate limit distribuído indisponível (${options.keyPrefix}):`, error);
+    return unavailableResponse();
   }
-
-  return NextResponse.json(
-    { error: "Muitas tentativas. Aguarde alguns instantes e tente novamente." },
-    { status: 429, headers },
-  );
 }
 
-export function resetRateLimitForTests() {
-  buckets.clear();
-}
+// Compatibilidade temporária com testes legados; não existe estado local para limpar.
+export function resetRateLimitForTests() {}

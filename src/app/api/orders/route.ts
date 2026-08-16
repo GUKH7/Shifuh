@@ -150,7 +150,7 @@ function normalizeCreatedOrderResult(data: CreatedOrderResult) {
 
 export async function POST(request: Request) {
   try {
-    const rateLimitResponse = checkRateLimit(request, {
+    const rateLimitResponse = await checkRateLimit(request, {
       keyPrefix: "public:orders:create",
       limit: 12,
       windowMs: 60_000,

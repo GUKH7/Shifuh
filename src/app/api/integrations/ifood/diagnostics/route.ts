@@ -10,7 +10,7 @@ import { isIfoodTokenEncryptionKeyConfigured } from "@/lib/ifood/token-encryptio
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
-  const rateLimitResponse = checkRateLimit(request, {
+  const rateLimitResponse = await checkRateLimit(request, {
     keyPrefix: "ifood-auth-diagnostics",
     limit: 10,
     windowMs: 5 * 60_000,

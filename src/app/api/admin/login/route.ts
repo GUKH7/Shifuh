@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import type { CookieOptions } from "@supabase/ssr";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -37,6 +38,13 @@ function getAuthErrorMessage(message: string) {
 
 export async function POST(request: Request) {
   try {
+    const rateLimitResponse = await checkRateLimit(request, {
+      keyPrefix: "admin:login",
+      limit: 10,
+      windowMs: 60_000,
+    });
+    if (rateLimitResponse) return rateLimitResponse;
+
     const body = await request.json().catch(() => null);
     const email = typeof body?.email === "string" ? body.email.trim() : "";
     const password = typeof body?.password === "string" ? body.password : "";

@@ -132,7 +132,7 @@ function publicResponse(data: NonNullable<Awaited<ReturnType<typeof loadTracking
 }
 
 export async function GET(request: Request, context: Params) {
-  const rateLimitResponse = checkRateLimit(request, {
+  const rateLimitResponse = await checkRateLimit(request, {
     keyPrefix: "order-tracking:token",
     limit: 60,
     windowMs: 60_000,
@@ -163,7 +163,7 @@ export async function GET(request: Request, context: Params) {
 
 // Compatibilidade com confirmações criadas antes do link seguro.
 export async function POST(request: Request, context: Params) {
-  const rateLimitResponse = checkRateLimit(request, {
+  const rateLimitResponse = await checkRateLimit(request, {
     keyPrefix: "order-tracking:phone",
     limit: 20,
     windowMs: 60_000,

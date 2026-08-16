@@ -38,7 +38,7 @@ function getSubtotalFromCookie(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const rateLimitResponse = checkRateLimit(request, {
+  const rateLimitResponse = await checkRateLimit(request, {
     keyPrefix: "public:delivery-quote",
     limit: 30,
     windowMs: 60_000,
