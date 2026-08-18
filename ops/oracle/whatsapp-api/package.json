@@ -4,12 +4,12 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "test": "node --check index.js"
+    "test": "node --test security.test.js && node --check index.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "API WhatsApp do Shifuh executada na Oracle VM.",
   "dependencies": {
     "@whiskeysockets/baileys": "^7.0.0-rc14",
     "cors": "^2.8.6",
