@@ -1,3 +1,4 @@
+'use strict';
 
 const {
   default: makeWASocket,
@@ -6,59 +7,58 @@ const {
   fetchLatestBaileysVersion,
 } = require('@whiskeysockets/baileys');
 const express = require('express');
-const cors = require('cors');
 const QRCode = require('qrcode');
 const fs = require('fs');
 const pino = require('pino');
-const crypto = require('crypto');
+const {
+  createRateLimiter,
+  isTruthy,
+  readPositiveInteger,
+  requireToken,
+  validateStartupConfiguration,
+} = require('./security');
 
 const app = express();
-app.use(cors());
-app.use(express.json());
+app.disable('x-powered-by');
+app.use(express.json({ limit: '16kb' }));
 
 const API_TOKEN = process.env.WHATSAPP_BOT_API_TOKEN || '';
 const MAIN_API_TOKEN = process.env.WHATSAPP_MAIN_API_TOKEN || API_TOKEN;
+const BIND_HOST = process.env.WHATSAPP_BIND_HOST || '127.0.0.1';
+const PORT = readPositiveInteger(process.env.WHATSAPP_PORT, 3001);
+const ALLOW_PUBLIC_BIND = isTruthy(process.env.WHATSAPP_ALLOW_PUBLIC_BIND);
 
-function safeTokenEquals(received, expected) {
-  if (!received || !expected) return false;
-
-  const receivedBuffer = Buffer.from(received);
-  const expectedBuffer = Buffer.from(expected);
-
-  return (
-    receivedBuffer.length === expectedBuffer.length &&
-    crypto.timingSafeEqual(receivedBuffer, expectedBuffer)
-  );
-}
-
-function extractBearerToken(req) {
-  const authorization = req.get('authorization') || '';
-
-  if (authorization.toLowerCase().startsWith('bearer ')) {
-    return authorization.slice(7).trim();
-  }
-
-  return req.get('x-api-token') || '';
-}
-
-function requireToken(expectedToken) {
-  return (req, res, next) => {
-    if (!expectedToken) {
-      return res.status(503).json({ error: 'Token da API WhatsApp nao configurado.' });
-    }
-
-    if (!safeTokenEquals(extractBearerToken(req), expectedToken)) {
-      return res.status(401).json({ error: 'Nao autorizado.' });
-    }
-
-    return next();
-  };
-}
+validateStartupConfiguration({
+  mainApiToken: MAIN_API_TOKEN,
+  bindHost: BIND_HOST,
+  allowPublicBind: ALLOW_PUBLIC_BIND,
+});
 
 const requireMainApiToken = requireToken(MAIN_API_TOKEN);
 const requireEconoappApiToken = requireToken(API_TOKEN);
 
-app.use('/econoapp', requireEconoappApiToken, async (req, res) => {
+const authRateLimit = createRateLimiter({
+  keyPrefix: 'whatsapp:auth',
+  limit: process.env.WHATSAPP_AUTH_RATE_LIMIT_MAX || 120,
+  windowMs: process.env.WHATSAPP_AUTH_RATE_LIMIT_WINDOW_MS || 60_000,
+});
+const sendMessageRateLimit = createRateLimiter({
+  keyPrefix: 'whatsapp:send-message',
+  limit: process.env.WHATSAPP_SEND_RATE_LIMIT_MAX || 60,
+  windowMs: process.env.WHATSAPP_SEND_RATE_LIMIT_WINDOW_MS || 60_000,
+});
+const restartRateLimit = createRateLimiter({
+  keyPrefix: 'whatsapp:restart',
+  limit: process.env.WHATSAPP_RESTART_RATE_LIMIT_MAX || 5,
+  windowMs: process.env.WHATSAPP_RESTART_RATE_LIMIT_WINDOW_MS || 300_000,
+});
+const econoappRateLimit = createRateLimiter({
+  keyPrefix: 'whatsapp:econoapp',
+  limit: process.env.WHATSAPP_ECONOAPP_RATE_LIMIT_MAX || 120,
+  windowMs: process.env.WHATSAPP_ECONOAPP_RATE_LIMIT_WINDOW_MS || 60_000,
+});
+
+app.use('/econoapp', econoappRateLimit, requireEconoappApiToken, async (req, res) => {
   const upstreamPath = req.originalUrl.replace(/^\/econoapp/, '') || '/';
   const upstreamUrl = 'http://127.0.0.1:3002' + upstreamPath;
 
@@ -173,7 +173,7 @@ async function connectToWhatsApp() {
       auth: state,
       version,
       logger: pino({ level: 'silent' }),
-      browser: ['Meu ERP', 'Chrome', '1.0.0'],
+      browser: ['Shifuh', 'Chrome', '1.0.0'],
     });
 
     sock = nextSock;
@@ -246,14 +246,14 @@ async function connectToWhatsApp() {
 }
 
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', service: 'gestor-whatsapp-api' });
+  res.json({ status: 'ok', service: 'shifuh-whatsapp-api' });
 });
 
-app.get('/status', requireMainApiToken, (req, res) => {
+app.get('/status', authRateLimit, requireMainApiToken, (_req, res) => {
   res.json({ status: statusConexao, qrcode: qrCodeBase64 });
 });
 
-app.post('/restart', requireMainApiToken, (req, res) => {
+app.post('/restart', authRateLimit, restartRateLimit, requireMainApiToken, (_req, res) => {
   console.log('Comando de reinício recebido.');
   res.json({ message: 'Reiniciando conexão...' });
 
@@ -276,35 +276,39 @@ app.post('/restart', requireMainApiToken, (req, res) => {
   }, 1000);
 });
 
-app.post('/send-message', requireMainApiToken, async (req, res) => {
-  const { phone, number, to, message, text } = req.body;
+app.post('/send-message', authRateLimit, sendMessageRateLimit, requireMainApiToken, async (req, res) => {
+  const { phone, number, to, message, text } = req.body || {};
   const targetPhone = phone || number || to;
   const targetMessage = message || text;
+  const numeroLimpo = String(targetPhone || '').replace(/\D/g, '');
+  const normalizedMessage = typeof targetMessage === 'string' ? targetMessage.trim() : '';
 
-  if (!targetPhone || !targetMessage) {
-    return res.status(400).json({ error: 'Telefone e mensagem são obrigatórios.' });
+  if (!/^\d{10,15}$/.test(numeroLimpo)) {
+    return res.status(400).json({ error: 'Telefone inválido.' });
+  }
+
+  if (!normalizedMessage || normalizedMessage.length > 4096) {
+    return res.status(400).json({ error: 'Mensagem inválida ou muito longa.' });
   }
 
   if (statusConexao !== 'conectado' || !sock) {
-    return res.status(400).json({ error: 'WhatsApp não está pronto.' });
+    return res.status(503).json({ error: 'WhatsApp não está pronto.' });
   }
 
   try {
-    const numeroLimpo = String(targetPhone).replace(/\D/g, '');
     const id = `${numeroLimpo}@s.whatsapp.net`;
+    await sock.sendMessage(id, { text: normalizedMessage });
 
-    await sock.sendMessage(id, { text: targetMessage });
-
-    console.log(`Mensagem enviada para ${targetPhone}`);
-    res.json({ success: true, message: 'Enviada com sucesso!' });
+    console.log(`Mensagem enviada para ***${numeroLimpo.slice(-4)}`);
+    return res.json({ success: true, message: 'Enviada com sucesso!' });
   } catch (error) {
     console.error('Erro ao enviar:', error);
-    res.status(500).json({ error: 'Falha ao enviar a mensagem.' });
+    return res.status(500).json({ error: 'Falha ao enviar a mensagem.' });
   }
 });
 
 connectToWhatsApp();
 
-app.listen(3001, () => {
-  console.log('API Baileys rodando na porta 3001.');
+app.listen(PORT, BIND_HOST, () => {
+  console.log(`API Baileys rodando em http://${BIND_HOST}:${PORT}.`);
 });
