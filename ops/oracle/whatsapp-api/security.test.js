@@ -1,6 +1,8 @@
 'use strict';
 
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const test = require('node:test');
 const {
   createRateLimiter,
@@ -13,20 +15,19 @@ test('recusa iniciar sem token principal', () => {
     () => validateStartupConfiguration({
       mainApiToken: '',
       bindHost: '127.0.0.1',
-      allowPublicBind: false,
     }),
     /nao configurado/i,
   );
 });
 
-test('recusa bind publico sem opt-in explicito', () => {
+test('recusa qualquer bind publico, mesmo com antigo opt-in informado', () => {
   assert.throws(
     () => validateStartupConfiguration({
       mainApiToken: 'secret',
       bindHost: '0.0.0.0',
-      allowPublicBind: false,
+      allowPublicBind: true,
     }),
-    /inseguro/i,
+    /loopback/i,
   );
 });
 
@@ -34,7 +35,6 @@ test('aceita token com bind em loopback', () => {
   assert.doesNotThrow(() => validateStartupConfiguration({
     mainApiToken: 'secret',
     bindHost: '127.0.0.1',
-    allowPublicBind: false,
   }));
 });
 
@@ -108,4 +108,24 @@ test('rate limiter bloqueia acima do limite', () => {
   assert.equal(blocked.statusCode, 429);
   assert.equal(blocked.headers.get('x-ratelimit-remaining'), '0');
   assert.ok(blocked.headers.get('retry-after'));
+});
+
+test('nginx limita antes do Node e publica somente rotas esperadas', () => {
+  const nginx = fs.readFileSync(path.join(__dirname, 'nginx.conf.example'), 'utf8');
+
+  assert.match(nginx, /limit_req_zone\s+\$binary_remote_addr/);
+  assert.match(nginx, /location = \/send-message/);
+  assert.match(nginx, /location = \/restart/);
+  assert.match(nginx, /proxy_pass http:\/\/127\.0\.0\.1:3001/);
+  assert.match(nginx, /location \/ \{\s*return 404;/s);
+  assert.doesNotMatch(nginx, /proxy_pass http:\/\/0\.0\.0\.0/);
+});
+
+test('script de firewall bloqueia portas internas do WhatsApp e EconoApp', () => {
+  const firewall = fs.readFileSync(path.join(__dirname, 'network-hardening.sh'), 'utf8');
+
+  assert.match(firewall, /ufw deny .*WHATSAPP_PORT/);
+  assert.match(firewall, /ufw deny .*ECONOAPP_PORT/);
+  assert.match(firewall, /ufw allow .*HTTPS_PORT/);
+  assert.match(firewall, /nao o ativa automaticamente/i);
 });

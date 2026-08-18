@@ -29,16 +29,16 @@ function isLoopbackHost(host) {
   return normalized === '127.0.0.1' || normalized === 'localhost' || normalized === '::1';
 }
 
-function validateStartupConfiguration({ mainApiToken, bindHost, allowPublicBind }) {
+function validateStartupConfiguration({ mainApiToken, bindHost }) {
   if (!String(mainApiToken || '').trim()) {
     throw new Error(
       'WHATSAPP_MAIN_API_TOKEN/WHATSAPP_BOT_API_TOKEN nao configurado. O servico nao sera iniciado.',
     );
   }
 
-  if (!isLoopbackHost(bindHost) && !allowPublicBind) {
+  if (!isLoopbackHost(bindHost)) {
     throw new Error(
-      `Bind de rede inseguro recusado (${bindHost}). Use 127.0.0.1 ou defina WHATSAPP_ALLOW_PUBLIC_BIND=true conscientemente.`,
+      `Bind de rede recusado (${bindHost}). A API WhatsApp deve ouvir exclusivamente em loopback e ser exposta apenas pelo reverse proxy local.`,
     );
   }
 }
