@@ -59,7 +59,9 @@ async function loadPublicStorefront(slug: string): Promise<InitialStorefrontData
   }
 
   const banners = Array.isArray(restaurant.banners)
-    ? restaurant.banners.filter((item): item is string => typeof item === "string" && item.length > 0)
+    ? restaurant.banners.filter(
+        (item: unknown): item is string => typeof item === "string" && item.length > 0,
+      )
     : [];
   const deliveryTiers = Array.isArray(restaurant.delivery_tiers) ? restaurant.delivery_tiers : [];
   const storefrontTheme: StorefrontTheme = {
