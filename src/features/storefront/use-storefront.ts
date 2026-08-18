@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { getCoordinates } from "@/lib/geo";
 import { DEFAULT_STOREFRONT_THEME } from "./constants";
+import { useStorefrontInitialData } from "./StorefrontInitialDataProvider";
 import type { Product, StorefrontTheme } from "./types";
 
 type UseStorefrontOptions = {
@@ -13,6 +14,7 @@ type UseStorefrontOptions = {
 };
 
 export function useStorefront({ slug, onCustomerLoaded, onMissingStore }: UseStorefrontOptions) {
+  const initialStorefront = useStorefrontInitialData();
   const supabase = useMemo(
     () =>
       createBrowserClient(
@@ -24,20 +26,27 @@ export function useStorefront({ slug, onCustomerLoaded, onMissingStore }: UseSto
 
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
-  const [restaurant, setRestaurant] = useState<any>(null);
-  const [primaryColor, setPrimaryColor] = useState("#ff5a1f");
-  const [banners, setBanners] = useState<string[]>([]);
+  const [restaurant, setRestaurant] = useState<any>(initialStorefront?.restaurant ?? null);
+  const [primaryColor, setPrimaryColor] = useState(initialStorefront?.primaryColor ?? "#ff5a1f");
+  const [banners, setBanners] = useState<string[]>(initialStorefront?.banners ?? []);
   const [currentBanner, setCurrentBanner] = useState(0);
-  const [storefrontHeadline, setStorefrontHeadline] = useState("");
-  const [storefrontSubheadline, setStorefrontSubheadline] = useState("");
-  const [storefrontTheme, setStorefrontTheme] =
-    useState<StorefrontTheme>(DEFAULT_STOREFRONT_THEME);
-  const [categories, setCategories] = useState<any[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [deliveryTiers, setDeliveryTiers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [storefrontHeadline, setStorefrontHeadline] = useState(
+    initialStorefront?.storefrontHeadline ?? "",
+  );
+  const [storefrontSubheadline, setStorefrontSubheadline] = useState(
+    initialStorefront?.storefrontSubheadline ?? "",
+  );
+  const [storefrontTheme, setStorefrontTheme] = useState<StorefrontTheme>(
+    initialStorefront?.storefrontTheme ?? DEFAULT_STOREFRONT_THEME,
+  );
+  const [categories, setCategories] = useState<any[]>(initialStorefront?.categories ?? []);
+  const [products, setProducts] = useState<Product[]>(initialStorefront?.products ?? []);
+  const [deliveryTiers, setDeliveryTiers] = useState<any[]>(initialStorefront?.deliveryTiers ?? []);
+  const [loading, setLoading] = useState(!initialStorefront);
   const [restoCoords, setRestoCoords] = useState<{ lat: number; lon: number } | null>(null);
-  const [activeCategory, setActiveCategory] = useState("");
+  const [activeCategory, setActiveCategory] = useState(
+    initialStorefront?.categories?.[0]?.id ?? "",
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -175,13 +184,15 @@ export function useStorefront({ slug, onCustomerLoaded, onMissingStore }: UseSto
       if (mounted) setLoading(false);
     };
 
-    fetchStoreData();
+    if (!initialStorefront) {
+      fetchStoreData();
+    }
     checkUserSession();
 
     return () => {
       mounted = false;
     };
-  }, [onCustomerLoaded, onMissingStore, slug, supabase]);
+  }, [initialStorefront, onCustomerLoaded, onMissingStore, slug, supabase]);
 
   useEffect(() => {
     const timer = setInterval(() => {
