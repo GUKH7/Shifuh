@@ -1,0 +1,24 @@
+# Exemplo de reverse proxy. Ajuste dominio e certificados antes de instalar.
+# O processo Node permanece inacessivel externamente em 127.0.0.1:3001.
+
+server {
+    listen 443 ssl http2;
+    server_name whatsapp-bot.seudominio.com;
+
+    ssl_certificate /etc/letsencrypt/live/whatsapp-bot.seudominio.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/whatsapp-bot.seudominio.com/privkey.pem;
+
+    client_max_body_size 16k;
+
+    location / {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 15s;
+        proxy_send_timeout 15s;
+    }
+}
