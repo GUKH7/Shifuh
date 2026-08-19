@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { SettingsPageSkeleton } from "@/components/ui/admin-page-skeletons";
-import { SettingsWhatsappDeepLink } from "./SettingsWhatsappDeepLink";
+import { SettingsWhatsappDeepLink } from "@/features/settings/SettingsWhatsappDeepLink";
 import "./settings-standardization.css";
 
 export default function SettingsLayout({ children }: { children: ReactNode }) {
