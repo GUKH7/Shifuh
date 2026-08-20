@@ -1,9 +1,9 @@
 -- Shifuh - core MVP schema alignment
 -- Expande o schema inicial para compatibilizar onboarding, cardápio, configurações e pedidos.
 --
--- Replay note: latitude/longitude já existem no banco remoto, mas não estavam
--- representadas na cadeia histórica de migrations. Elas precisam existir antes
--- da migration 015, que cria a view pública de restaurantes.
+-- Replay note: algumas colunas antigas existiam no banco remoto, mas não estavam
+-- representadas na cadeia histórica de migrations. Este arquivo documenta o
+-- estado que migrations posteriores já pressupõem em um banco criado do zero.
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
@@ -11,6 +11,7 @@ ALTER TABLE public.restaurants
   ADD COLUMN IF NOT EXISTS user_id UUID,
   ADD COLUMN IF NOT EXISTS phone TEXT,
   ADD COLUMN IF NOT EXISTS image_url TEXT,
+  ADD COLUMN IF NOT EXISTS description TEXT,
   ADD COLUMN IF NOT EXISTS primary_color TEXT DEFAULT '#DC2626',
   ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION,
   ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION,
@@ -24,7 +25,11 @@ ALTER TABLE public.restaurants
   ADD COLUMN IF NOT EXISTS work_hours JSONB DEFAULT '[]'::jsonb,
   ADD COLUMN IF NOT EXISTS printer_width INTEGER DEFAULT 80,
   ADD COLUMN IF NOT EXISTS printer_font_size INTEGER DEFAULT 12,
-  ADD COLUMN IF NOT EXISTS banners JSONB DEFAULT '[]'::jsonb;
+  ADD COLUMN IF NOT EXISTS banners TEXT[] DEFAULT '{}'::text[];
+
+-- O schema remoto permite onboarding antes de existir um número de WhatsApp.
+ALTER TABLE public.restaurants
+  ALTER COLUMN whatsapp_number DROP NOT NULL;
 
 UPDATE public.restaurants
 SET phone = COALESCE(phone, whatsapp_number),
