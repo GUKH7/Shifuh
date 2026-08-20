@@ -1,5 +1,9 @@
 -- Shifuh - core MVP schema alignment
 -- Expande o schema inicial para compatibilizar onboarding, cardápio, configurações e pedidos.
+--
+-- Replay note: latitude/longitude já existem no banco remoto, mas não estavam
+-- representadas na cadeia histórica de migrations. Elas precisam existir antes
+-- da migration 015, que cria a view pública de restaurantes.
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
@@ -8,6 +12,8 @@ ALTER TABLE public.restaurants
   ADD COLUMN IF NOT EXISTS phone TEXT,
   ADD COLUMN IF NOT EXISTS image_url TEXT,
   ADD COLUMN IF NOT EXISTS primary_color TEXT DEFAULT '#DC2626',
+  ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION,
+  ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION,
   ADD COLUMN IF NOT EXISTS address_zip TEXT,
   ADD COLUMN IF NOT EXISTS address_street TEXT,
   ADD COLUMN IF NOT EXISTS address_number TEXT,
