@@ -53,3 +53,96 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  commercial-e2e:
+    name: Commercial E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Initialize local Supabase config
+        run: |
+          if [ ! -f supabase/config.toml ]; then
+            supabase init
+          fi
+
+      - name: Start isolated Supabase
+        run: |
+          supabase start
+          supabase db reset
+
+      - name: Export isolated Supabase environment
+        shell: bash
+        run: |
+          eval "$(supabase status -o env)"
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=${API_URL}"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=${ANON_KEY}"
+            echo "SUPABASE_SERVICE_ROLE_KEY=${SERVICE_ROLE_KEY}"
+            echo "ORDER_TRACKING_SECRET=e2e-order-tracking-secret-shifuh-2026"
+            echo "RATE_LIMIT_HASH_SECRET=e2e-rate-limit-secret-shifuh-2026"
+            echo "WHATSAPP_BOT_API_URL=http://127.0.0.1:3001"
+            echo "WHATSAPP_BOT_API_TOKEN=e2e-whatsapp-placeholder-token"
+            echo "E2E_ADMIN_EMAIL=e2e-owner@shifuh.test"
+            echo "E2E_ADMIN_PASSWORD=Shifuh-E2E-2026!"
+          } >> "$GITHUB_ENV"
+
+      - name: Seed commercial fixture
+        run: node scripts/e2e-seed.mjs
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run commercial E2E
+        run: npm run test:e2e:commercial
+
+      - name: Upload E2E diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: commercial-e2e-diagnostics
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Stop isolated Supabase
+        if: always()
+        run: supabase stop --no-backup
+
+  release-gate:
+    name: Release gate
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - validate
+      - commercial-e2e
+
+    steps:
+      - name: Require validation and commercial E2E
+        env:
+          VALIDATE_RESULT: ${{ needs.validate.result }}
+          COMMERCIAL_E2E_RESULT: ${{ needs.commercial-e2e.result }}
+        run: |
+          echo "validate=${VALIDATE_RESULT}"
+          echo "commercial-e2e=${COMMERCIAL_E2E_RESULT}"
+          test "${VALIDATE_RESULT}" = "success"
+          test "${COMMERCIAL_E2E_RESULT}" = "success"
