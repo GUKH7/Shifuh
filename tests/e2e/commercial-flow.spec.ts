@@ -9,7 +9,7 @@ test.describe("fluxo comercial completo", () => {
   test("vitrine cria pedido real e o painel recebe a venda", async ({ page }) => {
     await page.goto("/loja-e2e");
 
-    await expect(page.getByRole("heading", { name: "Loja E2E CI" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Loja E2E CI", level: 1 })).toBeVisible();
     await expect(page.getByRole("button", { name: /Prato E2E CI/ })).toBeVisible();
 
     await page.getByRole("button", { name: /Prato E2E CI/ }).click();
