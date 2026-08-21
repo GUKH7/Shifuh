@@ -13,7 +13,7 @@ import {
   isValidPhone,
   paymentMethodDetails,
   parseCurrencyInput,
-} from "../src/features/storefront/checkout-format.ts";
+} from "../src/features/checkout/checkout-format.ts";
 
 test("formats and validates Brazilian phone numbers", () => {
   assert.equal(formatPhone("11987654321"), "(11) 98765-4321");

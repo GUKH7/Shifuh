@@ -20,5 +20,5 @@ test("selects do painel reservam espaço para uma seta consistente", () => {
 });
 
 test("inputs transparentes destacam o container no foco", () => {
-  assert.match(styles, /:has\(> input\.bg-transparent:focus-visible\)/);
+  assert.match(styles, /input\[class~="bg-transparent"\]:focus-visible/);
 });
