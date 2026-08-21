@@ -41,8 +41,9 @@ test.describe("fluxo comercial completo", () => {
     await expect(page.getByText("Retirada na loja", { exact: true }).last()).toBeVisible();
 
     await page.goto("/admin/login");
-    await page.getByLabel("Email").fill(ADMIN_EMAIL);
-    await page.getByLabel("Senha").fill(ADMIN_PASSWORD);
+    await expect(page.getByRole("heading", { name: "Entrar no painel" })).toBeVisible();
+    await page.getByPlaceholder("seu@email.com").fill(ADMIN_EMAIL);
+    await page.getByPlaceholder("••••••••").fill(ADMIN_PASSWORD);
     await page.getByRole("button", { name: "Entrar agora" }).click();
     await page.waitForURL(/\/admin(?:\/|$)/, { timeout: 20_000 });
 
