@@ -44,10 +44,20 @@ test.describe("fluxo comercial completo", () => {
     await expect(page.getByRole("heading", { name: "Entrar no painel" })).toBeVisible();
     await page.getByPlaceholder("seu@email.com").fill(ADMIN_EMAIL);
     await page.getByPlaceholder("••••••••").fill(ADMIN_PASSWORD);
+
+    const loginResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().endsWith("/api/admin/login") &&
+        response.request().method() === "POST",
+    );
     await page.getByRole("button", { name: "Entrar agora" }).click();
-    await page.waitForURL(/\/admin(?:\/|$)/, { timeout: 20_000 });
+
+    const loginResponse = await loginResponsePromise;
+    expect(loginResponse.status()).toBe(200);
+    await page.waitForURL((url) => url.pathname === "/admin", { timeout: 20_000 });
 
     await page.goto("/admin/orders");
+    await page.waitForURL((url) => url.pathname === "/admin/orders", { timeout: 20_000 });
 
     const customer = page.getByText("Cliente E2E CI", { exact: true }).first();
     await expect(customer).toBeVisible({ timeout: 20_000 });
