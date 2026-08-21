@@ -13,7 +13,7 @@ test.describe("fluxo comercial completo", () => {
     await expect(page.getByRole("button", { name: /Prato E2E CI/ })).toBeVisible();
 
     await page.getByRole("button", { name: /Prato E2E CI/ }).click();
-    await page.getByRole("button", { name: /^Adicionar/ }).click();
+    await page.getByRole("button", { name: /^Adicionar R\$/ }).click();
     await page.getByRole("button", { name: /Ver pedido|Ver sacola/ }).click();
 
     await page.getByRole("button", { name: "Escolher recebimento" }).click();
