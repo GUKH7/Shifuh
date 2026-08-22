@@ -30,14 +30,18 @@ test("pedidos usam resumo compacto e detalhes expansíveis no mobile e desktop",
   assert.match(history, /grid items-start gap-4 lg:grid-cols-\[minmax\(0,1\.45fr\)_minmax\(300px,0\.8fr\)\]/);
 });
 
-test("apenas a data mais recente inicia expandida", () => {
-  assert.match(history, /expandedDateKey/);
+test("apenas a data mais recente inicia expandida e demais datas podem ser alternadas", () => {
+  assert.match(history, /expandedDateKeys/);
   assert.match(history, /const latestGroupKey = useMemo/);
-  assert.match(history, /const isCollapsed = expandedDateKey !== group\.key/);
   assert.match(
     history,
-    /setExpandedDateKey\(\(current\) => \(current === key \? null : key\)\)/,
+    /setExpandedDateKeys\(latestGroupKey \? new Set\(\[latestGroupKey\]\) : new Set\(\)\)/,
   );
+  assert.match(history, /const isCollapsed = !expandedDateKeys\.has\(group\.key\)/);
+  assert.match(history, /const next = new Set\(current\)/);
+  assert.match(history, /next\.has\(key\)/);
+  assert.match(history, /next\.delete\(key\)/);
+  assert.match(history, /next\.add\(key\)/);
   assert.doesNotMatch(history, /Recolher datas/);
   assert.doesNotMatch(history, /Expandir datas/);
 });

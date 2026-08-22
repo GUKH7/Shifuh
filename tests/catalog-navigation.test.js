@@ -5,7 +5,7 @@ import {
   getBestSellerProductId,
   isHomologationCategory,
   productMatchesSearch,
-} from "../src/features/storefront/catalog-navigation.ts";
+} from "../src/features/storefront/catalog/catalog-navigation.ts";
 
 const product = {
   name: "Espeto de carne",

@@ -31,14 +31,14 @@ test("skeleton erro e vazio possuem componentes compartilhados", () => {
   assert.match(states, /export function AdminErrorState/);
   assert.match(states, /export function AdminEmptyState/);
   for (const name of ["dashboard", "orders", "history", "menu", "clients", "coupons", "reviews", "settings"]) {
-    assert.match(pages[name], /AdminPageSkeleton|OrdersSkeleton/, name + " sem skeleton compartilhado");
+    assert.match(pages[name], /AdminPageSkeleton|OrdersSkeleton|AdminSkeleton/, name + " sem skeleton compartilhado");
     assert.match(pages[name], /AdminErrorState/, name + " sem erro compartilhado");
   }
 });
 
-test("calendário administrativo é reutilizado em pedidos dashboard e histórico", () => {
+test("controles de data permanecem padronizados em pedidos dashboard e histórico", () => {
   assert.match(datePicker, /export function AdminDatePicker/);
   assert.match(pages.dashboard, /<AdminDatePicker/);
-  assert.match(pages.history, /<AdminDatePicker/);
   assert.match(pages.orders, /<OrdersDatePicker/);
+  assert.match(pages.history, /<AdminInput[\s\S]*type="date"/);
 });

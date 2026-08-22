@@ -1,8 +1,12 @@
 -- Shifuh - modulos CRM e crescimento
 -- Cria estruturas base para profiles, customer_addresses, coupons e reviews.
+--
+-- Replay note: handle_new_user historicamente persiste o email do auth.users.
+-- A coluna precisa existir em bancos novos antes das migrations de segurança/onboarding.
 
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY,
+  email TEXT,
   name TEXT,
   phone TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

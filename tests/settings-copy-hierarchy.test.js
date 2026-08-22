@@ -6,7 +6,7 @@ const test = require("node:test");
 const source = fs.readFileSync(
   path.join(
     process.cwd(),
-    "src/app/admin/(painel)/settings/SettingsSections.tsx",
+    "src/features/settings/SettingsSections.tsx",
   ),
   "utf8",
 );

@@ -1,4 +1,4 @@
-﻿const assert = require("node:assert/strict");
+const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const Module = require("node:module");
 const path = require("node:path");
@@ -27,7 +27,7 @@ test("normaliza celular brasileiro para o formato internacional", () => {
 });
 
 test("a vitrine remove o codigo do pais antes de aplicar a mascara", () => {
-  const formatterPath = path.join(__dirname, "..", "src", "features", "storefront", "checkout-format.ts");
+  const formatterPath = path.join(__dirname, "..", "src", "features", "checkout", "checkout-format.ts");
   const source = fs.readFileSync(formatterPath, "utf8");
   const compiled = ts.transpileModule(source, {
     compilerOptions: { esModuleInterop: true, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
@@ -56,4 +56,3 @@ test("migracao protege contas e sessoes contra acesso publico", () => {
   assert.match(migration, /customer_phone_sessions enable row level security/i);
   assert.match(migration, /revoke all on public\.customer_phone_sessions from anon, authenticated/i);
 });
-

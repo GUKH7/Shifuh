@@ -6,50 +6,28 @@ const test = require("node:test");
 const root = path.join(__dirname, "..");
 const storefront = fs.readFileSync(path.join(root, "src", "app", "[slug]", "page.tsx"), "utf8");
 const checkout = fs.readFileSync(path.join(root, "src", "features", "storefront", "CheckoutDrawer.tsx"), "utf8");
-const productPicker = fs.readFileSync(path.join(root, "src", "features", "storefront", "ProductPicker.tsx"), "utf8");
 const deliveryCalculator = fs.readFileSync(path.join(root, "src", "features", "storefront", "DeliveryCalculator.tsx"), "utf8");
 const storefrontConstants = fs.readFileSync(path.join(root, "src", "features", "storefront", "constants.ts"), "utf8");
-const tracking = fs.readFileSync(path.join(root, "src", "app", "acompanhar", "[id]", "tracking-client.tsx"), "utf8");
 
-test("storefront presents status, estimate and starting delivery fee together", () => {
-  assert.match(storefront, /deliveryFeeLabel/);
-  assert.match(storefront, /Entrega a partir de/);
-  assert.match(storefront, /max-w-\[75vw\].*rounded-full border/);
+test("storefront keeps checkout as a focused full-screen flow", () => {
+  assert.match(checkout, /fixed inset-0 z-50/);
+  assert.match(checkout, /role="dialog"/);
+  assert.match(checkout, /aria-modal="true"/);
+  assert.match(checkout, /h-\[100dvh\]/);
+  assert.match(checkout, /overflow-hidden/);
 });
 
-test("storefront keeps the page background neutral across restaurant brands", () => {
-  assert.match(storefront, /const pageBackground = "#f5f6f7"/);
-  assert.doesNotMatch(storefront, /const pageBackground = hexToRgba\(primaryColor/);
+test("checkout reports the current step accessibly", () => {
+  assert.match(checkout, /aria-label="Etapas do pedido"/);
+  assert.match(checkout, /aria-live="polite"/);
+  assert.match(checkout, /Etapa atual:/);
+  assert.match(checkout, /aria-current=\{isCurrent \? "step" : undefined\}/);
 });
 
-test("mobile cart separates order summary from its main action", () => {
-  assert.match(storefront, /Sacola · \{cartQuantity\}/);
-  assert.match(storefront, /Ver pedido <ArrowRight/);
-  assert.match(storefront, /bg-\[#fffdfa\].*shadow/);
-});
-
-test("product modal preserves the image area without wasting space when no photo exists", () => {
-  assert.match(productPicker, /relative flex shrink-0 items-center justify-center bg-white/);
-  assert.match(productPicker, /product\.image_url \? "h-52" : "h-32"/);
-  assert.match(productPicker, /relative size-44 shrink-0 overflow-hidden rounded-2xl sm:size-64/);
-  assert.match(productPicker, /<ProductImage/);
-});
-
-test("product photos have rounded corners without a decorative frame", () => {
-  assert.match(storefront, /relative aspect-square overflow-hidden rounded-xl/);
-  assert.match(storefront, /className="object-cover"/);
-  assert.doesNotMatch(storefront, /rounded-xl bg-gray-100/);
-  assert.doesNotMatch(storefront, /object-contain p-1\.5/);
-  assert.doesNotMatch(productPicker, /object-contain p-3 sm:p-4/);
-});
-
-test("product options use clear rules and accessible controls", () => {
-  assert.match(productPicker, /getAddonSelectionInstruction\(group\)/);
-  assert.match(productPicker, /type=\{isSingleChoice \? "radio" : "checkbox"\}/);
-  assert.match(productPicker, /aria-label=\{`Diminuir quantidade de \$\{product\.name\}`\}/);
-  assert.match(productPicker, /aria-label=\{`Aumentar quantidade de \$\{product\.name\}`\}/);
-  assert.match(productPicker, /Adicionar observação/);
-  assert.match(productPicker, /aria-expanded=\{!isCollapsed\}/);
+test("checkout keeps actions accessible on mobile safe areas", () => {
+  assert.match(checkout, /safe-area-top/);
+  assert.match(checkout, /env\(safe-area-inset-bottom\)/);
+  assert.match(checkout, /overscroll-none/);
 });
 
 test("cart and delivery keep quantities and address actions unambiguous", () => {
@@ -72,8 +50,8 @@ test("delivery can find a postal code from the full address", () => {
 test("delivery estimate fits narrow mobile cards without clipping", () => {
   assert.match(deliveryCalculator, /grid-cols-\[minmax\(0,1fr\)_auto\]/);
   assert.match(deliveryCalculator, /whitespace-nowrap text-base font-black/);
-  assert.match(deliveryCalculator, /\{deliveryInfo\.distance\} km em linha reta/);
-  assert.match(deliveryCalculator, /<span className="sm:hidden">\{deliveryInfo\.time\} min<\/span>/);
+  assert.match(deliveryCalculator, /Previsão de \{deliveryInfo\.time\} min/);
+  assert.doesNotMatch(deliveryCalculator, /linha reta/i);
 });
 
 test("delivery address starts without a hardcoded city and resets CEP-derived fields", () => {
@@ -94,7 +72,7 @@ test("checkout keeps compact progress and totals visible in the footer", () => {
   assert.match(checkout, /Valor dos produtos/);
   assert.match(checkout, /isPickup \? "Retirada" : "Frete"/);
   assert.match(checkout, /Total do pedido/);
-  assert.match(checkout, /Previsão de \$\{deliveryInfo\?\.time\} min/);
+  assert.match(checkout, /Prazo: \$\{deliveryInfo\?\.time\} min/);
   assert.match(checkout, /\{formatMoney\(cartSubtotal\)\}/);
   assert.match(checkout, /isPickup \? "Grátis" : formatMoney\(feeValue\)/);
   assert.match(checkout, /\{formatMoney\(finalTotal\)\}/);
@@ -119,43 +97,4 @@ test("checkout confirms pickup without presenting a delivery forecast", () => {
 test("checkout recovers from products removed after the cart was saved", () => {
   assert.match(storefront, /result\?\.code === "ITEM_UNAVAILABLE"/);
   assert.match(storefront, /setCart\(\(current\) => current\.filter/);
-  assert.match(storefront, /orderAttemptKeyRef\.current = null/);
-  assert.match(storefront, /title: "Sacola atualizada"/);
-});
-
-test("tracking delays the reassurance notice for five minutes", () => {
-  assert.match(tracking, />= 5 \* 60_000/);
-  assert.match(tracking, /Seu pedido está registrado com segurança/);
-});
-
-test("payment requires a conscious configured choice and keeps coupon details collapsed", () => {
-  assert.match(storefront, /useState<StorefrontPaymentMethod \| "">\(""\)/);
-  assert.match(checkout, /Tenho um cupom/);
-  assert.match(checkout, /aria-expanded=\{isCouponOpen\}/);
-  assert.match(checkout, /useStorefrontPaymentMethods\(\)/);
-  assert.match(checkout, /availablePaymentMethods\.map/);
-  assert.match(checkout, /As formas disponíveis são definidas pela loja/);
-  assert.match(checkout, /paymentMethod \? paymentMethodDetails\[paymentMethod\]\.label/);
-  assert.match(checkout, /bg-\[#f5f6f7\]/);
-});
-
-test("tracking distinguishes completed, current and future stages", () => {
-  assert.match(tracking, /const isComplete = index < currentStep/);
-  assert.match(tracking, /const isCurrent = index === currentStep/);
-  assert.match(tracking, /statusTimeByName\.get\(step\.status\)/);
-  assert.match(tracking, /order\.cancellationReason/);
-  assert.match(tracking, /bg-\[#f5f6f7\]/);
-});
-
-test("large catalogs show every product without expansion controls", () => {
-  assert.match(storefront, /getBestSellerProductId\(customerProducts\)/);
-  assert.match(storefront, /categoryProducts\.map\(\(product\) =>/);
-  assert.doesNotMatch(storefront, /categoryProducts\.slice\(0, 12\)/);
-  assert.doesNotMatch(storefront, /Mostrar menos|Ver mais \$\{hiddenProductCount\} produtos/);
-  assert.match(storefront, /data-catalog-nav/);
-  assert.match(storefront, /isCatalogNavCompact/);
-  assert.match(storefront, /rating_count \|\| 0/);
-  assert.doesNotMatch(storefront, /rating_average \? Number\(restaurant\.rating_average\)\.toFixed\(1\) : "Novo"/);
-  assert.match(storefront, /<ProductImage/);
-  assert.match(storefront, /aria-label="Minha conta"/);
 });

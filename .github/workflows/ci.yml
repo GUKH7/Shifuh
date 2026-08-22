@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  workflow_dispatch:
   pull_request:
   push:
     branches:
@@ -43,7 +44,20 @@ jobs:
         run: npm run audit:service-role
 
       - name: Test
-        run: npm test
+        id: unit-tests
+        shell: bash
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee unit-test-output.log
+
+      - name: Upload unit test diagnostics
+        if: failure() && steps.unit-tests.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-diagnostics
+          path: unit-test-output.log
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Lint
         run: npm run lint

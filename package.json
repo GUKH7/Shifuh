@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "test": "node --test --test-concurrency=1",
+    "test": "node --require ./tests/source-compat.cjs --test --test-concurrency=1",
     "test:e2e": "cross-env NEXT_DIST_DIR=.next-e2e next build && playwright test",
     "test:e2e:commercial": "cross-env NEXT_DIST_DIR=.next-e2e next build && playwright test tests/e2e/commercial-flow.spec.ts --project=desktop-chrome",
     "visual:audit": "playwright test --config=playwright.visual.config.ts",

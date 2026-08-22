@@ -5,7 +5,7 @@ import {
   getAddonSelectionInstruction,
   getAddonGroupDisplayTitle,
   toggleAddonSelection,
-} from "../src/features/storefront/product-options.ts";
+} from "../src/features/storefront/catalog/product-options.ts";
 
 test("describes addon limits using customer-friendly language", () => {
   assert.equal(getAddonSelectionInstruction({ min_options: 0, max_options: 2 }), "Escolha até 2");

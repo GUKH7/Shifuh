@@ -22,7 +22,9 @@ test("order statuses have one Portuguese visual standard", () => {
 test("status badges are rounded and always include a leading dot", () => {
   assert.match(badge, /rounded-full border font-bold/);
   assert.match(badge, /aria-hidden="true"/);
-  assert.match(badge, /h-2 w-2 shrink-0 rounded-full/);
+  assert.match(badge, /<LiveStatusDot className=\{dotClassName\} \/>/);
+  assert.match(badge, /h-3 w-3 shrink-0 overflow-visible/);
+  assert.match(badge, /<circle cx="12" cy="12" r="4\.5" fill="currentColor" \/>/);
 });
 
 test("orders, history and customer account share the status badge", () => {

@@ -9,11 +9,11 @@ test.describe("fluxo comercial completo", () => {
   test("vitrine cria pedido real e o painel recebe a venda", async ({ page }) => {
     await page.goto("/loja-e2e");
 
-    await expect(page.getByRole("heading", { name: "Loja E2E CI" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Loja E2E CI", level: 1 })).toBeVisible();
     await expect(page.getByRole("button", { name: /Prato E2E CI/ })).toBeVisible();
 
     await page.getByRole("button", { name: /Prato E2E CI/ }).click();
-    await page.getByRole("button", { name: /^Adicionar/ }).click();
+    await page.getByRole("button", { name: /^Adicionar R\$/ }).click();
     await page.getByRole("button", { name: /Ver pedido|Ver sacola/ }).click();
 
     await page.getByRole("button", { name: "Escolher recebimento" }).click();
@@ -41,12 +41,23 @@ test.describe("fluxo comercial completo", () => {
     await expect(page.getByText("Retirada na loja", { exact: true }).last()).toBeVisible();
 
     await page.goto("/admin/login");
-    await page.getByLabel("Email").fill(ADMIN_EMAIL);
-    await page.getByLabel("Senha").fill(ADMIN_PASSWORD);
+    await expect(page.getByRole("heading", { name: "Entrar no painel" })).toBeVisible();
+    await page.getByPlaceholder("seu@email.com").fill(ADMIN_EMAIL);
+    await page.getByPlaceholder("••••••••").fill(ADMIN_PASSWORD);
+
+    const loginResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().endsWith("/api/admin/login") &&
+        response.request().method() === "POST",
+    );
     await page.getByRole("button", { name: "Entrar agora" }).click();
-    await page.waitForURL(/\/admin(?:\/|$)/, { timeout: 20_000 });
+
+    const loginResponse = await loginResponsePromise;
+    expect(loginResponse.status()).toBe(200);
+    await page.waitForURL((url) => url.pathname === "/admin", { timeout: 20_000 });
 
     await page.goto("/admin/orders");
+    await page.waitForURL((url) => url.pathname === "/admin/orders", { timeout: 20_000 });
 
     const customer = page.getByText("Cliente E2E CI", { exact: true }).first();
     await expect(customer).toBeVisible({ timeout: 20_000 });
