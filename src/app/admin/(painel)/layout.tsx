@@ -21,6 +21,7 @@ const ADMIN_SEARCH_ITEMS = [
   { label: "Pagamentos", href: "/admin/payments", keywords: ["pagamentos", "pix", "cartao", "dinheiro"] },
   { label: "Avaliações", href: "/admin/reviews", keywords: ["reviews", "avaliacoes", "notas"] },
   { label: "Configurações", href: "/admin/settings", keywords: ["configuracoes", "ajustes", "loja"] },
+  { label: "Admin da plataforma", href: "/admin/platform", keywords: ["plataforma", "lojas", "rbac", "auditoria"] },
 ];
 
 type BrowserSupabaseClient = ReturnType<typeof createBrowserClient>;
@@ -109,6 +110,18 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
         if (!user) {
           router.replace("/admin/login");
           return;
+        }
+
+        const isPlatformPage = pathname.startsWith("/admin/platform");
+        if (isPlatformPage) {
+          const platformResponse = await fetch("/api/platform/access", { cache: "no-store" }).catch(
+            () => null,
+          );
+          if (platformResponse?.ok) return;
+          if (platformResponse?.status === 401) {
+            router.replace("/admin/login");
+            return;
+          }
         }
 
         const { restaurant } = await getRestaurantByUserId(client, user.id);
