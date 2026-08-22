@@ -1,0 +1,214 @@
+from pathlib import Path
+
+
+def replace_required(text: str, old: str, new: str, label: str) -> str:
+    if old not in text:
+        raise SystemExit(f"missing expected source fragment: {label}")
+    return text.replace(old, new, 1)
+
+
+history = Path("src/app/admin/(painel)/history/HistoryWorkspace.tsx")
+history_text = history.read_text()
+for old, new in {
+    'CREDIT: "Crédito"': 'CREDIT: "CRÉDITO"',
+    'CREDIT_CARD: "Crédito"': 'CREDIT_CARD: "CRÉDITO"',
+    'CARD_CREDIT: "Crédito"': 'CARD_CREDIT: "CRÉDITO"',
+    'DEBIT: "Débito"': 'DEBIT: "DÉBITO"',
+    'DEBIT_CARD: "Débito"': 'DEBIT_CARD: "DÉBITO"',
+    'CARD_DEBIT: "Débito"': 'CARD_DEBIT: "DÉBITO"',
+}.items():
+    if old in history_text:
+        history_text = history_text.replace(old, new, 1)
+history.write_text(history_text)
+
+menu = Path("src/app/admin/(painel)/menu/page.tsx")
+menu_text = menu.read_text()
+if "menu-category-actions" not in menu_text:
+    menu_text = replace_required(
+        menu_text,
+        '<div className="flex flex-shrink-0 items-center gap-2">',
+        '<div className="menu-category-actions flex flex-shrink-0 items-center gap-2">',
+        "category action wrapper",
+    )
+if "menu-category-status" not in menu_text:
+    menu_text = replace_required(
+        menu_text,
+        'className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold transition disabled:cursor-wait disabled:opacity-60 ${',
+        'className={`menu-category-action menu-category-status inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold transition disabled:cursor-wait disabled:opacity-60 ${',
+        "category status class",
+    )
+if "menu-category-edit" not in menu_text:
+    menu_text = replace_required(
+        menu_text,
+        'onClick={() => startEditingCat(category)}\n                            className="rounded-xl p-2 text-gray-400 hover:bg-[#fbf7f2] hover:text-[var(--brand)]"',
+        'onClick={() => startEditingCat(category)}\n                            aria-label={`Editar categoria ${category.name}`}\n                            className="menu-category-action menu-category-edit rounded-xl p-2 text-gray-400 hover:bg-[#fbf7f2] hover:text-[var(--brand)]"',
+        "category edit action",
+    )
+if "menu-category-delete" not in menu_text:
+    menu_text = replace_required(
+        menu_text,
+        'onClick={() => handleOpenDeleteCategory(category)}\n                            className="rounded-xl p-2 text-gray-400 hover:bg-[#fff0e8] hover:text-[var(--brand)]"',
+        'onClick={() => handleOpenDeleteCategory(category)}\n                            aria-label={`Excluir categoria ${category.name}`}\n                            className="menu-category-action menu-category-delete rounded-xl p-2 text-gray-400 hover:bg-[#fff0e8] hover:text-[var(--brand)]"',
+        "category delete action",
+    )
+if "menu-category-toggle" not in menu_text:
+    menu_text = replace_required(
+        menu_text,
+        'onClick={() => toggleCategory(category.id)}\n                            className="rounded-xl p-2 text-gray-400 hover:bg-[#fbf7f2]"',
+        'onClick={() => toggleCategory(category.id)}\n                            aria-label={isExpanded ? `Recolher categoria ${category.name}` : `Expandir categoria ${category.name}`}\n                            className="menu-category-action menu-category-toggle rounded-xl p-2 text-gray-400 hover:bg-[#fbf7f2]"',
+        "category toggle action",
+    )
+menu.write_text(menu_text)
+
+css_file = Path("src/app/admin/(painel)/admin-responsive.css")
+css = css_file.read_text()
+structural = ':where(.surface-card > .flex > .flex.flex-shrink-0.items-center.gap-2):has(\n    > button:is([title="Pausar categoria"], [title="Reativar categoria"])\n  ) {'
+breakpoint = "\n\n@media (max-width: 1023px) {"
+if structural in css:
+    start = css.index(structural)
+    end = css.index(breakpoint, start)
+    semantic = '''.menu-category-actions {
+  min-width: max-content;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.menu-category-action {
+  display: inline-flex;
+  width: var(--admin-control-height);
+  min-width: var(--admin-control-height) !important;
+  min-height: var(--admin-control-height);
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  overflow: hidden;
+  padding: 0 !important;
+  border: 1px solid var(--line) !important;
+  border-radius: var(--admin-radius-control);
+  background-color: #fbf7f2 !important;
+  color: #6b7280 !important;
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(17, 16, 15, 0.04);
+  transition:
+    width 180ms ease,
+    min-width 180ms ease,
+    gap 180ms ease,
+    padding 180ms ease,
+    border-color 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.menu-category-action svg {
+  flex-shrink: 0;
+}
+
+.menu-category-status > span,
+.menu-category-edit::after,
+.menu-category-delete::after {
+  display: inline-block !important;
+  width: auto;
+  max-width: 0;
+  min-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateX(-0.25rem);
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+  white-space: nowrap;
+  transition: max-width 180ms ease, opacity 150ms ease, transform 180ms ease;
+}
+
+.menu-category-edit::after { content: "Editar"; }
+.menu-category-delete::after { content: "Excluir"; }
+
+.menu-category-status:not(:disabled):hover,
+.menu-category-status:not(:disabled):focus-visible,
+.menu-category-edit:hover,
+.menu-category-edit:focus-visible,
+.menu-category-delete:hover,
+.menu-category-delete:focus-visible {
+  width: 6.5rem;
+  min-width: 6.5rem !important;
+  gap: 0.5rem;
+  padding-inline: 0.875rem !important;
+  border-color: var(--brand) !important;
+  background-color: var(--brand-soft) !important;
+  color: var(--brand) !important;
+  box-shadow: 0 4px 12px rgba(255, 90, 31, 0.12);
+  transform: translateY(-1px);
+}
+
+.menu-category-status:not(:disabled):is(:hover, :focus-visible) > span,
+.menu-category-edit:is(:hover, :focus-visible)::after,
+.menu-category-delete:is(:hover, :focus-visible)::after {
+  max-width: 3.75rem;
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.menu-category-toggle:hover,
+.menu-category-toggle:focus-visible {
+  border-color: var(--brand) !important;
+  background-color: var(--brand-soft) !important;
+  color: var(--brand) !important;
+  box-shadow: 0 4px 12px rgba(255, 90, 31, 0.12);
+  transform: translateY(-1px);
+}'''
+    css = css[:start] + semantic + css[end:]
+
+old_mobile_actions = '''  :where(.surface-card > .flex > .flex.flex-shrink-0.items-center.gap-2):has(
+      > button:is([title="Pausar categoria"], [title="Reativar categoria"])
+    ) > button,
+  :where(.surface-card > .flex > .flex.flex-shrink-0.items-center.gap-2):has(
+      > button:is([title="Pausar categoria"], [title="Reativar categoria"])
+    ) > button:hover,
+  :where(.surface-card > .flex > .flex.flex-shrink-0.items-center.gap-2):has(
+      > button:is([title="Pausar categoria"], [title="Reativar categoria"])
+    ) > button:focus-visible'''
+if old_mobile_actions in css:
+    css = css.replace(
+        old_mobile_actions,
+        '''  .menu-category-action,
+  .menu-category-action:hover,
+  .menu-category-action:focus-visible''',
+        1,
+    )
+
+old_mobile_labels = '''  :where(.surface-card > .flex > .flex.flex-shrink-0.items-center.gap-2):has(
+      > button:is([title="Pausar categoria"], [title="Reativar categoria"])
+    ) > button:first-child > span,
+  :where(.surface-card > .flex > .flex.flex-shrink-0.items-center.gap-2):has(
+      > button:is([title="Pausar categoria"], [title="Reativar categoria"])
+    ) > button:nth-child(2)::after,
+  :where(.surface-card > .flex > .flex.flex-shrink-0.items-center.gap-2):has(
+      > button:is([title="Pausar categoria"], [title="Reativar categoria"])
+    ) > button:nth-child(3)::after'''
+if old_mobile_labels in css:
+    css = css.replace(
+        old_mobile_labels,
+        '''  .menu-category-status > span,
+  .menu-category-edit::after,
+  .menu-category-delete::after''',
+        1,
+    )
+
+for forbidden in (":has(", "nth-child", "first-child", "last-child", "[class*="):
+    if forbidden in css:
+        raise SystemExit(f"forbidden positional selector remains: {forbidden}")
+css_file.write_text(css)
+
+assert 'CREDIT_CARD: "CRÉDITO"' in history.read_text()
+assert 'DEBIT_CARD: "DÉBITO"' in history.read_text()
+assert "menu-category-status" in menu.read_text()
