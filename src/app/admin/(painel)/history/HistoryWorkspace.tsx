@@ -110,12 +110,12 @@ function formatMoney(value: number) {
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
   CASH: "Dinheiro",
-  CREDIT: "Crédito",
-  CREDIT_CARD: "Crédito",
-  CARD_CREDIT: "Crédito",
-  DEBIT: "Débito",
-  DEBIT_CARD: "Débito",
-  CARD_DEBIT: "Débito",
+  CREDIT: "CRÉDITO",
+  CREDIT_CARD: "CRÉDITO",
+  CARD_CREDIT: "CRÉDITO",
+  DEBIT: "DÉBITO",
+  DEBIT_CARD: "DÉBITO",
+  CARD_DEBIT: "DÉBITO",
   PIX: "Pix",
   CARD: "Cartão",
   ONLINE: "Online",

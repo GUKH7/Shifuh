@@ -282,17 +282,13 @@
   flex-shrink: 0;
 }
 
-:where(.surface-card > .flex > .flex.flex-shrink-0.items-center.gap-2):has(
-    > button:is([title="Pausar categoria"], [title="Reativar categoria"])
-  ) {
+.menu-category-actions {
   min-width: max-content;
   flex-wrap: nowrap;
   white-space: nowrap;
 }
 
-:where(.surface-card > .flex > .flex.flex-shrink-0.items-center.gap-2):has(
-    > button:is([title="Pausar categoria"], [title="Reativar categoria"])
-  ) > button {
+.menu-category-action {
   display: inline-flex;
   width: var(--admin-control-height);
   min-width: var(--admin-control-height) !important;
@@ -326,21 +322,13 @@
     transform 160ms ease;
 }
 
-:where(.surface-card > .flex > .flex.flex-shrink-0.items-center.gap-2):has(
-    > button:is([title="Pausar categoria"], [title="Reativar categoria"])
-  ) > button svg {
+.menu-category-action svg {
   flex-shrink: 0;
 }
 
-:where(.surface-card > .flex > .flex.flex-shrink-0.items-center.gap-2):has(
-    > button:is([title="Pausar categoria"], [title="Reativar categoria"])
-  ) > button:first-child > span,
-:where(.surface-card > .flex > .flex.flex-shrink-0.items-center.gap-2):has(
-    > button:is([title="Pausar categoria"], [title="Reativar categoria"])
-  ) > button:nth-child(2)::after,
-:where(.surface-card > .flex > .flex.flex-shrink-0.items-center.gap-2):has(
-    > button:is([title="Pausar categoria"], [title="Reativar categoria"])
-  ) > button:nth-child(3)::after {
+.menu-category-status > span,
+.menu-category-edit::after,
+.menu-category-delete::after {
   display: inline-block !important;
   width: auto;
   max-width: 0;
@@ -357,24 +345,15 @@
   transition: max-width 180ms ease, opacity 150ms ease, transform 180ms ease;
 }
 
-:where(.surface-card > .flex > .flex.flex-shrink-0.items-center.gap-2):has(
-    > button:is([title="Pausar categoria"], [title="Reativar categoria"])
-  ) > button:nth-child(2)::after {
-  content: "Editar";
-}
+.menu-category-edit::after { content: "Editar"; }
+.menu-category-delete::after { content: "Excluir"; }
 
-:where(.surface-card > .flex > .flex.flex-shrink-0.items-center.gap-2):has(
-    > button:is([title="Pausar categoria"], [title="Reativar categoria"])
-  ) > button:nth-child(3)::after {
-  content: "Excluir";
-}
-
-:where(.surface-card > .flex > .flex.flex-shrink-0.items-center.gap-2):has(
-    > button:is([title="Pausar categoria"], [title="Reativar categoria"])
-  ) > button:nth-child(-n + 3):not(:disabled):hover,
-:where(.surface-card > .flex > .flex.flex-shrink-0.items-center.gap-2):has(
-    > button:is([title="Pausar categoria"], [title="Reativar categoria"])
-  ) > button:nth-child(-n + 3):not(:disabled):focus-visible {
+.menu-category-status:not(:disabled):hover,
+.menu-category-status:not(:disabled):focus-visible,
+.menu-category-edit:hover,
+.menu-category-edit:focus-visible,
+.menu-category-delete:hover,
+.menu-category-delete:focus-visible {
   width: 6.5rem;
   min-width: 6.5rem !important;
   gap: 0.5rem;
@@ -386,26 +365,16 @@
   transform: translateY(-1px);
 }
 
-:where(.surface-card > .flex > .flex.flex-shrink-0.items-center.gap-2):has(
-    > button:is([title="Pausar categoria"], [title="Reativar categoria"])
-  ) > button:first-child:not(:disabled):is(:hover, :focus-visible) > span,
-:where(.surface-card > .flex > .flex.flex-shrink-0.items-center.gap-2):has(
-    > button:is([title="Pausar categoria"], [title="Reativar categoria"])
-  ) > button:nth-child(2):is(:hover, :focus-visible)::after,
-:where(.surface-card > .flex > .flex.flex-shrink-0.items-center.gap-2):has(
-    > button:is([title="Pausar categoria"], [title="Reativar categoria"])
-  ) > button:nth-child(3):is(:hover, :focus-visible)::after {
+.menu-category-status:not(:disabled):is(:hover, :focus-visible) > span,
+.menu-category-edit:is(:hover, :focus-visible)::after,
+.menu-category-delete:is(:hover, :focus-visible)::after {
   max-width: 3.75rem;
   opacity: 1;
   transform: translateX(0);
 }
 
-:where(.surface-card > .flex > .flex.flex-shrink-0.items-center.gap-2):has(
-    > button:is([title="Pausar categoria"], [title="Reativar categoria"])
-  ) > button:nth-child(4):hover,
-:where(.surface-card > .flex > .flex.flex-shrink-0.items-center.gap-2):has(
-    > button:is([title="Pausar categoria"], [title="Reativar categoria"])
-  ) > button:nth-child(4):focus-visible {
+.menu-category-toggle:hover,
+.menu-category-toggle:focus-visible {
   border-color: var(--brand) !important;
   background-color: var(--brand-soft) !important;
   color: var(--brand) !important;
@@ -448,15 +417,9 @@
   .menu-product-actions > button[title="Ativar vendas"],
   .menu-product-actions > button[title="Ativar vendas"]:hover,
   .menu-product-actions > button[title="Ativar vendas"]:focus-visible,
-  :where(.surface-card > .flex > .flex.flex-shrink-0.items-center.gap-2):has(
-      > button:is([title="Pausar categoria"], [title="Reativar categoria"])
-    ) > button,
-  :where(.surface-card > .flex > .flex.flex-shrink-0.items-center.gap-2):has(
-      > button:is([title="Pausar categoria"], [title="Reativar categoria"])
-    ) > button:hover,
-  :where(.surface-card > .flex > .flex.flex-shrink-0.items-center.gap-2):has(
-      > button:is([title="Pausar categoria"], [title="Reativar categoria"])
-    ) > button:focus-visible {
+  .menu-category-action,
+  .menu-category-action:hover,
+  .menu-category-action:focus-visible {
     width: var(--admin-control-height);
     min-width: var(--admin-control-height) !important;
     gap: 0;
@@ -466,15 +429,9 @@
   .menu-product-edit-label,
   .menu-product-actions > button[title="Pausar vendas"]::after,
   .menu-product-actions > button[title="Ativar vendas"]::after,
-  :where(.surface-card > .flex > .flex.flex-shrink-0.items-center.gap-2):has(
-      > button:is([title="Pausar categoria"], [title="Reativar categoria"])
-    ) > button:first-child > span,
-  :where(.surface-card > .flex > .flex.flex-shrink-0.items-center.gap-2):has(
-      > button:is([title="Pausar categoria"], [title="Reativar categoria"])
-    ) > button:nth-child(2)::after,
-  :where(.surface-card > .flex > .flex.flex-shrink-0.items-center.gap-2):has(
-      > button:is([title="Pausar categoria"], [title="Reativar categoria"])
-    ) > button:nth-child(3)::after {
+  .menu-category-status > span,
+  .menu-category-edit::after,
+  .menu-category-delete::after {
     display: none !important;
   }
 }
