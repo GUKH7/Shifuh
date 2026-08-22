@@ -30,6 +30,7 @@ const sourceRedirects = new Map(
     "src/features/storefront/CheckoutDrawer.tsx": "src/features/checkout/CheckoutDrawer.tsx",
     "src/features/storefront/DeliveryCalculator.tsx": "src/features/checkout/DeliveryCalculator.tsx",
     "src/app/admin/(painel)/orders/page.tsx": "src/features/orders/OrdersPage.tsx",
+    "src/app/admin/(painel)/orders/OrdersWorkspace.tsx": "src/features/orders/OrdersWorkspace.tsx",
     "src/app/admin/(painel)/orders/utils.ts": "src/features/orders/utils.ts",
     "src/app/admin/(painel)/orders/OrdersDatePicker.tsx": "src/features/orders/OrdersDatePicker.tsx",
     "src/app/admin/(painel)/orders/orders-responsive.css": "src/features/orders/orders-responsive.css",
