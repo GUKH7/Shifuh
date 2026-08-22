@@ -33,7 +33,8 @@ test("workspace alternativo mantém resumo sem sobreposição no mobile", () => 
   assert.match(workspace, /Resumo do dia/);
 });
 
-test("rota de pedidos volta a renderizar a página anterior", () => {
-  assert.match(layout, /return children;/);
+test("layout de pedidos preserva a página e o status do WhatsApp", () => {
+  assert.match(layout, /\{children\}/);
+  assert.match(layout, /<OrdersWhatsappStatus \/>/);
   assert.doesNotMatch(layout, /OrdersWorkspace/);
 });

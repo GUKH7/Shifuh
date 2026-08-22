@@ -2,21 +2,16 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const test = require("node:test");
 
-const settings = fs.readFileSync("src/app/admin/(painel)/settings/page.tsx", "utf8");
-const sections = fs.readFileSync(
-  "src/app/admin/(painel)/settings/SettingsSections.tsx",
-  "utf8",
-);
-const deliveryPricing = fs.readFileSync(
-  "src/app/admin/(painel)/settings/delivery-pricing.ts",
-  "utf8",
-);
+const settings = fs.readFileSync("src/features/settings/SettingsWorkspace.tsx", "utf8");
+const sections = fs.readFileSync("src/features/settings/SettingsSections.tsx", "utf8");
+const enhancer = fs.readFileSync("src/features/settings/DeliveryRulesEnhancer.tsx", "utf8");
+const deliveryPricing = fs.readFileSync("src/features/settings/delivery-pricing.ts", "utf8");
 const geo = fs.readFileSync("src/lib/geo.ts", "utf8");
 
 test("configurações mantêm o editor de taxas na própria página", () => {
   assert.match(settings, /Taxas de entrega/);
   assert.doesNotMatch(sections, /\/admin\/settings\/delivery/);
-  assert.match(sections, /Gere valores por quilômetro e ajuste preço e prazo em cada faixa/);
+  assert.match(enhancer, /Gere as faixas automaticamente e edite exceções depois/);
   assert.match(settings, /deliveryPricingMode === "per_km"/);
   assert.match(settings, /delivery_tiers: deliveryRules/);
 });
