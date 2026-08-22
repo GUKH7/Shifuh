@@ -1,0 +1,39 @@
+name: Semantic UI patch PR
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.head_ref == 'ci-e2e-validation' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ci-e2e-validation
+          fetch-depth: 0
+
+      - name: Apply semantic UI migration
+        run: python scripts/semantic-ui-patch.py
+
+      - name: Commit semantic UI migration
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/semantic-ui-patch.yml
+          git rm .github/workflows/semantic-ui-patch-pr.yml
+          git rm scripts/semantic-ui-patch.py
+          git add src/app/admin/'(painel)'/admin-responsive.css src/app/admin/'(painel)'/menu/page.tsx src/app/admin/'(painel)'/history/HistoryWorkspace.tsx
+          git diff --cached --check
+          git commit -m "fix(ui): align semantic admin controls"
+          git push origin HEAD:ci-e2e-validation
