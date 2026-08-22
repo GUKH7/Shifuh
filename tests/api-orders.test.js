@@ -297,6 +297,95 @@ function loadOrdersRoute() {
       return rateLimitModule.exports;
     }
 
+    if (request === "@/lib/delivery-quote") {
+      class DeliveryQuoteError extends Error {
+        constructor(code, message, status, details) {
+          super(message);
+          this.name = "DeliveryQuoteError";
+          this.code = code;
+          this.status = status;
+          this.details = details;
+        }
+      }
+
+      return {
+        DeliveryQuoteError,
+        calculateDeliveryQuote: async (restaurant, address) => {
+          const hasStoredCoordinates =
+            restaurant.latitude !== null &&
+            restaurant.latitude !== undefined &&
+            restaurant.longitude !== null &&
+            restaurant.longitude !== undefined &&
+            Number.isFinite(Number(restaurant.latitude)) &&
+            Number.isFinite(Number(restaurant.longitude)) &&
+            !(Number(restaurant.latitude) === 0 && Number(restaurant.longitude) === 0);
+
+          const restaurantCoordinates = mockState.restaurantCoordinates === undefined
+            ? (hasStoredCoordinates
+                ? { lat: Number(restaurant.latitude), lon: Number(restaurant.longitude) }
+                : null)
+            : mockState.restaurantCoordinates;
+
+          if (!restaurantCoordinates) {
+            throw new DeliveryQuoteError(
+              "STORE_LOCATION_UNAVAILABLE",
+              "A loja não conseguiu localizar o ponto de saída da entrega.",
+              503,
+            );
+          }
+
+          mockState.lastClientCoordinatesRequest = {
+            postalCode: address.cep,
+            street: address.street,
+            number: address.number === "S/N" ? undefined : address.number,
+            neighborhood: address.neighborhood,
+            city: address.city,
+            state: address.state,
+          };
+
+          const customerCoordinates = mockState.clientCoordinates === undefined
+            ? { lat: -23.56, lon: -46.64 }
+            : mockState.clientCoordinates;
+          if (!customerCoordinates) {
+            throw new DeliveryQuoteError(
+              "ADDRESS_NOT_FOUND",
+              "Não foi possível localizar o endereço informado.",
+              422,
+            );
+          }
+
+          const distance = mockState.distance;
+          const fee = mockState.deliveryFeeResult || {
+            price: distance <= 5 ? 7 : 0,
+            time: 35,
+            valid: distance <= 5,
+          };
+
+          if (!fee.valid && Array.isArray(restaurant.delivery_tiers) && restaurant.delivery_tiers.length > 0) {
+            throw new DeliveryQuoteError(
+              "OUTSIDE_DELIVERY_AREA",
+              "O endereço informado está fora da área de entrega.",
+              422,
+              { distance },
+            );
+          }
+
+          return {
+            price: Number(fee.price) || 0,
+            originalPrice: Number(fee.price) || 0,
+            promotionApplied: false,
+            time: Number(fee.time) || 0,
+            distance,
+            routeDurationMinutes: Number(fee.time) || 0,
+            valid: true,
+            addressValidated: true,
+            distanceMethod: "osrm_route",
+            routeProvider: "osrm",
+          };
+        },
+      };
+    }
+
     if (request === "@/lib/geo") {
       return {
         getCoordinates: async (address) => {
@@ -366,7 +455,7 @@ function loadOrdersRoute() {
     }
 
     if (request === "@/features/storefront/checkout-format") {
-      const checkoutPath = path.join(__dirname, "..", "src", "features", "storefront", "checkout-format.ts");
+      const checkoutPath = path.join(__dirname, "..", "src", "features", "checkout", "checkout-format.ts");
       const checkoutSource = fs.readFileSync(checkoutPath, "utf8");
       const checkoutCompiled = ts.transpileModule(checkoutSource, {
         compilerOptions: {
@@ -594,7 +683,7 @@ test("bloqueia pedido quando a origem da loja não pode ser calculada", async ()
   const body = await readJson(response);
 
   assert.equal(response.status, 503);
-  assert.equal(body.code, "DELIVERY_CALCULATION_UNAVAILABLE");
+  assert.equal(body.code, "STORE_LOCATION_UNAVAILABLE");
   assert.equal(mockState.orders.length, 0);
 });
 
