@@ -34,9 +34,9 @@ function walk(directory) {
 }
 
 function sourceFiles() {
-  return SOURCE_ROOTS.flatMap(walk).filter((file) =>
-    SOURCE_EXTENSIONS.has(path.extname(file)),
-  );
+  return SOURCE_ROOTS.flatMap(walk)
+    .filter((file) => SOURCE_EXTENSIONS.has(path.extname(file)))
+    .sort();
 }
 
 function collectRadiusUsage() {
