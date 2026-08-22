@@ -1,5 +1,6 @@
 const fs = require("node:fs");
 const path = require("node:path");
+const { syncBuiltinESMExports } = require("node:module");
 
 const root = path.resolve(__dirname, "..");
 const originalReadFileSync = fs.readFileSync.bind(fs);
@@ -28,3 +29,5 @@ fs.readFileSync = function readFileSyncWithCurrentSource(file, ...args) {
 
   return originalReadFileSync(file, ...args);
 };
+
+syncBuiltinESMExports();
