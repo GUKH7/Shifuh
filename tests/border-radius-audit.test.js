@@ -33,13 +33,16 @@ function walk(directory) {
   });
 }
 
-function collectRadiusUsage() {
-  const usage = new Map();
-  const files = SOURCE_ROOTS.flatMap(walk).filter((file) =>
+function sourceFiles() {
+  return SOURCE_ROOTS.flatMap(walk).filter((file) =>
     SOURCE_EXTENSIONS.has(path.extname(file)),
   );
+}
 
-  for (const file of files) {
+function collectRadiusUsage() {
+  const usage = new Map();
+
+  for (const file of sourceFiles()) {
     const content = fs.readFileSync(file, "utf8");
     const matches = content.match(/\b(?:[a-z0-9-]+:)*rounded(?:-[^\s"'`{}<>]+)?/g) || [];
 
@@ -50,6 +53,10 @@ function collectRadiusUsage() {
   }
 
   return usage;
+}
+
+function filesUsingRadius(token) {
+  return sourceFiles().filter((file) => fs.readFileSync(file, "utf8").includes(token));
 }
 
 function isApprovedScaleToken(token) {
@@ -98,7 +105,7 @@ test("valores arbitrários existentes são normalizados e não podem aumentar", 
     );
     assert.ok(
       count <= LEGACY_ARBITRARY_LIMITS.get(token),
-      `${token} aumentou de ${LEGACY_ARBITRARY_LIMITS.get(token)} para ${count} ocorrências.`,
+      `${token} aumentou de ${LEGACY_ARBITRARY_LIMITS.get(token)} para ${count} ocorrências. Arquivos: ${filesUsingRadius(token).join(", ")}`,
     );
   }
 
