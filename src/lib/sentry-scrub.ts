@@ -24,6 +24,10 @@ function stripUrlQuery(value: string) {
   }
 }
 
+function stripQueryFromDescription(value: string) {
+  return redactTelemetryString(value).split(/[?#]/, 1)[0] || value;
+}
+
 export function redactTelemetryString(value: string) {
   return value
     .replace(EMAIL_PATTERN, "[redacted-email]")
@@ -111,6 +115,30 @@ function scrubExceptions(value: unknown) {
   });
 }
 
+function scrubSpans(value: unknown) {
+  if (!Array.isArray(value)) return value;
+
+  return value.map((span) => {
+    if (!span || typeof span !== "object") return span;
+
+    const mutable = { ...(span as Record<string, unknown>) };
+    if (typeof mutable.description === "string") {
+      mutable.description = stripQueryFromDescription(mutable.description);
+    }
+    if (typeof mutable.name === "string") {
+      mutable.name = stripQueryFromDescription(mutable.name);
+    }
+    if (mutable.data && typeof mutable.data === "object") {
+      mutable.data = sanitizeUnknown(mutable.data, "data");
+    }
+    if (mutable.tags && typeof mutable.tags === "object") {
+      mutable.tags = sanitizeUnknown(mutable.tags, "tags");
+    }
+
+    return mutable;
+  });
+}
+
 export function sanitizeTelemetryContext(
   context: Record<string, unknown>,
 ): Record<string, SafeTelemetryValue> {
@@ -183,8 +211,12 @@ export function scrubSentryEvent(event: unknown) {
     scrubExceptions(mutable.exception);
   }
 
-  // Stack frames and transaction spans are intentionally preserved so traces remain usable.
-  // Potentially sensitive request/context payloads are scrubbed above instead.
+  if (mutable.spans !== undefined) {
+    mutable.spans = scrubSpans(mutable.spans);
+  }
+
+  // Stack frames, trace ids, timing and span relationships remain intact.
+  // Only URL-bearing descriptions and span data/tags are sanitized.
 }
 
 export function parseTelemetrySampleRate(value: string | undefined, fallback: number) {
