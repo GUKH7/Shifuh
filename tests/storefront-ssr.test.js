@@ -14,14 +14,15 @@ const hook = fs.readFileSync(
   "utf8",
 );
 
-test("vitrine carrega restaurante e catalogo no servidor com ISR", () => {
+test("vitrine carrega restaurante e catalogo no servidor com ISR em uma RPC", () => {
   assert.match(layout, /export const revalidate = 60/);
   assert.match(layout, /await getPublicStorefront\(slug\)/);
   assert.match(layout, /StorefrontInitialDataProvider data=\{data\}/);
   assert.match(serverData, /unstable_cache/);
-  assert.match(serverData, /from\("public_restaurants"\)/);
-  assert.match(serverData, /from\("public_storefront_products"\)/);
-  assert.match(serverData, /\.eq\("is_active", true\)/);
+  assert.match(serverData, /rpc\("get_public_storefront_bundle"/);
+  assert.doesNotMatch(serverData, /from\("public_restaurants"\)/);
+  assert.doesNotMatch(serverData, /from\("public_storefront_products"\)/);
+  assert.doesNotMatch(serverData, /from\("categories"\)/);
 });
 
 test("HTML inicial usa dados do servidor em vez de esperar fetch client-side", () => {
