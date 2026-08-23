@@ -7,6 +7,42 @@ export type RestaurantMembership = {
   created_at: string;
 };
 
+type RestaurantContextRow = RestaurantMembership & {
+  restaurant: any | any[] | null;
+};
+
+function normalizeRestaurantRelation(value: RestaurantContextRow["restaurant"]) {
+  return Array.isArray(value) ? value[0] ?? null : value ?? null;
+}
+
+async function getRestaurantContextByUserId(
+  supabase: SupabaseClient<any>,
+  userId: string,
+) {
+  const { data, error } = await supabase
+    .from("restaurant_members")
+    .select("restaurant_id, role, is_default, created_at, restaurant:restaurants(*)")
+    .eq("user_id", userId)
+    .limit(1)
+    .maybeSingle();
+
+  const row = (data ?? null) as RestaurantContextRow | null;
+  const membership = row
+    ? {
+        restaurant_id: row.restaurant_id,
+        role: row.role,
+        is_default: row.is_default,
+        created_at: row.created_at,
+      }
+    : null;
+
+  return {
+    restaurant: row ? normalizeRestaurantRelation(row.restaurant) : null,
+    membership,
+    error,
+  };
+}
+
 export async function getRestaurantMembershipsByUserId(
   supabase: SupabaseClient<any>,
   userId: string,
@@ -24,26 +60,11 @@ export async function getRestaurantMembershipsByUserId(
 }
 
 export async function getRestaurantsByUserId(supabase: SupabaseClient<any>, userId: string) {
-  const { memberships, error: membershipError } = await getRestaurantMembershipsByUserId(supabase, userId);
-  const membership = memberships[0] ?? null;
-
-  if (membershipError || !membership) {
-    return {
-      restaurants: [],
-      memberships,
-      error: membershipError,
-    };
-  }
-
-  const { data, error } = await supabase
-    .from("restaurants")
-    .select("*")
-    .eq("id", membership.restaurant_id)
-    .maybeSingle();
+  const { restaurant, membership, error } = await getRestaurantContextByUserId(supabase, userId);
 
   return {
-    restaurants: data ? [data] : [],
-    memberships,
+    restaurants: restaurant ? [restaurant] : [],
+    memberships: membership ? [membership] : [],
     error,
   };
 }
@@ -55,24 +76,7 @@ export async function getRestaurantsByUserId(supabase: SupabaseClient<any>, user
  * restaurant_members remains the canonical authorization mapping used by RLS.
  */
 export async function getRestaurantByUserId(supabase: SupabaseClient<any>, userId: string) {
-  const { memberships, error: membershipError } = await getRestaurantMembershipsByUserId(supabase, userId);
-  const membership = memberships[0] ?? null;
-
-  if (membershipError || !membership) {
-    return {
-      restaurant: null,
-      membership,
-      error: membershipError,
-    };
-  }
-
-  const { data: restaurant, error } = await supabase
-    .from("restaurants")
-    .select("*")
-    .eq("id", membership.restaurant_id)
-    .maybeSingle();
-
-  return { restaurant: restaurant ?? null, membership, error };
+  return getRestaurantContextByUserId(supabase, userId);
 }
 
 export async function getCurrentRestaurant(supabase: SupabaseClient<any>) {
