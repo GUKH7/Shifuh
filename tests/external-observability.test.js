@@ -50,7 +50,7 @@ test("captures only existing server error console events externally", () => {
   assert.match(server, /sendDefaultPii:\s*false/);
 });
 
-test("scrubs sensitive request and user data without destroying spans or stack frames", () => {
+test("scrubs sensitive request, user and span data without destroying trace structure", () => {
   const scrubber = read("src/lib/sentry-scrub.ts");
 
   for (const sensitiveTerm of [
@@ -73,7 +73,11 @@ test("scrubs sensitive request and user data without destroying spans or stack f
   assert.match(scrubber, /delete safeRequest\.data/);
   assert.match(scrubber, /delete safeRequest\.query_string/);
   assert.match(scrubber, /\{ id: String\(id\) \}/);
-  assert.match(scrubber, /Stack frames and transaction spans are intentionally preserved/);
+  assert.match(scrubber, /function scrubSpans/);
+  assert.match(scrubber, /mutable\.description = stripQueryFromDescription/);
+  assert.match(scrubber, /mutable\.data = sanitizeUnknown\(mutable\.data, "data"\)/);
+  assert.match(scrubber, /mutable\.spans = scrubSpans\(mutable\.spans\)/);
+  assert.match(scrubber, /Stack frames, trace ids, timing and span relationships remain intact/);
   assert.doesNotMatch(scrubber, /mutable\["spans"\]\s*=\s*sanitizeUnknown/);
 });
 
