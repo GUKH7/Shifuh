@@ -57,10 +57,31 @@ function AdminGuardSkeleton() {
   );
 }
 
+function AdminGuardError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-[#fbf7f2] px-4">
+      <div className="w-full max-w-md rounded-3xl border border-[var(--line)] bg-white p-6 text-center shadow-sm">
+        <p className="text-lg font-black text-gray-950">Não foi possível validar seu acesso</p>
+        <p className="mt-2 text-sm leading-6 text-gray-500">
+          O painel permanece bloqueado até conseguirmos confirmar sua sessão e suas permissões.
+        </p>
+        <button
+          type="button"
+          onClick={onRetry}
+          className="mt-5 inline-flex h-11 items-center justify-center rounded-xl bg-[var(--brand)] px-5 text-sm font-bold text-white transition-opacity hover:opacity-90"
+        >
+          Tentar novamente
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminPanelLayout({ children }: { children: React.ReactNode }) {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isGuardLoading, setIsGuardLoading] = useState(true);
+  const [guardError, setGuardError] = useState<string | null>(null);
   const [storeSlug, setStoreSlug] = useState("");
   const [canAccessPlatform, setCanAccessPlatform] = useState(false);
   const [panelSearch, setPanelSearch] = useState("");
@@ -96,6 +117,7 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
 
     const guardAdminAccess = async () => {
       setIsGuardLoading(true);
+      setGuardError(null);
       try {
         const response = await fetch("/api/admin/context", { cache: "no-store" });
 
@@ -118,7 +140,11 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
 
         const isPlatformPage = pathname.startsWith("/admin/platform");
         if (isPlatformPage) {
-          if (!hasPlatformAccess) router.replace("/admin");
+          if (!hasPlatformAccess) {
+            router.replace("/admin");
+            return;
+          }
+          setIsGuardLoading(false);
           return;
         }
 
@@ -130,11 +156,16 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
 
         if (restaurant && isSetupPage) {
           router.replace("/admin");
+          return;
         }
+
+        setIsGuardLoading(false);
       } catch (error) {
         console.error("Falha no guard administrativo:", error);
-      } finally {
-        if (isMounted) setIsGuardLoading(false);
+        if (isMounted) {
+          setGuardError("ADMIN_CONTEXT_UNAVAILABLE");
+          setIsGuardLoading(false);
+        }
       }
     };
 
@@ -166,6 +197,7 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
   };
 
   if (isGuardLoading) return <AdminGuardSkeleton />;
+  if (guardError) return <AdminGuardError onRetry={() => window.location.reload()} />;
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#fbf7f2] text-gray-950">
