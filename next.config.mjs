@@ -33,6 +33,10 @@ const remotePatterns = [
 
 const nextConfig = {
   distDir: process.env.NEXT_DIST_DIR || ".next",
+  env: {
+    NEXT_PUBLIC_APP_ENVIRONMENT: process.env.VERCEL_ENV || process.env.NODE_ENV || "development",
+    NEXT_PUBLIC_APP_RELEASE: process.env.VERCEL_GIT_COMMIT_SHA || "local",
+  },
   serverExternalPackages: [
     "@sparticuz/chromium",
     "puppeteer-core",
