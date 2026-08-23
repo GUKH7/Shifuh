@@ -1,3 +1,6 @@
+import * as Sentry from "@sentry/nextjs";
+import { sanitizeTelemetryContext } from "@/lib/sentry-scrub";
+
 type OperationalLogLevel = "info" | "warn" | "error";
 
 type OperationalLogContext = Record<string, unknown>;
@@ -12,6 +15,13 @@ export function logOperationalEvent(
     event,
     timestamp: new Date().toISOString(),
     ...context,
+  });
+
+  Sentry.addBreadcrumb({
+    category: "operational",
+    message: event,
+    level: level === "warn" ? "warning" : level,
+    data: sanitizeTelemetryContext(context),
   });
 
   if (level === "error") {
