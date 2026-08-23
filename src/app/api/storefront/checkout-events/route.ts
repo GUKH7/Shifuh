@@ -49,6 +49,17 @@ export async function POST(request: Request) {
     }
 
     const admin = createAdminClient();
+    const { data: restaurant, error: restaurantError } = await (admin as any)
+      .from("restaurants")
+      .select("id")
+      .eq("id", restaurantId)
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    if (restaurantError || !restaurant) {
+      return NextResponse.json({ error: "Loja não encontrada." }, { status: 404 });
+    }
+
     const { error } = await (admin as any).from("storefront_checkout_events").insert({
       restaurant_id: restaurantId,
       session_id: sessionId,
