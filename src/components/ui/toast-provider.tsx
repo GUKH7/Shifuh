@@ -23,6 +23,7 @@ type ToastInput = {
   title: string;
   description?: string;
   tone?: ToastTone;
+  variant?: ToastTone;
 };
 
 type ToastContextValue = {
@@ -58,9 +59,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const showToast = useCallback(
-    ({ title, description, tone = "info" }: ToastInput) => {
+    ({ title, description, tone, variant }: ToastInput) => {
+      const resolvedTone = tone ?? variant ?? "info";
       const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      const toast: ToastItem = { id, title, description, tone };
+      const toast: ToastItem = { id, title, description, tone: resolvedTone };
 
       setToasts((current) => [...current, toast]);
       const timeout = setTimeout(() => removeToast(id), 3600);

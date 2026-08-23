@@ -76,6 +76,7 @@ export async function POST(request: Request) {
         "id, latitude, longitude, address_zip, address_street, address_number, address_neighborhood, address_city, address_state, delivery_tiers, delivery_rules",
       )
       .eq("id", body.restaurantId)
+      .is("deleted_at", null)
       .maybeSingle();
 
     if (error || !restaurant) {

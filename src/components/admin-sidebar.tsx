@@ -21,7 +21,6 @@ import {
   X,
 } from "lucide-react";
 import { getCurrentRestaurant } from "@/lib/supabase/restaurant";
-import { isPlatformAdminEmail } from "@/lib/platform-admin";
 
 const MENU_ITEMS = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
@@ -57,18 +56,23 @@ export default function AdminSidebar({
   );
 
   useEffect(() => {
-    const loadRestaurant = async () => {
-      const { restaurant } = await getCurrentRestaurant(supabase);
+    let isMounted = true;
+
+    const loadNavigationContext = async () => {
+      const [{ restaurant }, platformResponse] = await Promise.all([
+        getCurrentRestaurant(supabase),
+        fetch("/api/platform/access", { cache: "no-store" }).catch(() => null),
+      ]);
+
+      if (!isMounted) return;
       if (restaurant?.slug) setStoreSlug(restaurant.slug);
-
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      setCanAccessPlatform(isPlatformAdminEmail(user?.email));
+      setCanAccessPlatform(Boolean(platformResponse?.ok));
     };
 
-    loadRestaurant();
+    void loadNavigationContext();
+    return () => {
+      isMounted = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -152,9 +156,9 @@ export default function AdminSidebar({
             <Link
               href="/admin/platform"
               onClick={closeMobileSidebar}
-              title={isCollapsed ? "Lojas cadastradas" : undefined}
+              title={isCollapsed ? "Admin da plataforma" : undefined}
               className={`group flex items-center gap-3 rounded-2xl px-4 py-2.5 text-sm font-semibold transition-all ${desktopItemLayout} ${
-                pathname === "/admin/platform"
+                pathname.startsWith("/admin/platform")
                   ? "bg-[var(--brand-soft)] text-[var(--brand)]"
                   : "text-gray-600 hover:bg-[#faf5ef] hover:text-gray-950"
               }`}
@@ -162,12 +166,12 @@ export default function AdminSidebar({
               <Store
                 size={19}
                 className={`shrink-0 transition-colors ${
-                  pathname === "/admin/platform"
+                  pathname.startsWith("/admin/platform")
                     ? "text-[var(--brand)]"
                     : "text-gray-400 group-hover:text-gray-950"
                 }`}
               />
-              <span className={desktopLabelVisibility}>Lojas cadastradas</span>
+              <span className={desktopLabelVisibility}>Admin da plataforma</span>
             </Link>
           )}
         </nav>

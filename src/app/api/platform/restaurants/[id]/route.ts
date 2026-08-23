@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { isPlatformAdminEmail } from "@/lib/platform-admin";
+import { requirePlatformPermission, writePlatformAuditLog } from "@/lib/platform-admin";
 import {
   ApiValidationError,
   optionalString,
@@ -13,56 +12,32 @@ type Params = {
   params: Promise<{ id: string }>;
 };
 
-async function requirePlatformAdmin() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+const RESTAURANT_FIELDS =
+  "id, name, slug, phone, user_id, created_at, primary_color, deleted_at, deleted_by";
 
-  if (!user) {
-    return {
-      response: NextResponse.json({ error: "Não autenticado." }, { status: 401 }),
-      user: null,
-    };
-  }
+export async function GET(_: Request, context: Params) {
+  const guard = await requirePlatformPermission("restaurants.read");
+  if (!guard.ok) return guard.response;
 
-  if (!isPlatformAdminEmail(user.email)) {
-    return {
-      response: NextResponse.json({ error: "Acesso negado." }, { status: 403 }),
-      user: null,
-    };
-  }
+  const { id } = await context.params;
+  if (!id?.trim()) return NextResponse.json({ error: "Loja inválida." }, { status: 400 });
 
-  return { response: null, user };
-}
+  const { data, error } = await guard.admin
+    .from("restaurants")
+    .select(RESTAURANT_FIELDS)
+    .eq("id", id)
+    .maybeSingle();
 
-export async function GET() {
-  try {
-    const authorization = await requirePlatformAdmin();
-    if (authorization.response) return authorization.response;
+  if (error) return NextResponse.json({ error: "Erro ao carregar loja." }, { status: 500 });
+  if (!data) return NextResponse.json({ error: "Loja não encontrada." }, { status: 404 });
 
-    const adminSupabase = createAdminClient();
-    const { data, error } = await adminSupabase
-      .from("restaurants")
-      .select("id, name, slug, phone, user_id, created_at, primary_color")
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error("Erro ao listar lojas da plataforma:", error);
-      return NextResponse.json({ error: "Não foi possível carregar as lojas." }, { status: 500 });
-    }
-
-    return NextResponse.json({ restaurants: data || [] });
-  } catch (error) {
-    console.error("Erro ao listar lojas da plataforma:", error);
-    return NextResponse.json({ error: "Erro interno ao carregar lojas." }, { status: 500 });
-  }
+  return NextResponse.json({ restaurant: data });
 }
 
 export async function PATCH(request: Request, context: Params) {
   try {
-    const authorization = await requirePlatformAdmin();
-    if (authorization.response) return authorization.response;
+    const guard = await requirePlatformPermission("restaurants.update");
+    if (!guard.ok) return guard.response;
 
     const { id } = await context.params;
     if (!id?.trim()) {
@@ -89,9 +64,22 @@ export async function PATCH(request: Request, context: Params) {
       });
     }
 
-    const adminSupabase = createAdminClient();
+    const { data: current, error: currentError } = await guard.admin
+      .from("restaurants")
+      .select(RESTAURANT_FIELDS)
+      .eq("id", id)
+      .maybeSingle();
 
-    const { data: conflictingSlug } = await adminSupabase
+    if (currentError) throw currentError;
+    if (!current) return NextResponse.json({ error: "Loja não encontrada." }, { status: 404 });
+    if (current.deleted_at) {
+      return NextResponse.json(
+        { error: "Restaure a loja antes de editar seus dados." },
+        { status: 409 },
+      );
+    }
+
+    const { data: conflictingSlug } = await guard.admin
       .from("restaurants")
       .select("id")
       .eq("slug", slug)
@@ -105,19 +93,48 @@ export async function PATCH(request: Request, context: Params) {
       );
     }
 
-    const { error } = await adminSupabase
-      .from("restaurants")
-      .update({
-        name,
-        slug,
-        phone,
-        primary_color: primaryColor,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", id);
+    const nextValues = {
+      name,
+      slug,
+      phone,
+      primary_color: primaryColor,
+      updated_at: new Date().toISOString(),
+    };
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+    const { error: updateError } = await guard.admin
+      .from("restaurants")
+      .update(nextValues)
+      .eq("id", id)
+      .is("deleted_at", null);
+
+    if (updateError) return NextResponse.json({ error: updateError.message }, { status: 400 });
+
+    try {
+      await writePlatformAuditLog(guard.admin, guard.access, {
+        action: "restaurant.update",
+        targetType: "restaurant",
+        targetId: id,
+        metadata: {
+          before: {
+            name: current.name,
+            slug: current.slug,
+            phone: current.phone,
+            primary_color: current.primary_color,
+          },
+          after: { name, slug, phone, primary_color: primaryColor },
+        },
+      });
+    } catch (auditError) {
+      await guard.admin
+        .from("restaurants")
+        .update({
+          name: current.name,
+          slug: current.slug,
+          phone: current.phone,
+          primary_color: current.primary_color,
+        })
+        .eq("id", id);
+      throw auditError;
     }
 
     return NextResponse.json({ ok: true });
@@ -132,24 +149,49 @@ export async function PATCH(request: Request, context: Params) {
 
 export async function DELETE(_: Request, context: Params) {
   try {
-    const authorization = await requirePlatformAdmin();
-    if (authorization.response) return authorization.response;
+    const guard = await requirePlatformPermission("restaurants.archive");
+    if (!guard.ok) return guard.response;
 
     const { id } = await context.params;
-    if (!id?.trim()) {
-      return NextResponse.json({ error: "Loja inválida." }, { status: 400 });
+    if (!id?.trim()) return NextResponse.json({ error: "Loja inválida." }, { status: 400 });
+
+    const { data: current, error: currentError } = await guard.admin
+      .from("restaurants")
+      .select(RESTAURANT_FIELDS)
+      .eq("id", id)
+      .maybeSingle();
+
+    if (currentError) throw currentError;
+    if (!current) return NextResponse.json({ error: "Loja não encontrada." }, { status: 404 });
+    if (current.deleted_at) return NextResponse.json({ ok: true, archived: true });
+
+    const deletedAt = new Date().toISOString();
+    const { error: archiveError } = await guard.admin
+      .from("restaurants")
+      .update({ deleted_at: deletedAt, deleted_by: guard.user.id, updated_at: deletedAt })
+      .eq("id", id)
+      .is("deleted_at", null);
+
+    if (archiveError) return NextResponse.json({ error: archiveError.message }, { status: 400 });
+
+    try {
+      await writePlatformAuditLog(guard.admin, guard.access, {
+        action: "restaurant.archive",
+        targetType: "restaurant",
+        targetId: id,
+        metadata: { name: current.name, slug: current.slug, archived_at: deletedAt },
+      });
+    } catch (auditError) {
+      await guard.admin
+        .from("restaurants")
+        .update({ deleted_at: null, deleted_by: null })
+        .eq("id", id);
+      throw auditError;
     }
 
-    const adminSupabase = createAdminClient();
-    const { error } = await adminSupabase.from("restaurants").delete().eq("id", id);
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, archived: true });
   } catch (error) {
-    console.error("Erro ao apagar loja:", error);
-    return NextResponse.json({ error: "Erro interno ao apagar loja." }, { status: 500 });
+    console.error("Erro ao arquivar loja:", error);
+    return NextResponse.json({ error: "Erro interno ao arquivar loja." }, { status: 500 });
   }
 }

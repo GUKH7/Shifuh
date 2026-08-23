@@ -9,8 +9,12 @@ function read(...segments) {
 
 test("platform restaurant listing is fetched through the protected server API", () => {
   const page = read("src", "app", "admin", "(painel)", "platform", "page.tsx");
-  assert.match(page, /fetch\("\/api\/platform\/restaurants\/current"/);
+  const listingRoute = read("src", "app", "api", "platform", "restaurants", "route.ts");
+
+  assert.match(page, /fetch\(`\/api\/platform\/restaurants\?status=\$\{status\}`/);
   assert.doesNotMatch(page, /\.from\("restaurants"\)/);
+  assert.match(listingRoute, /requirePlatformPermission\("restaurants\.read"\)/);
+  assert.doesNotMatch(listingRoute, /isPlatformAdminEmail/);
 });
 
 test("restaurant image uploads are namespaced by restaurant id", () => {

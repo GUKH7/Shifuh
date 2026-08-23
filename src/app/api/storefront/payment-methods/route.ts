@@ -25,6 +25,7 @@ export async function GET(request: Request) {
     .from("restaurants")
     .select("accepted_payment_methods")
     .eq("slug", slug)
+    .is("deleted_at", null)
     .maybeSingle();
 
   if (error || !restaurant) {
