@@ -6,6 +6,12 @@ import { DEFAULT_STOREFRONT_THEME } from "./constants";
 import type { InitialStorefrontData } from "./initial-data";
 import type { Product, StorefrontTheme } from "./types";
 
+type PublicStorefrontBundle = {
+  restaurant: any;
+  categories: any[];
+  products: Product[];
+};
+
 function createPublicServerClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -25,38 +31,17 @@ function createPublicServerClient() {
 
 async function loadPublicStorefront(slug: string): Promise<InitialStorefrontData | null> {
   const supabase = createPublicServerClient();
-  const { data: restaurant, error: restaurantError } = await supabase
-    .from("public_restaurants")
-    .select("*")
-    .eq("slug", slug)
-    .maybeSingle();
+  const { data, error } = await supabase.rpc("get_public_storefront_bundle", {
+    p_slug: slug,
+  });
 
-  if (restaurantError) {
-    throw new Error(`Falha ao carregar restaurante publico: ${restaurantError.message}`);
+  if (error) {
+    throw new Error(`Falha ao carregar vitrine publica: ${error.message}`);
   }
 
+  const bundle = data as PublicStorefrontBundle | null;
+  const restaurant = bundle?.restaurant ?? null;
   if (!restaurant) return null;
-
-  const [categoriesResult, productsResult] = await Promise.all([
-    supabase
-      .from("categories")
-      .select("*")
-      .eq("restaurant_id", restaurant.id)
-      .eq("is_active", true)
-      .order("order"),
-    supabase
-      .from("public_storefront_products")
-      .select("*")
-      .eq("restaurant_id", restaurant.id),
-  ]);
-
-  if (categoriesResult.error) {
-    throw new Error(`Falha ao carregar categorias publicas: ${categoriesResult.error.message}`);
-  }
-
-  if (productsResult.error) {
-    throw new Error(`Falha ao carregar produtos publicos: ${productsResult.error.message}`);
-  }
 
   const banners = Array.isArray(restaurant.banners)
     ? restaurant.banners.filter(
@@ -68,8 +53,8 @@ async function loadPublicStorefront(slug: string): Promise<InitialStorefrontData
     ...DEFAULT_STOREFRONT_THEME,
     ...((restaurant.storefront_theme || {}) as Partial<StorefrontTheme>),
   };
-  const categories = categoriesResult.data ?? [];
-  const products = (productsResult.data ?? []) as Product[];
+  const categories = Array.isArray(bundle?.categories) ? bundle.categories : [];
+  const products = (Array.isArray(bundle?.products) ? bundle.products : []) as Product[];
 
   return {
     restaurant,
@@ -86,7 +71,7 @@ async function loadPublicStorefront(slug: string): Promise<InitialStorefrontData
 
 const getCachedPublicStorefront = unstable_cache(
   async (slug: string) => loadPublicStorefront(slug),
-  ["public-storefront-v1"],
+  ["public-storefront-v2"],
   { revalidate: 60 },
 );
 
