@@ -88,6 +88,17 @@ test("source map upload stays optional when Sentry build credentials are absent"
   assert.match(config, /:\s*nextConfig/);
 });
 
+test("separates preview and production telemetry in the browser", () => {
+  const config = read("next.config.mjs");
+  const client = read("src/instrumentation-client.ts");
+
+  assert.match(config, /NEXT_PUBLIC_APP_ENVIRONMENT:\s*process\.env\.VERCEL_ENV/);
+  assert.match(config, /NEXT_PUBLIC_APP_RELEASE:\s*process\.env\.VERCEL_GIT_COMMIT_SHA/);
+  assert.match(client, /environment:\s*process\.env\.NEXT_PUBLIC_APP_ENVIRONMENT/);
+  assert.match(client, /release:\s*process\.env\.NEXT_PUBLIC_APP_RELEASE/);
+  assert.doesNotMatch(client, /NEXT_PUBLIC_VERCEL_ENV/);
+});
+
 test("documents runtime sampling, activation, privacy and alert policy", () => {
   const env = read(".env.example");
   const runbook = read("docs/operations/external-observability.md");
