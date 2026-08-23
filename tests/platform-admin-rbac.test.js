@@ -166,13 +166,19 @@ test("audit log cobre mudanças de loja e de RBAC", () => {
   assert.match(hardening, /platform_member\.update/);
 });
 
-test("frontend consulta o acesso server-side e oferece arquivo restauração e auditoria", () => {
+test("frontend recebe acesso server-side agrupado e oferece arquivo restauração e auditoria", () => {
   const sidebar = read("src/components/admin-sidebar.tsx");
   const layout = read("src/app/admin/(painel)/layout.tsx");
+  const contextRoute = read("src/app/api/admin/context/route.ts");
   const page = read("src/app/admin/(painel)/platform/page.tsx");
 
-  assert.match(sidebar, /fetch\(["']\/api\/platform\/access/);
+  assert.match(layout, /fetch\(["']\/api\/admin\/context/);
+  assert.match(layout, /context\.platformAccess/);
+  assert.match(sidebar, /canAccessPlatform:\s*boolean/);
+  assert.doesNotMatch(sidebar, /fetch\(["']\/api\/platform\/access/);
   assert.doesNotMatch(sidebar, /user\?\.email/);
+  assert.match(contextRoute, /supabase\.auth\.getUser\(\)/);
+  assert.match(contextRoute, /get_admin_navigation_context_admin/);
   assert.match(layout, /pathname\.startsWith\(["']\/admin\/platform["']\)/);
   assert.match(page, /Lojas/);
   assert.match(page, /Equipe/);
