@@ -53,6 +53,7 @@ for (const file of files) {
     /getUser\s*\(/,
     /requireAuthenticatedUser\s*\(/,
     /requireRestaurantAccess\s*\(/,
+    /requirePlatformPermission\s*\(/,
   ]);
   const resolvesRestaurant = hasAny(source, [
     /\.eq\(\s*["']user_id["']/,
@@ -62,6 +63,7 @@ for (const file of files) {
     /restaurant\.id/,
     /restaurantId/,
     /order\.restaurant_id/,
+    /get_admin_navigation_context_admin/,
   ]);
   const hasPublicProtection = hasAny(source, [
     /checkRateLimit\s*\(/,
@@ -73,7 +75,7 @@ for (const file of files) {
     /secret/i,
   ]);
   const hasCronProtection = /CRON_SECRET/.test(source) && /isAuthorized\s*\(/.test(source);
-  const hasPlatformProtection = authenticatesUser && /isPlatformAdminEmail\s*\(/.test(source);
+  const hasPlatformProtection = /requirePlatformPermission\s*\(/.test(source);
 
   let classification = "library";
   let safe = true;
@@ -88,7 +90,7 @@ for (const file of files) {
       classification = "platform-admin-route";
       safe = hasPlatformProtection;
       if (!authenticatesUser) reasons.push("rota de plataforma sem autenticação detectável");
-      if (!/isPlatformAdminEmail\s*\(/.test(source)) reasons.push("rota de plataforma sem autorização de administrador");
+      if (!hasPlatformProtection) reasons.push("rota de plataforma sem requirePlatformPermission detectável");
     } else if (isPublicRoute) {
       classification = "public-route";
       safe = hasPublicProtection && resolvesRestaurant;

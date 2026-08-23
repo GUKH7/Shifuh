@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
@@ -20,7 +19,6 @@ import {
   UtensilsCrossed,
   X,
 } from "lucide-react";
-import { getCurrentRestaurant } from "@/lib/supabase/restaurant";
 
 const MENU_ITEMS = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
@@ -38,6 +36,8 @@ interface AdminSidebarProps {
   isMobileOpen: boolean;
   toggleSidebar: () => void;
   closeMobileSidebar: () => void;
+  storeSlug: string;
+  canAccessPlatform: boolean;
 }
 
 export default function AdminSidebar({
@@ -45,36 +45,15 @@ export default function AdminSidebar({
   isMobileOpen,
   toggleSidebar,
   closeMobileSidebar,
+  storeSlug,
+  canAccessPlatform,
 }: AdminSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const [storeSlug, setStoreSlug] = useState("");
-  const [canAccessPlatform, setCanAccessPlatform] = useState(false);
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   );
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const loadNavigationContext = async () => {
-      const [{ restaurant }, platformResponse] = await Promise.all([
-        getCurrentRestaurant(supabase),
-        fetch("/api/platform/access", { cache: "no-store" }).catch(() => null),
-      ]);
-
-      if (!isMounted) return;
-      if (restaurant?.slug) setStoreSlug(restaurant.slug);
-      setCanAccessPlatform(Boolean(platformResponse?.ok));
-    };
-
-    void loadNavigationContext();
-    return () => {
-      isMounted = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
