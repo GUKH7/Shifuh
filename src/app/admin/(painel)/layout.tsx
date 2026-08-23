@@ -1,13 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { createBrowserClient } from "@supabase/ssr";
 import { usePathname, useRouter } from "next/navigation";
 import { Menu, Search } from "lucide-react";
 import AdminSidebar from "@/components/admin-sidebar";
 import { AdminHeaderActions } from "@/components/admin-header-actions";
 import { AdminSkeleton } from "@/components/ui/admin-primitives";
-import { getRestaurantByUserId } from "@/lib/supabase/restaurant";
 import "./admin-responsive.css";
 import "./admin-logo-radius.css";
 
@@ -24,7 +22,10 @@ const ADMIN_SEARCH_ITEMS = [
   { label: "Admin da plataforma", href: "/admin/platform", keywords: ["plataforma", "lojas", "rbac", "auditoria"] },
 ];
 
-type BrowserSupabaseClient = ReturnType<typeof createBrowserClient>;
+type AdminNavigationContext = {
+  restaurant: { id: string; slug: string } | null;
+  platformAccess: { role: string } | null;
+};
 
 function AdminGuardSkeleton() {
   return (
@@ -60,17 +61,11 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isGuardLoading, setIsGuardLoading] = useState(true);
+  const [storeSlug, setStoreSlug] = useState("");
+  const [canAccessPlatform, setCanAccessPlatform] = useState(false);
   const [panelSearch, setPanelSearch] = useState("");
-  const [supabase, setSupabase] = useState<BrowserSupabaseClient | null>(null);
   const router = useRouter();
   const pathname = usePathname();
-
-  useEffect(() => {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    if (!supabaseUrl || !supabaseAnonKey) return;
-    setSupabase(createBrowserClient(supabaseUrl, supabaseAnonKey));
-  }, []);
 
   useEffect(() => {
     const savedState = window.localStorage.getItem("admin-sidebar-collapsed");
@@ -97,36 +92,37 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
   }, [isMobileSidebarOpen]);
 
   useEffect(() => {
-    if (!supabase) return;
     let isMounted = true;
-    const client = supabase;
 
     const guardAdminAccess = async () => {
+      setIsGuardLoading(true);
       try {
-        const {
-          data: { user },
-        } = await client.auth.getUser();
+        const response = await fetch("/api/admin/context", { cache: "no-store" });
 
-        if (!user) {
+        if (response.status === 401) {
           router.replace("/admin/login");
           return;
         }
 
-        const isPlatformPage = pathname.startsWith("/admin/platform");
-        if (isPlatformPage) {
-          const platformResponse = await fetch("/api/platform/access", { cache: "no-store" }).catch(
-            () => null,
-          );
-          if (platformResponse?.ok) return;
-          if (platformResponse?.status === 401) {
-            router.replace("/admin/login");
-            return;
-          }
+        if (!response.ok) {
+          throw new Error(`Falha ao carregar contexto administrativo (${response.status})`);
         }
 
-        const { restaurant } = await getRestaurantByUserId(client, user.id);
-        const isSetupPage = pathname === "/admin/setup";
+        const context = (await response.json()) as AdminNavigationContext;
+        if (!isMounted) return;
 
+        const restaurant = context.restaurant ?? null;
+        const hasPlatformAccess = Boolean(context.platformAccess);
+        setStoreSlug(restaurant?.slug ?? "");
+        setCanAccessPlatform(hasPlatformAccess);
+
+        const isPlatformPage = pathname.startsWith("/admin/platform");
+        if (isPlatformPage) {
+          if (!hasPlatformAccess) router.replace("/admin");
+          return;
+        }
+
+        const isSetupPage = pathname === "/admin/setup";
         if (!restaurant && !isSetupPage) {
           router.replace("/admin/setup");
           return;
@@ -134,8 +130,9 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
 
         if (restaurant && isSetupPage) {
           router.replace("/admin");
-          return;
         }
+      } catch (error) {
+        console.error("Falha no guard administrativo:", error);
       } finally {
         if (isMounted) setIsGuardLoading(false);
       }
@@ -145,7 +142,7 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
     return () => {
       isMounted = false;
     };
-  }, [pathname, router, supabase]);
+  }, [pathname, router]);
 
   const toggleSidebar = () => {
     setIsCollapsed((current) => {
@@ -177,6 +174,8 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
         isMobileOpen={isMobileSidebarOpen}
         toggleSidebar={toggleSidebar}
         closeMobileSidebar={() => setIsMobileSidebarOpen(false)}
+        storeSlug={storeSlug}
+        canAccessPlatform={canAccessPlatform}
       />
 
       {isMobileSidebarOpen && (
