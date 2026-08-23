@@ -12,6 +12,7 @@ const adminSidebar = read("src/components/admin-sidebar.tsx");
 const adminContextRoute = read("src/app/api/admin/context/route.ts");
 const restaurantHelper = read("src/lib/supabase/restaurant.ts");
 const migration = read("supabase/migrations/20260823131000_latency_context_bundles.sql");
+const vercelConfig = JSON.parse(read("vercel.json"));
 
 test("storefront SSR uses one bundled database RPC", () => {
   assert.equal((serverData.match(/\.rpc\(/g) || []).length, 1);
@@ -62,4 +63,8 @@ test("latency RPCs preserve least privilege", () => {
     migration,
     /grant execute on function public\.get_admin_navigation_context_admin\(uuid\)[\s\S]*to service_role;/s,
   );
+});
+
+test("Vercel functions run in one region adjacent to Supabase Oregon", () => {
+  assert.deepEqual(vercelConfig.regions, ["pdx1"]);
 });
