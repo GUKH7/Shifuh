@@ -49,7 +49,7 @@ export async function POST(request: Request) {
     let matchedUser: { id: string; email?: string } | null = null;
     let page = 1;
 
-    while (!matchedUser && page <= 10) {
+    while (!matchedUser) {
       const { data: usersData, error: usersError } = await guard.admin.auth.admin.listUsers({
         page,
         perPage: 100,
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
 
       const user = usersData.users.find((candidate) => candidate.email?.toLowerCase() === email);
       if (user) matchedUser = { id: user.id, email: user.email };
-      if (usersData.users.length < 100) break;
+      if (matchedUser || usersData.users.length < 100) break;
       page += 1;
     }
 
