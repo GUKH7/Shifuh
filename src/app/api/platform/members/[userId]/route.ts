@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
-import {
-  isPlatformRole,
-  requirePlatformPermission,
-  writePlatformAuditLog,
-} from "@/lib/platform-admin";
+import { isPlatformRole, requirePlatformPermission } from "@/lib/platform-admin";
 import { readJsonObject, validationErrorResponse } from "@/lib/api/validation";
 
 type Params = {
   params: Promise<{ userId: string }>;
+};
+
+type PlatformMemberUpdateResult = {
+  status: "updated" | "not_found" | "last_owner";
+  role: string | null;
+  is_active: boolean | null;
 };
 
 export async function PATCH(request: Request, context: Params) {
@@ -29,62 +31,33 @@ export async function PATCH(request: Request, context: Params) {
       return NextResponse.json({ error: "Role da plataforma inválida." }, { status: 400 });
     }
 
-    const { data: current, error: currentError } = await guard.admin
-      .from("platform_members")
-      .select("user_id, role, is_active, updated_at")
-      .eq("user_id", userId)
-      .maybeSingle();
+    const { data, error } = await (guard.admin as any).rpc("update_platform_member_admin", {
+      p_user_id: userId,
+      p_role: requestedRole ?? null,
+      p_is_active: requestedActive ?? null,
+      p_actor_user_id: guard.user.id,
+      p_actor_role: guard.access.role,
+    });
 
-    if (currentError) throw currentError;
-    if (!current) return NextResponse.json({ error: "Membro não encontrado." }, { status: 404 });
+    if (error) throw error;
 
-    const nextRole = requestedRole ?? current.role;
-    const nextActive = requestedActive ?? current.is_active;
-    const removesOwner = current.role === "owner" && current.is_active && (nextRole !== "owner" || !nextActive);
-
-    if (removesOwner) {
-      const { count, error: ownerCountError } = await guard.admin
-        .from("platform_members")
-        .select("user_id", { count: "exact", head: true })
-        .eq("role", "owner")
-        .eq("is_active", true);
-
-      if (ownerCountError) throw ownerCountError;
-      if ((count ?? 0) <= 1) {
-        return NextResponse.json(
-          { error: "A plataforma precisa manter pelo menos um owner ativo." },
-          { status: 409 },
-        );
-      }
+    const result = (Array.isArray(data) ? data[0] : data) as PlatformMemberUpdateResult | null;
+    if (!result || result.status === "not_found") {
+      return NextResponse.json({ error: "Membro não encontrado." }, { status: 404 });
     }
 
-    const updatedAt = new Date().toISOString();
-    const { error: updateError } = await guard.admin
-      .from("platform_members")
-      .update({ role: nextRole, is_active: nextActive, updated_at: updatedAt })
-      .eq("user_id", userId);
-
-    if (updateError) throw updateError;
-
-    try {
-      await writePlatformAuditLog(guard.admin, guard.access, {
-        action: "platform_member.update",
-        targetType: "platform_member",
-        targetId: userId,
-        metadata: {
-          before: { role: current.role, is_active: current.is_active },
-          after: { role: nextRole, is_active: nextActive },
-        },
-      });
-    } catch (auditError) {
-      await guard.admin
-        .from("platform_members")
-        .update({ role: current.role, is_active: current.is_active, updated_at: current.updated_at })
-        .eq("user_id", userId);
-      throw auditError;
+    if (result.status === "last_owner") {
+      return NextResponse.json(
+        { error: "A plataforma precisa manter pelo menos um owner ativo." },
+        { status: 409 },
+      );
     }
 
-    return NextResponse.json({ ok: true, role: nextRole, is_active: nextActive });
+    if (result.status !== "updated" || !result.role || typeof result.is_active !== "boolean") {
+      throw new Error("Resultado inválido ao atualizar membro da plataforma.");
+    }
+
+    return NextResponse.json({ ok: true, role: result.role, is_active: result.is_active });
   } catch (error) {
     const validationResponse = validationErrorResponse(error);
     if (validationResponse) return validationResponse;
