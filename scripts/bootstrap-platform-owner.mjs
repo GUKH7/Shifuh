@@ -18,26 +18,14 @@ const supabase = createClient(supabaseUrl, serviceRoleKey, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
-const { count: activeOwners, error: ownerCountError } = await supabase
-  .from("platform_members")
-  .select("user_id", { count: "exact", head: true })
-  .eq("role", "owner")
-  .eq("is_active", true);
-
-if (ownerCountError) throw ownerCountError;
-if ((activeOwners ?? 0) > 0) {
-  console.error("Bootstrap recusado: já existe um owner ativo da plataforma.");
-  process.exit(1);
-}
-
 let matchedUser = null;
 let page = 1;
-while (!matchedUser && page <= 10) {
+while (!matchedUser) {
   const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 100 });
   if (error) throw error;
 
   matchedUser = data.users.find((user) => user.email?.toLowerCase() === email) ?? null;
-  if (data.users.length < 100) break;
+  if (matchedUser || data.users.length < 100) break;
   page += 1;
 }
 
@@ -46,29 +34,24 @@ if (!matchedUser) {
   process.exit(1);
 }
 
-const now = new Date().toISOString();
-const { error: insertError } = await supabase.from("platform_members").insert({
-  user_id: matchedUser.id,
-  role: "owner",
-  is_active: true,
-  created_by: matchedUser.id,
-  created_at: now,
-  updated_at: now,
-});
-if (insertError) throw insertError;
+const { data: status, error: bootstrapError } = await supabase.rpc(
+  "bootstrap_platform_owner_admin",
+  { p_user_id: matchedUser.id },
+);
+if (bootstrapError) throw bootstrapError;
 
-const { error: auditError } = await supabase.from("platform_audit_log").insert({
-  actor_user_id: matchedUser.id,
-  actor_role: "owner",
-  action: "platform_owner.bootstrap",
-  target_type: "platform_member",
-  target_id: matchedUser.id,
-  metadata: { provisioned_by: "bootstrap-script" },
-});
+if (status === "already_initialized") {
+  console.error("Bootstrap recusado: já existe um owner ativo da plataforma.");
+  process.exit(1);
+}
 
-if (auditError) {
-  await supabase.from("platform_members").delete().eq("user_id", matchedUser.id);
-  throw auditError;
+if (status === "user_not_found") {
+  console.error("Bootstrap recusado: o usuário autenticado não existe mais.");
+  process.exit(1);
+}
+
+if (status !== "created") {
+  throw new Error("Resultado inválido ao provisionar o owner inicial da plataforma.");
 }
 
 console.log("Owner inicial da plataforma provisionado com sucesso.");
