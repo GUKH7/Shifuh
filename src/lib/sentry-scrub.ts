@@ -15,7 +15,7 @@ function stripUrlQuery(value: string) {
     url.hash = "";
 
     if (url.origin === "https://telemetry.invalid") {
-      return `${url.pathname}`;
+      return url.pathname;
     }
 
     return url.toString();
@@ -69,6 +69,48 @@ function sanitizeUnknown(value: unknown, key = "", depth = 0): unknown {
   return String(value).slice(0, MAX_STRING_LENGTH);
 }
 
+function scrubBreadcrumbs(value: unknown) {
+  if (!Array.isArray(value)) return value;
+
+  return value.slice(0, 100).map((breadcrumb) => {
+    if (!breadcrumb || typeof breadcrumb !== "object") return breadcrumb;
+
+    const mutable = { ...(breadcrumb as Record<string, unknown>) };
+    if (typeof mutable.message === "string") {
+      mutable.message = redactTelemetryString(mutable.message);
+    }
+    if (mutable.data && typeof mutable.data === "object") {
+      mutable.data = sanitizeUnknown(mutable.data, "data");
+    }
+    return mutable;
+  });
+}
+
+function scrubExceptions(value: unknown) {
+  if (!value || typeof value !== "object") return;
+  const exception = value as Record<string, unknown>;
+  if (!Array.isArray(exception.values)) return;
+
+  exception.values = exception.values.map((item) => {
+    if (!item || typeof item !== "object") return item;
+    const mutable = { ...(item as Record<string, unknown>) };
+
+    if (typeof mutable.value === "string") {
+      mutable.value = redactTelemetryString(mutable.value);
+    }
+
+    if (mutable.mechanism && typeof mutable.mechanism === "object") {
+      const mechanism = { ...(mutable.mechanism as Record<string, unknown>) };
+      if (mechanism.data && typeof mechanism.data === "object") {
+        mechanism.data = sanitizeUnknown(mechanism.data, "data");
+      }
+      mutable.mechanism = mechanism;
+    }
+
+    return mutable;
+  });
+}
+
 export function sanitizeTelemetryContext(
   context: Record<string, unknown>,
 ): Record<string, SafeTelemetryValue> {
@@ -105,6 +147,9 @@ export function scrubSentryEvent(event: unknown) {
   if (typeof mutable.message === "string") {
     mutable.message = redactTelemetryString(mutable.message);
   }
+  if (typeof mutable.transaction === "string") {
+    mutable.transaction = stripUrlQuery(redactTelemetryString(mutable.transaction));
+  }
 
   const request = mutable.request;
   if (request && typeof request === "object") {
@@ -124,11 +169,22 @@ export function scrubSentryEvent(event: unknown) {
     mutable.user = id === undefined || id === null ? undefined : { id: String(id) };
   }
 
-  for (const key of ["extra", "contexts", "tags", "breadcrumbs", "spans", "exception"]) {
+  for (const key of ["extra", "contexts", "tags"]) {
     if (mutable[key] !== undefined) {
       mutable[key] = sanitizeUnknown(mutable[key], key);
     }
   }
+
+  if (mutable.breadcrumbs !== undefined) {
+    mutable.breadcrumbs = scrubBreadcrumbs(mutable.breadcrumbs);
+  }
+
+  if (mutable.exception !== undefined) {
+    scrubExceptions(mutable.exception);
+  }
+
+  // Stack frames and transaction spans are intentionally preserved so traces remain usable.
+  // Potentially sensitive request/context payloads are scrubbed above instead.
 }
 
 export function parseTelemetrySampleRate(value: string | undefined, fallback: number) {
