@@ -45,7 +45,7 @@ Build/source maps:
 
 O token de autenticação é segredo de build e nunca deve usar o prefixo `NEXT_PUBLIC_`.
 
-Separar Preview e Production no campo `environment` é automático via `VERCEL_ENV`/`NEXT_PUBLIC_VERCEL_ENV` quando disponível.
+`next.config.mjs` injeta no bundle do browser o `VERCEL_ENV` como `NEXT_PUBLIC_APP_ENVIRONMENT` e o SHA do deployment como `NEXT_PUBLIC_APP_RELEASE`. Isso impede que Preview seja classificado como Production apenas porque ambos são builds com `NODE_ENV=production`.
 
 ## Conectar Sentry e Vercel
 
@@ -98,9 +98,9 @@ Não definir SLO/p95 arbitrário antes de observar pelo menos alguns dias de pro
 
 Defaults do código quando nenhuma variável é fornecida:
 
-- server/edge em Production: 10%;
-- browser em Production: 5%;
-- desenvolvimento/preview local: 100% enquanto houver DSN.
+- server/edge em builds com `NODE_ENV=production`: 10%;
+- browser em builds com `NODE_ENV=production`: 5%;
+- desenvolvimento local: 100% enquanto houver DSN.
 
 Os valores são limitados entre `0` e `1`.
 
