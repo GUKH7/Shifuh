@@ -218,18 +218,55 @@ export async function POST(request: Request) {
     }
 
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
     const adminSupabase = createAdminClient();
-    const { data: restaurant, error: restaurantError } = await (adminSupabase as any)
+    const productIds = cart.map((item) => item.productId).filter(Boolean);
+    const uniqueProductIds = [...new Set(productIds)];
+    const couponCode = body.couponCode?.trim().toUpperCase() || null;
+
+    const userPromise = supabase.auth.getUser();
+    const restaurantPromise = (adminSupabase as any)
       .from("restaurants")
       .select(
         "id, name, phone, whatsapp_number, latitude, longitude, address_zip, address_street, address_number, address_neighborhood, address_city, address_state, delivery_tiers, delivery_rules, work_hours, minimum_order_amount, scheduled_orders_enabled, scheduled_order_lead_minutes, pickup_enabled, accepted_payment_methods",
       )
       .eq("id", body.restaurantId)
       .maybeSingle();
+    const productsPromise = (adminSupabase as any)
+      .from("products")
+      .select("id, name, price, is_active, restaurant_id, addons")
+      .eq("restaurant_id", body.restaurantId)
+      .in("id", uniqueProductIds);
+    const couponPromise = couponCode
+      ? (adminSupabase as any)
+          .from("coupons")
+          .select("*")
+          .eq("restaurant_id", body.restaurantId)
+          .eq("code", couponCode)
+          .eq("active", true)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null });
+    const couponUsagePromise = couponCode
+      ? (adminSupabase as any)
+          .from("orders")
+          .select("id", { count: "exact", head: true })
+          .eq("restaurant_id", body.restaurantId)
+          .eq("coupon_code", couponCode)
+      : Promise.resolve({ data: null, count: 0, error: null });
+
+    const [userResult, restaurantResult, productsResult, couponResult, couponUsageResult] =
+      await Promise.all([
+        userPromise,
+        restaurantPromise,
+        productsPromise,
+        couponPromise,
+        couponUsagePromise,
+      ]);
+
+    const user = userResult.data.user;
+    const { data: restaurant, error: restaurantError } = restaurantResult;
+    const { data: products, error: productsError } = productsResult;
+    const { data: coupon, error: couponError } = couponResult;
+    const couponUsageCount = couponUsageResult.count || 0;
 
     if (restaurantError || !restaurant) {
       return NextResponse.json({ error: "Loja não encontrada." }, { status: 404 });
@@ -304,13 +341,6 @@ export async function POST(request: Request) {
       );
     }
 
-    const productIds = cart.map((item) => item.productId).filter(Boolean);
-    const { data: products, error: productsError } = await adminSupabase
-      .from("products")
-      .select("id, name, price, is_active, restaurant_id, addons")
-      .eq("restaurant_id", restaurant.id)
-      .in("id", productIds);
-
     if (productsError || !products) {
       return NextResponse.json(
         {
@@ -321,9 +351,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const productsById = new Map(products.map((product) => [product.id, product]));
-    const unavailableProductIds = [...new Set(productIds)].filter((productId) => {
-      const product = productsById.get(productId);
+    const productsById = new Map(products.map((product: any) => [product.id, product]));
+    const unavailableProductIds = uniqueProductIds.filter((productId) => {
+      const product = productsById.get(productId) as any;
       return !product || !product.is_active;
     });
 
@@ -351,7 +381,7 @@ export async function POST(request: Request) {
 
     for (const item of cart) {
       const quantity = Math.max(1, Math.floor(Number(item.quantity) || 1));
-      const product = productsById.get(item.productId);
+      const product = productsById.get(item.productId) as any;
 
       if (!product) continue;
 
@@ -392,16 +422,7 @@ export async function POST(request: Request) {
     let discount = 0;
     let appliedCouponCode: string | null = null;
 
-    if (body.couponCode?.trim()) {
-      const couponCode = body.couponCode.trim().toUpperCase();
-      const { data: coupon, error: couponError } = await (adminSupabase as any)
-        .from("coupons")
-        .select("*")
-        .eq("restaurant_id", restaurant.id)
-        .eq("code", couponCode)
-        .eq("active", true)
-        .maybeSingle();
-
+    if (couponCode) {
       if (couponError || !coupon) {
         return NextResponse.json({ error: "Cupom inválido." }, { status: 400 });
       }
@@ -410,19 +431,11 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Este cupom expirou." }, { status: 400 });
       }
 
-      if (coupon.usage_limit) {
-        const { count } = await adminSupabase
-          .from("orders")
-          .select("id", { count: "exact", head: true })
-          .eq("restaurant_id", restaurant.id)
-          .eq("coupon_code", coupon.code);
-
-        if ((count || 0) >= Number(coupon.usage_limit)) {
-          return NextResponse.json(
-            { error: "Este cupom atingiu o limite de uso." },
-            { status: 400 },
-          );
-        }
+      if (coupon.usage_limit && couponUsageCount >= Number(coupon.usage_limit)) {
+        return NextResponse.json(
+          { error: "Este cupom atingiu o limite de uso." },
+          { status: 400 },
+        );
       }
 
       appliedCouponCode = coupon.code;
@@ -535,25 +548,31 @@ export async function POST(request: Request) {
 
     if (hasCurrentUser(user)) {
       try {
-        await (supabase as any).from("profiles").upsert({
-          id: user!.id,
-          name: body.customerName.trim(),
-          phone: phoneDigits,
-          updated_at: new Date().toISOString(),
-        });
+        const profileSyncs: Array<Promise<unknown>> = [
+          (supabase as any).from("profiles").upsert({
+            id: user!.id,
+            name: body.customerName.trim(),
+            phone: phoneDigits,
+            updated_at: new Date().toISOString(),
+          }),
+        ];
 
         if (body.saveAddress === true && !body.usingSavedAddress && fulfillmentType === "delivery") {
-          await (supabase as any).from("customer_addresses").insert({
-            user_id: user!.id,
-            cep: address.cep,
-            street: address.street,
-            number: address.number,
-            neighborhood: address.neighborhood,
-            city: address.city,
-            state: address.state,
-            complement: address.complement,
-          });
+          profileSyncs.push(
+            (supabase as any).from("customer_addresses").insert({
+              user_id: user!.id,
+              cep: address.cep,
+              street: address.street,
+              number: address.number,
+              neighborhood: address.neighborhood,
+              city: address.city,
+              state: address.state,
+              complement: address.complement,
+            }),
+          );
         }
+
+        await Promise.all(profileSyncs);
       } catch (profileError) {
         console.error("Falha ao sincronizar perfil/endereço do cliente:", profileError);
       }
