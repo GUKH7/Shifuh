@@ -9,11 +9,6 @@
   clip-path: none !important;
 }
 
-.scope div:has(> img[alt^="Banner da "]) {
-  height: auto !important;
-  aspect-ratio: 16 / 7;
-}
-
 .scope h1[class~="truncate"] {
   min-width: 0;
   flex: 1 1 auto;
@@ -28,6 +23,11 @@
 }
 
 @media (max-width: 639px) {
+  .scope div:has(> img[alt^="Banner da "]) {
+    height: auto !important;
+    aspect-ratio: 16 / 7;
+  }
+
   .scope > div[class~="min-h-screen"] {
     padding-bottom: calc(7rem + env(safe-area-inset-bottom));
   }
