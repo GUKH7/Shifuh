@@ -1,0 +1,17 @@
+@media (max-width: 359px) {
+  nav a[aria-label="Shifuh - início"] {
+    overflow: hidden;
+  }
+
+  nav a[aria-label="Shifuh - início"] > div {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  nav a[aria-label="Shifuh - início"] > div > span:first-child {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
