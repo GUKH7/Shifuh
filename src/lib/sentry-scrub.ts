@@ -1,7 +1,9 @@
 const SENSITIVE_KEY_PATTERN = /(?:authorization|cookie|set-cookie|password|passwd|token|secret|api[_-]?key|customer.*(?:name|phone|email|address)|phone|email|address|cep|cpf|cnpj|observation|notes?)/i;
 const URL_KEY_PATTERN = /(?:^|[._-])(?:url|uri|href)(?:$|[._-])/i;
 const EMAIL_PATTERN = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
-const PHONE_PATTERN = /\b(?:\+?55\s*)?(?:\(?\d{2}\)?[\s.-]?)?9?\d{4}[\s.-]?\d{4}\b/g;
+// Evita tratar identificadores numéricos genéricos de 8 dígitos como telefone.
+// Celulares de 9 dígitos continuam protegidos; fixos de 8 dígitos exigem DDD ou separador.
+const PHONE_PATTERN = /(?<!\d)(?:(?:\+?55[\s.-]?)?(?:\(?\d{2}\)?[\s.-]?)?9\d{4}[\s.-]?\d{4}|(?:\+?55[\s.-]?)?(?:\(?\d{2}\)?[\s.-]?)\d{4}[\s.-]?\d{4}|\d{4}[\s.-]\d{4})(?!\d)/g;
 const JWT_PATTERN = /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g;
 const MAX_STRING_LENGTH = 1_000;
 const MAX_DEPTH = 5;
