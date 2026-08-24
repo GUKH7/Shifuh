@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
@@ -81,11 +82,16 @@ export default function AdminSidebar({
 
       <div className="flex h-16 shrink-0 items-center justify-between px-4 sm:h-20 lg:px-5">
         <div className={`flex items-center gap-3 ${isCollapsed ? "lg:justify-center" : ""}`}>
-          <div className="brand-gradient flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white shadow-sm">
-            <Store size={17} />
-          </div>
+          <Image
+            src="/brand/shifuh-icon.svg"
+            alt="Símbolo Shifuh"
+            width={36}
+            height={36}
+            priority
+            className="h-9 w-9 shrink-0 object-contain"
+          />
           <div className={desktopLabelVisibility}>
-            <p className="text-base font-black tracking-tight text-gray-950">SHIFUH</p>
+            <p className="font-brand text-base font-semibold tracking-tight text-gray-950">SHIFUH</p>
             <p className="text-[11px] text-gray-500">Portal da loja</p>
           </div>
         </div>
