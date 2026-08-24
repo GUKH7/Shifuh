@@ -49,7 +49,7 @@ Os itens abaixo nao sao exibidos ao cliente e nao devem ser renomeados no mesmo 
 - repositorio GitHub `GUKH7/gestor_delivery`;
 - projeto Vercel `gestor-delivery` e aliases tecnicos gerados pela Vercel;
 - `package.json`/`package-lock.json` com package name `gestor-delivery`;
-- nomes historicos de resources externos que possam ser referenciados por CI, webhooks, scripts ou dashboards.
+- nomes historicos de recursos externos que possam ser referenciados por CI, webhooks, scripts ou dashboards.
 
 A regra e migrar esses identificadores em etapas separadas, mantendo redirects/aliases quando o provedor permitir. Nomes historicos de migrations tambem permanecem imutaveis para preservar a sequencia do banco.
 
