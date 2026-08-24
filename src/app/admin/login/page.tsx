@@ -136,18 +136,22 @@ export default function AdminLogin() {
     <div className="min-h-screen bg-[#f6f1ea]">
       <div className="mx-auto grid min-h-screen max-w-6xl items-center gap-10 px-6 py-10 lg:grid-cols-[0.95fr_1.05fr]">
         <div className="hidden lg:block">
-          <div className="inline-flex items-center gap-3">
+          <div className="inline-flex items-center gap-4">
             <Image
               src="/brand/shifuh-icon.svg"
               alt="Símbolo Shifuh"
-              width={44}
-              height={44}
+              width={60}
+              height={60}
               priority
-              className="h-11 w-11 object-contain"
+              className="h-[60px] w-[60px] shrink-0 object-contain"
             />
-            <div>
-              <span className="font-brand block text-2xl font-semibold leading-none tracking-tight text-gray-950">SHIFUH</span>
-              <span className="mt-1 block text-[10px] font-medium text-gray-500">Você mestre do seu delivery</span>
+            <div className="min-w-0">
+              <span className="font-brand block text-[2.35rem] font-semibold leading-[0.9] tracking-[-0.025em] text-gray-950">
+                SHIFUH
+              </span>
+              <span className="mt-2 block text-[12.5px] font-medium leading-none tracking-[-0.01em] text-gray-500">
+                Você mestre do seu delivery
+              </span>
             </div>
           </div>
           <h1 className="mt-8 max-w-xl text-6xl font-black leading-[0.95] tracking-[-0.05em] text-gray-950">
@@ -171,12 +175,13 @@ export default function AdminLogin() {
             <Image
               src="/brand/shifuh-icon.svg"
               alt="Símbolo Shifuh"
-              width={52}
-              height={52}
+              width={56}
+              height={56}
               priority
-              className="mx-auto h-13 w-13 object-contain"
+              className="mx-auto h-14 w-14 object-contain"
             />
-            <p className="font-brand mt-4 text-2xl font-semibold tracking-tight text-gray-950">SHIFUH</p>
+            <p className="font-brand mt-4 text-[1.9rem] font-semibold leading-none tracking-tight text-gray-950">SHIFUH</p>
+            <p className="mt-2 text-[11px] font-medium text-gray-500">Você mestre do seu delivery</p>
           </div>
 
           <div>
