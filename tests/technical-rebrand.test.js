@@ -15,7 +15,7 @@ test("uses Shifuh as the canonical public brand and domain", () => {
   assert.match(brand, /name:\s*"Shifuh"/);
   assert.match(brand, /siteUrl:\s*"https:\/\/www\.shifuh\.com\.br"/);
   assert.match(layout, /metadataBase:\s*new URL\(SHIFUH_BRAND\.siteUrl\)/);
-  assert.match(layout, /canonical:\s*"\/"/);
+  assert.match(storefrontLayout, /canonical:\s*canonicalUrl/);
   assert.match(storefrontLayout, /SHIFUH_BRAND\.siteUrl/);
   assert.match(env, /APP_BASE_URL=https:\/\/www\.shifuh\.com\.br/);
 });

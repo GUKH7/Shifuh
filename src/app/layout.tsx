@@ -22,14 +22,8 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(SHIFUH_BRAND.siteUrl),
   applicationName: SHIFUH_BRAND.name,
-  title: {
-    default: SHIFUH_BRAND.name,
-    template: `%s | ${SHIFUH_BRAND.name}`,
-  },
+  title: SHIFUH_BRAND.name,
   description: SHIFUH_BRAND.description,
-  alternates: {
-    canonical: "/",
-  },
   openGraph: {
     type: "website",
     locale: "pt_BR",

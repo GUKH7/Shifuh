@@ -34,7 +34,7 @@ test("HTML inicial usa dados do servidor em vez de esperar fetch client-side", (
 
 test("metadata e Open Graph sao especificos por restaurante", () => {
   assert.match(layout, /export async function generateMetadata/);
-  assert.match(layout, /const title = `\$\{restaurant\.name\} \| Shifuh`/);
+  assert.match(layout, /const title = `\$\{restaurant\.name\} \| \$\{SHIFUH_BRAND\.name\}`/);
   assert.match(layout, /openGraph:/);
   assert.match(layout, /data\.banners\[0\] \|\| restaurant\.image_url \|\| restaurant\.logo_url/);
   assert.match(layout, /canonical: canonicalUrl/);

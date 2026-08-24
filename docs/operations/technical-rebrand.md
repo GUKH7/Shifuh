@@ -11,7 +11,7 @@ Este documento registra a migracao tecnica da marca sem quebrar dados persistido
 - Prefixo novo de persistencia no browser: `shifuh:`
 - Cookie novo de subtotal da sacola: `shifuh_cart_subtotal`
 
-A metadata global e as vitrines usam o dominio Shifuh como canonical. O `src/app/icon.svg` replica o simbolo oficial para impedir que o favicon legado do App Router concorra com a configuracao de metadata.
+A metadata global usa o dominio Shifuh como `metadataBase`, e cada vitrine publica gera seu proprio canonical em `www.shifuh.com.br`. O layout raiz nao define um canonical global para evitar que paginas administrativas apontem indevidamente para a home. O `src/app/icon.svg` replica o simbolo oficial para impedir que o favicon legado do App Router concorra com a configuracao de metadata.
 
 ## Migracao de persistencia
 
@@ -47,7 +47,7 @@ A regra e migrar esses identificadores em etapas separadas, mantendo redirects/a
 
 ## Checklist de rollout
 
-- [x] Metadata canonica aponta para Shifuh.
+- [x] Metadata base e canonicals publicos apontam para Shifuh.
 - [x] Favicon do App Router usa o simbolo Shifuh.
 - [x] Landing page usa a marca oficial no cabecalho.
 - [x] URL publica de referencia usa `www.shifuh.com.br`.

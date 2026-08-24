@@ -30,14 +30,13 @@ export async function generateMetadata({
 
   if (!data) {
     return {
-      title: "Loja não encontrada",
+      title: `Loja não encontrada | ${SHIFUH_BRAND.name}`,
       robots: { index: false, follow: false },
     };
   }
 
   const restaurant = data.restaurant;
-  const title = restaurant.name;
-  const socialTitle = `${restaurant.name} | ${SHIFUH_BRAND.name}`;
+  const title = `${restaurant.name} | ${SHIFUH_BRAND.name}`;
   const description = buildDescription(data);
   const canonicalUrl = new URL(`/${restaurant.slug}`, SHIFUH_BRAND.siteUrl).toString();
   const socialImage =
@@ -54,7 +53,7 @@ export async function generateMetadata({
       locale: "pt_BR",
       siteName: SHIFUH_BRAND.name,
       url: canonicalUrl,
-      title: socialTitle,
+      title,
       description,
       images: socialImage
         ? [{ url: socialImage, alt: `Cardápio de ${restaurant.name}` }]
@@ -62,7 +61,7 @@ export async function generateMetadata({
     },
     twitter: {
       card: socialImage ? "summary_large_image" : "summary",
-      title: socialTitle,
+      title,
       description,
       images: socialImage ? [socialImage] : undefined,
     },
