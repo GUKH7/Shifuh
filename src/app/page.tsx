@@ -152,7 +152,7 @@ export default function LandingPage() {
 
             <div className="relative mx-auto w-full max-w-[620px] lg:mx-0 lg:ml-auto">
               <div className="absolute -left-8 -top-8 h-32 w-32 rounded-full bg-[var(--brand-soft)] blur-3xl" />
-              <div className="relative overflow-hidden rounded-[30px] border border-[#ded3c7] bg-white shadow-[0_40px_90px_rgba(44,31,20,0.15)]">
+              <div className="relative overflow-hidden rounded-3xl border border-[#ded3c7] bg-white shadow-[0_40px_90px_rgba(44,31,20,0.15)]">
                 <div className="flex items-center justify-between border-b border-[#eee5dc] px-5 py-4 sm:px-6">
                   <div className="flex items-center gap-3">
                     <Image src="/brand/shifuh-icon.svg" alt="" width={30} height={30} className="h-7 w-7 object-contain" />
@@ -255,7 +255,7 @@ export default function LandingPage() {
 
             <div className="mt-12 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {capabilities.map((feature) => (
-                <div key={feature.title} className="surface-card rounded-[24px] p-7 transition-transform hover:-translate-y-0.5">
+                <div key={feature.title} className="surface-card rounded-3xl p-7 transition-transform hover:-translate-y-0.5">
                   <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--brand-soft)] text-[var(--brand)]">
                     <feature.icon size={19} />
                   </div>
@@ -308,14 +308,14 @@ export default function LandingPage() {
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="rounded-[24px] border border-white/10 bg-white/[0.06] p-6">
+              <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-6">
                 <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 text-[#ff8a47]">
                   <ReceiptText size={20} />
                 </div>
                 <p className="mt-5 text-xl font-bold">iFood</p>
                 <p className="mt-2 text-sm leading-6 text-[#b9aea7]">Integração de merchant, catálogo, eventos e pedidos dentro da estrutura do Shifuh.</p>
               </div>
-              <div className="rounded-[24px] border border-white/10 bg-white/[0.06] p-6">
+              <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-6">
                 <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 text-[#ff8a47]">
                   <MessageCircle size={20} />
                 </div>
@@ -327,7 +327,7 @@ export default function LandingPage() {
         </section>
 
         <section className="mx-auto max-w-7xl px-5 py-20 sm:px-6 lg:px-8 lg:py-24">
-          <div className="relative overflow-hidden rounded-[32px] bg-[var(--brand)] px-6 py-12 text-white shadow-[0_30px_70px_rgba(246,93,2,0.22)] sm:px-10 lg:px-14 lg:py-14">
+          <div className="relative overflow-hidden rounded-3xl bg-[var(--brand)] px-6 py-12 text-white shadow-[0_30px_70px_rgba(246,93,2,0.22)] sm:px-10 lg:px-14 lg:py-14">
             <div className="pointer-events-none absolute -right-16 -top-20 h-72 w-72 rounded-full border-[52px] border-white/10" />
             <div className="relative grid gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
               <div>
