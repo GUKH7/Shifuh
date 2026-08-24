@@ -6,7 +6,7 @@ Este documento registra a migracao tecnica da marca sem quebrar dados persistido
 
 A identidade publica e comercial do Shifuh esta ativa em producao. O rollout tecnico foi mergeado pelo PR #104 e a landing, o login e a metadata comercial pelo PR #105. Em 24/08/2026, `www.shifuh.com.br`, o redirect do dominio raiz, favicon, canonicals e as rotas publicas principais foram validados no deploy de producao.
 
-A etapa final de identificadores tecnicos foi iniciada depois dessa validacao. O package raiz ja usa o nome canonico `shifuh`; os nomes externos do repositorio GitHub e do projeto Vercel devem ser alterados somente depois de CI e Preview aprovarem essa preparacao.
+A etapa final de identificadores tecnicos foi iniciada depois dessa validacao. O package raiz ja usa o nome canonico `shifuh` e o repositorio GitHub foi renomeado para `GUKH7/Shifuh`. Antes do rename do projeto Vercel, a integracao Git deve ser validada com um Preview disparado por commit no repositorio ja renomeado.
 
 ## Identidade canonica
 
@@ -14,7 +14,7 @@ A etapa final de identificadores tecnicos foi iniciada depois dessa validacao. O
 - Dominio publico: `https://www.shifuh.com.br`
 - Dominio raiz: `https://shifuh.com.br`
 - Package raiz: `shifuh`
-- Repositorio GitHub alvo: `GUKH7/shifuh`
+- Repositorio GitHub: `GUKH7/Shifuh`
 - Projeto Vercel alvo: `shifuh`
 - Icone canonico: `/brand/shifuh-icon.svg`
 - Prefixo novo de persistencia no browser: `shifuh:`
@@ -50,7 +50,7 @@ O cookie `gestor_cart_subtotal` continua em dual-write temporario junto com `shi
 A migracao final deve preservar os IDs dos recursos e os dominios publicos. A ordem operacional e:
 
 1. alterar o package raiz de `gestor-delivery` para `shifuh` e validar CI/Preview;
-2. renomear o repositorio GitHub de `GUKH7/gestor_delivery` para `GUKH7/shifuh`;
+2. renomear o repositorio GitHub de `GUKH7/gestor_delivery` para `GUKH7/Shifuh`;
 3. confirmar que o redirect do GitHub e a integracao da Vercel continuam apontando para o mesmo repositorio;
 4. renomear o projeto Vercel de `gestor-delivery` para `shifuh`, preservando `www.shifuh.com.br` e `shifuh.com.br`;
 5. disparar e validar um deploy de `main` depois dos renomes;
@@ -71,7 +71,8 @@ Nomes historicos de migrations permanecem imutaveis para preservar a sequencia d
 - [x] Cron canonico novo criado sem remover o arquivo legado da VM.
 - [x] Landing, login e metadata comercial mergeados e validados em producao.
 - [x] `package.json` e `package-lock.json` usam package name `shifuh`.
-- [ ] Renomear repositorio GitHub para `GUKH7/shifuh` e validar redirect/integracoes.
+- [x] Repositorio GitHub renomeado para `GUKH7/Shifuh`, preservando o mesmo recurso.
+- [ ] Validar Preview da Vercel disparado por commit apos o rename do GitHub.
 - [ ] Renomear projeto Vercel para `shifuh` preservando dominios e projeto existente.
 - [ ] Confirmar deploy de `main` apos os renomes de infraestrutura.
 - [ ] Confirmar em producao a migracao de uma sacola criada antes do rollout.
