@@ -32,6 +32,84 @@
     padding-bottom: calc(7rem + env(safe-area-inset-bottom));
   }
 
+  .scope section[class~="bg-white"] > div > div[class~="-mt-1"] {
+    margin-top: 0 !important;
+    padding: 14px 16px 0 !important;
+  }
+
+  .scope section[class~="bg-white"] > div > div[class~="-mt-1"] > div:first-child {
+    align-items: center !important;
+    gap: 12px !important;
+  }
+
+  .scope section[class~="bg-white"] > div > div[class~="-mt-1"] > div:first-child > div[class~="flex-1"] {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  .scope section[class~="bg-white"] > div > div[class~="-mt-1"] h1[class~="truncate"] {
+    padding-right: 4px !important;
+    font-size: 19px !important;
+    line-height: 1.18 !important;
+    letter-spacing: -0.02em;
+  }
+
+  .scope section[class~="bg-white"] > div > div[class~="-mt-1"] h1[class~="truncate"] + div {
+    flex-shrink: 0;
+  }
+
+  .scope section[class~="bg-white"] > div > div[class~="-mt-1"] div[class~="mt-2"][class~="flex-wrap"][class~="items-center"] {
+    margin-top: 7px !important;
+    column-gap: 7px !important;
+    row-gap: 4px !important;
+    font-size: 12px !important;
+    line-height: 1.25 !important;
+  }
+
+  .scope section[class~="bg-white"] > div > div[class~="-mt-1"] > div[class~="mt-2"][class~="flex-wrap"] {
+    display: grid !important;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    gap: 0 !important;
+    margin-top: 13px !important;
+    padding-top: 12px !important;
+    border-top: 1px solid #eef0f2;
+    font-size: 12px !important;
+    line-height: 1.35;
+  }
+
+  .scope section[class~="bg-white"] > div > div[class~="-mt-1"] > div[class~="mt-2"][class~="flex-wrap"] > span {
+    min-width: 0;
+  }
+
+  .scope section[class~="bg-white"] > div > div[class~="-mt-1"] > div[class~="mt-2"][class~="flex-wrap"] > span:nth-child(1) {
+    padding-right: 12px;
+  }
+
+  .scope section[class~="bg-white"] > div > div[class~="-mt-1"] > div[class~="mt-2"][class~="flex-wrap"] > span:nth-child(2) {
+    padding-left: 12px;
+    border-left: 1px solid #eef0f2;
+  }
+
+  .scope section[class~="bg-white"] > div > div[class~="-mt-1"] > details {
+    margin-top: 0 !important;
+  }
+
+  .scope section[class~="bg-white"] > div > div[class~="-mt-1"] > details > summary {
+    margin-top: 12px;
+    padding: 12px 0 10px !important;
+    border-top: 1px solid #eef0f2;
+    font-size: 12px !important;
+  }
+
+  .scope button[aria-label="Minha conta"],
+  .scope button[aria-label="Entrar na conta"] {
+    width: 44px !important;
+    height: 44px !important;
+    border: 1px solid #eceef0;
+    background: #fafafa;
+    color: #6b7280 !important;
+  }
+
   .scope [data-catalog-nav] div:has(> input[placeholder="Buscar no cardápio"]) {
     min-height: 44px;
     height: 44px !important;
@@ -41,12 +119,6 @@
     min-height: 44px !important;
     padding-top: 10px !important;
     padding-bottom: 10px !important;
-  }
-
-  .scope button[aria-label="Minha conta"],
-  .scope button[aria-label="Entrar na conta"] {
-    width: 44px !important;
-    height: 44px !important;
   }
 
   .scope [data-product-card] span:has(> svg[class~="lucide-plus"]) {
