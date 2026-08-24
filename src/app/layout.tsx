@@ -19,8 +19,9 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Shifuh",
-  description: "Vitrine digital com pedidos direto no WhatsApp",
+  title: "Shifuh | Gestão de delivery para restaurantes",
+  description:
+    "Gerencie vitrine, cardápio, pedidos, clientes, cupons, avaliações, métricas e integrações do seu delivery em um único sistema.",
   icons: {
     icon: "/brand/shifuh-icon.svg",
     shortcut: "/brand/shifuh-icon.svg",
