@@ -80,7 +80,11 @@ export default function AdminSidebar({
         {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
       </button>
 
-      <div className="flex h-16 shrink-0 items-center justify-between px-4 sm:h-20 lg:px-5">
+      <div
+        className={`flex h-16 shrink-0 items-center justify-between px-4 sm:h-20 ${
+          isCollapsed ? "lg:px-2" : "lg:px-3"
+        }`}
+      >
         <div className={`flex items-center gap-2.5 ${isCollapsed ? "lg:justify-center" : ""}`}>
           <Image
             src="/brand/shifuh-icon.svg"
