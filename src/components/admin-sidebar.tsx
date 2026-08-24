@@ -85,14 +85,18 @@ export default function AdminSidebar({
           <Image
             src="/brand/shifuh-icon.svg"
             alt="Símbolo Shifuh"
-            width={40}
-            height={40}
+            width={48}
+            height={48}
             priority
-            className="h-10 w-10 shrink-0 object-contain"
+            className="h-12 w-12 shrink-0 object-contain"
           />
-          <div className={desktopLabelVisibility}>
-            <p className="font-brand text-[1.05rem] font-semibold tracking-tight text-gray-950">SHIFUH</p>
-            <p className="text-[11px] text-gray-500">Portal da loja</p>
+          <div className={`w-[4.75rem] ${desktopLabelVisibility}`}>
+            <p className="font-brand w-full whitespace-nowrap text-[1.25rem] font-semibold leading-none tracking-tight text-gray-950">
+              SHIFUH
+            </p>
+            <p className="mt-1 w-full whitespace-nowrap text-[9px] font-medium leading-none tracking-[-0.035em] text-gray-500">
+              Portal da sua loja
+            </p>
           </div>
         </div>
 
