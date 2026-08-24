@@ -63,6 +63,9 @@ export default function AdminSidebar({
 
   const desktopItemLayout = isCollapsed ? "lg:justify-center lg:px-3" : "lg:gap-3 lg:px-4";
   const desktopLabelVisibility = isCollapsed ? "lg:hidden" : "";
+  const desktopBrandVisibility = isCollapsed
+    ? "lg:w-0 lg:-translate-x-1.5 lg:opacity-0 lg:pointer-events-none"
+    : "lg:w-[5.25rem] lg:translate-x-0 lg:opacity-100";
 
   return (
     <aside
@@ -85,7 +88,11 @@ export default function AdminSidebar({
           isCollapsed ? "lg:px-2" : "lg:px-3"
         }`}
       >
-        <div className={`flex items-center gap-2.5 ${isCollapsed ? "lg:justify-center" : ""}`}>
+        <div
+          className={`flex items-center gap-2.5 ${
+            isCollapsed ? "lg:justify-center lg:gap-0" : ""
+          }`}
+        >
           <Image
             src="/brand/shifuh-icon.svg"
             alt="Símbolo Shifuh"
@@ -94,8 +101,10 @@ export default function AdminSidebar({
             priority
             className="h-12 w-12 shrink-0 object-contain"
           />
-          <div className={`w-[4.75rem] ${desktopLabelVisibility}`}>
-            <p className="font-brand w-full whitespace-nowrap text-[1.25rem] font-semibold leading-none tracking-tight text-gray-950">
+          <div
+            className={`w-[5.25rem] overflow-hidden transition-[width,opacity,transform] duration-300 ease-out motion-reduce:transition-none ${desktopBrandVisibility}`}
+          >
+            <p className="font-brand w-full whitespace-nowrap text-[1.4rem] font-semibold leading-none tracking-tight text-gray-950">
               SHIFUH
             </p>
             <p className="mt-1 w-full whitespace-nowrap text-[9px] font-medium leading-none tracking-[-0.035em] text-gray-500">
