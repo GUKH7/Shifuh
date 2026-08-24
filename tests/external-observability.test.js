@@ -81,6 +81,27 @@ test("scrubs sensitive request, user and span data without destroying trace stru
   assert.doesNotMatch(scrubber, /mutable\["spans"\]\s*=\s*sanitizeUnknown/);
 });
 
+test("phone redaction does not mask generic eight-digit identifiers", () => {
+  const scrubber = read("src/lib/sentry-scrub.ts");
+  const match = scrubber.match(/const PHONE_PATTERN = \/(.+)\/g;/);
+
+  assert.ok(match, "PHONE_PATTERN must remain declared as a global regex literal");
+  const phonePattern = new RegExp(match[1], "g");
+
+  assert.equal(
+    "sentry-preview-validation-20260823".replace(phonePattern, "[redacted-phone]"),
+    "sentry-preview-validation-20260823",
+  );
+  assert.equal(
+    "contato (11) 91234-5678".replace(phonePattern, "[redacted-phone]"),
+    "contato [redacted-phone]",
+  );
+  assert.equal(
+    "fixo 3456-7890".replace(phonePattern, "[redacted-phone]"),
+    "fixo [redacted-phone]",
+  );
+});
+
 test("source map upload stays optional when Sentry build credentials are absent", () => {
   const config = read("next.config.mjs");
 
