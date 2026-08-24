@@ -9,9 +9,8 @@
   --surface-strong: #11100f;
   --line: #e8ddd2;
   --muted: #6f6257;
-  --brand: #f65d02;
-  --brand-rgb: 246, 93, 2;
-  --brand-soft: #fff1e8;
+  --brand: #ff5a1f;
+  --brand-soft: #fff0e8;
   --radius-small: 8px;
   --radius-control: 12px;
   --radius-card: 16px;
@@ -20,7 +19,7 @@
   --admin-control-height: 44px;
   --admin-radius-control: var(--radius-control);
   --admin-radius-card: var(--radius-panel);
-  --admin-focus-ring: 0 0 0 3px rgba(var(--brand-rgb), 0.16);
+  --admin-focus-ring: 0 0 0 3px rgba(255, 90, 31, 0.16);
 }
 
 * {
@@ -73,13 +72,13 @@ a {
     :where(input, select, textarea):not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([class~="bg-transparent"]):focus-visible {
     border-color: var(--brand) !important;
     outline: none;
-    box-shadow: 0 0 0 3px rgba(var(--brand-rgb), 0.12);
+    box-shadow: 0 0 0 3px rgba(255, 90, 31, 0.12);
   }
 
   .admin-page-shell :where(div, label):has(> input[class~="bg-transparent"]:focus-visible),
   .admin-page-shell :where(div, label):has(> textarea[class~="bg-transparent"]:focus-visible) {
     border-color: var(--brand) !important;
-    box-shadow: 0 0 0 3px rgba(var(--brand-rgb), 0.12);
+    box-shadow: 0 0 0 3px rgba(255, 90, 31, 0.12);
   }
 
   .admin-page-shell :where(input, textarea)::placeholder {
@@ -89,7 +88,7 @@ a {
 
   .admin-page-shell select:not([multiple]) {
     appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23f65d02' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23ff5a1f' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
     background-position: right 0.9rem center;
     background-repeat: no-repeat;
     background-size: 1rem;
@@ -153,7 +152,7 @@ a {
   }
 
   .admin-filter-panel {
-    border: 1px solid rgba(var(--brand-rgb), 0.2);
+    border: 1px solid rgba(255, 90, 31, 0.2);
     background: #fffaf6;
     box-shadow: 0 10px 28px rgba(89, 54, 32, 0.05);
   }
@@ -201,7 +200,7 @@ a {
   }
 
   .brand-gradient {
-    background-image: linear-gradient(135deg, #f65d02 0%, #ff7a1a 100%);
+    background-image: linear-gradient(135deg, #ff5a1f 0%, #ff7a1f 100%);
   }
 
   .toast-enter {
