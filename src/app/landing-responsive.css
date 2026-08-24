@@ -8,13 +8,13 @@ nav a[aria-label="Shifuh - início"] > img {
 }
 
 nav a[aria-label="Shifuh - início"] > div > span:first-child {
-  font-size: 1.8rem !important;
-  line-height: 0.9;
-  letter-spacing: -0.03em;
+  font-size: 2.45rem !important;
+  line-height: 0.86;
+  letter-spacing: -0.035em;
 }
 
 nav a[aria-label="Shifuh - início"] > div > span:nth-child(2) {
-  margin-top: 0.35rem !important;
+  margin-top: 0.3rem !important;
   font-size: 10.5px !important;
   line-height: 1;
 }
