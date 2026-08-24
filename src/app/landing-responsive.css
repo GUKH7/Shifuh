@@ -1,3 +1,54 @@
+nav a[aria-label="Shifuh - início"] {
+  gap: 0.875rem;
+}
+
+nav a[aria-label="Shifuh - início"] > img {
+  width: 46px !important;
+  height: 46px !important;
+}
+
+nav a[aria-label="Shifuh - início"] > div > span:first-child {
+  font-size: 1.8rem !important;
+  line-height: 0.9;
+  letter-spacing: -0.03em;
+}
+
+nav a[aria-label="Shifuh - início"] > div > span:nth-child(2) {
+  margin-top: 0.35rem !important;
+  font-size: 10.5px !important;
+  line-height: 1;
+}
+
+@media (max-width: 639px) {
+  nav a[aria-label="Shifuh - início"] {
+    gap: 0.75rem;
+  }
+
+  nav a[aria-label="Shifuh - início"] > img {
+    width: 40px !important;
+    height: 40px !important;
+  }
+
+  nav a[aria-label="Shifuh - início"] > div > span:first-child {
+    font-size: 1.55rem !important;
+  }
+}
+
+@media (max-width: 419px) {
+  nav a[aria-label="Shifuh - início"] {
+    gap: 0.625rem;
+  }
+
+  nav a[aria-label="Shifuh - início"] > img {
+    width: 36px !important;
+    height: 36px !important;
+  }
+
+  nav a[aria-label="Shifuh - início"] > div > span:first-child {
+    font-size: 1.35rem !important;
+  }
+}
+
 @media (max-width: 359px) {
   nav a[aria-label="Shifuh - início"] {
     overflow: hidden;
