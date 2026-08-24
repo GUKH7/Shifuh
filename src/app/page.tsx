@@ -7,7 +7,6 @@ import {
   Gift,
   MessageCircle,
   ReceiptText,
-  Settings2,
   ShoppingBag,
   Star,
   Store,
