@@ -282,7 +282,7 @@ export default function LandingPage() {
 
               <div className="space-y-4">
                 {operationSteps.map((step) => (
-                  <div key={step.number} className="surface-card grid gap-5 rounded-[26px] p-7 sm:grid-cols-[72px_1fr] sm:p-8">
+                  <div key={step.number} className="surface-card grid gap-5 rounded-3xl p-7 sm:grid-cols-[72px_1fr] sm:p-8">
                     <div className="font-brand text-3xl font-semibold text-[var(--brand)]">{step.number}</div>
                     <div>
                       <h3 className="text-2xl font-bold tracking-tight text-gray-950">{step.title}</h3>
