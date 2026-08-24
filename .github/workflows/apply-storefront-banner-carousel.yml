@@ -1,0 +1,34 @@
+name: Apply storefront banner carousel
+
+on:
+  push:
+    branches:
+      - feat/storefront-banner-carousel
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: feat/storefront-banner-carousel
+          fetch-depth: 0
+
+      - name: Apply carousel implementation
+        run: node scripts/apply-storefront-banner-carousel.mjs
+
+      - name: Remove temporary implementation helpers
+        run: rm scripts/apply-storefront-banner-carousel.mjs .github/workflows/apply-storefront-banner-carousel.yml
+
+      - name: Commit implementation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat(storefront): adicionar carrossel e links de produtos nos banners"
+          git push origin HEAD:feat/storefront-banner-carousel
