@@ -4,6 +4,22 @@ import { useEffect, useMemo, useState } from "react";
 import type { CartItem, Product } from "./types";
 import { toggleAddonSelection } from "./product-options";
 
+const LEGACY_CART_STORAGE_PREFIX = "gestor-delivery:";
+const SHIFUH_CART_STORAGE_PREFIX = "shifuh:";
+const CART_SUBTOTAL_COOKIE = "shifuh_cart_subtotal";
+const LEGACY_CART_SUBTOTAL_COOKIE = "gestor_cart_subtotal";
+
+function resolveCartStorageKeys(storageKey: string) {
+  if (storageKey.startsWith(LEGACY_CART_STORAGE_PREFIX)) {
+    return {
+      current: `${SHIFUH_CART_STORAGE_PREFIX}${storageKey.slice(LEGACY_CART_STORAGE_PREFIX.length)}`,
+      legacy: storageKey,
+    };
+  }
+
+  return { current: storageKey, legacy: null };
+}
+
 export function useCart(storageKey: string) {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [addonSelections, setAddonSelections] = useState<Record<string, any[]>>({});
@@ -12,29 +28,52 @@ export function useCart(storageKey: string) {
   const [editingCartItemId, setEditingCartItemId] = useState<string | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartHydrated, setCartHydrated] = useState(false);
+  const { current: currentStorageKey, legacy: legacyStorageKey } = resolveCartStorageKeys(storageKey);
 
   useEffect(() => {
     try {
-      const savedCart = window.localStorage.getItem(storageKey);
-      if (savedCart) {
-        const parsed = JSON.parse(savedCart);
-        if (Array.isArray(parsed)) setCart(parsed);
+      const candidateKeys = legacyStorageKey
+        ? [currentStorageKey, legacyStorageKey]
+        : [currentStorageKey];
+
+      for (const candidateKey of candidateKeys) {
+        const savedCart = window.localStorage.getItem(candidateKey);
+        if (!savedCart) continue;
+
+        try {
+          const parsed = JSON.parse(savedCart);
+          if (!Array.isArray(parsed)) continue;
+
+          setCart(parsed);
+
+          if (candidateKey === legacyStorageKey) {
+            try {
+              window.localStorage.setItem(currentStorageKey, savedCart);
+              window.localStorage.removeItem(legacyStorageKey);
+            } catch (migrationError) {
+              console.warn("Não foi possível migrar a sacola para a chave Shifuh.", migrationError);
+            }
+          }
+          break;
+        } catch (parseError) {
+          console.warn("Não foi possível restaurar a sacola salva.", parseError);
+        }
       }
     } catch (error) {
-      console.warn("Não foi possível restaurar a sacola.", error);
+      console.warn("Não foi possível acessar a sacola salva.", error);
     } finally {
       setCartHydrated(true);
     }
-  }, [storageKey]);
+  }, [currentStorageKey, legacyStorageKey]);
 
   useEffect(() => {
     if (!cartHydrated) return;
     try {
-      window.localStorage.setItem(storageKey, JSON.stringify(cart));
+      window.localStorage.setItem(currentStorageKey, JSON.stringify(cart));
     } catch (error) {
       console.warn("Não foi possível salvar a sacola.", error);
     }
-  }, [cart, cartHydrated, storageKey]);
+  }, [cart, cartHydrated, currentStorageKey]);
 
   const openProduct = (product: Product) => {
     setSelectedProduct(product);
@@ -164,7 +203,11 @@ export function useCart(storageKey: string) {
   useEffect(() => {
     if (!cartHydrated) return;
     const subtotal = Number.isFinite(cartSubtotal) ? Math.max(0, cartSubtotal) : 0;
-    document.cookie = `gestor_cart_subtotal=${encodeURIComponent(subtotal.toFixed(2))}; Path=/; Max-Age=86400; SameSite=Lax`;
+    const encodedSubtotal = encodeURIComponent(subtotal.toFixed(2));
+
+    document.cookie = `${CART_SUBTOTAL_COOKIE}=${encodedSubtotal}; Path=/; Max-Age=86400; SameSite=Lax`;
+    // Temporary dual-write keeps any legacy server consumer compatible during the rebrand rollout.
+    document.cookie = `${LEGACY_CART_SUBTOTAL_COOKIE}=${encodedSubtotal}; Path=/; Max-Age=86400; SameSite=Lax`;
   }, [cartHydrated, cartSubtotal]);
 
   return {
