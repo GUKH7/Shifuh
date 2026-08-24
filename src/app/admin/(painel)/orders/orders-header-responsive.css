@@ -17,6 +17,38 @@
   }
 }
 
+@media (min-width: 768px) and (max-width: 1023px) {
+  .admin-page-shell > section:last-child {
+    right: 1.5rem !important;
+    left: 1.5rem !important;
+    max-width: none !important;
+    margin-right: 0 !important;
+    margin-left: 0 !important;
+  }
+
+  .admin-page-shell > section:last-child > button {
+    gap: 0.75rem;
+    padding-right: 1rem;
+    padding-left: 1rem;
+  }
+
+  .admin-page-shell > section:last-child > button > div:first-child {
+    min-width: 0;
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    row-gap: 0.125rem;
+    white-space: normal;
+  }
+
+  .admin-page-shell > section:last-child > button > div:first-child > span {
+    min-width: 0;
+  }
+
+  .admin-page-shell > section:last-child > button > div:last-child {
+    flex: 0 0 auto;
+  }
+}
+
 @media (min-width: 1280px) and (max-width: 1439px) {
   .lg\:ml-56 .admin-panel-content .orders-table-header,
   .lg\:ml-56 .admin-panel-content .orders-table-row {
