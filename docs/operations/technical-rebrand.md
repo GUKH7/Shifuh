@@ -11,7 +11,9 @@ Este documento registra a migracao tecnica da marca sem quebrar dados persistido
 - Prefixo novo de persistencia no browser: `shifuh:`
 - Cookie novo de subtotal da sacola: `shifuh_cart_subtotal`
 
-A metadata global usa o dominio Shifuh como `metadataBase`, e cada vitrine publica gera seu proprio canonical em `www.shifuh.com.br`. O layout raiz nao define um canonical global para evitar que paginas administrativas apontem indevidamente para a home. O `src/app/icon.svg` replica o simbolo oficial para impedir que o favicon legado do App Router concorra com a configuracao de metadata.
+As vitrines publicas geram canonical em `www.shifuh.com.br`. O `src/app/icon.svg` replica o simbolo oficial para impedir que o favicon legado do App Router concorra com o icone configurado pela aplicacao.
+
+A landing e o posicionamento comercial de metadata estao sendo tratados separadamente na branch `product/rebuild-landing-shifuh`; este rollout tecnico evita modificar `src/app/page.tsx` e `src/app/layout.tsx` para nao criar conflito entre trabalhos paralelos.
 
 ## Migracao de persistencia
 
@@ -47,14 +49,14 @@ A regra e migrar esses identificadores em etapas separadas, mantendo redirects/a
 
 ## Checklist de rollout
 
-- [x] Metadata base e canonicals publicos apontam para Shifuh.
+- [x] Canonicals das vitrines usam o dominio Shifuh.
 - [x] Favicon do App Router usa o simbolo Shifuh.
-- [x] Landing page usa a marca oficial no cabecalho.
 - [x] URL publica de referencia usa `www.shifuh.com.br`.
 - [x] User-Agent do roteamento usa Shifuh.
 - [x] Sacolas antigas migram sem perda para `shifuh:`.
 - [x] Cookie novo e emitido com compatibilidade temporaria do cookie antigo.
 - [x] Cron canonico novo criado sem remover o arquivo legado da VM.
+- [x] Landing/metadata comercial isolados da migracao tecnica para evitar conflito de branches.
 - [ ] Confirmar em producao a migracao de uma sacola criada antes do rollout.
 - [ ] Remover o dual-write do cookie legado depois da janela de compatibilidade.
 - [ ] Planejar renome de repositorio/projeto/package em uma janela dedicada.

@@ -3,7 +3,6 @@ import { Fredoka, Outfit } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "@/contexts/cart-context";
 import { ToastProvider } from "@/components/ui/toast-provider";
-import { SHIFUH_BRAND } from "@/lib/brand";
 
 const outfit = Outfit({ subsets: ["latin"], display: "swap", preload: true });
 const fredoka = Fredoka({
@@ -20,27 +19,12 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL(SHIFUH_BRAND.siteUrl),
-  applicationName: SHIFUH_BRAND.name,
-  title: SHIFUH_BRAND.name,
-  description: SHIFUH_BRAND.description,
-  openGraph: {
-    type: "website",
-    locale: "pt_BR",
-    siteName: SHIFUH_BRAND.name,
-    url: "/",
-    title: SHIFUH_BRAND.name,
-    description: SHIFUH_BRAND.description,
-  },
-  twitter: {
-    card: "summary",
-    title: SHIFUH_BRAND.name,
-    description: SHIFUH_BRAND.description,
-  },
+  title: "Shifuh",
+  description: "Vitrine digital com pedidos direto no WhatsApp",
   icons: {
-    icon: SHIFUH_BRAND.iconPath,
-    shortcut: SHIFUH_BRAND.iconPath,
-    apple: SHIFUH_BRAND.iconPath,
+    icon: "/brand/shifuh-icon.svg",
+    shortcut: "/brand/shifuh-icon.svg",
+    apple: "/brand/shifuh-icon.svg",
   },
 };
 

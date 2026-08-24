@@ -8,13 +8,11 @@ const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 
 test("uses Shifuh as the canonical public brand and domain", () => {
   const brand = read("src/lib/brand.ts");
-  const layout = read("src/app/layout.tsx");
   const storefrontLayout = read("src/app/[slug]/layout.tsx");
   const env = read(".env.example");
 
   assert.match(brand, /name:\s*"Shifuh"/);
   assert.match(brand, /siteUrl:\s*"https:\/\/www\.shifuh\.com\.br"/);
-  assert.match(layout, /metadataBase:\s*new URL\(SHIFUH_BRAND\.siteUrl\)/);
   assert.match(storefrontLayout, /canonical:\s*canonicalUrl/);
   assert.match(storefrontLayout, /SHIFUH_BRAND\.siteUrl/);
   assert.match(env, /APP_BASE_URL=https:\/\/www\.shifuh\.com\.br/);

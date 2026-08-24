@@ -1,7 +1,5 @@
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, BarChart3, ReceiptText, Smartphone, Store } from "lucide-react";
-import { SHIFUH_BRAND } from "@/lib/brand";
 
 const features = [
   {
@@ -27,17 +25,10 @@ export default function LandingPage() {
       <nav className="sticky top-0 z-50 border-b border-[#eadfd4] bg-[#f8f3ec]/95 backdrop-blur">
         <div className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-5 sm:flex sm:justify-between sm:px-6">
           <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
-            <Image
-              src={SHIFUH_BRAND.iconPath}
-              alt="Símbolo Shifuh"
-              width={36}
-              height={36}
-              priority
-              className="h-9 w-9 shrink-0 object-contain"
-            />
-            <span className="font-brand truncate text-xl font-semibold tracking-tight">
-              {SHIFUH_BRAND.uppercaseName}
-            </span>
+            <div className="brand-gradient flex h-8 w-8 items-center justify-center rounded-md text-white">
+              <Store size={16} />
+            </div>
+            <span className="truncate text-lg font-bold tracking-tight sm:text-xl">SHIFUH</span>
           </div>
           <div className="flex items-center gap-2 text-sm font-medium sm:gap-4">
             <Link href="/admin/login" className="hidden min-h-11 items-center px-2 text-gray-700 transition-colors hover:text-black min-[420px]:inline-flex">
@@ -144,7 +135,7 @@ export default function LandingPage() {
       </main>
 
       <footer className="border-t border-[var(--line)] px-6 py-10 text-center text-sm text-[var(--muted)]">
-        © {new Date().getFullYear()} {SHIFUH_BRAND.name}
+        © {new Date().getFullYear()} Shifuh
       </footer>
     </div>
   );
