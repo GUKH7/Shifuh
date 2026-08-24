@@ -65,7 +65,7 @@ export default function AdminSidebar({
   const desktopLabelVisibility = isCollapsed ? "lg:hidden" : "";
   const desktopBrandVisibility = isCollapsed
     ? "lg:w-0 lg:-translate-x-1.5 lg:opacity-0 lg:pointer-events-none"
-    : "lg:w-[5.25rem] lg:translate-x-0 lg:opacity-100";
+    : "lg:w-[6.75rem] lg:translate-x-0 lg:opacity-100";
 
   return (
     <aside
@@ -102,12 +102,12 @@ export default function AdminSidebar({
             className="h-12 w-12 shrink-0 object-contain"
           />
           <div
-            className={`w-[5.25rem] overflow-hidden transition-[width,opacity,transform] duration-300 ease-out motion-reduce:transition-none ${desktopBrandVisibility}`}
+            className={`w-[6.75rem] overflow-hidden transition-[width,opacity,transform] duration-300 ease-out motion-reduce:transition-none ${desktopBrandVisibility}`}
           >
-            <p className="font-brand w-full whitespace-nowrap text-[1.4rem] font-semibold leading-none tracking-tight text-gray-950">
+            <p className="font-brand w-full whitespace-nowrap text-[1.55rem] font-semibold leading-none tracking-tight text-gray-950">
               SHIFUH
             </p>
-            <p className="mt-1 w-full whitespace-nowrap text-[9px] font-medium leading-none tracking-[-0.035em] text-gray-500">
+            <p className="mt-1.5 w-full whitespace-nowrap text-[10.5px] font-medium leading-none tracking-[-0.015em] text-gray-500">
               Portal da sua loja
             </p>
           </div>
