@@ -15,6 +15,8 @@ import {
   Star,
   X,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Phone,
   UserRound,
 } from "lucide-react";
@@ -65,6 +67,8 @@ export default function StorePage() {
   const [isCatalogNavCompact, setIsCatalogNavCompact] = useState(false);
   const [storeClock, setStoreClock] = useState(() => new Date());
   const categoryNavRef = useRef<HTMLDivElement>(null);
+  const bannerTouchStartXRef = useRef<number | null>(null);
+  const bannerIgnoreClickUntilRef = useRef(0);
 
   const [step, setStep] = useState<CheckoutStep>("cart");
   const [customerName, setCustomerName] = useState("");
@@ -118,6 +122,7 @@ export default function StorePage() {
     primaryColor,
     banners,
     currentBanner,
+    setCurrentBanner,
     storefrontHeadline,
     storefrontSubheadline,
     storefrontTheme,
@@ -586,6 +591,37 @@ export default function StorePage() {
       : "grid-cols-1 md:grid-cols-2 xl:grid-cols-3";
   const usesHeroBanner =
     storefrontTheme.show_banners && (banners.length > 0 || Boolean(restaurant?.image_url));
+  const currentBannerUrl = banners[currentBanner] || "";
+  const currentBannerProductId = currentBannerUrl
+    ? storefrontTheme.banner_product_links?.[currentBannerUrl] || ""
+    : "";
+  const currentBannerProduct = currentBannerProductId
+    ? products.find((product) => product.id === currentBannerProductId && product.is_active) || null
+    : null;
+  const hasBannerCarousel = usesHeroBanner && banners.length > 1;
+  const moveBanner = (direction: number) => {
+    if (banners.length <= 1) return;
+    setCurrentBanner((current) => (current + direction + banners.length) % banners.length);
+  };
+  const handleBannerTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
+    bannerTouchStartXRef.current = event.touches[0]?.clientX ?? null;
+  };
+  const handleBannerTouchEnd = (event: React.TouchEvent<HTMLDivElement>) => {
+    const startX = bannerTouchStartXRef.current;
+    bannerTouchStartXRef.current = null;
+    if (startX === null || banners.length <= 1) return;
+
+    const endX = event.changedTouches[0]?.clientX ?? startX;
+    const deltaX = endX - startX;
+    if (Math.abs(deltaX) < 45) return;
+
+    bannerIgnoreClickUntilRef.current = Date.now() + 500;
+    moveBanner(deltaX < 0 ? 1 : -1);
+  };
+  const handleBannerProductClick = () => {
+    if (!currentBannerProduct || Date.now() < bannerIgnoreClickUntilRef.current) return;
+    openProduct(currentBannerProduct);
+  };
   const heroHeightClass =
     storefrontTheme.hero_style === "spotlight"
       ? "h-[120px] sm:h-[240px]"
@@ -709,11 +745,15 @@ export default function StorePage() {
       <section className="bg-white">
         <div className="mx-auto w-full max-w-5xl px-0 pb-3 sm:px-4 sm:pb-5">
           <div className="relative overflow-hidden rounded-b-[18px] sm:rounded-[28px]">
-            <div className={`relative bg-gray-200 ${heroHeightClass}`}>
+            <div
+              className={`relative bg-gray-200 ${heroHeightClass}`}
+              onTouchStart={handleBannerTouchStart}
+              onTouchEnd={handleBannerTouchEnd}
+            >
             {usesHeroBanner && banners.length > 0 ? (
               <Image
-                key={banners[currentBanner]}
-                src={banners[currentBanner]}
+                key={currentBannerUrl}
+                src={currentBannerUrl}
                 alt={`Banner da ${restaurant.name}`}
                 fill
                 priority
@@ -725,8 +765,24 @@ export default function StorePage() {
             ) : (
               <div className="h-full w-full" style={{ background: heroBackground }} />
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
-            <div className={`absolute inset-x-0 bottom-0 p-4 sm:p-7 ${
+            {currentBannerProduct && (
+              <button
+                type="button"
+                data-banner-product-link
+                onClick={handleBannerProductClick}
+                className="absolute inset-0 z-10 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-white"
+                aria-label={`Ver produto ${currentBannerProduct.name}`}
+              />
+            )}
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
+            {currentBannerProduct && (
+              <span className="pointer-events-none absolute right-3 top-3 z-20 inline-flex items-center gap-1.5 rounded-full bg-white/92 px-3 py-1.5 text-[10px] font-black text-gray-800 shadow-sm backdrop-blur sm:right-4 sm:top-4 sm:text-xs">
+                Ver produto <ArrowRight size={13} />
+              </span>
+            )}
+            <div className={`pointer-events-none absolute inset-x-0 bottom-0 z-20 p-4 sm:p-7 ${
+              hasBannerCarousel ? "pb-11 sm:pb-12" : ""
+            } ${
               storefrontTheme.hero_style === "split" ? "text-right" : ""
             }`}>
               {storefrontTheme.show_promo_badge && storefrontTheme.promo_text && (
@@ -752,6 +808,44 @@ export default function StorePage() {
                 </p>
               )}
             </div>
+            {hasBannerCarousel && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => moveBanner(-1)}
+                  className="absolute left-2 top-1/2 z-30 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur transition hover:bg-black/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white sm:flex"
+                  aria-label="Banner anterior"
+                >
+                  <ChevronLeft size={20} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => moveBanner(1)}
+                  className="absolute right-2 top-1/2 z-30 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur transition hover:bg-black/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white sm:flex"
+                  aria-label="Próximo banner"
+                >
+                  <ChevronRight size={20} />
+                </button>
+                <div className="absolute bottom-0 left-1/2 z-30 flex max-w-[80%] -translate-x-1/2 items-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {banners.map((banner, index) => (
+                    <button
+                      key={banner}
+                      type="button"
+                      onClick={() => setCurrentBanner(index)}
+                      className="flex h-11 w-11 shrink-0 items-center justify-center"
+                      aria-label={`Exibir banner ${index + 1}`}
+                      aria-current={index === currentBanner ? "true" : undefined}
+                    >
+                      <span
+                        className={`block h-1.5 rounded-full bg-white shadow-sm transition-all ${
+                          index === currentBanner ? "w-5 opacity-100" : "w-1.5 opacity-65"
+                        }`}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
             </div>
           </div>
 

@@ -13,6 +13,7 @@ export const DEFAULT_STOREFRONT_THEME: StorefrontTheme = {
   category_style: "underline",
   highlight_badge: "",
   promo_text: "Promo do dia",
+  banner_product_links: {},
 };
 
 export const EMPTY_ADDRESS: CheckoutAddress = {

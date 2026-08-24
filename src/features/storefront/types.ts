@@ -120,6 +120,7 @@ export interface StorefrontTheme {
   category_style: "underline" | "pill";
   highlight_badge: string;
   promo_text: string;
+  banner_product_links: Record<string, string>;
 }
 
 export type CheckoutStep = "cart" | "address" | "payment" | "success";
