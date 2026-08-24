@@ -33,8 +33,11 @@ test("remoção do banner também remove seu vínculo de produto", () => {
   assert.match(settings, /removeBanner\(banner, index\)/);
 });
 
-test("banner exibido usa a mesma proporção informada e aplicada no recorte das configurações", () => {
-  assert.match(storefrontLayout, /aspect-ratio:\s*16\s*\/\s*7/);
+test("banner preserva 16:7 no mobile e usa alturas compactas no desktop", () => {
+  assert.match(storefrontLayout, /@media \(max-width: 639px\)[\s\S]*aspect-ratio:\s*16\s*\/\s*7/);
+  assert.match(storefrontPage, /h-\[120px\] sm:h-\[240px\]/);
+  assert.match(storefrontPage, /h-\[116px\] sm:h-\[220px\]/);
+  assert.match(storefrontPage, /h-\[108px\] sm:h-\[200px\]/);
   assert.match(settings, /setCropAspect\(target === "logo" \? 1 : 16 \/ 7\)/);
   assert.match(settings, /proporção horizontal `16:7`/);
   assert.match(settings, /1600x700 px/);
