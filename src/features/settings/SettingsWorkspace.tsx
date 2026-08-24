@@ -85,6 +85,7 @@ export default function SettingsPage() {
   const [primaryColor, setPrimaryColor] = useState("#ff5a1f");
   const [logoUrl, setLogoUrl] = useState("");
   const [banners, setBanners] = useState<string[]>([]);
+  const [storefrontProducts, setStorefrontProducts] = useState<Array<{ id: string; name: string }>>([]);
   const [storefrontHeadline, setStorefrontHeadline] = useState("");
   const [storefrontSubheadline, setStorefrontSubheadline] = useState("");
   const [storefrontTheme, setStorefrontTheme] = useState<StorefrontTheme>(DEFAULT_STOREFRONT_THEME);
@@ -197,6 +198,15 @@ export default function SettingsPage() {
           ...DEFAULT_STOREFRONT_THEME,
           ...(data.storefront_theme || {}),
         });
+
+        const { data: activeStorefrontProducts } = await supabase
+          .from("products")
+          .select("id, name")
+          .eq("restaurant_id", data.id)
+          .eq("is_active", true)
+          .order("name");
+        setStorefrontProducts(activeStorefrontProducts || []);
+
         setAddress({
           zip: data.address_zip || "",
           street: data.address_street || "",
@@ -621,6 +631,24 @@ export default function SettingsPage() {
     value: StorefrontTheme[K],
   ) => {
     setStorefrontTheme((current) => ({ ...current, [field]: value }));
+  };
+
+  const updateBannerProductLink = (bannerUrl: string, productId: string) => {
+    setStorefrontTheme((current) => {
+      const nextLinks = { ...(current.banner_product_links || {}) };
+      if (productId) nextLinks[bannerUrl] = productId;
+      else delete nextLinks[bannerUrl];
+      return { ...current, banner_product_links: nextLinks };
+    });
+  };
+
+  const removeBanner = (bannerUrl: string, index: number) => {
+    setBanners((current) => current.filter((_, bannerIndex) => bannerIndex !== index));
+    setStorefrontTheme((current) => {
+      const nextLinks = { ...(current.banner_product_links || {}) };
+      delete nextLinks[bannerUrl];
+      return { ...current, banner_product_links: nextLinks };
+    });
   };
 
   const updateIfoodIntegration = <K extends keyof IfoodIntegrationState>(
@@ -1193,7 +1221,7 @@ export default function SettingsPage() {
                   <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--line)] bg-white px-4 py-6 text-center">
                     <Plus className="mb-2 text-gray-400" size={18} />
                     <span className="text-sm font-bold text-gray-700">Adicionar banner</span>
-                    <span className="mt-1 text-xs text-gray-400">Suba imagens para destacar promoções. Você poderá recortar antes de salvar.</span>
+                    <span className="mt-1 text-xs text-gray-400">Suba imagens para destacar promoções. Com mais de uma imagem, o topo vira um carrossel automaticamente.</span>
                     <input type="file" accept="image/*" className="hidden" onChange={handleBannerUpload} disabled={uploading} />
                   </label>
                   <div className="rounded-2xl border border-dashed border-[var(--line)] bg-white px-4 py-3 text-sm text-gray-500">
@@ -1204,14 +1232,44 @@ export default function SettingsPage() {
                   </div>
                   <div className="space-y-2">
                     {banners.map((banner, index) => (
-                      <div key={index} className="flex items-center justify-between rounded-2xl border border-[var(--line)] bg-white p-2.5">
-                        <div className="flex items-center gap-3">
-                          <img src={banner} className="h-10 w-16 rounded-xl object-cover" />
-                          <span className="text-sm font-medium text-gray-600">Banner {index + 1}</span>
+                      <div key={banner} className="rounded-2xl border border-[var(--line)] bg-white p-3">
+                        <div className="flex items-start gap-3">
+                          <img
+                            src={banner}
+                            alt={`Prévia do banner ${index + 1}`}
+                            className="h-14 w-24 shrink-0 rounded-xl object-cover"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <p className="text-sm font-bold text-gray-700">Banner {index + 1}</p>
+                                <p className="mt-0.5 text-[11px] text-gray-400">Opcionalmente, abra um produto ao tocar na imagem.</p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => removeBanner(banner, index)}
+                                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-gray-400 hover:bg-[#fff0e8] hover:text-[var(--brand)]"
+                                aria-label={`Remover banner ${index + 1}`}
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                            <label className="mt-3 block">
+                              <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.08em] text-gray-400">Produto ao clicar</span>
+                              <select
+                                value={storefrontTheme.banner_product_links?.[banner] || ""}
+                                onChange={(event) => updateBannerProductLink(banner, event.target.value)}
+                                className="min-h-11 w-full rounded-xl border border-[var(--line)] bg-[#fcfaf7] px-3 py-2 text-sm font-medium text-gray-700 outline-none focus:border-[var(--brand)]"
+                                aria-label={`Produto vinculado ao banner ${index + 1}`}
+                              >
+                                <option value="">Sem produto vinculado</option>
+                                {storefrontProducts.map((product) => (
+                                  <option key={product.id} value={product.id}>{product.name}</option>
+                                ))}
+                              </select>
+                            </label>
+                          </div>
                         </div>
-                        <button onClick={() => setBanners(banners.filter((_, i) => i !== index))} className="rounded-xl p-2 text-gray-400 hover:bg-[#fff0e8] hover:text-[var(--brand)]">
-                          <Trash2 size={16} />
-                        </button>
                       </div>
                     ))}
                     {banners.length === 0 && <p className="text-center text-sm text-gray-400">Nenhum banner enviado.</p>}

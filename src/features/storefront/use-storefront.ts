@@ -36,9 +36,10 @@ export function useStorefront({ slug, onCustomerLoaded, onMissingStore }: UseSto
   const [storefrontSubheadline, setStorefrontSubheadline] = useState(
     initialStorefront?.storefrontSubheadline ?? "",
   );
-  const [storefrontTheme, setStorefrontTheme] = useState<StorefrontTheme>(
-    initialStorefront?.storefrontTheme ?? DEFAULT_STOREFRONT_THEME,
-  );
+  const [storefrontTheme, setStorefrontTheme] = useState<StorefrontTheme>({
+    ...DEFAULT_STOREFRONT_THEME,
+    ...(initialStorefront?.storefrontTheme ?? {}),
+  });
   const [categories, setCategories] = useState<any[]>(initialStorefront?.categories ?? []);
   const [products, setProducts] = useState<Product[]>(initialStorefront?.products ?? []);
   const [deliveryTiers, setDeliveryTiers] = useState<any[]>(initialStorefront?.deliveryTiers ?? []);
@@ -195,17 +196,23 @@ export function useStorefront({ slug, onCustomerLoaded, onMissingStore }: UseSto
   }, [initialStorefront, onCustomerLoaded, onMissingStore, slug, supabase]);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setBanners((prev) => {
-        if (prev.length > 1) {
-          setCurrentBanner((current) => (current + 1) % prev.length);
-        }
-        return prev;
-      });
+    if (banners.length === 0) {
+      setCurrentBanner(0);
+      return;
+    }
+
+    setCurrentBanner((current) => Math.min(current, banners.length - 1));
+  }, [banners.length]);
+
+  useEffect(() => {
+    if (banners.length <= 1) return;
+
+    const timer = window.setInterval(() => {
+      setCurrentBanner((current) => (current + 1) % banners.length);
     }, 5000);
 
-    return () => clearInterval(timer);
-  }, []);
+    return () => window.clearInterval(timer);
+  }, [banners.length]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -229,6 +236,7 @@ export function useStorefront({ slug, onCustomerLoaded, onMissingStore }: UseSto
     primaryColor,
     banners,
     currentBanner,
+    setCurrentBanner,
     storefrontHeadline,
     storefrontSubheadline,
     storefrontTheme,
