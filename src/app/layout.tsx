@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Fredoka, Outfit } from "next/font/google";
 import "./globals.css";
+import "./landing-responsive.css";
 import { CartProvider } from "@/contexts/cart-context";
 import { ToastProvider } from "@/components/ui/toast-provider";
 
