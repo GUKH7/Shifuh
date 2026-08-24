@@ -1,5 +1,3 @@
-# DEPRECATED: compatibility alias during the Shifuh technical rebrand.
-# New installations must use ops/oracle/shifuh.cron. Keep this file temporarily so existing VM automation is not broken.
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 MAILTO=""

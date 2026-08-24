@@ -76,4 +76,4 @@ Agendamento recomendado:
 15 3 * * * /home/ubuntu/whatsapp-api/ops/backup-whatsapp-session.sh
 ```
 
-Os scripts aceitam variaveis de ambiente para substituir caminhos, nome do processo e retencao sem alterar o codigo. O arquivo `gestor-delivery.cron` reune os agendamentos e direciona a saida para `/home/ubuntu/whatsapp-api/logs`.
+Os scripts aceitam variaveis de ambiente para substituir caminhos, nome do processo e retencao sem alterar o codigo. O arquivo `shifuh.cron` e o nome canonico para novas instalacoes e reune os agendamentos, direcionando a saida para `/home/ubuntu/whatsapp-api/logs`. O antigo `gestor-delivery.cron` permanece temporariamente como alias de compatibilidade para nao quebrar automacoes ja instaladas na VM.
