@@ -1,9 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Loader2, Store } from "lucide-react";
+import { ArrowRight, Loader2 } from "lucide-react";
 
 type BrowserSupabaseClient = ReturnType<typeof createBrowserClient>;
 
@@ -136,33 +137,46 @@ export default function AdminLogin() {
       <div className="mx-auto grid min-h-screen max-w-6xl items-center gap-10 px-6 py-10 lg:grid-cols-[0.95fr_1.05fr]">
         <div className="hidden lg:block">
           <div className="inline-flex items-center gap-3">
-            <div className="brand-gradient flex h-10 w-10 items-center justify-center rounded-xl text-white">
-              <Store size={18} />
+            <Image
+              src="/brand/shifuh-icon.svg"
+              alt="Símbolo Shifuh"
+              width={44}
+              height={44}
+              priority
+              className="h-11 w-11 object-contain"
+            />
+            <div>
+              <span className="font-brand block text-2xl font-semibold leading-none tracking-tight text-gray-950">SHIFUH</span>
+              <span className="mt-1 block text-[10px] font-medium text-gray-500">Você mestre do seu delivery</span>
             </div>
-            <span className="text-2xl font-black tracking-tight text-gray-950">SHIFUH</span>
           </div>
           <h1 className="mt-8 max-w-xl text-6xl font-black leading-[0.95] tracking-[-0.05em] text-gray-950">
-            Gerencie sua loja com pedidos direto no <span className="italic text-[var(--brand)]">WhatsApp.</span>
+            Toda a operação do seu <span className="text-[var(--brand)]">delivery</span> em um só lugar.
           </h1>
           <p className="mt-6 max-w-lg text-lg leading-8 text-[var(--muted)]">
-            Um painel simples para configurar a vitrine, publicar o cardápio e acompanhar os pedidos em tempo real.
+            Publique sua vitrine, organize o cardápio, centralize pedidos e acompanhe clientes, cupons, avaliações e métricas pelo mesmo painel.
           </p>
           <div className="mt-10 surface-card max-w-xl rounded-[28px] p-6">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400">Fluxo MVP</p>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400">Uma operação conectada</p>
             <div className="mt-4 space-y-3">
-              <div className="rounded-2xl bg-white px-4 py-4 text-sm font-semibold text-gray-700">1. Criar conta da loja</div>
-              <div className="rounded-2xl bg-white px-4 py-4 text-sm font-semibold text-gray-700">2. Configurar cardápio e entrega</div>
-              <div className="rounded-2xl bg-white px-4 py-4 text-sm font-semibold text-gray-700">3. Receber pedidos no painel</div>
+              <div className="rounded-2xl bg-white px-4 py-4 text-sm font-semibold text-gray-700">1. Venda pela sua vitrine e canais integrados</div>
+              <div className="rounded-2xl bg-white px-4 py-4 text-sm font-semibold text-gray-700">2. Centralize pedidos e rotina no painel</div>
+              <div className="rounded-2xl bg-white px-4 py-4 text-sm font-semibold text-gray-700">3. Acompanhe clientes, métricas e desempenho</div>
             </div>
           </div>
         </div>
 
         <div className="surface-card mx-auto w-full max-w-md rounded-[32px] p-8 shadow-[0_30px_80px_rgba(17,16,15,0.08)]">
           <div className="mb-8 text-center lg:hidden">
-            <div className="brand-gradient mx-auto flex h-12 w-12 items-center justify-center rounded-xl text-white">
-              <Store size={20} />
-            </div>
-            <p className="mt-4 text-2xl font-black tracking-tight text-gray-950">SHIFUH</p>
+            <Image
+              src="/brand/shifuh-icon.svg"
+              alt="Símbolo Shifuh"
+              width={52}
+              height={52}
+              priority
+              className="mx-auto h-13 w-13 object-contain"
+            />
+            <p className="font-brand mt-4 text-2xl font-semibold tracking-tight text-gray-950">SHIFUH</p>
           </div>
 
           <div>
@@ -171,8 +185,8 @@ export default function AdminLogin() {
             </h2>
             <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
               {isRegistering
-                ? "Abra sua operação digital em poucos minutos."
-                : "Use seu e-mail para acessar cardápio, configurações e pedidos."}
+                ? "Crie sua loja e comece a organizar a operação no Shifuh."
+                : "Acesse pedidos, cardápio, clientes, métricas e configurações."}
             </p>
           </div>
 
