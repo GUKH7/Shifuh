@@ -3,6 +3,7 @@ import {
   requiresGoogleMaps,
   shouldUseGoogleMaps,
 } from "@/lib/google-maps";
+import { SHIFUH_BRAND } from "@/lib/brand";
 
 export type RouteCoordinates = {
   lat: number;
@@ -66,7 +67,7 @@ async function getOsrmRoadRoute(
     const response = await fetch(url, {
       headers: {
         Accept: "application/json",
-        "User-Agent": "GestorDelivery/1.0 (+https://gestor-delivery-tau.vercel.app)",
+        "User-Agent": `Shifuh/1.0 (+${SHIFUH_BRAND.siteUrl})`,
       },
       cache: "no-store",
       signal: AbortSignal.timeout(7000),

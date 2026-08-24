@@ -3,9 +3,8 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { StorefrontInitialDataProvider } from "@/features/storefront/StorefrontInitialDataProvider";
 import { getPublicStorefront } from "@/features/storefront/server-data";
+import { SHIFUH_BRAND } from "@/lib/brand";
 import styles from "./layout.module.css";
-
-const SITE_URL = "https://www.shifuh.com.br";
 
 export const revalidate = 60;
 
@@ -19,7 +18,7 @@ function buildDescription(data: NonNullable<Awaited<ReturnType<typeof getPublicS
   return (
     data.storefrontSubheadline?.trim() ||
     restaurant.description?.trim() ||
-    `Peça online no ${restaurant.name} pelo Shifuh.`
+    `Peça online no ${restaurant.name} pelo ${SHIFUH_BRAND.name}.`
   );
 }
 
@@ -31,15 +30,15 @@ export async function generateMetadata({
 
   if (!data) {
     return {
-      title: "Loja não encontrada | Shifuh",
+      title: `Loja não encontrada | ${SHIFUH_BRAND.name}`,
       robots: { index: false, follow: false },
     };
   }
 
   const restaurant = data.restaurant;
-  const title = `${restaurant.name} | Shifuh`;
+  const title = `${restaurant.name} | ${SHIFUH_BRAND.name}`;
   const description = buildDescription(data);
-  const canonicalUrl = new URL(`/${restaurant.slug}`, SITE_URL).toString();
+  const canonicalUrl = new URL(`/${restaurant.slug}`, SHIFUH_BRAND.siteUrl).toString();
   const socialImage =
     data.banners[0] || restaurant.image_url || restaurant.logo_url || undefined;
 
@@ -52,7 +51,7 @@ export async function generateMetadata({
     openGraph: {
       type: "website",
       locale: "pt_BR",
-      siteName: "Shifuh",
+      siteName: SHIFUH_BRAND.name,
       url: canonicalUrl,
       title,
       description,
