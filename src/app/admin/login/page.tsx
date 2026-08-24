@@ -146,10 +146,10 @@ export default function AdminLogin() {
               className="h-[60px] w-[60px] shrink-0 object-contain"
             />
             <div className="min-w-0">
-              <span className="font-brand block text-[2.35rem] font-semibold leading-[0.9] tracking-[-0.025em] text-gray-950">
+              <span className="font-brand block text-[2.7rem] font-semibold leading-[0.88] tracking-[-0.03em] text-gray-950">
                 SHIFUH
               </span>
-              <span className="mt-2 block text-[12.5px] font-medium leading-none tracking-[-0.01em] text-gray-500">
+              <span className="mt-1.5 block text-[11.5px] font-medium leading-none tracking-[-0.01em] text-gray-500">
                 Você mestre do seu delivery
               </span>
             </div>
@@ -180,8 +180,8 @@ export default function AdminLogin() {
               priority
               className="mx-auto h-14 w-14 object-contain"
             />
-            <p className="font-brand mt-4 text-[1.9rem] font-semibold leading-none tracking-tight text-gray-950">SHIFUH</p>
-            <p className="mt-2 text-[11px] font-medium text-gray-500">Você mestre do seu delivery</p>
+            <p className="font-brand mt-4 text-[2.15rem] font-semibold leading-none tracking-[-0.03em] text-gray-950">SHIFUH</p>
+            <p className="mt-1.5 text-[10.5px] font-medium text-gray-500">Você mestre do seu delivery</p>
           </div>
 
           <div>
