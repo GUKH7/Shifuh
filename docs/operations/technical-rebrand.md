@@ -6,7 +6,7 @@ Este documento registra a migracao tecnica da marca sem quebrar dados persistido
 
 A identidade publica e comercial do Shifuh esta ativa em producao. O rollout tecnico foi mergeado pelo PR #104 e a landing, o login e a metadata comercial pelo PR #105. Em 24/08/2026, `www.shifuh.com.br`, o redirect do dominio raiz, favicon, canonicals e as rotas publicas principais foram validados no deploy de producao.
 
-A etapa final de identificadores tecnicos foi iniciada depois dessa validacao. O package raiz ja usa o nome canonico `shifuh` e o repositorio GitHub foi renomeado para `GUKH7/Shifuh`. Antes do rename do projeto Vercel, a integracao Git deve ser validada com um Preview disparado por commit no repositorio ja renomeado.
+A etapa final de identificadores tecnicos tambem foi executada. O package raiz usa `shifuh`, o repositorio GitHub foi renomeado para `GUKH7/Shifuh` preservando o mesmo ID interno e o projeto Vercel existente foi renomeado para `shifuh` preservando o Project ID, os dominios publicos, o historico de deploys e a integracao Git. Um Preview disparado depois do rename do GitHub confirmou que a Vercel passou a receber commits com `githubRepo: Shifuh` sem recriar o vinculo.
 
 ## Identidade canonica
 
@@ -15,7 +15,7 @@ A etapa final de identificadores tecnicos foi iniciada depois dessa validacao. O
 - Dominio raiz: `https://shifuh.com.br`
 - Package raiz: `shifuh`
 - Repositorio GitHub: `GUKH7/Shifuh`
-- Projeto Vercel alvo: `shifuh`
+- Projeto Vercel: `shifuh`
 - Icone canonico: `/brand/shifuh-icon.svg`
 - Prefixo novo de persistencia no browser: `shifuh:`
 - Cookie novo de subtotal da sacola: `shifuh_cart_subtotal`
@@ -47,16 +47,17 @@ O cookie `gestor_cart_subtotal` continua em dual-write temporario junto com `shi
 
 ## Corte dos identificadores de infraestrutura
 
-A migracao final deve preservar os IDs dos recursos e os dominios publicos. A ordem operacional e:
+A migracao final preservou os IDs dos recursos e os dominios publicos. A ordem operacional executada foi:
 
 1. alterar o package raiz de `gestor-delivery` para `shifuh` e validar CI/Preview;
 2. renomear o repositorio GitHub de `GUKH7/gestor_delivery` para `GUKH7/Shifuh`;
-3. confirmar que o redirect do GitHub e a integracao da Vercel continuam apontando para o mesmo repositorio;
+3. confirmar que a integracao da Vercel continuou recebendo commits do mesmo repositorio e do mesmo ID;
 4. renomear o projeto Vercel de `gestor-delivery` para `shifuh`, preservando `www.shifuh.com.br` e `shifuh.com.br`;
-5. disparar e validar um deploy de `main` depois dos renomes;
-6. validar `/`, `/admin/login`, `/api/health` e observabilidade em producao.
+5. disparar e validar um Preview depois dos renomes;
+6. disparar e validar um deploy de `main` depois dos renomes;
+7. validar `/`, `/admin/login`, `/api/health` e observabilidade em producao.
 
-O ID do projeto Vercel, historico de deploys e os dominios publicos nao devem ser recriados: o objetivo e renomear o recurso existente, nao criar outro projeto.
+O ID do projeto Vercel, historico de deploys e os dominios publicos nao foram recriados: o recurso existente foi apenas renomeado.
 
 Nomes historicos de migrations permanecem imutaveis para preservar a sequencia do banco. O arquivo `ops/oracle/gestor-delivery.cron` tambem permanece como compatibilidade ate a VM ser verificada.
 
@@ -72,8 +73,9 @@ Nomes historicos de migrations permanecem imutaveis para preservar a sequencia d
 - [x] Landing, login e metadata comercial mergeados e validados em producao.
 - [x] `package.json` e `package-lock.json` usam package name `shifuh`.
 - [x] Repositorio GitHub renomeado para `GUKH7/Shifuh`, preservando o mesmo recurso.
-- [ ] Validar Preview da Vercel disparado por commit apos o rename do GitHub.
-- [ ] Renomear projeto Vercel para `shifuh` preservando dominios e projeto existente.
+- [x] Preview da Vercel disparado por commit apos o rename do GitHub.
+- [x] Projeto Vercel renomeado para `shifuh`, preservando Project ID e dominios.
+- [ ] Validar Preview disparado depois do rename da Vercel.
 - [ ] Confirmar deploy de `main` apos os renomes de infraestrutura.
 - [ ] Confirmar em producao a migracao de uma sacola criada antes do rollout.
 - [ ] Remover o dual-write do cookie legado depois da janela de compatibilidade.
