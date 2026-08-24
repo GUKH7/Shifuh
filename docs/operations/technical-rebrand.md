@@ -6,7 +6,9 @@ Este documento registra a migracao tecnica da marca sem quebrar dados persistido
 
 A identidade publica e comercial do Shifuh esta ativa em producao. O rollout tecnico foi mergeado pelo PR #104 e a landing, o login e a metadata comercial pelo PR #105. Em 24/08/2026, `www.shifuh.com.br`, o redirect do dominio raiz, favicon, canonicals e as rotas publicas principais foram validados no deploy de producao.
 
-A etapa final de identificadores tecnicos tambem foi executada. O package raiz usa `shifuh`, o repositorio GitHub foi renomeado para `GUKH7/Shifuh` preservando o mesmo ID interno e o projeto Vercel existente foi renomeado para `shifuh` preservando o Project ID, os dominios publicos, o historico de deploys e a integracao Git. Um Preview disparado depois do rename do GitHub confirmou que a Vercel passou a receber commits com `githubRepo: Shifuh` sem recriar o vinculo.
+A etapa final de identificadores tecnicos tambem foi executada. O package raiz usa `shifuh`, o repositorio GitHub foi renomeado para `GUKH7/Shifuh` preservando o mesmo ID interno e o projeto Vercel existente foi renomeado para `shifuh` preservando o Project ID, os dominios publicos, o historico de deploys e a integracao Git. Previews disparados depois dos renomes confirmaram `githubRepo: Shifuh` e project name `shifuh` sem recriar os vinculos.
+
+O primeiro deploy de `main` depois dos dois renomes foi o commit `30e812a8a0e4224ee429193353a1daa80f740e8a`, publicado como projeto `shifuh`. Em producao, `/`, `/admin/login` e `/api/health` responderam 200; o health reportou banco saudavel e a Vercel nao registrou erros de runtime na janela de validacao.
 
 ## Identidade canonica
 
@@ -75,8 +77,8 @@ Nomes historicos de migrations permanecem imutaveis para preservar a sequencia d
 - [x] Repositorio GitHub renomeado para `GUKH7/Shifuh`, preservando o mesmo recurso.
 - [x] Preview da Vercel disparado por commit apos o rename do GitHub.
 - [x] Projeto Vercel renomeado para `shifuh`, preservando Project ID e dominios.
-- [ ] Validar Preview disparado depois do rename da Vercel.
-- [ ] Confirmar deploy de `main` apos os renomes de infraestrutura.
+- [x] Preview disparado depois do rename da Vercel validado como projeto `shifuh`.
+- [x] Deploy de `main` apos os renomes validado em producao.
 - [ ] Confirmar em producao a migracao de uma sacola criada antes do rollout.
 - [ ] Remover o dual-write do cookie legado depois da janela de compatibilidade.
 - [ ] Confirmar que a VM Oracle usa `shifuh.cron` antes de remover o alias legado.
