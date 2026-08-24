@@ -6,13 +6,16 @@ Este documento registra a migracao tecnica da marca sem quebrar dados persistido
 
 A identidade publica e comercial do Shifuh esta ativa em producao. O rollout tecnico foi mergeado pelo PR #104 e a landing, o login e a metadata comercial pelo PR #105. Em 24/08/2026, `www.shifuh.com.br`, o redirect do dominio raiz, favicon, canonicals e as rotas publicas principais foram validados no deploy de producao.
 
-Os identificadores de infraestrutura listados mais abaixo continuam deliberadamente legados e devem ser tratados em uma janela separada. Eles nao fazem parte da identidade exibida ao cliente.
+A etapa final de identificadores tecnicos foi iniciada depois dessa validacao. O package raiz ja usa o nome canonico `shifuh`; os nomes externos do repositorio GitHub e do projeto Vercel devem ser alterados somente depois de CI e Preview aprovarem essa preparacao.
 
 ## Identidade canonica
 
 - Produto: `Shifuh`
 - Dominio publico: `https://www.shifuh.com.br`
 - Dominio raiz: `https://shifuh.com.br`
+- Package raiz: `shifuh`
+- Repositorio GitHub alvo: `GUKH7/shifuh`
+- Projeto Vercel alvo: `shifuh`
 - Icone canonico: `/brand/shifuh-icon.svg`
 - Prefixo novo de persistencia no browser: `shifuh:`
 - Cookie novo de subtotal da sacola: `shifuh_cart_subtotal`
@@ -37,21 +40,25 @@ O cookie `gestor_cart_subtotal` continua em dual-write temporario junto com `shi
 
 ## URLs e identificacao externa
 
-- `APP_BASE_URL` de referencia passa a ser `https://www.shifuh.com.br`.
+- `APP_BASE_URL` de referencia usa `https://www.shifuh.com.br`.
 - Chamadas ao OSRM se identificam como `Shifuh/1.0 (+https://www.shifuh.com.br)`.
 - Novas instalacoes Oracle devem usar `ops/oracle/shifuh.cron`.
-- `ops/oracle/gestor-delivery.cron` fica temporariamente como alias de compatibilidade.
+- `ops/oracle/gestor-delivery.cron` fica temporariamente como alias de compatibilidade ate confirmar a VM instalada.
 
-## Identificadores tecnicos mantidos temporariamente
+## Corte dos identificadores de infraestrutura
 
-Os itens abaixo nao sao exibidos ao cliente e nao devem ser renomeados no mesmo rollout sem mapear dependencias externas:
+A migracao final deve preservar os IDs dos recursos e os dominios publicos. A ordem operacional e:
 
-- repositorio GitHub `GUKH7/gestor_delivery`;
-- projeto Vercel `gestor-delivery` e aliases tecnicos gerados pela Vercel;
-- `package.json`/`package-lock.json` com package name `gestor-delivery`;
-- nomes historicos de recursos externos que possam ser referenciados por CI, webhooks, scripts ou dashboards.
+1. alterar o package raiz de `gestor-delivery` para `shifuh` e validar CI/Preview;
+2. renomear o repositorio GitHub de `GUKH7/gestor_delivery` para `GUKH7/shifuh`;
+3. confirmar que o redirect do GitHub e a integracao da Vercel continuam apontando para o mesmo repositorio;
+4. renomear o projeto Vercel de `gestor-delivery` para `shifuh`, preservando `www.shifuh.com.br` e `shifuh.com.br`;
+5. disparar e validar um deploy de `main` depois dos renomes;
+6. validar `/`, `/admin/login`, `/api/health` e observabilidade em producao.
 
-A regra e migrar esses identificadores em etapas separadas, mantendo redirects/aliases quando o provedor permitir. Nomes historicos de migrations tambem permanecem imutaveis para preservar a sequencia do banco.
+O ID do projeto Vercel, historico de deploys e os dominios publicos nao devem ser recriados: o objetivo e renomear o recurso existente, nao criar outro projeto.
+
+Nomes historicos de migrations permanecem imutaveis para preservar a sequencia do banco. O arquivo `ops/oracle/gestor-delivery.cron` tambem permanece como compatibilidade ate a VM ser verificada.
 
 ## Checklist de rollout
 
@@ -63,6 +70,10 @@ A regra e migrar esses identificadores em etapas separadas, mantendo redirects/a
 - [x] Cookie novo e emitido com compatibilidade temporaria do cookie antigo.
 - [x] Cron canonico novo criado sem remover o arquivo legado da VM.
 - [x] Landing, login e metadata comercial mergeados e validados em producao.
+- [x] `package.json` e `package-lock.json` usam package name `shifuh`.
+- [ ] Renomear repositorio GitHub para `GUKH7/shifuh` e validar redirect/integracoes.
+- [ ] Renomear projeto Vercel para `shifuh` preservando dominios e projeto existente.
+- [ ] Confirmar deploy de `main` apos os renomes de infraestrutura.
 - [ ] Confirmar em producao a migracao de uma sacola criada antes do rollout.
 - [ ] Remover o dual-write do cookie legado depois da janela de compatibilidade.
-- [ ] Planejar renome de repositorio/projeto/package em uma janela dedicada.
+- [ ] Confirmar que a VM Oracle usa `shifuh.cron` antes de remover o alias legado.
