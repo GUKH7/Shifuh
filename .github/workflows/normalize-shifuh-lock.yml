@@ -1,0 +1,46 @@
+name: Normalizar package-lock Shifuh
+
+on:
+  push:
+    branches:
+      - chore/finalize-shifuh-technical-identity
+
+permissions:
+  contents: write
+
+jobs:
+  normalize-lockfile:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: chore/finalize-shifuh-technical-identity
+
+      - name: Restaurar lockfile da main
+        run: |
+          git fetch origin main:refs/remotes/origin/main --depth=1
+          git show origin/main:package-lock.json > package-lock.json
+
+      - name: Alterar somente o package name
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const file = 'package-lock.json';
+          let source = fs.readFileSync(file, 'utf8');
+          const needle = '"name": "gestor-delivery"';
+          const matches = source.split(needle).length - 1;
+          if (matches !== 2) throw new Error(`Esperava 2 ocorrencias, encontrei ${matches}`);
+          source = source.replaceAll(needle, '"name": "shifuh"');
+          fs.writeFileSync(file, source);
+          NODE
+
+      - name: Validar e persistir
+        run: |
+          node -e "const l=require('./package-lock.json'); if(l.name!=='shifuh'||l.packages?.['']?.name!=='shifuh') process.exit(1)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git commit -m "chore: limitar lockfile ao rename Shifuh [skip ci]"
+          git push origin HEAD:chore/finalize-shifuh-technical-identity
