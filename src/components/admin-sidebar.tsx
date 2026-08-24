@@ -81,17 +81,17 @@ export default function AdminSidebar({
       </button>
 
       <div className="flex h-16 shrink-0 items-center justify-between px-4 sm:h-20 lg:px-5">
-        <div className={`flex items-center gap-3 ${isCollapsed ? "lg:justify-center" : ""}`}>
+        <div className={`flex items-center gap-2.5 ${isCollapsed ? "lg:justify-center" : ""}`}>
           <Image
             src="/brand/shifuh-icon.svg"
             alt="Símbolo Shifuh"
-            width={36}
-            height={36}
+            width={40}
+            height={40}
             priority
-            className="h-9 w-9 shrink-0 object-contain"
+            className="h-10 w-10 shrink-0 object-contain"
           />
           <div className={desktopLabelVisibility}>
-            <p className="font-brand text-base font-semibold tracking-tight text-gray-950">SHIFUH</p>
+            <p className="font-brand text-[1.05rem] font-semibold tracking-tight text-gray-950">SHIFUH</p>
             <p className="text-[11px] text-gray-500">Portal da loja</p>
           </div>
         </div>
