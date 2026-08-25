@@ -9,18 +9,27 @@ const storefrontLayout = fs.readFileSync(
   "utf8",
 );
 
-test("cabeçalho da loja mantém hierarquia fluida no mobile", () => {
+test("cabeçalho da loja mantém identidade e contexto no mesmo bloco", () => {
   assert.match(storefrontLayout, /@media \(max-width: 639px\)/);
   assert.match(storefrontLayout, /grid-template-columns:\s*56px minmax\(0, 1fr\)/);
-  assert.match(storefrontLayout, /grid-column:\s*1 \/ -1/);
+  assert.match(storefrontLayout, /flex-direction:\s*column/);
   assert.match(storefrontLayout, /font-size:\s*18px/);
-  assert.match(storefrontLayout, /border-top:\s*0 !important/);
+  assert.match(storefrontLayout, /span:nth-child\(4\)[\s\S]*display:\s*none !important/);
+  assert.match(storefrontLayout, /span:nth-child\(5\)[\s\S]*flex-basis:\s*100%/);
+});
+
+test("metadados inferiores deixam de parecer tabela", () => {
+  assert.match(storefrontLayout, /> div:nth-of-type\(2\)/);
+  assert.match(storefrontLayout, /border:\s*0 !important/);
+  assert.match(storefrontLayout, /> span > svg[\s\S]*display:\s*none !important/);
   assert.match(storefrontLayout, /content:\s*"·"/);
 });
 
-test("acesso à conta fica discreto sem perder área de toque útil", () => {
+test("acesso à conta fica visualmente discreto mantendo alvo de toque", () => {
   assert.match(storefrontLayout, /button\[aria-label="Minha conta"\]/);
-  assert.match(storefrontLayout, /width:\s*40px/);
-  assert.match(storefrontLayout, /height:\s*40px/);
+  assert.match(storefrontLayout, /width:\s*44px/);
+  assert.match(storefrontLayout, /height:\s*44px/);
   assert.match(storefrontLayout, /background:\s*transparent !important/);
+  assert.match(storefrontLayout, /box-shadow:\s*none !important/);
+  assert.match(storefrontLayout, /width:\s*18px !important/);
 });
