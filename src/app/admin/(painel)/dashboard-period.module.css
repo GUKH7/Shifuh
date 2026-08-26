@@ -203,6 +203,11 @@
   overflow: visible !important;
 }
 
+.page :global(.dashboard-sources-card .recharts-wrapper),
+.page :global(.dashboard-sources-card .recharts-surface) {
+  overflow: visible !important;
+}
+
 .page :global(.dashboard-top-products-card .recharts-yAxis .recharts-cartesian-axis-tick-value) {
   fill: #3f3833;
   font-size: 11px;
