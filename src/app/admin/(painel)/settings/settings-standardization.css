@@ -59,3 +59,224 @@
 .settings-route-content > div > div:first-child > button {
   min-height: 44px;
 }
+
+/* Aparência da vitrine: organização do editor e prévia mais fiel ao mobile. */
+.settings-route-content [class*="xl:grid-cols-[1.15fr_0.85fr]"] {
+  align-items: start;
+}
+
+.settings-route-content [class*="xl:grid-cols-[1.15fr_0.85fr]"] > div:first-child {
+  gap: 1rem !important;
+}
+
+.settings-route-content [class*="xl:grid-cols-[1.15fr_0.85fr]"] > div:first-child > div,
+.settings-route-content [class*="xl:grid-cols-[1.15fr_0.85fr]"] > div:last-child {
+  border-color: rgba(225, 207, 192, 0.78) !important;
+  background: #ffffff !important;
+  box-shadow: 0 8px 24px rgba(77, 48, 29, 0.045);
+}
+
+.settings-route-content [class*="xl:grid-cols-[1.15fr_0.85fr]"] > div:first-child > div {
+  padding: 1.2rem !important;
+}
+
+.settings-route-content [class*="xl:grid-cols-[1.15fr_0.85fr]"] > div:first-child > div > p:first-child {
+  color: #8f8176 !important;
+  letter-spacing: 0.14em !important;
+}
+
+.settings-route-content [class*="xl:grid-cols-[1.15fr_0.85fr]"] > div:first-child > div:first-child > div:nth-child(2) {
+  align-items: flex-start !important;
+}
+
+.settings-route-content [class*="xl:grid-cols-[1.15fr_0.85fr]"] > div:first-child > div:first-child label:has(input[type="color"]) {
+  min-height: 7.25rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.settings-route-content [class*="xl:grid-cols-[1.15fr_0.85fr]"] > div:first-child > div:nth-child(2) > div > label:first-child {
+  min-height: 8rem;
+  border-color: rgba(255, 90, 31, 0.18) !important;
+  background: #fffaf7 !important;
+  transition: border-color 160ms ease, background-color 160ms ease, transform 160ms ease;
+}
+
+.settings-route-content [class*="xl:grid-cols-[1.15fr_0.85fr]"] > div:first-child > div:nth-child(2) > div > label:first-child:hover {
+  border-color: rgba(255, 90, 31, 0.42) !important;
+  background: #fff7f1 !important;
+  transform: translateY(-1px);
+}
+
+.settings-route-content [class*="xl:grid-cols-[1.15fr_0.85fr]"] > div:last-child {
+  position: relative;
+  padding: 1rem !important;
+}
+
+.settings-route-content [class*="xl:grid-cols-[1.15fr_0.85fr]"] > div:last-child > p:first-child {
+  display: flex;
+  min-height: 2rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: #756960 !important;
+}
+
+.settings-route-content [class*="xl:grid-cols-[1.15fr_0.85fr]"] > div:last-child > p:first-child::after {
+  content: "Prévia mobile";
+  display: inline-flex;
+  min-height: 1.75rem;
+  align-items: center;
+  border: 1px solid rgba(255, 90, 31, 0.16);
+  border-radius: 999px;
+  background: #fff4ed;
+  padding: 0.25rem 0.65rem;
+  color: var(--brand);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+
+.settings-route-content [class*="xl:grid-cols-[1.15fr_0.85fr]"] > div:last-child > div:last-child {
+  width: min(100%, 390px);
+  max-height: 640px;
+  margin: 0.9rem auto 0 !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  border: 6px solid #24211f !important;
+  border-radius: 32px !important;
+  background: #f5f6f7 !important;
+  box-shadow: 0 24px 58px rgba(40, 31, 25, 0.18);
+  scrollbar-width: none;
+}
+
+.settings-route-content [class*="xl:grid-cols-[1.15fr_0.85fr]"] > div:last-child > div:last-child::-webkit-scrollbar {
+  display: none;
+}
+
+/* A capa do mock deixa de parecer um card dentro de outro e passa a se comportar como o hero real. */
+.settings-route-content [class*="xl:grid-cols-[1.15fr_0.85fr]"] > div:last-child > div:last-child > div:first-child {
+  display: flex;
+  min-height: 148px;
+  align-items: flex-end;
+  padding: 1rem !important;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.48), rgba(0, 0, 0, 0.06)) !important;
+}
+
+.settings-route-content [class*="xl:grid-cols-[1.15fr_0.85fr]"] > div:last-child > div:last-child > div:first-child > div:first-child {
+  width: 100%;
+  max-width: 100% !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+.settings-route-content [class*="xl:grid-cols-[1.15fr_0.85fr]"] > div:last-child > div:last-child > div:first-child button {
+  display: none !important;
+}
+
+.settings-route-content [class*="xl:grid-cols-[1.15fr_0.85fr]"] > div:last-child > div:last-child > div:first-child h3 {
+  max-width: 17rem;
+  font-size: 1.15rem !important;
+  line-height: 1.15 !important;
+}
+
+.settings-route-content [class*="xl:grid-cols-[1.15fr_0.85fr]"] > div:last-child > div:last-child > div:first-child p {
+  max-width: 19rem;
+  margin-top: 0.4rem !important;
+  font-size: 0.72rem !important;
+  line-height: 1.15rem !important;
+}
+
+.settings-route-content [class*="xl:grid-cols-[1.15fr_0.85fr]"] > div:last-child > div:last-child > div:nth-child(2) {
+  padding: 0.85rem !important;
+}
+
+/* A prévia deve representar o breakpoint mobile, mesmo quando o editor está aberto em uma tela grande. */
+.settings-route-content [class*="xl:grid-cols-[1.15fr_0.85fr]"] > div:last-child > div:last-child > div:nth-child(2) > div:last-child {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.settings-route-content [class*="xl:grid-cols-[1.15fr_0.85fr]"] > div:last-child > div:last-child > div:nth-child(2) > div:last-child > div {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 82px !important;
+  grid-template-rows: auto auto auto !important;
+  column-gap: 0.75rem !important;
+  row-gap: 0.15rem !important;
+  align-items: start !important;
+  min-height: 106px;
+  padding: 0.8rem !important;
+  border: 1px solid rgba(229, 231, 235, 0.92) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 5px 18px rgba(17, 16, 15, 0.05) !important;
+}
+
+.settings-route-content [class*="xl:grid-cols-[1.15fr_0.85fr]"] > div:last-child > div:last-child > div:nth-child(2) > div:last-child > div > div:first-child {
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  width: 82px !important;
+  height: 82px !important;
+  margin: 0 !important;
+  border-radius: 14px !important;
+}
+
+.settings-route-content [class*="xl:grid-cols-[1.15fr_0.85fr]"] > div:last-child > div:last-child > div:nth-child(2) > div:last-child > div > p:nth-child(2) {
+  grid-column: 1;
+  grid-row: 1;
+  margin-top: 0 !important;
+  font-size: 0.84rem !important;
+  line-height: 1.15rem !important;
+}
+
+.settings-route-content [class*="xl:grid-cols-[1.15fr_0.85fr]"] > div:last-child > div:last-child > div:nth-child(2) > div:last-child > div > p:nth-child(3) {
+  grid-column: 1;
+  grid-row: 2;
+  display: -webkit-box;
+  overflow: hidden;
+  margin-top: 0.15rem !important;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 0.7rem !important;
+  line-height: 1rem !important;
+}
+
+.settings-route-content [class*="xl:grid-cols-[1.15fr_0.85fr]"] > div:last-child > div:last-child > div:nth-child(2) > div:last-child > div > p:nth-child(4) {
+  grid-column: 1;
+  grid-row: 3;
+  margin-top: 0.35rem !important;
+  font-size: 0.78rem !important;
+}
+
+@media (min-width: 1280px) {
+  .settings-route-content [class*="xl:grid-cols-[1.15fr_0.85fr]"] {
+    grid-template-columns: minmax(0, 1fr) minmax(390px, 430px) !important;
+    gap: 1.5rem !important;
+  }
+
+  .settings-route-content [class*="xl:grid-cols-[1.15fr_0.85fr]"] > div:last-child {
+    position: sticky;
+    top: 1.25rem;
+  }
+}
+
+@media (max-width: 767px) {
+  .settings-route-content [class*="xl:grid-cols-[1.15fr_0.85fr]"] > div:first-child > div {
+    padding: 1rem !important;
+  }
+
+  .settings-route-content [class*="xl:grid-cols-[1.15fr_0.85fr]"] > div:last-child {
+    padding: 0.9rem !important;
+  }
+
+  .settings-route-content [class*="xl:grid-cols-[1.15fr_0.85fr]"] > div:last-child > div:last-child {
+    max-height: none;
+    border-width: 4px !important;
+    border-radius: 28px !important;
+  }
+}
