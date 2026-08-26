@@ -42,7 +42,7 @@
   color: #6b7280 !important;
 }
 
-.page :global(.dashboard-metric-card--featured .dashboard-metric-card-header > div:first-child > p:nth-child(2)) {
+.page :global(.dashboard-metric-card--featured .dashboard-metric-card-header > div:not(.dashboard-metric-card-icon) > p:not(.dashboard-metric-card-label)) {
   color: #111827 !important;
 }
 
@@ -51,12 +51,12 @@
   color: var(--brand) !important;
 }
 
-.page :global(.dashboard-metric-card--featured > p:last-child),
-.page :global(.dashboard-metric-card--featured > div:last-child) {
+.page :global(.dashboard-metric-card--featured > p),
+.page :global(.dashboard-metric-card--featured > div:not(.dashboard-metric-card-header)) {
   color: #6b7280 !important;
 }
 
-.page :global(.dashboard-metric-card--featured > div:last-child span) {
+.page :global(.dashboard-metric-card--featured > div:not(.dashboard-metric-card-header) span) {
   color: #9ca3af !important;
 }
 
@@ -64,7 +64,7 @@
   min-height: 4.65rem;
 }
 
-.page :global(.dashboard-metric-card-header > div:first-child) {
+.page :global(.dashboard-metric-card-header > div:not(.dashboard-metric-card-icon)) {
   display: flex;
   min-width: 0;
   flex: 1;
@@ -76,13 +76,13 @@
   line-height: 1.1rem;
 }
 
-.page :global(.dashboard-metric-card-header > div:first-child > p:nth-child(2)) {
+.page :global(.dashboard-metric-card-header > div:not(.dashboard-metric-card-icon) > p:not(.dashboard-metric-card-label)) {
   margin-top: 0.65rem;
   line-height: 1;
 }
 
-.page :global(.dashboard-metric-card > p:last-child),
-.page :global(.dashboard-metric-card > div:last-child) {
+.page :global(.dashboard-metric-card > p),
+.page :global(.dashboard-metric-card > div:not(.dashboard-metric-card-header)) {
   margin-top: auto !important;
   padding-top: 0.95rem;
 }
@@ -160,7 +160,6 @@
   box-shadow: 0 8px 24px rgba(77, 48, 29, 0.055);
 }
 
-.page :global(.dashboard-analytics-grid > article:first-child > div:first-child),
 .page :global(.dashboard-card-header) {
   min-height: 3.6rem;
   margin-bottom: 1.25rem;
@@ -180,22 +179,6 @@
 .page :global(.dashboard-card-header) {
   padding-bottom: 0;
   border-bottom: 0;
-}
-
-.page :global(.dashboard-card-header > div > p:first-child),
-.page :global(.dashboard-sources-card > p:first-child) {
-  min-height: 1.35rem;
-  line-height: 1.35rem;
-}
-
-.page :global(.dashboard-card-header > div > p:nth-child(2)),
-.page :global(.dashboard-sources-card > p:nth-child(2)) {
-  min-height: 1.15rem;
-  line-height: 1.15rem;
-}
-
-.page :global(.dashboard-sources-card > p:nth-child(2)) {
-  margin-bottom: 1.25rem;
 }
 
 .page :global(.dashboard-top-products-card .recharts-wrapper),
