@@ -33,9 +33,31 @@
 }
 
 .page :global(.dashboard-metric-card--featured) {
-  border-color: #ff5a1f;
-  background: #ff5a1f;
-  box-shadow: 0 10px 26px rgba(255, 90, 31, 0.16);
+  border-color: rgba(225, 207, 192, 0.82);
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(77, 48, 29, 0.055);
+}
+
+.page :global(.dashboard-metric-card--featured .dashboard-metric-card-label) {
+  color: #6b7280 !important;
+}
+
+.page :global(.dashboard-metric-card--featured .dashboard-metric-card-header > div:first-child > p:nth-child(2)) {
+  color: #111827 !important;
+}
+
+.page :global(.dashboard-metric-card--featured .dashboard-metric-card-icon) {
+  background: #fff0e8 !important;
+  color: var(--brand) !important;
+}
+
+.page :global(.dashboard-metric-card--featured > p:last-child),
+.page :global(.dashboard-metric-card--featured > div:last-child) {
+  color: #6b7280 !important;
+}
+
+.page :global(.dashboard-metric-card--featured > div:last-child span) {
+  color: #9ca3af !important;
 }
 
 .page :global(.dashboard-metric-card-header) {
@@ -130,10 +152,18 @@
 }
 
 .page :global(.dashboard-analytics-grid > article) {
+  display: flex;
+  flex-direction: column;
   border: 1px solid rgba(225, 207, 192, 0.82);
   border-radius: var(--admin-radius-card);
   background: #ffffff;
   box-shadow: 0 8px 24px rgba(77, 48, 29, 0.055);
+}
+
+.page :global(.dashboard-analytics-grid > article:first-child > div:first-child),
+.page :global(.dashboard-card-header) {
+  min-height: 3.6rem;
+  margin-bottom: 1.25rem;
 }
 
 .page :global(.dashboard-top-products-card),
@@ -154,13 +184,18 @@
 
 .page :global(.dashboard-card-header > div > p:first-child),
 .page :global(.dashboard-sources-card > p:first-child) {
-  line-height: 1.35;
+  min-height: 1.35rem;
+  line-height: 1.35rem;
 }
 
 .page :global(.dashboard-card-header > div > p:nth-child(2)),
 .page :global(.dashboard-sources-card > p:nth-child(2)) {
   min-height: 1.15rem;
   line-height: 1.15rem;
+}
+
+.page :global(.dashboard-sources-card > p:nth-child(2)) {
+  margin-bottom: 1.25rem;
 }
 
 .page :global(.dashboard-top-products-card .recharts-wrapper),
