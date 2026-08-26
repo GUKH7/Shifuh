@@ -42,13 +42,23 @@ test("metadados secundários permanecem leves e centralizados", () => {
   assert.doesNotMatch(storefrontLayout, /> span > svg[\s\S]*display:\s*none !important/);
 });
 
-test("acesso à conta continua discreto com alvo de toque adequado", () => {
+test("acesso à conta fica alinhado à linha do nome com alvo de toque adequado", () => {
   assert.match(storefrontLayout, /div\[class~="sm:hidden"\][\s\S]*position:\s*absolute !important/);
+  assert.match(storefrontLayout, /top:\s*0 !important/);
+  assert.match(storefrontLayout, /right:\s*2px !important/);
+  assert.match(storefrontLayout, /transform:\s*none !important/);
   assert.match(storefrontLayout, /button\[aria-label="Minha conta"\]/);
   assert.match(storefrontLayout, /width:\s*44px !important/);
   assert.match(storefrontLayout, /height:\s*44px !important/);
   assert.match(storefrontLayout, /background:\s*transparent !important/);
   assert.match(storefrontLayout, /width:\s*17px !important/);
+});
+
+test("controles do carrossel não disputam espaço com a logo central", () => {
+  assert.match(storefrontLayout, /\[data-banner-product-link\] ~ span[\s\S]*bottom:\s*12px !important/);
+  assert.match(storefrontLayout, /button\[aria-label\^="Exibir banner "\][\s\S]*left:\s*12px !important/);
+  assert.match(storefrontLayout, /button\[aria-label\^="Exibir banner "\][\s\S]*max-width:\s*52% !important/);
+  assert.match(storefrontLayout, /button\[aria-label\^="Exibir banner "\][\s\S]*transform:\s*none !important/);
 });
 
 test("cabeçalho continua próximo da navegação do cardápio", () => {
