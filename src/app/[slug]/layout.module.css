@@ -22,6 +22,29 @@
   display: none;
 }
 
+.scope div:has(> button[aria-label="Banner anterior"]) > img[alt^="Banner da "] {
+  animation: storefrontBannerSlideIn 460ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform, opacity;
+}
+
+@keyframes storefrontBannerSlideIn {
+  from {
+    opacity: 0.92;
+    transform: translate3d(14%, 0, 0) scale(1.01);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scope div:has(> button[aria-label="Banner anterior"]) > img[alt^="Banner da "] {
+    animation: none !important;
+  }
+}
+
 @media (max-width: 639px) {
   .scope div:has(> img[alt^="Banner da "]) {
     height: auto !important;
