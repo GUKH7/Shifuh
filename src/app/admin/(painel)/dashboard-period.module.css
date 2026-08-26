@@ -22,14 +22,47 @@
 }
 
 .page :global(.dashboard-metric-card) {
-  background: linear-gradient(145deg, #ffffff 0%, #fffaf6 100%);
-  border-color: rgba(255, 90, 31, 0.14);
+  display: flex;
+  min-height: 8.5rem;
+  flex-direction: column;
+  justify-content: space-between;
+  border: 1px solid rgba(225, 207, 192, 0.82);
+  border-radius: var(--admin-radius-card);
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(77, 48, 29, 0.055);
 }
 
 .page :global(.dashboard-metric-card--featured) {
-  background: linear-gradient(135deg, #ff5a1f 0%, #ff7a1f 100%);
-  border-color: transparent;
-  box-shadow: 0 16px 34px rgba(255, 90, 31, 0.2);
+  border-color: #ff5a1f;
+  background: #ff5a1f;
+  box-shadow: 0 10px 26px rgba(255, 90, 31, 0.16);
+}
+
+.page :global(.dashboard-metric-card-header) {
+  min-height: 4.65rem;
+}
+
+.page :global(.dashboard-metric-card-header > div:first-child) {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.page :global(.dashboard-metric-card-label) {
+  min-height: 1.1rem;
+  line-height: 1.1rem;
+}
+
+.page :global(.dashboard-metric-card-header > div:first-child > p:nth-child(2)) {
+  margin-top: 0.65rem;
+  line-height: 1;
+}
+
+.page :global(.dashboard-metric-card > p:last-child),
+.page :global(.dashboard-metric-card > div:last-child) {
+  margin-top: auto !important;
+  padding-top: 0.95rem;
 }
 
 .page :global(.dashboard-period-control)::before,
@@ -96,6 +129,13 @@
   overflow: visible;
 }
 
+.page :global(.dashboard-analytics-grid > article) {
+  border: 1px solid rgba(225, 207, 192, 0.82);
+  border-radius: var(--admin-radius-card);
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(77, 48, 29, 0.055);
+}
+
 .page :global(.dashboard-top-products-card),
 .page :global(.dashboard-sources-card) {
   align-self: stretch;
@@ -104,12 +144,23 @@
 .page :global(.dashboard-top-products-card) {
   position: relative;
   z-index: 3;
-  background: radial-gradient(circle at 100% 0%, rgba(255, 106, 0, 0.1), transparent 38%), linear-gradient(180deg, #fffdfb 0%, #ffffff 58%, #fffaf6 100%);
+  background: #ffffff;
 }
 
 .page :global(.dashboard-card-header) {
-  padding-bottom: 0.875rem;
-  border-bottom: 1px solid rgba(238, 227, 217, 0.8);
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.page :global(.dashboard-card-header > div > p:first-child),
+.page :global(.dashboard-sources-card > p:first-child) {
+  line-height: 1.35;
+}
+
+.page :global(.dashboard-card-header > div > p:nth-child(2)),
+.page :global(.dashboard-sources-card > p:nth-child(2)) {
+  min-height: 1.15rem;
+  line-height: 1.15rem;
 }
 
 .page :global(.dashboard-top-products-card .recharts-wrapper),
@@ -151,8 +202,8 @@
 }
 
 @media (min-width: 1280px) {
-  .page :global(.dashboard-top-products-card),
-  .page :global(.dashboard-sources-card) {
+  .page :global(.dashboard-analytics-grid > article) {
+    grid-column: span 4 / span 4 !important;
     min-height: 380px;
   }
 
@@ -164,10 +215,12 @@
 
 @media (min-width: 1280px) and (max-width: 1535px) {
   .page :global(.dashboard-metric-card) {
+    min-height: 8.25rem;
     padding: 1rem;
   }
 
   .page :global(.dashboard-metric-card-header) {
+    min-height: 4.35rem;
     gap: 0.5rem;
   }
 
