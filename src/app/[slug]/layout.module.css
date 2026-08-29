@@ -58,12 +58,12 @@
   .scope [data-banner-product-link] ~ span {
     top: auto !important;
     right: 14px !important;
-    bottom: 72px !important;
+    bottom: 48px !important;
   }
 
   .scope section[class~="bg-white"] div:has(> button[aria-label^="Exibir banner "]) {
     left: 14px !important;
-    bottom: 56px !important;
+    bottom: 32px !important;
     max-width: 48% !important;
     transform: none !important;
     justify-content: flex-start !important;
@@ -72,6 +72,10 @@
   .scope section[class~="bg-white"] div:has(> button[aria-label^="Exibir banner "]) > button {
     width: 34px !important;
     height: 44px !important;
+  }
+
+  .scope section[class~="bg-white"] div[class~="pointer-events-none"][class~="absolute"][class~="inset-x-0"][class~="bottom-0"][class~="z-20"] {
+    bottom: 24px !important;
   }
 
   .scope > div[class~="min-h-screen"] {
@@ -83,7 +87,7 @@
   }
 
   .scope section[class~="bg-white"] div[class~="-mt-1"][class~="relative"][class~="z-10"] {
-    margin: -56px 14px 0 !important;
+    margin: -24px 14px 0 !important;
     padding: 0 20px 14px !important;
     border: 1px solid #e6e8eb !important;
     border-radius: 28px !important;
@@ -106,21 +110,21 @@
     flex-direction: column !important;
     align-items: center !important;
     gap: 0 !important;
-    padding-top: 52px !important;
+    padding-top: 46px !important;
     text-align: center;
     border-left: 0 !important;
   }
 
   .scope section[class~="bg-white"] div[class~="-mt-1"][class~="relative"][class~="z-10"] > div:first-child > div[class~="flex-shrink-0"] {
     position: absolute !important;
-    top: -42px !important;
+    top: -38px !important;
     left: 50% !important;
-    width: 84px !important;
-    height: 84px !important;
+    width: 76px !important;
+    height: 76px !important;
     margin: 0 !important;
     transform: translateX(-50%) !important;
     border-width: 4px !important;
-    border-radius: 22px !important;
+    border-radius: 20px !important;
     box-shadow: 0 8px 24px rgba(17, 16, 15, 0.16) !important;
   }
 
