@@ -48,7 +48,7 @@
 @media (max-width: 639px) {
   .scope div:has(> img[alt^="Banner da "]) {
     height: auto !important;
-    aspect-ratio: 16 / 7;
+    aspect-ratio: 32 / 15;
   }
 
   .scope section[class~="bg-white"] > div[class~="max-w-5xl"] > div[class~="relative"][class~="overflow-hidden"] {
@@ -58,24 +58,31 @@
   .scope [data-banner-product-link] ~ span {
     top: auto !important;
     right: 14px !important;
-    bottom: 48px !important;
+    bottom: 42px !important;
+    padding: 7px 11px !important;
+    border: 1px solid rgba(255, 255, 255, 0.72) !important;
+    border-radius: 999px !important;
+    background: rgba(255, 255, 255, 0.94) !important;
+    color: #2f343a !important;
+    box-shadow: 0 5px 16px rgba(17, 16, 15, 0.15) !important;
+    backdrop-filter: blur(8px);
   }
 
   .scope section[class~="bg-white"] div:has(> button[aria-label^="Exibir banner "]) {
     left: 14px !important;
-    bottom: 32px !important;
+    bottom: 18px !important;
     max-width: 48% !important;
     transform: none !important;
     justify-content: flex-start !important;
   }
 
   .scope section[class~="bg-white"] div:has(> button[aria-label^="Exibir banner "]) > button {
-    width: 34px !important;
-    height: 44px !important;
+    width: 32px !important;
+    height: 40px !important;
   }
 
   .scope section[class~="bg-white"] div[class~="pointer-events-none"][class~="absolute"][class~="inset-x-0"][class~="bottom-0"][class~="z-20"] {
-    bottom: 24px !important;
+    bottom: 16px !important;
   }
 
   .scope > div[class~="min-h-screen"] {
@@ -83,16 +90,16 @@
   }
 
   .scope section[class~="bg-white"] > div[class~="max-w-5xl"] {
-    padding-bottom: 10px !important;
+    padding-bottom: 6px !important;
   }
 
   .scope section[class~="bg-white"] div[class~="-mt-1"][class~="relative"][class~="z-10"] {
-    margin: -24px 14px 0 !important;
-    padding: 0 20px 14px !important;
+    margin: -14px 14px 0 !important;
+    padding: 0 20px 8px !important;
     border: 1px solid #e6e8eb !important;
-    border-radius: 28px !important;
+    border-radius: 26px !important;
     background: #ffffff !important;
-    box-shadow: 0 10px 28px rgba(17, 16, 15, 0.08) !important;
+    box-shadow: 0 8px 22px rgba(17, 16, 15, 0.07) !important;
   }
 
   .scope section[class~="bg-white"] div[class~="-mt-1"][class~="relative"][class~="z-10"]::before,
@@ -110,22 +117,22 @@
     flex-direction: column !important;
     align-items: center !important;
     gap: 0 !important;
-    padding-top: 46px !important;
+    padding-top: 40px !important;
     text-align: center;
     border-left: 0 !important;
   }
 
   .scope section[class~="bg-white"] div[class~="-mt-1"][class~="relative"][class~="z-10"] > div:first-child > div[class~="flex-shrink-0"] {
     position: absolute !important;
-    top: -38px !important;
+    top: -34px !important;
     left: 50% !important;
-    width: 76px !important;
-    height: 76px !important;
+    width: 68px !important;
+    height: 68px !important;
     margin: 0 !important;
     transform: translateX(-50%) !important;
-    border-width: 4px !important;
-    border-radius: 20px !important;
-    box-shadow: 0 8px 24px rgba(17, 16, 15, 0.16) !important;
+    border-width: 3px !important;
+    border-radius: 18px !important;
+    box-shadow: 0 7px 20px rgba(17, 16, 15, 0.14) !important;
   }
 
   .scope section[class~="bg-white"] div[class~="-mt-1"][class~="relative"][class~="z-10"] > div:first-child > div[class~="flex-1"] {
@@ -138,11 +145,11 @@
   .scope section[class~="bg-white"] div[class~="-mt-1"][class~="relative"][class~="z-10"] > div:first-child > div[class~="flex-1"] > div:first-child {
     position: relative;
     display: flex !important;
-    min-height: 44px;
+    min-height: 40px;
     width: 100%;
     align-items: center !important;
     justify-content: center !important;
-    padding: 0 48px !important;
+    padding: 0 42px !important;
   }
 
   .scope section[class~="bg-white"] div[class~="-mt-1"][class~="relative"][class~="z-10"] h1[class~="truncate"] {
@@ -150,9 +157,9 @@
     max-width: 100%;
     padding-right: 0 !important;
     text-align: center !important;
-    font-size: 21px !important;
+    font-size: 20px !important;
     font-weight: 800 !important;
-    line-height: 1.18 !important;
+    line-height: 1.14 !important;
     letter-spacing: -0.025em;
     overflow: visible !important;
     text-overflow: clip !important;
@@ -163,32 +170,32 @@
   .scope section[class~="bg-white"] div[class~="-mt-1"][class~="relative"][class~="z-10"] > div:first-child > div[class~="flex-1"] > div:first-child > div[class~="sm:hidden"] {
     position: absolute !important;
     top: 0 !important;
-    right: 0 !important;
+    right: 2px !important;
     display: flex !important;
-    height: 44px !important;
+    height: 40px !important;
     align-items: center !important;
     justify-content: center !important;
     transform: none !important;
   }
 
   .scope section[class~="bg-white"] div[class~="-mt-1"][class~="relative"][class~="z-10"] > div:first-child > div[class~="flex-1"] > div[class~="mt-2"][class~="flex-wrap"][class~="items-center"] {
-    margin-top: 5px !important;
+    margin-top: 2px !important;
     display: flex !important;
     width: 100%;
     min-width: 0;
     flex-wrap: wrap !important;
     align-items: center !important;
     justify-content: center !important;
-    column-gap: 5px !important;
-    row-gap: 4px !important;
+    column-gap: 4px !important;
+    row-gap: 3px !important;
     text-align: center;
-    font-size: 12px !important;
-    line-height: 1.3 !important;
+    font-size: 11.5px !important;
+    line-height: 1.25 !important;
     color: #5f6670 !important;
   }
 
   .scope section[class~="bg-white"] div[class~="-mt-1"][class~="relative"][class~="z-10"] > div:first-child > div[class~="flex-1"] > div[class~="mt-2"][class~="flex-wrap"][class~="items-center"] > span:first-child {
-    padding: 5px 9px !important;
+    padding: 4px 8px !important;
   }
 
   .scope section[class~="bg-white"] div[class~="-mt-1"][class~="relative"][class~="z-10"] > div:first-child > div[class~="flex-1"] > div[class~="mt-2"][class~="flex-wrap"][class~="items-center"] > span:not(:first-child) {
@@ -202,13 +209,13 @@
     flex-wrap: wrap !important;
     align-items: center !important;
     justify-content: center !important;
-    gap: 7px 14px !important;
-    margin-top: 12px !important;
-    padding: 12px 0 0 !important;
+    gap: 6px 12px !important;
+    margin-top: 8px !important;
+    padding: 8px 0 0 !important;
     border-top: 1px solid #eceef0 !important;
     text-align: center;
-    font-size: 11.5px !important;
-    line-height: 1.3 !important;
+    font-size: 11.25px !important;
+    line-height: 1.25 !important;
     color: #737a84 !important;
   }
 
@@ -219,28 +226,28 @@
   }
 
   .scope section[class~="bg-white"] div[class~="-mt-1"][class~="relative"][class~="z-10"] > div:nth-of-type(2) > span > svg {
-    width: 13px !important;
-    height: 13px !important;
+    width: 12px !important;
+    height: 12px !important;
     color: #a0a6af !important;
   }
 
   .scope section[class~="bg-white"] div[class~="-mt-1"][class~="relative"][class~="z-10"] > details {
-    margin-top: 10px !important;
+    margin-top: 6px !important;
     border-top: 1px solid #eceef0 !important;
   }
 
   .scope section[class~="bg-white"] div[class~="-mt-1"][class~="relative"][class~="z-10"] > details > summary {
-    padding: 11px 0 3px !important;
+    padding: 8px 0 2px !important;
     border: 0 !important;
-    font-size: 12px !important;
+    font-size: 11.5px !important;
     font-weight: 700 !important;
     color: #5f6670 !important;
   }
 
   .scope button[aria-label="Minha conta"],
   .scope button[aria-label="Entrar na conta"] {
-    width: 44px !important;
-    height: 44px !important;
+    width: 40px !important;
+    height: 40px !important;
     border: 0 !important;
     border-radius: 50% !important;
     background: #f4f5f6 !important;
@@ -250,12 +257,12 @@
 
   .scope button[aria-label="Minha conta"] svg,
   .scope button[aria-label="Entrar na conta"] svg {
-    width: 17px !important;
-    height: 17px !important;
+    width: 16px !important;
+    height: 16px !important;
   }
 
   .scope [data-catalog-nav] > div {
-    padding-top: 4px !important;
+    padding-top: 3px !important;
   }
 
   .scope [data-catalog-nav] div:has(> input[placeholder="Buscar no cardápio"]) {
