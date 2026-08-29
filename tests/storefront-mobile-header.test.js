@@ -9,68 +9,58 @@ const storefrontLayout = fs.readFileSync(
   "utf8",
 );
 
-test("cabeçalho mobile usa card sobreposto sem esconder o carrossel", () => {
+test("cabeçalho mobile preserva mais área visual do carrossel", () => {
   assert.match(storefrontLayout, /@media \(max-width: 639px\)/);
-  assert.match(storefrontLayout, /margin:\s*-24px 14px 0 !important/);
-  assert.match(storefrontLayout, /border-radius:\s*28px !important/);
+  assert.match(storefrontLayout, /aspect-ratio:\s*32 \/ 15/);
+  assert.match(storefrontLayout, /margin:\s*-14px 14px 0 !important/);
+  assert.match(storefrontLayout, /border-radius:\s*26px !important/);
   assert.match(storefrontLayout, /background:\s*#ffffff !important/);
-  assert.match(storefrontLayout, /box-shadow:\s*0 10px 28px rgba\(17, 16, 15, 0\.08\) !important/);
+  assert.match(storefrontLayout, /box-shadow:\s*0 8px 22px rgba\(17, 16, 15, 0\.07\) !important/);
 });
 
-test("identidade da loja fica centralizada com logo mais compacta", () => {
+test("identidade da loja fica centralizada com logo mais discreta", () => {
   assert.match(storefrontLayout, /flex-direction:\s*column !important/);
   assert.match(storefrontLayout, /align-items:\s*center !important/);
   assert.match(storefrontLayout, /position:\s*absolute !important/);
-  assert.match(storefrontLayout, /top:\s*-38px !important/);
+  assert.match(storefrontLayout, /top:\s*-34px !important/);
   assert.match(storefrontLayout, /left:\s*50% !important/);
-  assert.match(storefrontLayout, /width:\s*76px !important/);
-  assert.match(storefrontLayout, /height:\s*76px !important/);
+  assert.match(storefrontLayout, /width:\s*68px !important/);
+  assert.match(storefrontLayout, /height:\s*68px !important/);
   assert.match(storefrontLayout, /transform:\s*translateX\(-50%\) !important/);
 });
 
-test("nome da loja fica centralizado e mais destacado", () => {
-  assert.match(storefrontLayout, /font-size:\s*21px !important/);
-  assert.match(storefrontLayout, /font-weight:\s*800 !important/);
-  assert.match(storefrontLayout, /text-align:\s*center !important/);
-  assert.match(storefrontLayout, /white-space:\s*normal !important/);
-  assert.match(storefrontLayout, /text-overflow:\s*clip !important/);
-  assert.match(storefrontLayout, /overflow-wrap:\s*anywhere !important/);
+test("nome e resumo principal ficam mais compactos", () => {
+  assert.match(storefrontLayout, /font-size:\s*20px !important/);
+  assert.match(storefrontLayout, /line-height:\s*1\.14 !important/);
+  assert.match(storefrontLayout, /font-size:\s*11\.5px !important/);
+  assert.match(storefrontLayout, /margin-top:\s*2px !important/);
+  assert.match(storefrontLayout, /padding:\s*4px 8px !important/);
 });
 
-test("status, prazo e entrega ficam centralizados como contexto principal", () => {
-  assert.match(
-    storefrontLayout,
-    /> div\[class~="flex-1"\] > div\[class~="mt-2"\][\s\S]*justify-content:\s*center !important/,
-  );
-  assert.match(storefrontLayout, /font-size:\s*12px !important/);
-  assert.doesNotMatch(storefrontLayout, /span:nth-child\(4\)[\s\S]*display:\s*none !important/);
+test("metadados e informações da loja usam menos altura", () => {
+  assert.match(storefrontLayout, /> div:nth-of-type\(2\)[\s\S]*margin-top:\s*8px !important/);
+  assert.match(storefrontLayout, /> div:nth-of-type\(2\)[\s\S]*padding:\s*8px 0 0 !important/);
+  assert.match(storefrontLayout, /> details[\s\S]*margin-top:\s*6px !important/);
+  assert.match(storefrontLayout, /> details > summary[\s\S]*padding:\s*8px 0 2px !important/);
 });
 
-test("metadados secundários ganham divisão visual sem perder centralização", () => {
-  assert.match(storefrontLayout, /> div:nth-of-type\(2\)[\s\S]*justify-content:\s*center !important/);
-  assert.match(storefrontLayout, /> div:nth-of-type\(2\)[\s\S]*border-top:\s*1px solid #eceef0 !important/);
-  assert.match(storefrontLayout, /> span > svg[\s\S]*width:\s*13px !important/);
-  assert.doesNotMatch(storefrontLayout, /> span > svg[\s\S]*display:\s*none !important/);
-});
-
-test("acesso à conta permanece na linha do nome com alvo de toque adequado", () => {
-  assert.match(storefrontLayout, /div\[class~="sm:hidden"\][\s\S]*position:\s*absolute !important/);
-  assert.match(storefrontLayout, /top:\s*0 !important/);
-  assert.match(storefrontLayout, /right:\s*0 !important/);
+test("acesso à conta fica mais discreto sem perder usabilidade", () => {
   assert.match(storefrontLayout, /button\[aria-label="Minha conta"\]/);
-  assert.match(storefrontLayout, /width:\s*44px !important/);
-  assert.match(storefrontLayout, /height:\s*44px !important/);
+  assert.match(storefrontLayout, /width:\s*40px !important/);
+  assert.match(storefrontLayout, /height:\s*40px !important/);
   assert.match(storefrontLayout, /background:\s*#f4f5f6 !important/);
+  assert.match(storefrontLayout, /width:\s*16px !important/);
 });
 
-test("controles e conteúdo do carrossel ficam acima da sobreposição", () => {
-  assert.match(storefrontLayout, /\[data-banner-product-link\] ~ span[\s\S]*bottom:\s*48px !important/);
-  assert.match(storefrontLayout, /button\[aria-label\^="Exibir banner "\][\s\S]*bottom:\s*32px !important/);
-  assert.match(storefrontLayout, /button\[aria-label\^="Exibir banner "\][\s\S]*max-width:\s*48% !important/);
-  assert.match(storefrontLayout, /class~="pointer-events-none"[\s\S]*bottom:\s*24px !important/);
+test("cta do carrossel ganha contraste e indicadores ficam mais baixos", () => {
+  assert.match(storefrontLayout, /\[data-banner-product-link\] ~ span[\s\S]*bottom:\s*42px !important/);
+  assert.match(storefrontLayout, /\[data-banner-product-link\] ~ span[\s\S]*background:\s*rgba\(255, 255, 255, 0\.94\) !important/);
+  assert.match(storefrontLayout, /\[data-banner-product-link\] ~ span[\s\S]*color:\s*#2f343a !important/);
+  assert.match(storefrontLayout, /button\[aria-label\^="Exibir banner "\][\s\S]*bottom:\s*18px !important/);
+  assert.match(storefrontLayout, /class~="pointer-events-none"[\s\S]*bottom:\s*16px !important/);
 });
 
-test("cabeçalho continua próximo da navegação do cardápio", () => {
-  assert.match(storefrontLayout, /padding-bottom:\s*10px !important/);
-  assert.match(storefrontLayout, /\[data-catalog-nav\] > div[\s\S]*padding-top:\s*4px !important/);
+test("cabeçalho permanece próximo da navegação do cardápio", () => {
+  assert.match(storefrontLayout, /padding-bottom:\s*6px !important/);
+  assert.match(storefrontLayout, /\[data-catalog-nav\] > div[\s\S]*padding-top:\s*3px !important/);
 });
