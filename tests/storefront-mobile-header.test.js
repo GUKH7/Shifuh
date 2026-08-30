@@ -51,11 +51,12 @@ test("acesso à conta permanece discreto e utilizável", () => {
   assert.match(storefrontLayout, /width:\s*15px !important/);
 });
 
-test("cta do carrossel fica translúcido sem perder legibilidade", () => {
+test("cta do carrossel fica mais translúcido sem perder legibilidade", () => {
   assert.match(storefrontLayout, /\[data-banner-product-link\] ~ span[\s\S]*bottom:\s*34px !important/);
   assert.match(storefrontLayout, /\[data-banner-product-link\] ~ span[\s\S]*padding:\s*6px 10px !important/);
-  assert.match(storefrontLayout, /\[data-banner-product-link\] ~ span[\s\S]*background:\s*rgba\(255, 255, 255, 0\.72\) !important/);
-  assert.match(storefrontLayout, /\[data-banner-product-link\] ~ span[\s\S]*border:\s*1px solid rgba\(255, 255, 255, 0\.48\) !important/);
+  assert.match(storefrontLayout, /\[data-banner-product-link\] ~ span[\s\S]*background:\s*rgba\(255, 255, 255, 0\.58\) !important/);
+  assert.match(storefrontLayout, /\[data-banner-product-link\] ~ span[\s\S]*border:\s*1px solid rgba\(255, 255, 255, 0\.4\) !important/);
+  assert.match(storefrontLayout, /\[data-banner-product-link\] ~ span[\s\S]*box-shadow:\s*0 2px 8px rgba\(17, 16, 15, 0\.08\) !important/);
   assert.match(storefrontLayout, /\[data-banner-product-link\] ~ span[\s\S]*backdrop-filter:\s*blur\(10px\) saturate\(140%\)/);
   assert.match(storefrontLayout, /button\[aria-label\^="Exibir banner "\][\s\S]*bottom:\s*14px !important/);
 });
