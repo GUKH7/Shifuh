@@ -64,11 +64,11 @@
     right: 12px !important;
     bottom: 34px !important;
     padding: 6px 10px !important;
-    border: 1px solid rgba(255, 255, 255, 0.48) !important;
+    border: 1px solid rgba(255, 255, 255, 0.4) !important;
     border-radius: 999px !important;
-    background: rgba(255, 255, 255, 0.72) !important;
+    background: rgba(255, 255, 255, 0.58) !important;
     color: #2f343a !important;
-    box-shadow: 0 3px 10px rgba(17, 16, 15, 0.12) !important;
+    box-shadow: 0 2px 8px rgba(17, 16, 15, 0.08) !important;
     backdrop-filter: blur(10px) saturate(140%);
   }
 
