@@ -51,13 +51,14 @@ test("acesso à conta permanece discreto e utilizável", () => {
   assert.match(storefrontLayout, /width:\s*15px !important/);
 });
 
-test("cta do carrossel fica mais translúcido sem perder legibilidade", () => {
+test("cta do carrossel usa glassmorphism sem borda", () => {
   assert.match(storefrontLayout, /\[data-banner-product-link\] ~ span[\s\S]*bottom:\s*34px !important/);
   assert.match(storefrontLayout, /\[data-banner-product-link\] ~ span[\s\S]*padding:\s*6px 10px !important/);
-  assert.match(storefrontLayout, /\[data-banner-product-link\] ~ span[\s\S]*background:\s*rgba\(255, 255, 255, 0\.58\) !important/);
-  assert.match(storefrontLayout, /\[data-banner-product-link\] ~ span[\s\S]*border:\s*1px solid rgba\(255, 255, 255, 0\.4\) !important/);
-  assert.match(storefrontLayout, /\[data-banner-product-link\] ~ span[\s\S]*box-shadow:\s*0 2px 8px rgba\(17, 16, 15, 0\.08\) !important/);
-  assert.match(storefrontLayout, /\[data-banner-product-link\] ~ span[\s\S]*backdrop-filter:\s*blur\(10px\) saturate\(140%\)/);
+  assert.match(storefrontLayout, /\[data-banner-product-link\] ~ span[\s\S]*background:\s*rgba\(255, 255, 255, 0\.34\) !important/);
+  assert.match(storefrontLayout, /\[data-banner-product-link\] ~ span[\s\S]*border:\s*0 !important/);
+  assert.match(storefrontLayout, /\[data-banner-product-link\] ~ span[\s\S]*box-shadow:\s*0 8px 20px rgba\(17, 16, 15, 0\.1\) !important/);
+  assert.match(storefrontLayout, /\[data-banner-product-link\] ~ span[\s\S]*backdrop-filter:\s*blur\(14px\) saturate\(160%\)/);
+  assert.match(storefrontLayout, /\[data-banner-product-link\] ~ span[\s\S]*-webkit-backdrop-filter:\s*blur\(14px\) saturate\(160%\)/);
   assert.match(storefrontLayout, /button\[aria-label\^="Exibir banner "\][\s\S]*bottom:\s*14px !important/);
 });
 
