@@ -51,12 +51,13 @@ test("acesso à conta permanece discreto e utilizável", () => {
   assert.match(storefrontLayout, /width:\s*15px !important/);
 });
 
-test("cta e indicadores do carrossel ficam visíveis sem dominar o banner", () => {
+test("cta do carrossel fica translúcido sem perder legibilidade", () => {
   assert.match(storefrontLayout, /\[data-banner-product-link\] ~ span[\s\S]*bottom:\s*34px !important/);
   assert.match(storefrontLayout, /\[data-banner-product-link\] ~ span[\s\S]*padding:\s*6px 10px !important/);
-  assert.match(storefrontLayout, /\[data-banner-product-link\] ~ span[\s\S]*box-shadow:\s*0 3px 10px rgba\(17, 16, 15, 0\.12\) !important/);
+  assert.match(storefrontLayout, /\[data-banner-product-link\] ~ span[\s\S]*background:\s*rgba\(255, 255, 255, 0\.72\) !important/);
+  assert.match(storefrontLayout, /\[data-banner-product-link\] ~ span[\s\S]*border:\s*1px solid rgba\(255, 255, 255, 0\.48\) !important/);
+  assert.match(storefrontLayout, /\[data-banner-product-link\] ~ span[\s\S]*backdrop-filter:\s*blur\(10px\) saturate\(140%\)/);
   assert.match(storefrontLayout, /button\[aria-label\^="Exibir banner "\][\s\S]*bottom:\s*14px !important/);
-  assert.match(storefrontLayout, /class~="pointer-events-none"[\s\S]*bottom:\s*12px !important/);
 });
 
 test("cabeçalho permanece próximo da navegação do cardápio", () => {
