@@ -137,7 +137,9 @@ export function listIfoodBenefits(order: Order) {
 }
 
 export function getAddonLabel(addon: OrderAddon) {
-  return addon.name || addon.title || addon.description || "Complemento";
+  const optionName = addon.name || addon.title || addon.description || "Complemento";
+  const groupName = addon.groupName?.trim();
+  return groupName ? `${groupName}: ${optionName}` : optionName;
 }
 
 export function getAddonPrice(addon: OrderAddon) {
