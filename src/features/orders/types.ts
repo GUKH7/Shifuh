@@ -12,6 +12,8 @@ export type OrderAddress = {
 };
 
 export type OrderAddon = {
+  groupId?: string | null;
+  groupName?: string | null;
   name?: string | null;
   title?: string | null;
   description?: string | null;
