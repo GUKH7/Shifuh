@@ -93,7 +93,7 @@ export function OrdersWhatsappStatus() {
       onClick={() => router.push("/admin/settings?section=whatsapp")}
       title={presentation.title}
       aria-label={presentation.title}
-      className={`inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border px-3.5 py-2.5 text-sm font-black shadow-sm transition sm:flex-none disabled:cursor-default ${presentation.className}`}
+      className={`orders-whatsapp-status inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border px-3.5 py-2.5 text-sm font-black shadow-sm transition sm:flex-none disabled:cursor-default ${presentation.className}`}
     >
       {presentation.icon}
       <span>{presentation.label}</span>
