@@ -82,6 +82,7 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isGuardLoading, setIsGuardLoading] = useState(true);
   const [guardError, setGuardError] = useState<string | null>(null);
+  const [adminContext, setAdminContext] = useState<AdminNavigationContext | null>(null);
   const [storeSlug, setStoreSlug] = useState("");
   const [canAccessPlatform, setCanAccessPlatform] = useState(false);
   const [panelSearch, setPanelSearch] = useState("");
@@ -115,8 +116,7 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
   useEffect(() => {
     let isMounted = true;
 
-    const guardAdminAccess = async () => {
-      setIsGuardLoading(true);
+    const loadAdminContext = async () => {
       setGuardError(null);
       try {
         const response = await fetch("/api/admin/context", { cache: "no-store" });
@@ -133,33 +133,9 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
         const context = (await response.json()) as AdminNavigationContext;
         if (!isMounted) return;
 
-        const restaurant = context.restaurant ?? null;
-        const hasPlatformAccess = Boolean(context.platformAccess);
-        setStoreSlug(restaurant?.slug ?? "");
-        setCanAccessPlatform(hasPlatformAccess);
-
-        const isPlatformPage = pathname.startsWith("/admin/platform");
-        if (isPlatformPage) {
-          if (!hasPlatformAccess) {
-            router.replace("/admin");
-            return;
-          }
-          setIsGuardLoading(false);
-          return;
-        }
-
-        const isSetupPage = pathname === "/admin/setup";
-        if (!restaurant && !isSetupPage) {
-          router.replace("/admin/setup");
-          return;
-        }
-
-        if (restaurant && isSetupPage) {
-          router.replace("/admin");
-          return;
-        }
-
-        setIsGuardLoading(false);
+        setAdminContext(context);
+        setStoreSlug(context.restaurant?.slug ?? "");
+        setCanAccessPlatform(Boolean(context.platformAccess));
       } catch (error) {
         console.error("Falha no guard administrativo:", error);
         if (isMounted) {
@@ -169,11 +145,37 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
       }
     };
 
-    void guardAdminAccess();
+    void loadAdminContext();
     return () => {
       isMounted = false;
     };
-  }, [pathname, router]);
+  }, [router]);
+
+  useEffect(() => {
+    if (!adminContext) return;
+
+    const restaurant = adminContext.restaurant ?? null;
+    const hasPlatformAccess = Boolean(adminContext.platformAccess);
+    const isPlatformPage = pathname.startsWith("/admin/platform");
+
+    if (isPlatformPage && !hasPlatformAccess) {
+      router.replace("/admin");
+      return;
+    }
+
+    const isSetupPage = pathname === "/admin/setup";
+    if (!restaurant && !isSetupPage && !isPlatformPage) {
+      router.replace("/admin/setup");
+      return;
+    }
+
+    if (restaurant && isSetupPage) {
+      router.replace("/admin");
+      return;
+    }
+
+    setIsGuardLoading(false);
+  }, [adminContext, pathname, router]);
 
   const toggleSidebar = () => {
     setIsCollapsed((current) => {
