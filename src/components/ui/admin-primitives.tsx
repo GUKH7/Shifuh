@@ -56,8 +56,11 @@ export function AdminPageHeader({
             min-width: max-content;
           }
 
-          .orders-drawer-open .admin-page-header-main h1,
           .orders-drawer-open .admin-page-header-main p {
+            display: none;
+          }
+
+          .orders-drawer-open .admin-page-header-main h1 {
             white-space: nowrap;
           }
 
