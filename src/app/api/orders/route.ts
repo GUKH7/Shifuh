@@ -28,6 +28,13 @@ type CheckoutAddon = {
   name: string;
 };
 
+type NormalizedAddon = {
+  groupId?: string;
+  groupName?: string;
+  name: string;
+  price: number;
+};
+
 type CheckoutItem = {
   productId: string;
   quantity: number;
@@ -80,25 +87,26 @@ const IDEMPOTENCY_KEY_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab
 function resolveAddonSelection(selectedAddons: CheckoutAddon[], productAddons: unknown) {
   if (!Array.isArray(selectedAddons) || selectedAddons.length === 0) {
     return {
-      normalized: [] as Array<{ groupId?: string; name: string; price: number }>,
+      normalized: [] as NormalizedAddon[],
       addonTotal: 0,
     };
   }
 
   const groups = Array.isArray(productAddons) ? productAddons : [];
-  const normalized: Array<{ groupId?: string; name: string; price: number }> = [];
+  const normalized: NormalizedAddon[] = [];
   let addonTotal = 0;
 
   for (const selected of selectedAddons) {
     if (!selected?.name) continue;
 
+    let matchedGroup: Record<string, unknown> | undefined;
     let matchedOption: Record<string, unknown> | undefined;
 
     if (selected.groupId) {
-      const group = groups.find(
+      matchedGroup = groups.find(
         (item) => isRecord(item) && String(item.id ?? "") === selected.groupId,
       ) as Record<string, unknown> | undefined;
-      const options = Array.isArray(group?.options) ? group.options : [];
+      const options = Array.isArray(matchedGroup?.options) ? matchedGroup.options : [];
       matchedOption = options.find(
         (option) => isRecord(option) && String(option.name ?? "") === selected.name,
       ) as Record<string, unknown> | undefined;
@@ -110,6 +118,7 @@ function resolveAddonSelection(selectedAddons: CheckoutAddon[], productAddons: u
           (candidate) => isRecord(candidate) && String(candidate.name ?? "") === selected.name,
         ) as Record<string, unknown> | undefined;
         if (option) {
+          matchedGroup = group;
           matchedOption = option;
           break;
         }
@@ -121,9 +130,12 @@ function resolveAddonSelection(selectedAddons: CheckoutAddon[], productAddons: u
     }
 
     const optionPrice = parseNumber(matchedOption.price);
+    const resolvedGroupId = selected.groupId || String(matchedGroup?.id ?? "").trim() || undefined;
+    const groupName = String(matchedGroup?.title ?? matchedGroup?.name ?? "").trim() || undefined;
     addonTotal += optionPrice;
     normalized.push({
-      groupId: selected.groupId,
+      groupId: resolvedGroupId,
+      groupName,
       name: selected.name,
       price: optionPrice,
     });
@@ -373,7 +385,7 @@ export async function POST(request: Request) {
       quantity: number;
       price: number;
       observation: string | null;
-      addons: Array<{ groupId?: string; name: string; price: number }>;
+      addons: NormalizedAddon[];
       lineTotal: number;
     }> = [];
 
