@@ -17,19 +17,26 @@ function resolveConnectionState(status: unknown): WhatsappConnectionState {
 export function OrdersWhatsappStatus() {
   const router = useRouter();
   const [target, setTarget] = useState<HTMLElement | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [connectionState, setConnectionState] = useState<WhatsappConnectionState>("checking");
 
   useEffect(() => {
-    const findTarget = () => {
+    const syncHeaderState = () => {
       const nextTarget = document.querySelector<HTMLElement>(
         ".admin-page-header-action > div",
       );
       if (nextTarget) setTarget(nextTarget);
+      setIsDrawerOpen(Boolean(document.querySelector(".orders-drawer-open")));
     };
 
-    findTarget();
-    const observer = new MutationObserver(findTarget);
-    observer.observe(document.body, { childList: true, subtree: true });
+    syncHeaderState();
+    const observer = new MutationObserver(syncHeaderState);
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["class"],
+    });
     return () => observer.disconnect();
   }, []);
 
@@ -86,6 +93,10 @@ export function OrdersWhatsappStatus() {
 
   if (!target) return null;
 
+  const compactClasses = isDrawerOpen
+    ? "xl:h-11 xl:w-11 xl:min-w-11 xl:flex-none xl:gap-0 xl:px-0"
+    : "";
+
   return createPortal(
     <button
       type="button"
@@ -93,10 +104,10 @@ export function OrdersWhatsappStatus() {
       onClick={() => router.push("/admin/settings?section=whatsapp")}
       title={presentation.title}
       aria-label={presentation.title}
-      className={`orders-whatsapp-status inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border px-3.5 py-2.5 text-sm font-black shadow-sm transition sm:flex-none disabled:cursor-default ${presentation.className}`}
+      className={`orders-whatsapp-status inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border px-3.5 py-2.5 text-sm font-black shadow-sm transition sm:flex-none disabled:cursor-default ${compactClasses} ${presentation.className}`}
     >
       {presentation.icon}
-      <span>{presentation.label}</span>
+      <span className={isDrawerOpen ? "xl:hidden" : ""}>{presentation.label}</span>
     </button>,
     target,
   );
