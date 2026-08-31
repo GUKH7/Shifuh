@@ -1,5 +1,6 @@
 @media (min-width: 1280px) {
-  .orders-drawer-open .admin-page-header-action button:has(.lucide-bell-ring) {
+  .orders-drawer-open .admin-page-header-action button:has(.lucide-bell-ring),
+  .orders-drawer-open .admin-page-header-action .orders-whatsapp-status {
     width: 2.75rem;
     min-width: 2.75rem;
     flex: 0 0 2.75rem !important;
@@ -11,9 +12,11 @@
     white-space: nowrap;
   }
 
-  .orders-drawer-open .admin-page-header-action button:has(.lucide-bell-ring) .lucide-bell-ring {
+  .orders-drawer-open .admin-page-header-action button:has(.lucide-bell-ring) .lucide-bell-ring,
+  .orders-drawer-open .admin-page-header-action .orders-whatsapp-status svg {
     width: 1.0625rem;
     height: 1.0625rem;
+    flex: 0 0 auto;
   }
 }
 
