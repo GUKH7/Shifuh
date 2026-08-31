@@ -60,147 +60,150 @@ export function ProductPicker({
         aria-modal="true"
         aria-labelledby="product-picker-title"
         tabIndex={-1}
-        className="flex max-h-[100dvh] min-h-0 w-full max-w-2xl flex-col overflow-hidden rounded-t-[24px] bg-[#fffdfa] sm:max-h-[88vh] sm:rounded-[24px]"
+        className="relative flex max-h-[100dvh] min-h-0 w-full max-w-2xl flex-col overflow-hidden rounded-t-[24px] bg-[#fffdfa] sm:max-h-[88vh] sm:rounded-[24px]"
         style={{ height: "min(92dvh, 820px)" }}
       >
-        <div className={`relative flex shrink-0 items-center justify-center bg-white px-4 py-3 sm:h-72 sm:px-6 sm:py-4 ${product.image_url ? "h-52" : "h-32"}`}>
-          <button
-            ref={initialFocusRef as React.RefObject<HTMLButtonElement>}
-            onClick={onClose}
-            className="absolute right-4 top-4 z-10 rounded-full bg-white/92 p-2 text-gray-700 shadow-sm"
-            aria-label="Fechar detalhes do produto"
-          >
-            <X size={20} />
-          </button>
-          {product.image_url ? (
-            <div className="relative size-44 shrink-0 overflow-hidden rounded-2xl sm:size-64">
-              <ProductImage src={product.image_url} alt={product.name} sizes="(max-width: 640px) 176px, 256px" />
-            </div>
-          ) : (
-            <div className="flex h-full w-full items-center justify-center text-gray-300">
-              <ShoppingBag size={42} />
-            </div>
-          )}
-        </div>
+        <button
+          ref={initialFocusRef as React.RefObject<HTMLButtonElement>}
+          onClick={onClose}
+          className="absolute right-4 top-4 z-20 rounded-full bg-white/92 p-2 text-gray-700 shadow-sm"
+          aria-label="Fechar detalhes do produto"
+        >
+          <X size={20} />
+        </button>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:p-6">
-          <h2 id="product-picker-title" className="text-2xl font-black text-gray-950 sm:text-3xl">{product.name}</h2>
-          <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{product.description}</p>
-          <button
-            type="button"
-            onClick={() => {
-              observationRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-              observationRef.current?.focus({ preventScroll: true });
-            }}
-            className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-gray-800"
-          >
-            <MessageSquareText size={14} />
-            Adicionar observação
-          </button>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <div className={`relative flex items-center justify-center bg-white px-4 py-3 sm:h-72 sm:px-6 sm:py-4 ${product.image_url ? "h-48" : "h-28"}`}>
+            {product.image_url ? (
+              <div className="relative size-40 shrink-0 overflow-hidden rounded-2xl sm:size-64">
+                <ProductImage src={product.image_url} alt={product.name} sizes="(max-width: 640px) 160px, 256px" />
+              </div>
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-gray-300">
+                <ShoppingBag size={42} />
+              </div>
+            )}
+          </div>
 
-          {product.addons?.map((group: any) => {
-            const selectedOptions = addonSelections[group.id] || [];
-            const { minimum, maximum } = getAddonGroupLimits(group);
-            const isSingleChoice = maximum === 1;
-            const isOptional = minimum === 0;
-            const canCollapse = isOptional && group.options.length > 4;
-            const isCollapsed = collapsedGroups.has(group.id);
+          <div className="px-4 py-5 sm:p-6">
+            <h2 id="product-picker-title" className="text-2xl font-black text-gray-950 sm:text-3xl">{product.name}</h2>
+            <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{product.description}</p>
+            <button
+              type="button"
+              onClick={() => {
+                observationRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                observationRef.current?.focus({ preventScroll: true });
+              }}
+              className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-gray-800"
+            >
+              <MessageSquareText size={14} />
+              Adicionar observação
+            </button>
 
-            return (
-              <div key={group.id} className="mt-5 border-t border-[var(--line)] pt-5">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-base font-black text-gray-950 sm:text-lg">{getAddonGroupDisplayTitle(group.title)}</h3>
-                      <span className="rounded-full bg-[#f3ede6] px-2 py-0.5 text-[10px] font-bold uppercase text-gray-500">
-                        {minimum > 0 ? "Obrigatório" : "Opcional"}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-xs font-semibold text-gray-500">
-                      {getAddonSelectionInstruction(group)}
-                      {selectedOptions.length > 0 && (
-                        <span className="ml-2 font-black" style={{ color: primaryColor }}>
-                          {selectedOptions.length} {selectedOptions.length === 1 ? "escolhido" : "escolhidos"}
+            {product.addons?.map((group: any) => {
+              const selectedOptions = addonSelections[group.id] || [];
+              const { minimum, maximum } = getAddonGroupLimits(group);
+              const isSingleChoice = maximum === 1;
+              const isOptional = minimum === 0;
+              const canCollapse = isOptional && group.options.length > 4;
+              const isCollapsed = collapsedGroups.has(group.id);
+
+              return (
+                <div key={group.id} className="mt-5 border-t border-[var(--line)] pt-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-base font-black text-gray-950 sm:text-lg">{getAddonGroupDisplayTitle(group.title)}</h3>
+                        <span className="rounded-full bg-[#f3ede6] px-2 py-0.5 text-[10px] font-bold uppercase text-gray-500">
+                          {minimum > 0 ? "Obrigatório" : "Opcional"}
                         </span>
-                      )}
-                    </p>
-                  </div>
-                  {canCollapse && (
-                    <button
-                      type="button"
-                      onClick={() => setCollapsedGroups((current) => {
-                        const next = new Set(current);
-                        if (next.has(group.id)) next.delete(group.id);
-                        else next.add(group.id);
-                        return next;
-                      })}
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100"
-                      aria-expanded={!isCollapsed}
-                      aria-label={`${isCollapsed ? "Expandir" : "Recolher"} ${group.title}`}
-                    >
-                      <ChevronDown size={17} className={`transition-transform ${isCollapsed ? "" : "rotate-180"}`} />
-                    </button>
-                  )}
-                </div>
-
-                {!isCollapsed && (
-                  <div className="mt-3 space-y-2">
-                    {group.options.map((option: any, index: number) => (
-                      <label
-                        key={index}
-                        className="flex cursor-pointer items-center justify-between rounded-xl border bg-white px-3.5 py-3 transition-[border-color,background-color,box-shadow]"
-                        style={
-                          selectedOptions.some((item: any) => item.name === option.name)
-                            ? {
-                                borderColor: primaryColor,
-                                backgroundColor: `${primaryColor}10`,
-                                boxShadow: `inset 3px 0 0 ${primaryColor}`,
-                              }
-                            : { borderColor: "var(--line)" }
-                        }
-                      >
-                        <div>
-                          <p className="font-bold text-gray-900">{option.name}</p>
-                          {option.price > 0 && (
-                            <p className="mt-1 text-sm text-gray-500">+ {formatMoney(option.price)}</p>
-                          )}
-                        </div>
-                        <input
-                          type={isSingleChoice ? "radio" : "checkbox"}
-                          name={isSingleChoice ? `addon-group-${group.id}` : undefined}
-                          checked={selectedOptions.some((item: any) => item.name === option.name)}
-                          onChange={() => onToggleAddon(group.id, option, group)}
-                          className="h-5 w-5 accent-[var(--brand)]"
-                          style={{ accentColor: primaryColor }}
-                        />
-                      </label>
-                    ))}
-                    {isSingleChoice && isOptional && selectedOptions.length > 0 && (
+                      </div>
+                      <p className="mt-1 text-xs font-semibold text-gray-500">
+                        {getAddonSelectionInstruction(group)}
+                        {selectedOptions.length > 0 && (
+                          <span className="ml-2 font-black" style={{ color: primaryColor }}>
+                            {selectedOptions.length} {selectedOptions.length === 1 ? "escolhido" : "escolhidos"}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    {canCollapse && (
                       <button
                         type="button"
-                        onClick={() => onToggleAddon(group.id, selectedOptions[0], group)}
-                        className="inline-flex items-center gap-1.5 px-1 pt-1 text-xs font-bold text-gray-500 hover:text-gray-800"
+                        onClick={() => setCollapsedGroups((current) => {
+                          const next = new Set(current);
+                          if (next.has(group.id)) next.delete(group.id);
+                          else next.add(group.id);
+                          return next;
+                        })}
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100"
+                        aria-expanded={!isCollapsed}
+                        aria-label={`${isCollapsed ? "Expandir" : "Recolher"} ${group.title}`}
                       >
-                        <Check size={13} /> Remover escolha
+                        <ChevronDown size={17} className={`transition-transform ${isCollapsed ? "" : "rotate-180"}`} />
                       </button>
                     )}
                   </div>
-                )}
-              </div>
-            );
-          })}
 
-          <div className="mt-5 border-t border-[var(--line)] pt-5">
-            <label htmlFor="product-observation" className="mb-2 block text-sm font-black text-gray-950">Alguma observação?</label>
-            <textarea
-              ref={observationRef}
-              id="product-observation"
-              value={observation}
-              onChange={(event) => onObservationChange(event.target.value)}
-              rows={3}
-              placeholder="Ex: sem cebola, bem passado, sem molho..."
-              className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none"
-            />
+                  {!isCollapsed && (
+                    <div className="mt-3 space-y-2">
+                      {group.options.map((option: any, index: number) => (
+                        <label
+                          key={index}
+                          className="flex cursor-pointer items-center justify-between rounded-xl border bg-white px-3.5 py-3 transition-[border-color,background-color,box-shadow]"
+                          style={
+                            selectedOptions.some((item: any) => item.name === option.name)
+                              ? {
+                                  borderColor: primaryColor,
+                                  backgroundColor: `${primaryColor}10`,
+                                  boxShadow: `inset 3px 0 0 ${primaryColor}`,
+                                }
+                              : { borderColor: "var(--line)" }
+                          }
+                        >
+                          <div>
+                            <p className="font-bold text-gray-900">{option.name}</p>
+                            {option.price > 0 && (
+                              <p className="mt-1 text-sm text-gray-500">+ {formatMoney(option.price)}</p>
+                            )}
+                          </div>
+                          <input
+                            type={isSingleChoice ? "radio" : "checkbox"}
+                            name={isSingleChoice ? `addon-group-${group.id}` : undefined}
+                            checked={selectedOptions.some((item: any) => item.name === option.name)}
+                            onChange={() => onToggleAddon(group.id, option, group)}
+                            className="h-5 w-5 accent-[var(--brand)]"
+                            style={{ accentColor: primaryColor }}
+                          />
+                        </label>
+                      ))}
+                      {isSingleChoice && isOptional && selectedOptions.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => onToggleAddon(group.id, selectedOptions[0], group)}
+                          className="inline-flex items-center gap-1.5 px-1 pt-1 text-xs font-bold text-gray-500 hover:text-gray-800"
+                        >
+                          <Check size={13} /> Remover escolha
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            <div className="mt-5 border-t border-[var(--line)] pt-5">
+              <label htmlFor="product-observation" className="mb-2 block text-sm font-black text-gray-950">Alguma observação?</label>
+              <textarea
+                ref={observationRef}
+                id="product-observation"
+                value={observation}
+                onChange={(event) => onObservationChange(event.target.value)}
+                rows={3}
+                placeholder="Ex: sem cebola, bem passado, sem molho..."
+                className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none"
+              />
+            </div>
           </div>
         </div>
 
