@@ -9,6 +9,7 @@ const eligibilityApi = fs.readFileSync("src/app/api/storefront/promotions/wheel/
 const rewardsApi = fs.readFileSync("src/app/api/customer/rewards/route.ts", "utf8");
 const rewardsPage = fs.readFileSync("src/app/minha-conta/premios/page.tsx", "utf8");
 const migration = fs.readFileSync("supabase/migrations/20260901144413_promotion_wheel_server_engine.sql", "utf8");
+const qualificationFix = fs.readFileSync("supabase/migrations/20260901145344_fix_promotion_wheel_server_engine_qualification.sql", "utf8");
 
 test("storefront mounts the isolated lucky wheel bridge", () => {
   assert.match(storefrontRoute, /LuckyWheelStorefrontBridge/);
@@ -31,13 +32,19 @@ test("frontend animates to the prize id returned by the server", () => {
   assert.doesNotMatch(bridge, /Math\.random/);
 });
 
-test("server engine is restricted to service role", () => {
+test("server engine is restricted to service role and persists before reveal", () => {
   assert.match(migration, /revoke all on function public\.grant_eligible_promotion_spin\(uuid, uuid, uuid\) from public, anon, authenticated/);
   assert.match(migration, /grant execute on function public\.grant_eligible_promotion_spin\(uuid, uuid, uuid\) to service_role/);
   assert.match(migration, /revoke all on function public\.resolve_promotion_spin\(uuid\) from public, anon, authenticated/);
   assert.match(migration, /grant execute on function public\.resolve_promotion_spin\(uuid\) to service_role/);
   assert.match(migration, /for update/);
   assert.match(migration, /insert into public\.promotion_spin_results/);
+});
+
+test("server engine qualifies returned column names to avoid PL/pgSQL ambiguity", () => {
+  assert.match(qualificationFix, /where er\.campaign_id = v_campaign\.id/);
+  assert.match(qualificationFix, /where psr\.spin_id = v_spin\.id/);
+  assert.match(qualificationFix, /select pc\.\* into v_campaign/);
 });
 
 test("customer rewards wallet is exposed through a server endpoint", () => {
