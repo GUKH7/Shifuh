@@ -14,7 +14,11 @@ const coupons = fs.readFileSync(
   "src/app/admin/(painel)/coupons/CouponsWorkspace.tsx",
   "utf8",
 );
-const couponsLayout = fs.readFileSync(
+const promotionsCouponsPage = fs.readFileSync(
+  "src/app/admin/(painel)/promotions/coupons/page.tsx",
+  "utf8",
+);
+const legacyCouponsLayout = fs.readFileSync(
   "src/app/admin/(painel)/coupons/layout.tsx",
   "utf8",
 );
@@ -54,7 +58,8 @@ test("Clientes permite expandir os cinco pedidos mais recentes de cada contato",
 });
 
 test("Cupons ganha busca, filtro por status e oito critérios de ordenação", () => {
-  assert.match(couponsLayout, /CouponsWorkspace/);
+  assert.match(promotionsCouponsPage, /CouponsWorkspace/);
+  assert.match(legacyCouponsLayout, /redirect\("\/admin\/promotions\/coupons"\)/);
   assert.match(coupons, /Buscar código do cupom/);
   assert.match(coupons, /Todos os status/);
   assert.match(coupons, /type CouponSortKey/);
