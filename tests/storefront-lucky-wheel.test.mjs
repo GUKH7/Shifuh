@@ -8,8 +8,11 @@ const wheelApi = fs.readFileSync("src/app/api/storefront/promotions/wheel/route.
 const eligibilityApi = fs.readFileSync("src/app/api/storefront/promotions/wheel/eligibility/route.ts", "utf8");
 const rewardsApi = fs.readFileSync("src/app/api/customer/rewards/route.ts", "utf8");
 const rewardsPage = fs.readFileSync("src/app/minha-conta/premios/page.tsx", "utf8");
+const adminWheelPage = fs.readFileSync("src/app/admin/(painel)/promotions/wheel/page.tsx", "utf8");
+const adminWorkspace = fs.readFileSync("src/app/admin/(painel)/promotions/wheel/WheelCampaignWorkspace.tsx", "utf8");
 const migration = fs.readFileSync("supabase/migrations/20260901144413_promotion_wheel_server_engine.sql", "utf8");
 const qualificationFix = fs.readFileSync("supabase/migrations/20260901145344_fix_promotion_wheel_server_engine_qualification.sql", "utf8");
+const adminPersistence = fs.readFileSync("supabase/migrations/20260901150925_connect_wheel_admin_persistence.sql", "utf8");
 
 test("storefront mounts the isolated lucky wheel bridge", () => {
   assert.match(storefrontRoute, /LuckyWheelStorefrontBridge/);
@@ -52,4 +55,29 @@ test("customer rewards wallet is exposed through a server endpoint", () => {
   assert.match(rewardsPage, /Meus prêmios/);
   assert.match(rewardsApi, /resolveCustomerPromotionContext/);
   assert.match(rewardsApi, /from\("customer_rewards"\)/);
+});
+
+test("admin wheel workspace persists campaigns, rules and real menu product prizes", () => {
+  assert.match(adminWheelPage, /WheelCampaignWorkspace/);
+  assert.match(adminWorkspace, /rpc\("save_promotion_wheel_campaign"/);
+  assert.match(adminWorkspace, /from\("promotion_campaigns"\)/);
+  assert.match(adminWorkspace, /from\("promotion_eligibility_rules"\)/);
+  assert.match(adminWorkspace, /from\("promotion_prizes"\)/);
+  assert.match(adminWorkspace, /from\("products"\)/);
+  assert.match(adminWorkspace, /product_id: prize\.type === "free_product" \? prize\.productId : null/);
+});
+
+test("admin save RPC is transactional under authenticated RLS", () => {
+  assert.match(adminPersistence, /create or replace function public\.save_promotion_wheel_campaign/);
+  assert.match(adminPersistence, /security invoker/);
+  assert.match(adminPersistence, /Restaurant membership required/);
+  assert.match(adminPersistence, /grant execute on function public\.save_promotion_wheel_campaign\(uuid, uuid, jsonb, jsonb, jsonb\) to authenticated/);
+  assert.match(adminPersistence, /Free product prize must reference an active restaurant product/);
+});
+
+test("eligibility uses OR for unlock rules and AND for guard rules", () => {
+  assert.match(adminPersistence, /v_unlock_passed boolean := false/);
+  assert.match(adminPersistence, /v_rule\.rule_type in \('schedule', 'customer_spin_limit'\)/);
+  assert.match(adminPersistence, /v_unlock_passed := true/);
+  assert.match(adminPersistence, /v_unlock_rule_count = 0 or not v_unlock_passed/);
 });
