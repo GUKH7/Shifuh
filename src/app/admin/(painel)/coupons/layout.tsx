@@ -1,5 +1,5 @@
-import CouponsWorkspace from "./CouponsWorkspace";
+import { redirect } from "next/navigation";
 
 export default function CouponsLayout() {
-  return <CouponsWorkspace />;
+  redirect("/admin/promotions/coupons");
 }

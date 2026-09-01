@@ -15,7 +15,11 @@ const ADMIN_SEARCH_ITEMS = [
   { label: "Histórico", href: "/admin/history", keywords: ["historico", "vendas", "concluidos"] },
   { label: "Cardápios", href: "/admin/menu", keywords: ["cardapio", "menu", "produtos", "categorias"] },
   { label: "Clientes", href: "/admin/clients", keywords: ["clientes", "crm", "contatos"] },
-  { label: "Cupons", href: "/admin/coupons", keywords: ["cupons", "descontos"] },
+  {
+    label: "Promoções",
+    href: "/admin/promotions",
+    keywords: ["promocoes", "promoções", "campanhas", "cupons", "descontos", "roleta", "sorte"],
+  },
   { label: "Pagamentos", href: "/admin/payments", keywords: ["pagamentos", "pix", "cartao", "dinheiro"] },
   { label: "Avaliações", href: "/admin/reviews", keywords: ["reviews", "avaliacoes", "notas"] },
   { label: "Configurações", href: "/admin/settings", keywords: ["configuracoes", "ajustes", "loja"] },

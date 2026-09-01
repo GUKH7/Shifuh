@@ -27,7 +27,7 @@ const MENU_ITEMS = [
   { name: "Histórico", href: "/admin/history", icon: History },
   { name: "Cardápios", href: "/admin/menu", icon: UtensilsCrossed },
   { name: "Clientes", href: "/admin/clients", icon: Users },
-  { name: "Cupons", href: "/admin/coupons", icon: Percent },
+  { name: "Promoções", href: "/admin/promotions", icon: Percent },
   { name: "Avaliações", href: "/admin/reviews", icon: Star },
   { name: "Configurações", href: "/admin/settings", icon: Settings },
 ];
@@ -127,9 +127,9 @@ export default function AdminSidebar({
         <nav className="space-y-1">
           {MENU_ITEMS.map((item) => {
             const isActive =
-              item.href === "/admin/settings"
-                ? pathname.startsWith("/admin/settings")
-                : pathname === item.href;
+              item.href === "/admin"
+                ? pathname === "/admin"
+                : pathname === item.href || pathname.startsWith(`${item.href}/`);
 
             return (
               <Link
