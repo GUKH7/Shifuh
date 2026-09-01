@@ -329,21 +329,21 @@ export default function PromotionsOverview() {
             <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#fff2ea] text-[var(--brand)]">
               <Gift size={20} />
             </span>
-            <span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-bold text-orange-700">
-              Próxima frente
+            <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
+              Disponível
             </span>
           </div>
           <h2 className="mt-5 text-xl font-black text-gray-950">Roleta da Sorte</h2>
           <p className="mt-2 max-w-xl text-sm leading-6 text-gray-500">
-            Crie campanhas gamificadas com regras de liberação, prêmios, probabilidades e limites por cliente.
+            Defina período, regras de liberação, janelas de horário e limites por cliente antes de configurar os prêmios.
           </p>
           <div className="mt-5 flex flex-wrap gap-2 text-xs font-bold text-gray-500">
             <span className="rounded-full bg-[#fcfaf7] px-3 py-1.5">Regras de giro</span>
-            <span className="rounded-full bg-[#fcfaf7] px-3 py-1.5">Prêmios</span>
-            <span className="rounded-full bg-[#fcfaf7] px-3 py-1.5">Probabilidades</span>
+            <span className="rounded-full bg-[#fcfaf7] px-3 py-1.5">Período</span>
+            <span className="rounded-full bg-[#fcfaf7] px-3 py-1.5">Limites</span>
           </div>
           <span className="mt-6 inline-flex items-center gap-2 text-sm font-black text-[var(--brand)]">
-            Ver estrutura <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
+            Configurar roleta <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
           </span>
         </Link>
       </section>
