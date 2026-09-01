@@ -14,6 +14,7 @@ const migration = fs.readFileSync("supabase/migrations/20260901144413_promotion_
 const qualificationFix = fs.readFileSync("supabase/migrations/20260901145344_fix_promotion_wheel_server_engine_qualification.sql", "utf8");
 const adminPersistence = fs.readFileSync("supabase/migrations/20260901150925_connect_wheel_admin_persistence.sql", "utf8");
 const sourceOrderGuard = fs.readFileSync("supabase/migrations/20260901152255_guard_wheel_source_order_campaign_window.sql", "utf8");
+const exhaustedPrizeFilter = fs.readFileSync("supabase/migrations/20260901152947_filter_exhausted_wheel_prizes_before_draw.sql", "utf8");
 
 test("storefront mounts the isolated lucky wheel bridge", () => {
   assert.match(storefrontRoute, /LuckyWheelStorefrontBridge/);
@@ -88,4 +89,14 @@ test("historical orders cannot be reused by a later roulette campaign", () => {
   assert.match(sourceOrderGuard, /v_order\.created_at >= v_campaign\.ends_at/);
   assert.match(sourceOrderGuard, /return;/);
   assert.match(sourceOrderGuard, /grant execute on function public\.grant_eligible_promotion_spin\(uuid, uuid, uuid\) to service_role/);
+});
+
+test("exhausted prizes are filtered before the server draw", () => {
+  assert.match(exhaustedPrizeFilter, /v_campaign_awards >= v_campaign\.max_awards/);
+  assert.match(exhaustedPrizeFilter, /r\.prize_id = p\.id and r\.prize_type <> 'no_prize'/);
+  assert.match(exhaustedPrizeFilter, /r\.customer_id = v_spin\.customer_id/);
+  assert.match(exhaustedPrizeFilter, /v_unavailable_weight/);
+  assert.match(exhaustedPrizeFilter, /ps\.id = v_fallback\.id then v_unavailable_weight/);
+  assert.match(exhaustedPrizeFilter, /set status = 'expired'/);
+  assert.match(exhaustedPrizeFilter, /'v2'/);
 });
