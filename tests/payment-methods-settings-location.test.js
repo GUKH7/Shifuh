@@ -18,5 +18,5 @@ test("formas de pagamento ficam dentro de configurações", () => {
   assert.match(settingsSections, /href="\/admin\/settings\/payments"/);
   assert.match(oldRoute, /redirect\("\/admin\/settings\/payments"\)/);
   assert.doesNotMatch(sidebar, /href:\s*"\/admin\/payments"/);
-  assert.match(sidebar, /pathname\.startsWith\("\/admin\/settings"\)/);
+  assert.match(sidebar, /pathname\.startsWith\(`\$\{item\.href\}\/`\)/);
 });
