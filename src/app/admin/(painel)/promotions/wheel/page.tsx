@@ -1,11 +1,5 @@
-import WheelConfigurator from "./WheelConfigurator";
-import WheelPrizesConfigurator from "./WheelPrizesConfigurator";
+import WheelCampaignWorkspace from "./WheelCampaignWorkspace";
 
 export default function PromotionsWheelPage() {
-  return (
-    <>
-      <WheelConfigurator />
-      <WheelPrizesConfigurator />
-    </>
-  );
+  return <WheelCampaignWorkspace />;
 }
