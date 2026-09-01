@@ -43,7 +43,7 @@ type PromotionOrder = {
   created_at: string;
 };
 
-const PROMOTION_ORDERS_PAGE_SIZE = 1000;
+const PROMOTION_PAGE_SIZE = 1000;
 
 const FUTURE_MECHANICS = [
   {
@@ -103,6 +103,30 @@ export default function PromotionsOverview() {
           return;
         }
 
+        const fetchAllCoupons = async () => {
+          const allCoupons: Coupon[] = [];
+          let from = 0;
+
+          while (true) {
+            const { data, error } = await (supabase as any)
+              .from("coupons")
+              .select("id, code, active, expires_at, usage_limit")
+              .eq("restaurant_id", restaurant.id)
+              .order("id", { ascending: true })
+              .range(from, from + PROMOTION_PAGE_SIZE - 1);
+
+            if (error) throw error;
+
+            const page = (data || []) as Coupon[];
+            allCoupons.push(...page);
+
+            if (page.length < PROMOTION_PAGE_SIZE) break;
+            from += PROMOTION_PAGE_SIZE;
+          }
+
+          return allCoupons;
+        };
+
         const fetchAllPromotionOrders = async () => {
           const allOrders: PromotionOrder[] = [];
           let from = 0;
@@ -115,32 +139,28 @@ export default function PromotionsOverview() {
               .not("coupon_code", "is", null)
               .order("created_at", { ascending: true })
               .order("id", { ascending: true })
-              .range(from, from + PROMOTION_ORDERS_PAGE_SIZE - 1);
+              .range(from, from + PROMOTION_PAGE_SIZE - 1);
 
             if (error) throw error;
 
             const page = (data || []) as PromotionOrder[];
             allOrders.push(...page);
 
-            if (page.length < PROMOTION_ORDERS_PAGE_SIZE) break;
-            from += PROMOTION_ORDERS_PAGE_SIZE;
+            if (page.length < PROMOTION_PAGE_SIZE) break;
+            from += PROMOTION_PAGE_SIZE;
           }
 
           return allOrders;
         };
 
-        const [couponsResult, promotionOrders] = await Promise.all([
-          (supabase as any)
-            .from("coupons")
-            .select("id, code, active, expires_at, usage_limit")
-            .eq("restaurant_id", restaurant.id),
+        const [allCoupons, promotionOrders] = await Promise.all([
+          fetchAllCoupons(),
           fetchAllPromotionOrders(),
         ]);
 
-        if (couponsResult.error) throw couponsResult.error;
         if (!active) return;
 
-        setCoupons((couponsResult.data || []) as Coupon[]);
+        setCoupons(allCoupons);
         setOrders(promotionOrders);
       } catch (error) {
         console.error(error);
