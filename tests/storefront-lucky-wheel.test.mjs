@@ -13,6 +13,7 @@ const adminWorkspace = fs.readFileSync("src/app/admin/(painel)/promotions/wheel/
 const migration = fs.readFileSync("supabase/migrations/20260901144413_promotion_wheel_server_engine.sql", "utf8");
 const qualificationFix = fs.readFileSync("supabase/migrations/20260901145344_fix_promotion_wheel_server_engine_qualification.sql", "utf8");
 const adminPersistence = fs.readFileSync("supabase/migrations/20260901150925_connect_wheel_admin_persistence.sql", "utf8");
+const sourceOrderGuard = fs.readFileSync("supabase/migrations/20260901152255_guard_wheel_source_order_campaign_window.sql", "utf8");
 
 test("storefront mounts the isolated lucky wheel bridge", () => {
   assert.match(storefrontRoute, /LuckyWheelStorefrontBridge/);
@@ -80,4 +81,11 @@ test("eligibility uses OR for unlock rules and AND for guard rules", () => {
   assert.match(adminPersistence, /v_rule\.rule_type in \('schedule', 'customer_spin_limit'\)/);
   assert.match(adminPersistence, /v_unlock_passed := true/);
   assert.match(adminPersistence, /v_unlock_rule_count = 0 or not v_unlock_passed/);
+});
+
+test("historical orders cannot be reused by a later roulette campaign", () => {
+  assert.match(sourceOrderGuard, /v_order\.created_at < v_campaign\.starts_at/);
+  assert.match(sourceOrderGuard, /v_order\.created_at >= v_campaign\.ends_at/);
+  assert.match(sourceOrderGuard, /return;/);
+  assert.match(sourceOrderGuard, /grant execute on function public\.grant_eligible_promotion_spin\(uuid, uuid, uuid\) to service_role/);
 });
