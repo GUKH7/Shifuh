@@ -33,13 +33,22 @@ export async function resolveCustomerPromotionContext(adminSupabase: any): Promi
 
   if (!authUserId) return null;
 
-  const { data: profile } = await adminSupabase
-    .from("profiles")
-    .select("name, phone")
-    .eq("id", authUserId)
-    .maybeSingle();
+  const [{ data: account }, { data: profile }] = await Promise.all([
+    adminSupabase
+      .from("customer_phone_accounts")
+      .select("phone")
+      .eq("auth_user_id", authUserId)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    adminSupabase
+      .from("profiles")
+      .select("name")
+      .eq("id", authUserId)
+      .maybeSingle(),
+  ]);
 
-  const normalizedPhone = normalizeCustomerPhone(profile?.phone || "");
+  const normalizedPhone = normalizeCustomerPhone(account?.phone || "");
   if (!normalizedPhone) return null;
 
   return {
