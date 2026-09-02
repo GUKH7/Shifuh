@@ -108,7 +108,7 @@ export default function MyRewardsPage() {
       </header>
 
       <div className="mx-auto max-w-3xl px-4 pt-6 sm:pt-8">
-        <section className="overflow-hidden rounded-[28px] bg-gray-950 p-6 text-white shadow-[0_18px_55px_rgba(17,24,39,0.16)] sm:p-8">
+        <section className="overflow-hidden rounded-3xl bg-gray-950 p-6 text-white shadow-[0_18px_55px_rgba(17,24,39,0.16)] sm:p-8">
           <div className="flex items-start justify-between gap-5">
             <div>
               <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 text-orange-400">
@@ -136,11 +136,11 @@ export default function MyRewardsPage() {
         )}
 
         {!loading && error && (
-          <div className="mt-6 rounded-[22px] border border-rose-200 bg-rose-50 p-5 text-sm font-semibold text-rose-700">{error}</div>
+          <div className="mt-6 rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm font-semibold text-rose-700">{error}</div>
         )}
 
         {!loading && !error && sortedRewards.length === 0 && (
-          <section className="mt-6 rounded-[26px] border border-dashed border-gray-300 bg-white px-6 py-12 text-center">
+          <section className="mt-6 rounded-3xl border border-dashed border-gray-300 bg-white px-6 py-12 text-center">
             <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-50 text-orange-500"><Gift size={26} /></span>
             <h2 className="mt-4 text-lg font-black">Nenhum prêmio por aqui ainda</h2>
             <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-gray-500">Quando você ganhar uma recompensa em uma promoção do Shifuh, ela aparecerá automaticamente nesta página.</p>
