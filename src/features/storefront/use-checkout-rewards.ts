@@ -16,7 +16,6 @@ type UseCheckoutRewardsArgs = {
   deliveryFee: number;
   fulfillmentType: FulfillmentType;
   hasCoupon: boolean;
-  referenceTimeMs: number;
 };
 
 export function useCheckoutRewards({
@@ -26,13 +25,13 @@ export function useCheckoutRewards({
   deliveryFee,
   fulfillmentType,
   hasCoupon,
-  referenceTimeMs,
 }: UseCheckoutRewardsArgs) {
   const [rewards, setRewards] = useState<CheckoutReward[]>([]);
   const [selectedRewardId, setSelectedRewardId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [optedOut, setOptedOut] = useState(false);
+  const [eligibilityClock, setEligibilityClock] = useState(() => Date.now());
 
   const refresh = useCallback(async () => {
     if (!restaurantId) {
@@ -55,6 +54,7 @@ export function useCheckoutRewards({
         .filter((reward: CheckoutReward) => reward.restaurant?.id === restaurantId)
         .filter((reward: CheckoutReward) => reward.status === "available");
       setRewards(nextRewards);
+      setEligibilityClock(Date.now());
     } catch (cause) {
       console.error(cause);
       setRewards([]);
@@ -70,14 +70,21 @@ export function useCheckoutRewards({
     void refresh();
   }, [isCheckoutOpen, refresh]);
 
+  useEffect(() => {
+    if (!isCheckoutOpen) return;
+    setEligibilityClock(Date.now());
+    const timer = window.setInterval(() => setEligibilityClock(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, [isCheckoutOpen]);
+
   const eligibleRewards = useMemo(
-    () => rewards.filter((reward) => getRewardEligibility(reward, subtotal, deliveryFee, fulfillmentType, referenceTimeMs).eligible),
-    [deliveryFee, fulfillmentType, referenceTimeMs, rewards, subtotal],
+    () => rewards.filter((reward) => getRewardEligibility(reward, subtotal, deliveryFee, fulfillmentType, eligibilityClock).eligible),
+    [deliveryFee, eligibilityClock, fulfillmentType, rewards, subtotal],
   );
 
   const bestReward = useMemo(
-    () => getBestCheckoutReward(rewards, subtotal, deliveryFee, fulfillmentType, referenceTimeMs),
-    [deliveryFee, fulfillmentType, referenceTimeMs, rewards, subtotal],
+    () => getBestCheckoutReward(rewards, subtotal, deliveryFee, fulfillmentType, eligibilityClock),
+    [deliveryFee, eligibilityClock, fulfillmentType, rewards, subtotal],
   );
 
   useEffect(() => {
@@ -101,8 +108,8 @@ export function useCheckoutRewards({
   );
 
   const discountAmount = useMemo(
-    () => getRewardDiscount(selectedReward, subtotal, deliveryFee, fulfillmentType, referenceTimeMs),
-    [deliveryFee, fulfillmentType, referenceTimeMs, selectedReward, subtotal],
+    () => getRewardDiscount(selectedReward, subtotal, deliveryFee, fulfillmentType, eligibilityClock),
+    [deliveryFee, eligibilityClock, fulfillmentType, selectedReward, subtotal],
   );
 
   const selectReward = useCallback((rewardId: string) => {
