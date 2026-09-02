@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { ArrowRight, Banknote, Check, CheckCircle2, ChevronDown, ChevronLeft, CreditCard, Loader2, MapPin, Minus, Pencil, Plus, QrCode, ShoppingBag, Ticket, Trash2 } from "lucide-react";
 import { formatMoney, getContrastTextColor } from "./format";
 import { DeliveryCalculator } from "./DeliveryCalculator";
+import { CheckoutRewardsCard } from "@/features/checkout/CheckoutRewardsCard";
+import type { CheckoutReward } from "@/features/storefront/checkout-rewards";
 import type { CartItem, CheckoutAddress, CheckoutStep, DeliveryInfo, FulfillmentType, OrderResponse } from "./types";
 import type { StoreStatus } from "./store-summary";
 import {
@@ -40,6 +42,12 @@ type CheckoutDrawerProps = {
   discountAmount: number;
   feeValue: number;
   finalTotal: number;
+  checkoutRewards: CheckoutReward[];
+  selectedReward: CheckoutReward | null;
+  selectedRewardId: string | null;
+  rewardsLoading: boolean;
+  rewardsError: string;
+  rewardsOptedOut: boolean;
   paymentMethod: StorefrontPaymentMethod | "";
   changeFor: string;
   cashNeedsChange: boolean;
@@ -73,6 +81,9 @@ type CheckoutDrawerProps = {
   onCouponCodeChange: (value: string) => void;
   onApplyCoupon: () => void;
   onRemoveCoupon: () => void;
+  onSelectReward: (rewardId: string) => void;
+  onSkipRewards: () => void;
+  onEnableAutomaticReward: () => void;
   onPaymentMethodChange: (value: StorefrontPaymentMethod | "") => void;
   onChangeForChange: (value: string) => void;
   onCashNeedsChange: (value: boolean) => void;
@@ -104,6 +115,12 @@ export function CheckoutDrawer({
   discountAmount,
   feeValue,
   finalTotal,
+  checkoutRewards,
+  selectedReward,
+  selectedRewardId,
+  rewardsLoading,
+  rewardsError,
+  rewardsOptedOut,
   paymentMethod,
   changeFor,
   cashNeedsChange,
@@ -137,6 +154,9 @@ export function CheckoutDrawer({
   onCouponCodeChange,
   onApplyCoupon,
   onRemoveCoupon,
+  onSelectReward,
+  onSkipRewards,
+  onEnableAutomaticReward,
   onPaymentMethodChange,
   onChangeForChange,
   onCashNeedsChange,
@@ -562,6 +582,12 @@ export function CheckoutDrawer({
                         <strong className="text-gray-900">{formatMoney(item.totalPrice)}</strong>
                       </div>
                     ))}
+                    {selectedReward?.type === "free_product" && selectedReward.productName && (
+                      <div className="flex justify-between gap-3 py-1 font-bold text-emerald-700">
+                        <span>1x {selectedReward.productName} · prêmio</span>
+                        <strong>Grátis</strong>
+                      </div>
+                    )}
                   </div>
                   <div className="rounded-2xl bg-[#faf8f5] p-3.5">
                     <div className="flex items-start justify-between gap-3">
@@ -589,13 +615,31 @@ export function CheckoutDrawer({
                   <div className="border-t border-[var(--line)] pt-3">
                     <div className="flex justify-between py-1"><span>Subtotal</span><span>{formatMoney(cartSubtotal)}</span></div>
                     <div className="flex justify-between py-1"><span>{isPickup ? "Retirada" : "Entrega"}</span><span>{isPickup ? "Grátis" : formatMoney(feeValue)}</span></div>
-                    {discountAmount > 0 && <div className="flex justify-between py-1 font-bold text-emerald-600"><span>Desconto</span><span>- {formatMoney(discountAmount)}</span></div>}
+                    {discountAmount > 0 && <div className="flex justify-between py-1 font-bold text-emerald-600"><span>{selectedReward ? "Prêmio" : "Desconto"}</span><span>- {formatMoney(discountAmount)}</span></div>}
+                    {selectedReward?.type === "free_product" && <div className="flex justify-between py-1 font-bold text-emerald-600"><span>Prêmio</span><span>{selectedReward.productName || selectedReward.label}</span></div>}
                     <div className="mt-2 flex justify-between border-t border-[var(--line)] pt-3 text-lg font-black text-gray-950">
                       <span>Total</span><span>{formatMoney(finalTotal)}</span>
                     </div>
                   </div>
                 </div>
               </div>
+
+              <CheckoutRewardsCard
+                rewards={checkoutRewards}
+                selectedReward={selectedReward}
+                selectedRewardId={selectedRewardId}
+                loading={rewardsLoading}
+                error={rewardsError}
+                optedOut={rewardsOptedOut}
+                couponApplied={Boolean(appliedCoupon)}
+                subtotal={cartSubtotal}
+                deliveryFee={feeValue}
+                fulfillmentType={fulfillmentType}
+                onSelectReward={onSelectReward}
+                onSkipRewards={onSkipRewards}
+                onEnableAutomaticReward={onEnableAutomaticReward}
+              />
+
               <div className="surface-card rounded-[20px] p-4 sm:rounded-[24px] sm:p-5">
                 <button
                   type="button"
@@ -636,7 +680,7 @@ export function CheckoutDrawer({
                   )}
                 </div>}
 
-                {appliedCoupon && <p className="mt-3 text-sm font-bold text-emerald-600">Cupom aplicado com sucesso.</p>}
+                {appliedCoupon && <p className="mt-3 text-sm font-bold text-emerald-600">Cupom aplicado com sucesso. Seus prêmios ficam guardados para outro pedido.</p>}
                 {(isCouponOpen || appliedCoupon) && couponError && <p role="alert" className="mt-3 text-xs font-bold text-rose-600">{couponError}</p>}
               </div>
 
@@ -870,7 +914,7 @@ export function CheckoutDrawer({
               <div className="mb-3 flex items-end justify-between gap-4 px-1">
                 <div>
                   <p className="text-[11px] font-bold uppercase text-gray-400">Total do pedido</p>
-                  <p className="text-xs text-gray-500">{isPickup ? "Retirada sem taxa" : "Itens e entrega incluídos"}</p>
+                  <p className="text-xs text-gray-500">{selectedReward ? "Prêmio aplicado ao total" : isPickup ? "Retirada sem taxa" : "Itens e entrega incluídos"}</p>
                 </div>
                 <strong className="text-xl text-gray-950">{formatMoney(finalTotal)}</strong>
               </div>
