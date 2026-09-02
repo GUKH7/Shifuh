@@ -363,7 +363,7 @@ export default function PromotionsOverview() {
           {FUTURE_MECHANICS.map((mechanic) => {
             const Icon = mechanic.icon;
             return (
-              <article key={mechanic.title} className="rounded-[22px] border border-[var(--line)] bg-[#fffdfa] p-4">
+              <article key={mechanic.title} className="rounded-2xl border border-[var(--line)] bg-[#fffdfa] p-4">
                 <div className="flex items-start justify-between gap-3">
                   <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-[var(--brand)] shadow-sm">
                     <Icon size={18} />
