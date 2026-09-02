@@ -16,6 +16,7 @@ let resetRateLimitForTests = () => {};
 function baseState(overrides = {}) {
   return {
     user: null,
+    rewardContext: null,
     restaurant: {
       id: "restaurant-1",
       name: "Loja Teste",
@@ -276,6 +277,12 @@ function loadOrdersRoute() {
       return {
         createAdminClient: () => createSupabaseMock("admin"),
         createClient: async () => createSupabaseMock("public"),
+      };
+    }
+
+    if (request === "@/lib/promotions/customer-context") {
+      return {
+        resolveCustomerPromotionContext: async () => mockState.rewardContext || null,
       };
     }
 
