@@ -169,7 +169,7 @@ export function AdminDatePicker({ value, label, onChange }: AdminDatePickerProps
           ref={calendarRef}
           role="dialog"
           aria-label="Calendário"
-          className="admin-date-picker-popover absolute right-0 top-full z-[80] mt-2 w-[324px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-[22px] border border-orange-100 bg-white shadow-[0_24px_70px_rgba(49,34,23,0.18)]"
+          className="admin-date-picker-popover absolute right-0 top-full z-[80] mt-2 w-[324px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-orange-100 bg-white shadow-[0_24px_70px_rgba(49,34,23,0.18)]"
         >
           <div className="flex items-center justify-between border-b border-orange-50 bg-[#fffdfa] px-4 py-3.5">
             <button
