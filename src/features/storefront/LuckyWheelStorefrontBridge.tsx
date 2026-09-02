@@ -193,7 +193,7 @@ export default function LuckyWheelStorefrontBridge() {
 
       {open && (
         <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/55 p-0 backdrop-blur-sm sm:items-center sm:p-5">
-          <section className="relative max-h-[100dvh] w-full max-w-lg overflow-y-auto rounded-t-[30px] bg-[#fafafa] px-5 pb-7 pt-5 shadow-2xl sm:max-h-[92dvh] sm:rounded-[30px] sm:px-7 sm:pb-8">
+          <section className="relative max-h-[100dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-[#fafafa] px-5 pb-7 pt-5 shadow-2xl sm:max-h-[92dvh] sm:rounded-3xl sm:px-7 sm:pb-8">
             <button
               type="button"
               onClick={closeModal}
