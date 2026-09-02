@@ -70,6 +70,14 @@ type CheckoutReward = {
   minimum_order_amount: number | null;
   status: "available" | "redeemed" | "expired" | "cancelled";
   expires_at: string | null;
+  redeemed_order_id: string | null;
+};
+
+type RewardRetryOrder = {
+  id: string;
+  total: number | null;
+  discount: number | null;
+  change_for: string | null;
 };
 
 function roundMoney(value: number) {
@@ -184,6 +192,7 @@ function normalizeCreatedOrderResult(data: CreatedOrderResult) {
 
 function rewardRpcErrorCode(message = "") {
   const normalized = message.toLowerCase();
+  if (normalized.includes("different reward")) return "REWARD_IDEMPOTENCY_CONFLICT";
   if (normalized.includes("already been redeemed")) return "REWARD_ALREADY_REDEEMED";
   if (normalized.includes("reward is expired")) return "REWARD_EXPIRED";
   if (normalized.includes("minimum order")) return "REWARD_MINIMUM_ORDER_NOT_REACHED";
@@ -311,7 +320,7 @@ export async function POST(request: Request) {
     const rewardPromise = rewardId
       ? (adminSupabase as any)
           .from("customer_rewards")
-          .select("id, customer_id, reward_type, label, percentage_value, fixed_amount, product_id, minimum_order_amount, status, expires_at")
+          .select("id, customer_id, reward_type, label, percentage_value, fixed_amount, product_id, minimum_order_amount, status, expires_at, redeemed_order_id")
           .eq("id", rewardId)
           .eq("restaurant_id", body.restaurantId)
           .maybeSingle()
@@ -342,6 +351,7 @@ export async function POST(request: Request) {
     const couponUsageCount = couponUsageResult.count || 0;
     const { data: rewardData, error: rewardError } = rewardResult;
     const reward = rewardData as CheckoutReward | null;
+    let rewardRetryOrder: RewardRetryOrder | null = null;
 
     if (restaurantError || !restaurant) {
       return NextResponse.json({ error: "Loja não encontrada." }, { status: 404 });
@@ -350,7 +360,7 @@ export async function POST(request: Request) {
     if (rewardId) {
       if (!rewardContext) {
         return NextResponse.json(
-          { code: "REWARD_SESSION_REQUIRED", error: "Entre na sua conta para usar este prêmio." },
+          { code: "REWARD_SESSION_REQUIRED", error: "Confirme seu telefone para usar este prêmio." },
           { status: 401 },
         );
       }
@@ -386,6 +396,27 @@ export async function POST(request: Request) {
           { status: 409 },
         );
       }
+
+      if (reward.status === "redeemed") {
+        if (reward.redeemed_order_id) {
+          const { data: retryOrder } = await (adminSupabase as any)
+            .from("orders")
+            .select("id, total, discount, change_for")
+            .eq("id", reward.redeemed_order_id)
+            .eq("restaurant_id", restaurant.id)
+            .eq("idempotency_key", idempotencyKey)
+            .maybeSingle();
+          rewardRetryOrder = retryOrder as RewardRetryOrder | null;
+        }
+
+        if (!rewardRetryOrder) {
+          return NextResponse.json(
+            { code: "REWARD_ALREADY_REDEEMED", error: "Este prêmio já foi usado em outro pedido." },
+            { status: 409 },
+          );
+        }
+      }
+
       if (reward.status === "available" && reward.expires_at && new Date(reward.expires_at).getTime() <= Date.now()) {
         return NextResponse.json(
           { code: "REWARD_EXPIRED", error: "Este prêmio expirou." },
@@ -529,7 +560,7 @@ export async function POST(request: Request) {
     subtotal = roundMoney(subtotal);
 
     const minimumOrderAmount = roundMoney(Number(restaurant.minimum_order_amount) || 0);
-    if (subtotal < minimumOrderAmount) {
+    if (subtotal < minimumOrderAmount && !rewardRetryOrder) {
       return NextResponse.json(
         {
           code: "MINIMUM_ORDER_NOT_REACHED",
@@ -642,11 +673,16 @@ export async function POST(request: Request) {
         rewardProductName = rewardProduct.name;
         discount = 0;
       }
+    } else if (rewardRetryOrder) {
+      discount = roundMoney(Number(rewardRetryOrder.discount) || 0);
     }
 
-    let total = roundMoney(subtotal + deliveryFee - discount);
-    let normalizedChangeFor: string | null = null;
-    if (paymentMethod === "cash" && body.changeFor?.trim()) {
+    let total = rewardRetryOrder
+      ? roundMoney(Number(rewardRetryOrder.total) || 0)
+      : roundMoney(subtotal + deliveryFee - discount);
+    let normalizedChangeFor: string | null = rewardRetryOrder?.change_for || null;
+
+    if (!rewardRetryOrder && paymentMethod === "cash" && body.changeFor?.trim()) {
       const changeError = getChangeForError(body.changeFor, total);
       const changeAmount = parseCurrencyInput(body.changeFor);
       if (changeError || changeAmount === null) {
@@ -724,6 +760,7 @@ export async function POST(request: Request) {
       console.error("Erro ao criar pedido em transacao:", transaction.error);
       const code = rewardId ? rewardRpcErrorCode(transaction.error?.message) : "ORDER_CREATION_FAILED";
       const messages: Record<string, string> = {
+        REWARD_IDEMPOTENCY_CONFLICT: "Esta tentativa de pedido já foi registrada com outro prêmio.",
         REWARD_ALREADY_REDEEMED: "Este prêmio já foi usado em outro pedido.",
         REWARD_EXPIRED: "Este prêmio expirou.",
         REWARD_MINIMUM_ORDER_NOT_REACHED: "O pedido mínimo deste prêmio ainda não foi atingido.",
