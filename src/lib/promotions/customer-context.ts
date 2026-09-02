@@ -1,5 +1,4 @@
-import { cookies } from "next/headers";
-import { CUSTOMER_SESSION_COOKIE, hashCustomerSessionToken, normalizeCustomerPhone } from "@/lib/customer-account";
+import { normalizeCustomerPhone } from "@/lib/customer-account";
 import { createClient } from "@/lib/supabase/server";
 
 export type CustomerPromotionContext = {
@@ -9,30 +8,7 @@ export type CustomerPromotionContext = {
   name: string;
 };
 
-export async function resolveCustomerPromotionContext(adminSupabase: any): Promise<CustomerPromotionContext | null> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(CUSTOMER_SESSION_COOKIE)?.value;
-  let authUserId: string | null = null;
-
-  if (token) {
-    const { data: session } = await adminSupabase
-      .from("customer_phone_sessions")
-      .select("auth_user_id, expires_at")
-      .eq("token_hash", hashCustomerSessionToken(token))
-      .gt("expires_at", new Date().toISOString())
-      .maybeSingle();
-
-    authUserId = session?.auth_user_id || null;
-  }
-
-  if (!authUserId) {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    authUserId = user?.id || null;
-  }
-
-  if (!authUserId) return null;
-
+async function buildPromotionContext(adminSupabase: any, authUserId: string): Promise<CustomerPromotionContext | null> {
   const [{ data: account }, { data: profile }] = await Promise.all([
     adminSupabase
       .from("customer_phone_accounts")
@@ -57,4 +33,46 @@ export async function resolveCustomerPromotionContext(adminSupabase: any): Promi
     normalizedPhone,
     name: profile?.name || "",
   };
+}
+
+async function buildVerifiedPromotionContext(
+  adminSupabase: any,
+  authUserId: string,
+): Promise<CustomerPromotionContext | null> {
+  const context = await buildPromotionContext(adminSupabase, authUserId);
+  if (!context) return null;
+
+  const { data: authUserResult, error } = await adminSupabase.auth.admin.getUserById(authUserId);
+  const authUser = authUserResult?.user;
+  if (error || !authUser?.phone_confirmed_at) return null;
+
+  const verifiedPhone = normalizeCustomerPhone(authUser.phone || "");
+  if (!verifiedPhone || verifiedPhone !== context.normalizedPhone) return null;
+
+  return context;
+}
+
+/**
+ * Promotion state and rewards are sensitive customer data. Only the active Supabase Auth
+ * session may establish customer identity here. Checkout-created customer cookies are
+ * intentionally ignored because they are account conveniences and do not prove that the
+ * current browser completed phone verification.
+ */
+export async function resolveVerifiedCustomerPromotionContext(
+  adminSupabase: any,
+): Promise<CustomerPromotionContext | null> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.id) return null;
+
+  return buildVerifiedPromotionContext(adminSupabase, user.id);
+}
+
+/**
+ * Keep the existing API name for promotion routes, but make its security contract verified.
+ */
+export async function resolveCustomerPromotionContext(
+  adminSupabase: any,
+): Promise<CustomerPromotionContext | null> {
+  return resolveVerifiedCustomerPromotionContext(adminSupabase);
 }

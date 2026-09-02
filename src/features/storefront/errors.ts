@@ -27,6 +27,14 @@ export function getOrderApiErrorMessage(code?: string) {
     OUTSIDE_DELIVERY_AREA: "Este endereço está fora da área atendida pela loja.",
     DELIVERY_CALCULATION_UNAVAILABLE: "Não conseguimos recalcular a entrega agora. Seus dados foram mantidos; tente novamente.",
     PICKUP_DISABLED: "Esta loja não oferece retirada no local. Escolha a entrega para continuar.",
+    REWARD_COUPON_CONFLICT: "Use um cupom ou um prêmio por pedido.",
+    REWARD_SESSION_REQUIRED: "Entre na sua conta para usar este prêmio.",
+    REWARD_CUSTOMER_MISMATCH: "Este prêmio pertence a outro cadastro de cliente.",
+    REWARD_EXPIRED: "Este prêmio expirou e não pode mais ser usado.",
+    REWARD_UNAVAILABLE: "Este prêmio não está mais disponível. Escolha outro benefício.",
+    REWARD_ALREADY_REDEEMED: "Este prêmio já foi usado em outro pedido.",
+    REWARD_MINIMUM_ORDER_NOT_REACHED: "Adicione mais itens para atingir o pedido mínimo deste prêmio.",
+    REWARD_NOT_APPLICABLE: "Este prêmio não pode ser usado neste pedido.",
     ORDER_CREATION_FAILED: "Não conseguimos registrar o pedido. Sua sacola foi mantida para você tentar novamente.",
   };
 

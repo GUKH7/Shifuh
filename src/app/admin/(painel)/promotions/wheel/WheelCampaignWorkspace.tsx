@@ -139,6 +139,8 @@ const PRIZE_META: Record<PrizeType, { label: string; icon: typeof Gift }> = {
   no_prize: { label: "Não foi dessa vez", icon: CircleSlash2 },
 };
 
+const WHEEL_CAMPAIGN_SAVED_EVENT = "shifuh:promotion-wheel-saved";
+
 function toLocalDateTime(value: Date | string) {
   const date = typeof value === "string" ? new Date(value) : value;
   const pad = (part: number) => String(part).padStart(2, "0");
@@ -483,6 +485,7 @@ export default function WheelCampaignWorkspace() {
       setCampaignId(String(data));
       setNotice(campaign.status === "active" ? "Roleta salva e publicada na vitrine." : "Configuração salva com sucesso.");
       await loadWorkspace();
+      window.dispatchEvent(new CustomEvent(WHEEL_CAMPAIGN_SAVED_EVENT, { detail: { campaignId: String(data) } }));
     } catch (error: any) {
       console.error(error);
       setErrorMsg(error?.message || "Não foi possível salvar a Roleta da Sorte.");

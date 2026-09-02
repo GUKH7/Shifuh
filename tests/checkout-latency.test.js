@@ -10,13 +10,15 @@ const route = fs.readFileSync(
 
 test("checkout dispara autenticação e validações independentes na mesma janela", () => {
   assert.match(route, /const userPromise = supabase\.auth\.getUser\(\)/);
+  assert.match(route, /const rewardContextPromise =/);
   assert.match(route, /const restaurantPromise =/);
   assert.match(route, /const productsPromise =/);
   assert.match(route, /const couponPromise =/);
   assert.match(route, /const couponUsagePromise =/);
+  assert.match(route, /const rewardPromise =/);
   assert.match(
     route,
-    /await Promise\.all\(\[\s*userPromise,\s*restaurantPromise,\s*productsPromise,\s*couponPromise,\s*couponUsagePromise,\s*\]\)/s,
+    /await Promise\.all\(\[\s*userPromise,\s*rewardContextPromise,\s*restaurantPromise,\s*productsPromise,\s*couponPromise,\s*couponUsagePromise,\s*rewardPromise,\s*\]\)/s,
   );
 });
 
