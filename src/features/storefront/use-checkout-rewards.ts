@@ -16,6 +16,7 @@ type UseCheckoutRewardsArgs = {
   deliveryFee: number;
   fulfillmentType: FulfillmentType;
   hasCoupon: boolean;
+  referenceTimeMs: number;
 };
 
 export function useCheckoutRewards({
@@ -25,6 +26,7 @@ export function useCheckoutRewards({
   deliveryFee,
   fulfillmentType,
   hasCoupon,
+  referenceTimeMs,
 }: UseCheckoutRewardsArgs) {
   const [rewards, setRewards] = useState<CheckoutReward[]>([]);
   const [selectedRewardId, setSelectedRewardId] = useState<string | null>(null);
@@ -69,13 +71,13 @@ export function useCheckoutRewards({
   }, [isCheckoutOpen, refresh]);
 
   const eligibleRewards = useMemo(
-    () => rewards.filter((reward) => getRewardEligibility(reward, subtotal, deliveryFee, fulfillmentType).eligible),
-    [deliveryFee, fulfillmentType, rewards, subtotal],
+    () => rewards.filter((reward) => getRewardEligibility(reward, subtotal, deliveryFee, fulfillmentType, referenceTimeMs).eligible),
+    [deliveryFee, fulfillmentType, referenceTimeMs, rewards, subtotal],
   );
 
   const bestReward = useMemo(
-    () => getBestCheckoutReward(rewards, subtotal, deliveryFee, fulfillmentType),
-    [deliveryFee, fulfillmentType, rewards, subtotal],
+    () => getBestCheckoutReward(rewards, subtotal, deliveryFee, fulfillmentType, referenceTimeMs),
+    [deliveryFee, fulfillmentType, referenceTimeMs, rewards, subtotal],
   );
 
   useEffect(() => {
@@ -99,8 +101,8 @@ export function useCheckoutRewards({
   );
 
   const discountAmount = useMemo(
-    () => getRewardDiscount(selectedReward, subtotal, deliveryFee, fulfillmentType),
-    [deliveryFee, fulfillmentType, selectedReward, subtotal],
+    () => getRewardDiscount(selectedReward, subtotal, deliveryFee, fulfillmentType, referenceTimeMs),
+    [deliveryFee, fulfillmentType, referenceTimeMs, selectedReward, subtotal],
   );
 
   const selectReward = useCallback((rewardId: string) => {
