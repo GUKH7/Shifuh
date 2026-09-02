@@ -178,7 +178,7 @@ export default function LuckyWheelStorefrontBridge() {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="fixed bottom-24 left-1/2 z-[60] flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 items-center gap-3 rounded-[22px] border border-orange-200 bg-white px-4 py-3 text-left shadow-[0_18px_50px_rgba(17,24,39,0.18)] sm:bottom-6"
+          className="fixed bottom-24 left-1/2 z-[60] flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 items-center gap-3 rounded-2xl border border-orange-200 bg-white px-4 py-3 text-left shadow-[0_18px_50px_rgba(17,24,39,0.18)] sm:bottom-6"
         >
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-orange-50 text-orange-600">
             <Sparkles size={22} />
