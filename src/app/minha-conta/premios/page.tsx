@@ -127,7 +127,7 @@ export default function MyRewardsPage() {
         </section>
 
         {loading && (
-          <div className="mt-6 flex min-h-48 items-center justify-center rounded-[24px] border border-gray-200 bg-white">
+          <div className="mt-6 flex min-h-48 items-center justify-center rounded-2xl border border-gray-200 bg-white">
             <div className="text-center text-gray-500">
               <Loader2 className="mx-auto animate-spin text-orange-500" size={26} />
               <p className="mt-3 text-sm font-bold">Carregando seus prêmios...</p>
@@ -163,7 +163,7 @@ export default function MyRewardsPage() {
                 const expires = formatDate(reward.expiresAt);
                 const available = reward.status === "available";
                 return (
-                  <article key={reward.id} className={`rounded-[24px] border bg-white p-5 shadow-[0_7px_24px_rgba(17,24,39,0.04)] ${available ? "border-orange-100" : "border-gray-200 opacity-75"}`}>
+                  <article key={reward.id} className={`rounded-2xl border bg-white p-5 shadow-[0_7px_24px_rgba(17,24,39,0.04)] ${available ? "border-orange-100" : "border-gray-200 opacity-75"}`}>
                     <div className="flex items-start gap-4">
                       <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${available ? "bg-orange-50 text-orange-600" : "bg-gray-100 text-gray-500"}`}>
                         <RewardIcon type={reward.type} />
