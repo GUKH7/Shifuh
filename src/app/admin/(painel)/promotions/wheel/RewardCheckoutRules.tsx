@@ -186,7 +186,7 @@ export default function RewardCheckoutRules() {
         ) : (
           <div className="mt-5 space-y-3">
             {prizes.map((prize) => (
-              <article key={prize.id} className="rounded-[22px] border border-[var(--line)] bg-white p-4">
+              <article key={prize.id} className="rounded-2xl border border-[var(--line)] bg-white p-4">
                 <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px] md:items-center">
                   <div className="flex min-w-0 items-start gap-3">
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
