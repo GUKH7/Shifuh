@@ -10,6 +10,7 @@ with incompatible as (
    and p.restaurant_id = pp.restaurant_id
   where pp.active = true
     and pp.prize_type = 'free_product'
+    and coalesce(jsonb_typeof(p.addons), 'null') = 'array'
     and exists (
       select 1
       from jsonb_array_elements(coalesce(p.addons, '[]'::jsonb)) addon_group
