@@ -1,3 +1,4 @@
 "use client";
-
-export { default } from "@/features/storefront/StorefrontPage";
+import StorefrontPage from "@/features/storefront/StorefrontPage";
+import Wheel from "@/features/storefront/LuckyWheelStorefrontBridge";
+export default function Page(){return <><StorefrontPage /><Wheel /></>}

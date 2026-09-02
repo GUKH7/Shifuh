@@ -232,7 +232,7 @@ export function DeliveryRulesEnhancer() {
 
   if (loading) {
     return (
-      <div className="mt-6 flex min-h-24 items-center justify-center rounded-[22px] border border-[var(--line)] bg-[#fcfaf7] text-sm font-bold text-gray-500">
+      <div className="mt-6 flex min-h-24 items-center justify-center rounded-2xl border border-[var(--line)] bg-[#fcfaf7] text-sm font-bold text-gray-500">
         <Loader2 size={17} className="mr-2 animate-spin" /> Carregando regras de entrega...
       </div>
     );

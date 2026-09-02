@@ -3,11 +3,11 @@ import { AlertTriangle, Inbox, RefreshCw } from "lucide-react";
 import { AdminButton, AdminPageShell, AdminSkeleton } from "@/components/ui/admin-primitives";
 
 export function AdminPageSkeleton({
-  ariaLabel,
+  ariaLabel = "Carregando conteúdo",
   metrics = 4,
   children,
 }: {
-  ariaLabel: string;
+  ariaLabel?: string;
   metrics?: number;
   children?: ReactNode;
 }) {
@@ -38,14 +38,18 @@ export function AdminPageSkeleton({
 export function AdminErrorState({
   title = "Não foi possível carregar esta página",
   description,
+  message,
   onRetry,
   retryLabel = "Tentar novamente",
 }: {
   title?: string;
-  description: string;
+  description?: string;
+  message?: string;
   onRetry?: () => void;
   retryLabel?: string;
 }) {
+  const resolvedDescription = description || message || "Ocorreu um erro inesperado.";
+
   return (
     <AdminPageShell>
       <div className="surface-card flex min-h-56 flex-col items-center justify-center rounded-[28px] border-red-200 bg-red-50/70 px-6 py-12 text-center">
@@ -53,7 +57,7 @@ export function AdminErrorState({
           <AlertTriangle size={22} />
         </span>
         <h2 className="mt-4 text-lg font-black text-gray-950">{title}</h2>
-        <p className="mt-2 max-w-xl text-sm leading-6 text-red-700">{description}</p>
+        <p className="mt-2 max-w-xl text-sm leading-6 text-red-700">{resolvedDescription}</p>
         {onRetry ? (
           <AdminButton variant="secondary" className="mt-5" onClick={onRetry}>
             <RefreshCw size={16} />

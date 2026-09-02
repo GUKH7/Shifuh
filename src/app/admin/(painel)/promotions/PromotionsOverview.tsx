@@ -85,6 +85,7 @@ export default function PromotionsOverview() {
   const [errorMsg, setErrorMsg] = useState("");
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [orders, setOrders] = useState<PromotionOrder[]>([]);
+  const [overviewLoadedAt, setOverviewLoadedAt] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -162,6 +163,7 @@ export default function PromotionsOverview() {
 
         setCoupons(allCoupons);
         setOrders(promotionOrders);
+        setOverviewLoadedAt(Date.now());
       } catch (error) {
         console.error(error);
         if (active) setErrorMsg("Erro ao carregar a visão geral de promoções.");
@@ -199,7 +201,7 @@ export default function PromotionsOverview() {
       promotionalInvestment += Number(order.discount || 0);
     });
 
-    const now = Date.now();
+    const now = overviewLoadedAt;
     const activeCoupons = coupons.filter((coupon) => {
       if (!coupon.active) return false;
 
@@ -228,7 +230,7 @@ export default function PromotionsOverview() {
       totalUses,
       returnRate,
     };
-  }, [coupons, orders]);
+  }, [coupons, orders, overviewLoadedAt]);
 
   if (loading) {
     return <AdminPageSkeleton ariaLabel="Carregando visão geral de promoções" metrics={4} />;
@@ -363,7 +365,7 @@ export default function PromotionsOverview() {
           {FUTURE_MECHANICS.map((mechanic) => {
             const Icon = mechanic.icon;
             return (
-              <article key={mechanic.title} className="rounded-[22px] border border-[var(--line)] bg-[#fffdfa] p-4">
+              <article key={mechanic.title} className="rounded-2xl border border-[var(--line)] bg-[#fffdfa] p-4">
                 <div className="flex items-start justify-between gap-3">
                   <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-[var(--brand)] shadow-sm">
                     <Icon size={18} />

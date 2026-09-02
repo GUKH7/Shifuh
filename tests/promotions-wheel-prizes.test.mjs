@@ -6,36 +6,37 @@ const page = fs.readFileSync(
   "src/app/admin/(painel)/promotions/wheel/page.tsx",
   "utf8",
 );
-const prizes = fs.readFileSync(
-  "src/app/admin/(painel)/promotions/wheel/WheelPrizesConfigurator.tsx",
+const workspace = fs.readFileSync(
+  "src/app/admin/(painel)/promotions/wheel/WheelCampaignWorkspace.tsx",
   "utf8",
 );
 
-test("Roleta integra configurador de prêmios", () => {
-  assert.match(page, /WheelPrizesConfigurator/);
-  assert.match(prizes, /Prêmios e distribuição/);
-  assert.match(prizes, /Adicionar resultado/);
+test("Roleta integra prêmios no workspace persistido", () => {
+  assert.match(page, /WheelCampaignWorkspace/);
+  assert.match(workspace, /title="Prêmios"/);
+  assert.match(workspace, /makePrize/);
 });
 
 test("Prêmios cobrem todos os tipos planejados", () => {
-  assert.match(prizes, /Desconto percentual/);
-  assert.match(prizes, /Desconto fixo/);
-  assert.match(prizes, /Frete grátis/);
-  assert.match(prizes, /Produto grátis/);
-  assert.match(prizes, /Não foi dessa vez/);
+  assert.match(workspace, /Desconto percentual/);
+  assert.match(workspace, /Desconto fixo/);
+  assert.match(workspace, /Frete grátis/);
+  assert.match(workspace, /Produto grátis/);
+  assert.match(workspace, /Não foi dessa vez/);
+  assert.match(workspace, /Produto do cardápio/);
 });
 
 test("Motor cobre probabilidade e frequência controlada", () => {
-  assert.match(prizes, /Probabilidade \(%\)/);
-  assert.match(prizes, /1 a cada X giros/);
-  assert.match(prizes, /As probabilidades precisam somar 100%/);
-  assert.match(prizes, /frequências equivalem/);
+  assert.match(workspace, /Probabilidade \(%\)/);
+  assert.match(workspace, /1 a cada X giros/);
+  assert.match(workspace, /As probabilidades precisam somar 100%/);
+  assert.match(workspace, /As frequências configuradas ultrapassam 100% dos giros/);
 });
 
-test("Configurador inclui limites por prêmio e campanha", () => {
-  assert.match(prizes, /Limite total do prêmio/);
-  assert.match(prizes, /Limite por cliente/);
-  assert.match(prizes, /Máximo de prêmios distribuídos/);
-  assert.match(prizes, /Orçamento promocional/);
-  assert.match(prizes, /Pausar automaticamente ao atingir um limite/);
+test("Workspace inclui limites por prêmio e campanha", () => {
+  assert.match(workspace, /title="Limite total"/);
+  assert.match(workspace, /Limite por cliente/);
+  assert.match(workspace, /Máximo de prêmios/);
+  assert.match(workspace, /Orçamento promocional/);
+  assert.match(workspace, /Pausar ao atingir limite/);
 });
