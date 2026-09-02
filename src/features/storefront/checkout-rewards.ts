@@ -36,6 +36,7 @@ export function getRewardEligibility(
   subtotal: number,
   deliveryFee: number,
   fulfillmentType: FulfillmentType,
+  referenceTimeMs = Date.now(),
 ): RewardEligibility {
   if (reward.status !== "available") {
     return {
@@ -43,6 +44,13 @@ export function getRewardEligibility(
       reason: reward.status === "expired" ? "Prêmio expirado" : "Prêmio indisponível",
       missingAmount: 0,
     };
+  }
+
+  if (reward.expiresAt) {
+    const expiresAt = new Date(reward.expiresAt).getTime();
+    if (Number.isFinite(expiresAt) && expiresAt <= referenceTimeMs) {
+      return { eligible: false, reason: "Prêmio expirado", missingAmount: 0 };
+    }
   }
 
   const minimumOrder = Math.max(0, Number(reward.minimumOrderAmount) || 0);
@@ -82,8 +90,9 @@ export function getRewardDiscount(
   subtotal: number,
   deliveryFee: number,
   fulfillmentType: FulfillmentType,
+  referenceTimeMs = Date.now(),
 ) {
-  if (!reward || !getRewardEligibility(reward, subtotal, deliveryFee, fulfillmentType).eligible) return 0;
+  if (!reward || !getRewardEligibility(reward, subtotal, deliveryFee, fulfillmentType, referenceTimeMs).eligible) return 0;
 
   if (reward.type === "percent") {
     return Math.min(roundMoney(subtotal * (Number(reward.percentageValue || 0) / 100)), subtotal);
@@ -102,10 +111,11 @@ export function getRewardEstimatedValue(
   subtotal: number,
   deliveryFee: number,
   fulfillmentType: FulfillmentType,
+  referenceTimeMs = Date.now(),
 ) {
-  if (!getRewardEligibility(reward, subtotal, deliveryFee, fulfillmentType).eligible) return -1;
+  if (!getRewardEligibility(reward, subtotal, deliveryFee, fulfillmentType, referenceTimeMs).eligible) return -1;
   if (reward.type === "free_product") return Math.max(0, Number(reward.productPrice) || 0);
-  return getRewardDiscount(reward, subtotal, deliveryFee, fulfillmentType);
+  return getRewardDiscount(reward, subtotal, deliveryFee, fulfillmentType, referenceTimeMs);
 }
 
 export function getBestCheckoutReward(
@@ -113,11 +123,12 @@ export function getBestCheckoutReward(
   subtotal: number,
   deliveryFee: number,
   fulfillmentType: FulfillmentType,
+  referenceTimeMs = Date.now(),
 ) {
   return rewards
-    .filter((reward) => getRewardEligibility(reward, subtotal, deliveryFee, fulfillmentType).eligible)
+    .filter((reward) => getRewardEligibility(reward, subtotal, deliveryFee, fulfillmentType, referenceTimeMs).eligible)
     .sort((left, right) => (
-      getRewardEstimatedValue(right, subtotal, deliveryFee, fulfillmentType)
-      - getRewardEstimatedValue(left, subtotal, deliveryFee, fulfillmentType)
+      getRewardEstimatedValue(right, subtotal, deliveryFee, fulfillmentType, referenceTimeMs)
+      - getRewardEstimatedValue(left, subtotal, deliveryFee, fulfillmentType, referenceTimeMs)
     ))[0] || null;
 }
