@@ -25,6 +25,8 @@ type EditablePrize = PrizeRow & {
   minimumOrder: string;
 };
 
+const WHEEL_CAMPAIGN_SAVED_EVENT = "shifuh:promotion-wheel-saved";
+
 function prizeDescription(prize: PrizeRow) {
   if (prize.prize_type === "percent") return `${Number(prize.percentage_value || 0).toLocaleString("pt-BR")}% OFF`;
   if (prize.prize_type === "fixed") return `R$ ${Number(prize.fixed_amount || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} OFF`;
@@ -103,6 +105,12 @@ export default function RewardCheckoutRules() {
   }, [supabase]);
 
   useEffect(() => { void loadRules(); }, [loadRules]);
+
+  useEffect(() => {
+    const refreshAfterCampaignSave = () => { void loadRules(); };
+    window.addEventListener(WHEEL_CAMPAIGN_SAVED_EVENT, refreshAfterCampaignSave);
+    return () => window.removeEventListener(WHEEL_CAMPAIGN_SAVED_EVENT, refreshAfterCampaignSave);
+  }, [loadRules]);
 
   const saveRules = async () => {
     if (!restaurantId || !campaign) return;
