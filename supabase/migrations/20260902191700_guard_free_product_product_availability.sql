@@ -1,40 +1,6 @@
 -- Keep product availability synchronized with automatic free-product prizes/rewards.
--- Product edits use the same product-scoped advisory lock as prize and reward issuance.
-
--- Repair any legacy available rewards that already point to an inactive product.
-update public.customer_rewards cr
-set status = 'cancelled',
-    updated_at = now()
-from public.products p
-where cr.product_id = p.id
-  and cr.restaurant_id = p.restaurant_id
-  and cr.reward_type = 'free_product'
-  and cr.status = 'available'
-  and (cr.expires_at is null or cr.expires_at > now())
-  and p.is_active = false;
-
--- Repair any legacy active prizes that already point to an inactive product.
-with incompatible as (
-  select pp.id as prize_id, pp.campaign_id
-  from public.promotion_prizes pp
-  join public.products p
-    on p.id = pp.product_id
-   and p.restaurant_id = pp.restaurant_id
-  where pp.active = true
-    and pp.prize_type = 'free_product'
-    and p.is_active = false
-), paused as (
-  update public.promotion_campaigns pc
-  set status = 'paused',
-      updated_at = now()
-  where pc.id in (select distinct campaign_id from incompatible)
-    and pc.status in ('active', 'scheduled')
-  returning pc.id
-)
-update public.promotion_prizes pp
-set active = false,
-    updated_at = now()
-where pp.id in (select prize_id from incompatible);
+-- Install the availability-aware trigger before cleanup so concurrent product status
+-- changes cannot slip through the upgrade window.
 
 create or replace function public.guard_product_required_addons_for_active_rewards()
 returns trigger
@@ -97,3 +63,38 @@ before update of addons, is_active
 on public.products
 for each row
 execute function public.guard_product_required_addons_for_active_rewards();
+
+-- Repair any legacy available rewards that already point to an inactive product.
+update public.customer_rewards cr
+set status = 'cancelled',
+    updated_at = now()
+from public.products p
+where cr.product_id = p.id
+  and cr.restaurant_id = p.restaurant_id
+  and cr.reward_type = 'free_product'
+  and cr.status = 'available'
+  and (cr.expires_at is null or cr.expires_at > now())
+  and p.is_active = false;
+
+-- Repair any legacy active prizes that already point to an inactive product.
+with incompatible as (
+  select pp.id as prize_id, pp.campaign_id
+  from public.promotion_prizes pp
+  join public.products p
+    on p.id = pp.product_id
+   and p.restaurant_id = pp.restaurant_id
+  where pp.active = true
+    and pp.prize_type = 'free_product'
+    and p.is_active = false
+), paused as (
+  update public.promotion_campaigns pc
+  set status = 'paused',
+      updated_at = now()
+  where pc.id in (select distinct campaign_id from incompatible)
+    and pc.status in ('active', 'scheduled')
+  returning pc.id
+)
+update public.promotion_prizes pp
+set active = false,
+    updated_at = now()
+where pp.id in (select prize_id from incompatible);
