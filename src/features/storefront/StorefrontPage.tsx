@@ -332,12 +332,10 @@ export default function StorePage() {
     setCouponCode("");
     setCouponError("");
     setCheckoutError("");
-    orderAttemptKeyRef.current = null;
     selectReward(rewardId);
   };
 
   const handleSkipRewards = () => {
-    orderAttemptKeyRef.current = null;
     skipRewards();
   };
 
@@ -373,7 +371,6 @@ export default function StorePage() {
           type: data.discount_type,
         });
         skipRewards();
-        orderAttemptKeyRef.current = null;
         setCouponError("");
       }
     } catch (error) {
@@ -1307,13 +1304,11 @@ export default function StorePage() {
           setAppliedCoupon(null);
           setCouponCode("");
           setCouponError("");
-          orderAttemptKeyRef.current = null;
           enableAutomaticReward();
         }}
         onSelectReward={handleSelectReward}
         onSkipRewards={handleSkipRewards}
         onEnableAutomaticReward={() => {
-          orderAttemptKeyRef.current = null;
           enableAutomaticReward();
         }}
         onPaymentMethodChange={(value) => { setPaymentMethod(value); setCheckoutError(""); }}
@@ -1324,7 +1319,6 @@ export default function StorePage() {
           setFulfillmentType(value);
           setCheckoutError("");
           setDeliveryError("");
-          orderAttemptKeyRef.current = null;
           if (value === "pickup") setDeliveryInfo(null);
         }}
         onPlaceOrder={handlePlaceOrder}
