@@ -16,12 +16,16 @@ test("guard administrativo não renderiza filhos quando contexto falha", () => {
 });
 
 test("redirecionamentos do guard não liberam conteúdo protegido antes da navegação", () => {
-  const guard = layout.slice(
-    layout.indexOf("const guardAdminAccess = async"),
-    layout.indexOf("const toggleSidebar"),
+  const contextLoader = layout.slice(
+    layout.indexOf("const loadAdminContext = async"),
+    layout.indexOf("void loadAdminContext"),
   );
+  const routeGuardStart = layout.indexOf("const restaurant = adminContext.restaurant");
+  const routeGuard = layout.slice(routeGuardStart, layout.indexOf("const toggleSidebar", routeGuardStart));
 
-  assert.doesNotMatch(guard, /finally[\s\S]*setIsGuardLoading\(false\)/);
-  assert.match(guard, /response\.status === 401[\s\S]*router\.replace\("\/admin\/login"\)[\s\S]*return/s);
-  assert.match(guard, /if \(!hasPlatformAccess\)[\s\S]*router\.replace\("\/admin"\)[\s\S]*return/s);
+  assert.doesNotMatch(contextLoader, /finally[\s\S]*setIsGuardLoading\(false\)/);
+  assert.match(contextLoader, /response\.status === 401[\s\S]*router\.replace\("\/admin\/login"\)[\s\S]*return/s);
+  assert.match(routeGuard, /if \(isPlatformPage && !hasPlatformAccess\)[\s\S]*router\.replace\("\/admin"\)[\s\S]*return/s);
+  assert.match(routeGuard, /if \(!restaurant && !isSetupPage && !isPlatformPage\)[\s\S]*router\.replace\("\/admin\/setup"\)[\s\S]*return/s);
+  assert.match(routeGuard, /setIsGuardLoading\(false\)/);
 });
