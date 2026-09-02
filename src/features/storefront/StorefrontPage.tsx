@@ -43,6 +43,7 @@ import type { CheckoutStep, DeliveryInfo, FulfillmentType, OrderResponse } from 
 import { useCart } from "@/features/storefront/use-cart";
 import { useStorefront } from "@/features/storefront/use-storefront";
 import { useCheckoutAnalytics } from "@/features/storefront/use-checkout-analytics";
+import { useCheckoutRewards } from "@/features/storefront/use-checkout-rewards";
 import {
   formatCep,
   formatPhone,
@@ -275,6 +276,27 @@ export default function StorePage() {
   const isPickup = fulfillmentType === "pickup";
   const feeValue = isPickup ? 0 : deliveryInfo?.valid ? deliveryInfo.price : 0;
   const hasAddressMinimum = isPickup || isCompleteCheckoutAddress(address);
+  const {
+    rewards: checkoutRewards,
+    selectedReward,
+    selectedRewardId,
+    discountAmount: rewardDiscountAmount,
+    loading: rewardsLoading,
+    error: rewardsError,
+    optedOut: rewardsOptedOut,
+    selectReward,
+    skipRewards,
+    enableAutomaticReward,
+    consumeSelectedRewardLocally,
+    refresh: refreshRewards,
+  } = useCheckoutRewards({
+    restaurantId: restaurant?.id,
+    isCheckoutOpen: isCartOpen,
+    subtotal: cartSubtotal,
+    deliveryFee: feeValue,
+    fulfillmentType,
+    hasCoupon: Boolean(appliedCoupon),
+  });
   const handleAddressChange = (nextAddress: typeof EMPTY_ADDRESS) => {
     const deliveryAddressChanged =
       nextAddress.cep !== address.cep ||
@@ -291,19 +313,33 @@ export default function StorePage() {
       setDeliveryError("");
     }
   };
-  let discountAmount = 0;
 
+  let couponDiscountAmount = 0;
   if (appliedCoupon) {
     if (appliedCoupon.type === "percent") {
-      discountAmount = cartSubtotal * (appliedCoupon.value / 100);
+      couponDiscountAmount = cartSubtotal * (appliedCoupon.value / 100);
     } else {
-      discountAmount = appliedCoupon.value;
+      couponDiscountAmount = appliedCoupon.value;
     }
   }
+  if (couponDiscountAmount > cartSubtotal) couponDiscountAmount = cartSubtotal;
 
-  if (discountAmount > cartSubtotal) discountAmount = cartSubtotal;
-
+  const discountAmount = appliedCoupon ? couponDiscountAmount : rewardDiscountAmount;
   const finalTotal = cartSubtotal + feeValue - discountAmount;
+
+  const handleSelectReward = (rewardId: string) => {
+    setAppliedCoupon(null);
+    setCouponCode("");
+    setCouponError("");
+    setCheckoutError("");
+    orderAttemptKeyRef.current = null;
+    selectReward(rewardId);
+  };
+
+  const handleSkipRewards = () => {
+    orderAttemptKeyRef.current = null;
+    skipRewards();
+  };
 
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) {
@@ -336,6 +372,8 @@ export default function StorePage() {
           value: data.value,
           type: data.discount_type,
         });
+        skipRewards();
+        orderAttemptKeyRef.current = null;
         setCouponError("");
       }
     } catch (error) {
@@ -434,6 +472,7 @@ export default function StorePage() {
           paymentMethod,
           changeFor: paymentMethod === "cash" && cashNeedsChange ? changeFor : "",
           couponCode: appliedCoupon?.code || null,
+          rewardId: appliedCoupon ? null : selectedReward?.id || null,
           usingSavedAddress,
           scheduledFor: scheduledFor ? new Date(scheduledFor).toISOString() : null,
           cart: cart.map((item) => ({
@@ -469,6 +508,11 @@ export default function StorePage() {
           return;
         }
 
+        if (["REWARD_ALREADY_REDEEMED", "REWARD_EXPIRED", "REWARD_UNAVAILABLE"].includes(result?.code)) {
+          orderAttemptKeyRef.current = null;
+          void refreshRewards();
+        }
+
         setCheckoutError(message);
         if (["INCOMPLETE_ADDRESS", "ADDRESS_NOT_FOUND", "OUTSIDE_DELIVERY_AREA", "DELIVERY_CALCULATION_UNAVAILABLE"].includes(result?.code)) {
           if (result?.code === "OUTSIDE_DELIVERY_AREA") {
@@ -498,6 +542,7 @@ export default function StorePage() {
       markCompleted();
       setCheckoutError("");
       setCompletedOrder(completedOrder);
+      if (selectedReward && !appliedCoupon) consumeSelectedRewardLocally();
       window.localStorage.setItem(
         `gestor-delivery:last-order:${slug || restaurant.id}`,
         JSON.stringify({
@@ -529,6 +574,7 @@ export default function StorePage() {
     setScheduledFor("");
     setCompletedOrder(null);
     orderAttemptKeyRef.current = null;
+    enableAutomaticReward();
   };
 
   const handleTrackCompletedOrder = () => {
@@ -565,6 +611,7 @@ export default function StorePage() {
     setIsCartOpen(false);
     setDeliveryInfo(null);
     setAppliedCoupon(null);
+    enableAutomaticReward();
   };
 
   const contrastColor = storefrontTheme.contrast_color || "#1f2937";
@@ -1210,6 +1257,12 @@ export default function StorePage() {
         discountAmount={discountAmount}
         feeValue={feeValue}
         finalTotal={finalTotal}
+        checkoutRewards={checkoutRewards}
+        selectedReward={selectedReward}
+        selectedRewardId={selectedRewardId}
+        rewardsLoading={rewardsLoading}
+        rewardsError={rewardsError}
+        rewardsOptedOut={rewardsOptedOut}
         paymentMethod={paymentMethod}
         changeFor={changeFor}
         cashNeedsChange={cashNeedsChange}
@@ -1254,6 +1307,14 @@ export default function StorePage() {
           setAppliedCoupon(null);
           setCouponCode("");
           setCouponError("");
+          orderAttemptKeyRef.current = null;
+          enableAutomaticReward();
+        }}
+        onSelectReward={handleSelectReward}
+        onSkipRewards={handleSkipRewards}
+        onEnableAutomaticReward={() => {
+          orderAttemptKeyRef.current = null;
+          enableAutomaticReward();
         }}
         onPaymentMethodChange={(value) => { setPaymentMethod(value); setCheckoutError(""); }}
         onChangeForChange={(value) => { setChangeFor(value); setCheckoutError(""); }}
@@ -1263,6 +1324,7 @@ export default function StorePage() {
           setFulfillmentType(value);
           setCheckoutError("");
           setDeliveryError("");
+          orderAttemptKeyRef.current = null;
           if (value === "pickup") setDeliveryInfo(null);
         }}
         onPlaceOrder={handlePlaceOrder}
