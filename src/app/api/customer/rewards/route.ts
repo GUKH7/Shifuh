@@ -24,7 +24,7 @@ export async function GET(request: Request) {
   const customerIds = customers.map((customer: any) => customer.id);
   const { data: rewards, error } = await adminSupabase
     .from("customer_rewards")
-    .select("id, restaurant_id, campaign_id, reward_type, label, percentage_value, fixed_amount, product_id, status, expires_at, redeemed_at, created_at")
+    .select("id, restaurant_id, campaign_id, reward_type, label, percentage_value, fixed_amount, product_id, minimum_order_amount, status, expires_at, redeemed_at, redeemed_order_id, created_at")
     .in("customer_id", customerIds)
     .order("created_at", { ascending: false });
   if (error) {
@@ -40,7 +40,7 @@ export async function GET(request: Request) {
       ? adminSupabase.from("restaurants").select("id, name, slug, primary_color").in("id", restaurantIds)
       : Promise.resolve({ data: [] }),
     productIds.length
-      ? adminSupabase.from("products").select("id, name").in("id", productIds)
+      ? adminSupabase.from("products").select("id, restaurant_id, name, price, is_active").in("id", productIds)
       : Promise.resolve({ data: [] }),
   ]);
 
@@ -59,11 +59,15 @@ export async function GET(request: Request) {
         label: reward.label,
         percentageValue: reward.percentage_value == null ? null : Number(reward.percentage_value),
         fixedAmount: reward.fixed_amount == null ? null : Number(reward.fixed_amount),
+        minimumOrderAmount: Number(reward.minimum_order_amount || 0),
         productId: reward.product_id,
         productName: product?.name || null,
+        productPrice: product?.price == null ? null : Number(product.price),
+        productAvailable: reward.product_id ? Boolean(product?.is_active && product?.restaurant_id === reward.restaurant_id) : true,
         status: expired ? "expired" : reward.status,
         expiresAt: reward.expires_at,
         redeemedAt: reward.redeemed_at,
+        redeemedOrderId: reward.redeemed_order_id,
         createdAt: reward.created_at,
         restaurant: restaurant ? {
           id: restaurant.id,
