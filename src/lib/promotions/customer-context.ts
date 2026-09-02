@@ -1,5 +1,4 @@
-import { cookies } from "next/headers";
-import { CUSTOMER_SESSION_COOKIE, hashCustomerSessionToken, normalizeCustomerPhone } from "@/lib/customer-account";
+import { normalizeCustomerPhone } from "@/lib/customer-account";
 import { createClient } from "@/lib/supabase/server";
 
 export type CustomerPromotionContext = {
@@ -36,21 +35,6 @@ async function buildPromotionContext(adminSupabase: any, authUserId: string): Pr
   };
 }
 
-async function resolveCookieAuthUserId(adminSupabase: any) {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(CUSTOMER_SESSION_COOKIE)?.value;
-  if (!token) return null;
-
-  const { data: session } = await adminSupabase
-    .from("customer_phone_sessions")
-    .select("auth_user_id, expires_at")
-    .eq("token_hash", hashCustomerSessionToken(token))
-    .gt("expires_at", new Date().toISOString())
-    .maybeSingle();
-
-  return session?.auth_user_id || null;
-}
-
 async function buildVerifiedPromotionContext(
   adminSupabase: any,
   authUserId: string,
@@ -69,20 +53,19 @@ async function buildVerifiedPromotionContext(
 }
 
 /**
- * Promotion state and rewards are sensitive customer data. The automatic checkout cookie
- * is only an account convenience and never proves phone ownership by itself. A promotion
- * context is accepted only when the backing Supabase Auth user has a confirmed phone and
- * that verified number matches the phone-account mapping used by the restaurant customer.
+ * Promotion state and rewards are sensitive customer data. Only the active Supabase Auth
+ * session may establish customer identity here. Checkout-created customer cookies are
+ * intentionally ignored because they are account conveniences and do not prove that the
+ * current browser completed phone verification.
  */
 export async function resolveVerifiedCustomerPromotionContext(
   adminSupabase: any,
 ): Promise<CustomerPromotionContext | null> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const authUserId = user?.id || await resolveCookieAuthUserId(adminSupabase);
-  if (!authUserId) return null;
+  if (!user?.id) return null;
 
-  return buildVerifiedPromotionContext(adminSupabase, authUserId);
+  return buildVerifiedPromotionContext(adminSupabase, user.id);
 }
 
 /**
