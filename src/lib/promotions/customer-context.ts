@@ -36,47 +36,7 @@ async function buildPromotionContext(adminSupabase: any, authUserId: string): Pr
   };
 }
 
-export async function resolveCustomerPromotionContext(adminSupabase: any): Promise<CustomerPromotionContext | null> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(CUSTOMER_SESSION_COOKIE)?.value;
-  let authUserId: string | null = null;
-
-  if (token) {
-    const { data: session } = await adminSupabase
-      .from("customer_phone_sessions")
-      .select("auth_user_id, expires_at")
-      .eq("token_hash", hashCustomerSessionToken(token))
-      .gt("expires_at", new Date().toISOString())
-      .maybeSingle();
-
-    authUserId = session?.auth_user_id || null;
-  }
-
-  if (!authUserId) {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    authUserId = user?.id || null;
-  }
-
-  if (!authUserId) return null;
-  return buildPromotionContext(adminSupabase, authUserId);
-}
-
-/**
- * Sensitive promotion actions must not trust the checkout-created customer cookie by itself.
- * An authenticated Supabase session is accepted directly. A cookie-only session is accepted
- * only when its backing Auth user has a confirmed phone number.
- */
-export async function resolveVerifiedCustomerPromotionContext(
-  adminSupabase: any,
-): Promise<CustomerPromotionContext | null> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (user?.id) {
-    return buildPromotionContext(adminSupabase, user.id);
-  }
-
+async function resolveCookieAuthUserId(adminSupabase: any) {
   const cookieStore = await cookies();
   const token = cookieStore.get(CUSTOMER_SESSION_COOKIE)?.value;
   if (!token) return null;
@@ -87,11 +47,49 @@ export async function resolveVerifiedCustomerPromotionContext(
     .eq("token_hash", hashCustomerSessionToken(token))
     .gt("expires_at", new Date().toISOString())
     .maybeSingle();
-  if (!session?.auth_user_id) return null;
 
-  const { data: authUserResult, error } = await adminSupabase.auth.admin.getUserById(session.auth_user_id);
-  const sessionUser = authUserResult?.user;
-  if (error || !sessionUser?.phone_confirmed_at) return null;
+  return session?.auth_user_id || null;
+}
 
-  return buildPromotionContext(adminSupabase, session.auth_user_id);
+async function buildVerifiedPromotionContext(
+  adminSupabase: any,
+  authUserId: string,
+): Promise<CustomerPromotionContext | null> {
+  const context = await buildPromotionContext(adminSupabase, authUserId);
+  if (!context) return null;
+
+  const { data: authUserResult, error } = await adminSupabase.auth.admin.getUserById(authUserId);
+  const authUser = authUserResult?.user;
+  if (error || !authUser?.phone_confirmed_at) return null;
+
+  const verifiedPhone = normalizeCustomerPhone(authUser.phone || "");
+  if (!verifiedPhone || verifiedPhone !== context.normalizedPhone) return null;
+
+  return context;
+}
+
+/**
+ * Promotion state and rewards are sensitive customer data. The automatic checkout cookie
+ * is only an account convenience and never proves phone ownership by itself. A promotion
+ * context is accepted only when the backing Supabase Auth user has a confirmed phone and
+ * that verified number matches the phone-account mapping used by the restaurant customer.
+ */
+export async function resolveVerifiedCustomerPromotionContext(
+  adminSupabase: any,
+): Promise<CustomerPromotionContext | null> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const authUserId = user?.id || await resolveCookieAuthUserId(adminSupabase);
+  if (!authUserId) return null;
+
+  return buildVerifiedPromotionContext(adminSupabase, authUserId);
+}
+
+/**
+ * Keep the existing API name for promotion routes, but make its security contract verified.
+ */
+export async function resolveCustomerPromotionContext(
+  adminSupabase: any,
+): Promise<CustomerPromotionContext | null> {
+  return resolveVerifiedCustomerPromotionContext(adminSupabase);
 }
