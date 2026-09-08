@@ -1,12 +1,12 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL || "e2e-owner@shifuh.test";
-const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD || "Shifuh-E2E-2026!";
+const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD;
 const RESTAURANT_ID = "11111111-1111-4111-8111-111111111111";
 const PRODUCT_ID = "33333333-3333-4333-8333-333333333333";
 
 async function browserJson(
-  page: any,
+  page: Page,
   path: string,
   options: { method?: string; body?: Record<string, unknown>; idempotencyKey?: string } = {},
 ) {
@@ -38,6 +38,7 @@ test.describe("fluxo comercial completo", () => {
 
   test("pedido pontua uma vez, recompensa é resgatada uma vez e benefício é consumido no checkout", async ({ page }) => {
     test.setTimeout(90_000);
+    expect(ADMIN_PASSWORD).toBeTruthy();
 
     await page.goto("/loja-e2e");
 
@@ -75,7 +76,7 @@ test.describe("fluxo comercial completo", () => {
     await page.goto("/admin/login");
     await expect(page.getByRole("heading", { name: "Entrar no painel" })).toBeVisible();
     await page.getByPlaceholder("seu@email.com").fill(ADMIN_EMAIL);
-    await page.getByPlaceholder("••••••••").fill(ADMIN_PASSWORD);
+    await page.getByPlaceholder("••••••••").fill(ADMIN_PASSWORD!);
 
     const loginResponsePromise = page.waitForResponse(
       (response) =>
