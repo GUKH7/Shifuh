@@ -6,7 +6,7 @@ const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD || "Shifuh-E2E-2026!";
 test.describe("fluxo comercial completo", () => {
   test.describe.configure({ mode: "serial" });
 
-  test("vitrine cria pedido real e o painel recebe a venda", async ({ page }) => {
+  test("vitrine cria pedido real, painel recebe a venda e fidelidade pontua uma única vez", async ({ page }) => {
     await page.goto("/loja-e2e");
 
     await expect(page.getByRole("heading", { name: "Loja E2E CI", level: 1 })).toBeVisible();
@@ -56,6 +56,16 @@ test.describe("fluxo comercial completo", () => {
     expect(loginResponse.status()).toBe(200);
     await page.waitForURL((url) => url.pathname === "/admin", { timeout: 20_000 });
 
+    await page.goto("/admin/promotions/loyalty");
+    await expect(page.getByRole("heading", { name: "Programa de fidelidade" })).toBeVisible({ timeout: 20_000 });
+    await page.getByLabel("Status").selectOption("active");
+    await page.getByLabel("Forma de acúmulo").selectOption("spend");
+    await page.getByLabel("A cada valor gasto").fill("1,00");
+    await page.getByLabel("Pontos concedidos").fill("1");
+    await page.getByLabel("Pedido mínimo para pontuar").fill("0,00");
+    await page.getByRole("button", { name: "Salvar configuração" }).click();
+    await expect(page.getByRole("status")).toContainText("Configuração do programa salva com sucesso.");
+
     await page.goto("/admin/orders");
     await page.waitForURL((url) => url.pathname === "/admin/orders", { timeout: 20_000 });
 
@@ -68,5 +78,33 @@ test.describe("fluxo comercial completo", () => {
       page.getByRole("complementary", { name: `Detalhes do pedido ${orderPayload.displayNumber}` }),
     ).toBeVisible();
     await expect(page.getByText("Prato E2E CI", { exact: true }).last()).toBeVisible();
+
+    const completeOrder = () =>
+      page.request.patch(`/api/orders/${orderPayload.orderId}/status`, {
+        data: {
+          status: "done",
+          notifyCustomer: false,
+        },
+      });
+
+    const firstCompletion = await completeOrder();
+    expect(firstCompletion.status()).toBe(200);
+    expect((await firstCompletion.json()).order.status).toBe("done");
+
+    const retryCompletion = await completeOrder();
+    expect(retryCompletion.status()).toBe(200);
+    expect((await retryCompletion.json()).order.status).toBe("done");
+
+    await page.goto("/admin/promotions/loyalty");
+    await expect(page.getByRole("heading", { name: "Saldo por cliente" })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText("(11) 98888-7777", { exact: true }).first()).toBeVisible();
+
+    const transactionDescription = `Pontos do pedido #${orderPayload.displayNumber}`;
+    const transactionDescriptionLocator = page.getByText(transactionDescription, { exact: true });
+    await expect(transactionDescriptionLocator).toHaveCount(1);
+
+    const transactionRow = transactionDescriptionLocator.locator("xpath=ancestor::article");
+    await expect(transactionRow).toBeVisible();
+    await expect(transactionRow.getByText("+19 pts", { exact: true })).toBeVisible();
   });
 });
