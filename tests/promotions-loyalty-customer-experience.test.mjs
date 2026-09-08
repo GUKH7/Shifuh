@@ -45,11 +45,19 @@ test("tentativa de resgate mantém idempotência enquanto o cliente repete a mes
 test("API de fidelidade entrega extrato e histórico apenas das contas verificadas", () => {
   assert.match(loyaltyRoute, /find_loyalty_customers_by_phone/);
   assert.match(loyaltyRoute, /loyalty_point_transactions/);
-  assert.match(loyaltyRoute, /\.in\("account_id", accountIds\)/);
+  assert.match(loyaltyRoute, /accountIds\.map\(async \(accountId: string\)/);
+  assert.match(loyaltyRoute, /\.eq\("account_id", accountId\)/);
+  assert.match(loyaltyRoute, /\.limit\(HISTORY_LIMIT_PER_ACCOUNT\)/);
   assert.match(loyaltyRoute, /loyalty_redemptions/);
   assert.match(loyaltyRoute, /transactions:/);
   assert.match(loyaltyRoute, /redemptions:/);
   assert.match(loyaltyRoute, /HISTORY_LIMIT_PER_ACCOUNT = 20/);
+});
+
+test("status de resgate vencido é derivado da validade mesmo sem job de expiração", () => {
+  assert.match(loyaltyRoute, /redemption\.status === "available"/);
+  assert.match(loyaltyRoute, /new Date\(redemption\.expires_at\)\.getTime\(\) <= now/);
+  assert.match(loyaltyRoute, /status: expired \? "expired" : redemption\.status/);
 });
 
 test("catálogo do cliente inclui nome de produto grátis e capacidade restante", () => {
