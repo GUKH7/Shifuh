@@ -15,10 +15,17 @@ export async function GET(request: Request) {
   const context = await resolveCustomerPromotionContext(adminSupabase);
   if (!context) return NextResponse.json({ rewards: [] });
 
-  const { data: customers } = await adminSupabase
-    .from("customers")
-    .select("id, restaurant_id")
-    .eq("phone", context.phone);
+  const { data: customers, error: customerError } = await adminSupabase.rpc(
+    "find_loyalty_customers_by_phone",
+    {
+      p_customer_phone: context.phone,
+      p_restaurant_id: null,
+    },
+  );
+  if (customerError) {
+    console.error("Falha ao localizar cliente da carteira de prêmios:", customerError);
+    return NextResponse.json({ error: "Não foi possível carregar seus prêmios." }, { status: 503 });
+  }
   if (!customers?.length) return NextResponse.json({ rewards: [] });
 
   const customerIds = customers.map((customer: any) => customer.id);
