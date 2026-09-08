@@ -10,7 +10,8 @@ const migration = fs.readFileSync(
 test("pedido concluído dispara acúmulo apenas na primeira chegada a done", () => {
   assert.match(migration, /after insert or update of status on public\.orders/);
   assert.match(migration, /when \(new\.status = 'done'\)/);
-  assert.match(migration, /if tg_op = 'UPDATE' and old\.status = 'done' then/);
+  assert.match(migration, /if tg_op = 'UPDATE' then/);
+  assert.match(migration, /if old\.status = 'done' then/);
   assert.match(migration, /coalesce\(new\.is_test, false\)/);
 });
 
