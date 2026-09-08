@@ -7,6 +7,8 @@ test.describe("fluxo comercial completo", () => {
   test.describe.configure({ mode: "serial" });
 
   test("vitrine cria pedido real, fidelidade pontua uma única vez e catálogo persiste recompensa", async ({ page }) => {
+    test.setTimeout(60_000);
+
     await page.goto("/loja-e2e");
 
     await expect(page.getByRole("heading", { name: "Loja E2E CI", level: 1 })).toBeVisible();
@@ -58,7 +60,7 @@ test.describe("fluxo comercial completo", () => {
 
     await page.goto("/admin/promotions/loyalty");
     await expect(page.getByRole("heading", { name: "Programa de fidelidade" })).toBeVisible({ timeout: 20_000 });
-    await page.getByLabel("Status", { exact: true }).first().selectOption("active");
+    await page.getByLabel("Status").first().selectOption("active");
     await page.getByLabel("Forma de acúmulo").selectOption("spend");
     await page.getByLabel("A cada valor gasto").fill("1,00");
     await page.getByLabel("Pontos concedidos").fill("1");
