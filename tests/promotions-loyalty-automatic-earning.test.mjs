@@ -46,6 +46,8 @@ test("carteira é criada e crédito auditável referencia pedido e validade", ()
   assert.match(migration, /new\.id,/);
   assert.match(migration, /loyalty:earn:order:/);
   assert.match(migration, /make_interval\(days => v_program\.points_validity_days\)/);
+  assert.match(migration, /pg_catalog\.lpad\(new\.display_number::text, 4, '0'\)/);
+  assert.match(migration, /'Pontos do pedido #' \|\| v_order_label/);
   assert.match(migration, /'eligible_spend', v_eligible_spend/);
   assert.match(migration, /'external_source', new\.external_source/);
 });
