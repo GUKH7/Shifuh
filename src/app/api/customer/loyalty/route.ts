@@ -89,25 +89,9 @@ export async function GET(request: Request) {
   const rewardIds = (rewards || []).map((reward: any) => reward.id);
   const productIds = [...new Set((rewards || []).map((reward: any) => reward.product_id).filter(Boolean))];
 
-  const [redemptionCapacityResult, transactionResult, redemptionHistoryResult, productResult] = await Promise.all([
+  const [redemptionCapacityResult, productResult, accountHistoryResults] = await Promise.all([
     rewardIds.length > 0
       ? adminSupabase.from("loyalty_redemptions").select("reward_id").in("reward_id", rewardIds)
-      : Promise.resolve({ data: [], error: null }),
-    accountIds.length > 0
-      ? adminSupabase
-          .from("loyalty_point_transactions")
-          .select("id, account_id, transaction_type, points_delta, balance_after, source_order_id, description, expires_at, created_at")
-          .in("account_id", accountIds)
-          .order("created_at", { ascending: false })
-          .limit(Math.max(HISTORY_LIMIT_PER_ACCOUNT, accountIds.length * HISTORY_LIMIT_PER_ACCOUNT))
-      : Promise.resolve({ data: [], error: null }),
-    accountIds.length > 0
-      ? adminSupabase
-          .from("loyalty_redemptions")
-          .select("id, account_id, reward_id, reward_type, label, points_spent, balance_after, status, expires_at, redeemed_at, redeemed_order_id, created_at")
-          .in("account_id", accountIds)
-          .order("created_at", { ascending: false })
-          .limit(Math.max(HISTORY_LIMIT_PER_ACCOUNT, accountIds.length * HISTORY_LIMIT_PER_ACCOUNT))
       : Promise.resolve({ data: [], error: null }),
     productIds.length > 0
       ? adminSupabase
@@ -116,9 +100,35 @@ export async function GET(request: Request) {
           .in("id", productIds)
           .in("restaurant_id", restaurantIds)
       : Promise.resolve({ data: [], error: null }),
+    Promise.all(
+      accountIds.map(async (accountId: string) => {
+        const [transactionResult, redemptionHistoryResult] = await Promise.all([
+          adminSupabase
+            .from("loyalty_point_transactions")
+            .select("id, account_id, transaction_type, points_delta, balance_after, source_order_id, description, expires_at, created_at")
+            .eq("account_id", accountId)
+            .order("created_at", { ascending: false })
+            .limit(HISTORY_LIMIT_PER_ACCOUNT),
+          adminSupabase
+            .from("loyalty_redemptions")
+            .select("id, account_id, reward_id, reward_type, label, points_spent, balance_after, status, expires_at, redeemed_at, redeemed_order_id, created_at")
+            .eq("account_id", accountId)
+            .order("created_at", { ascending: false })
+            .limit(HISTORY_LIMIT_PER_ACCOUNT),
+        ]);
+
+        return {
+          accountId,
+          transactions: transactionResult.data || [],
+          redemptions: redemptionHistoryResult.data || [],
+          error: transactionResult.error || redemptionHistoryResult.error,
+        };
+      }),
+    ),
   ]);
 
-  const secondaryError = redemptionCapacityResult.error || transactionResult.error || redemptionHistoryResult.error || productResult.error;
+  const historyError = accountHistoryResults.find((result) => result.error)?.error;
+  const secondaryError = redemptionCapacityResult.error || productResult.error || historyError;
   if (secondaryError) {
     console.error("Falha ao carregar histórico/capacidade da fidelidade:", secondaryError);
     return NextResponse.json({ error: "Não foi possível carregar sua fidelidade agora." }, { status: 503 });
@@ -134,17 +144,10 @@ export async function GET(request: Request) {
 
   const productsById = new Map((productResult.data || []).map((product: any) => [product.id, product]));
   const transactionsByAccount = new Map<string, any[]>();
-  for (const transaction of transactionResult.data || []) {
-    const list = transactionsByAccount.get(transaction.account_id) || [];
-    if (list.length < HISTORY_LIMIT_PER_ACCOUNT) list.push(transaction);
-    transactionsByAccount.set(transaction.account_id, list);
-  }
-
   const redemptionsByAccount = new Map<string, any[]>();
-  for (const redemption of redemptionHistoryResult.data || []) {
-    const list = redemptionsByAccount.get(redemption.account_id) || [];
-    if (list.length < HISTORY_LIMIT_PER_ACCOUNT) list.push(redemption);
-    redemptionsByAccount.set(redemption.account_id, list);
+  for (const result of accountHistoryResults) {
+    transactionsByAccount.set(result.accountId, result.transactions);
+    redemptionsByAccount.set(result.accountId, result.redemptions);
   }
 
   const restaurantsById = new Map((restaurants || []).map((restaurant: any) => [restaurant.id, restaurant]));
@@ -158,6 +161,8 @@ export async function GET(request: Request) {
     list.push(reward);
     rewardsByProgram.set(reward.program_id, list);
   }
+
+  const now = Date.now();
 
   return NextResponse.json({
     programs: programs.map((program: any) => {
@@ -224,19 +229,25 @@ export async function GET(request: Request) {
           expiresAt: transaction.expires_at,
           createdAt: transaction.created_at,
         })),
-        redemptions: accountRedemptions.map((redemption: any) => ({
-          id: redemption.id,
-          rewardId: redemption.reward_id,
-          type: redemption.reward_type,
-          label: redemption.label,
-          pointsSpent: Number(redemption.points_spent || 0),
-          balanceAfter: Number(redemption.balance_after || 0),
-          status: redemption.status,
-          expiresAt: redemption.expires_at,
-          redeemedAt: redemption.redeemed_at,
-          redeemedOrderId: redemption.redeemed_order_id,
-          createdAt: redemption.created_at,
-        })),
+        redemptions: accountRedemptions.map((redemption: any) => {
+          const expired = redemption.status === "available"
+            && redemption.expires_at
+            && new Date(redemption.expires_at).getTime() <= now;
+
+          return {
+            id: redemption.id,
+            rewardId: redemption.reward_id,
+            type: redemption.reward_type,
+            label: redemption.label,
+            pointsSpent: Number(redemption.points_spent || 0),
+            balanceAfter: Number(redemption.balance_after || 0),
+            status: expired ? "expired" : redemption.status,
+            expiresAt: redemption.expires_at,
+            redeemedAt: redemption.redeemed_at,
+            redeemedOrderId: redemption.redeemed_order_id,
+            createdAt: redemption.created_at,
+          };
+        }),
       };
     }),
   });
