@@ -98,8 +98,13 @@ test.describe("fluxo comercial completo", () => {
     await page.goto("/admin/promotions/loyalty");
     await expect(page.getByRole("heading", { name: "Saldo por cliente" })).toBeVisible({ timeout: 20_000 });
     await expect(page.getByText("(11) 98888-7777", { exact: true }).first()).toBeVisible();
-    await expect(page.getByText("19 pts", { exact: true }).first()).toBeVisible();
-    await expect(page.getByText("+19 pts", { exact: true })).toHaveCount(1);
-    await expect(page.getByText(`Pontos do pedido #${orderPayload.displayNumber}`, { exact: true })).toBeVisible();
+
+    const transactionDescription = `Pontos do pedido #${orderPayload.displayNumber}`;
+    const transactionDescriptionLocator = page.getByText(transactionDescription, { exact: true });
+    await expect(transactionDescriptionLocator).toHaveCount(1);
+
+    const transactionRow = transactionDescriptionLocator.locator("xpath=ancestor::article");
+    await expect(transactionRow).toBeVisible();
+    await expect(transactionRow.getByText("+19 pts", { exact: true })).toBeVisible();
   });
 });
