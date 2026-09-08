@@ -2,6 +2,7 @@ import type { FulfillmentType } from "@/features/storefront/types";
 
 export type CheckoutReward = {
   id: string;
+  source: "roulette" | "loyalty";
   type: "percent" | "fixed" | "free_shipping" | "free_product";
   label: string;
   percentageValue: number | null;
