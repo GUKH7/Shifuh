@@ -12,9 +12,16 @@ const rewardsRoute = fs.readFileSync("src/app/api/customer/rewards/route.ts", "u
 test("Minha Conta deixa de simular pontos e aponta para o saldo real da fidelidade", () => {
   assert.doesNotMatch(accountPage, /orders\.length \* 10/);
   assert.match(accountPage, /fetch\('\/api\/customer\/loyalty'/);
-  assert.match(accountPage, /totalLoyaltyPoints/);
+  assert.match(accountPage, /singleLoyaltyProgram\.account\.balance/);
   assert.match(accountPage, /\/minha-conta\/fidelidade/);
   assert.match(accountPage, /\/minha-conta\/premios/);
+});
+
+test("Minha Conta não soma pontos que pertencem a lojas diferentes", () => {
+  assert.doesNotMatch(accountPage, /reduce\(\(sum, program\).*account\?\.balance/s);
+  assert.doesNotMatch(accountPage, /totalLoyaltyPoints/);
+  assert.match(accountPage, /loyaltyPrograms\.length > 1/);
+  assert.match(accountPage, /Cada loja mantém seu próprio saldo/);
 });
 
 test("experiência do cliente possui saldo, progresso, catálogo, resgate e histórico", () => {
