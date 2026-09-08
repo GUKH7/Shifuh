@@ -68,6 +68,33 @@ export async function POST(request: Request) {
     );
   }
 
+  const { data: rewardScope, error: rewardScopeError } = await adminSupabase
+    .from("loyalty_rewards")
+    .select("id, restaurant_id")
+    .eq("id", rewardId)
+    .maybeSingle();
+
+  if (rewardScopeError || !rewardScope) {
+    return NextResponse.json(
+      { code: "LOYALTY_REWARD_UNAVAILABLE", error: "Esta recompensa não está disponível para resgate agora." },
+      { status: 409 },
+    );
+  }
+
+  const { data: scopedCustomer, error: customerScopeError } = await adminSupabase
+    .from("customers")
+    .select("id")
+    .eq("restaurant_id", rewardScope.restaurant_id)
+    .eq("phone", context.phone)
+    .maybeSingle();
+
+  if (customerScopeError || !scopedCustomer) {
+    return NextResponse.json(
+      { code: "LOYALTY_CUSTOMER_MISMATCH", error: "Esta recompensa não pertence ao seu cadastro nesta loja." },
+      { status: 403 },
+    );
+  }
+
   const { data, error } = await adminSupabase.rpc("redeem_loyalty_reward", {
     p_reward_id: rewardId,
     p_customer_phone: context.phone,
