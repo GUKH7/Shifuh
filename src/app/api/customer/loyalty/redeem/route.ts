@@ -81,14 +81,15 @@ export async function POST(request: Request) {
     );
   }
 
-  const { data: scopedCustomer, error: customerScopeError } = await adminSupabase
-    .from("customers")
-    .select("id")
-    .eq("restaurant_id", rewardScope.restaurant_id)
-    .eq("phone", context.phone)
-    .maybeSingle();
+  const { data: scopedCustomers, error: customerScopeError } = await adminSupabase.rpc(
+    "find_loyalty_customers_by_phone",
+    {
+      p_customer_phone: context.phone,
+      p_restaurant_id: rewardScope.restaurant_id,
+    },
+  );
 
-  if (customerScopeError || !scopedCustomer) {
+  if (customerScopeError || !scopedCustomers?.length) {
     return NextResponse.json(
       { code: "LOYALTY_CUSTOMER_MISMATCH", error: "Esta recompensa não pertence ao seu cadastro nesta loja." },
       { status: 403 },
