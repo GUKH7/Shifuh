@@ -15,8 +15,8 @@ set search_path = ''
 as $$
   select c.id, c.restaurant_id
   from public.customers c
-  where pg_catalog.regexp_replace(pg_catalog.coalesce(c.phone, ''), '\D', '', 'g')
-        = pg_catalog.regexp_replace(pg_catalog.coalesce(p_customer_phone, ''), '\D', '', 'g')
+  where pg_catalog.regexp_replace(coalesce(c.phone, ''), '\D', '', 'g')
+        = pg_catalog.regexp_replace(coalesce(p_customer_phone, ''), '\D', '', 'g')
     and (p_restaurant_id is null or c.restaurant_id = p_restaurant_id);
 $$;
 
@@ -59,11 +59,11 @@ declare
   v_customer public.customers%rowtype;
   v_product public.products%rowtype;
   v_created record;
-  v_items jsonb := pg_catalog.coalesce(p_items, '[]'::jsonb);
+  v_items jsonb := coalesce(p_items, '[]'::jsonb);
   v_discount numeric(12,2) := 0;
   v_total numeric(12,2) := 0;
-  v_idempotency_key text := pg_catalog.lower(pg_catalog.btrim(pg_catalog.coalesce(p_idempotency_key, '')));
-  v_phone text := pg_catalog.regexp_replace(pg_catalog.coalesce(p_customer_phone, ''), '\D', '', 'g');
+  v_idempotency_key text := pg_catalog.lower(pg_catalog.btrim(coalesce(p_idempotency_key, '')));
+  v_phone text := pg_catalog.regexp_replace(coalesce(p_customer_phone, ''), '\D', '', 'g');
   v_reward_observation text;
 begin
   if p_reward_id is null then
@@ -96,7 +96,7 @@ begin
 
     order_id := v_existing_order.id;
     display_number := v_existing_order.display_number;
-    reward_discount := pg_catalog.coalesce(v_existing_order.discount, 0);
+    reward_discount := coalesce(v_existing_order.discount, 0);
     order_total := v_existing_order.total;
     reward_id := v_reward.id;
     reward_type := v_reward.reward_type;
@@ -126,7 +126,7 @@ begin
       if found then
         order_id := v_existing_order.id;
         display_number := v_existing_order.display_number;
-        reward_discount := pg_catalog.coalesce(v_existing_order.discount, 0);
+        reward_discount := coalesce(v_existing_order.discount, 0);
         order_total := v_existing_order.total;
         reward_id := v_reward.id;
         reward_type := v_reward.reward_type;
@@ -146,7 +146,7 @@ begin
     raise exception using errcode = '23514', message = 'Reward is expired';
   end if;
 
-  if pg_catalog.round(pg_catalog.coalesce(p_subtotal, 0)::numeric, 2) < v_reward.minimum_order_amount then
+  if pg_catalog.round(coalesce(p_subtotal, 0)::numeric, 2) < v_reward.minimum_order_amount then
     raise exception using errcode = '23514', message = 'Reward minimum order amount not reached';
   end if;
 
@@ -155,26 +155,26 @@ begin
   where c.id = v_reward.customer_id
     and c.restaurant_id = p_restaurant_id;
 
-  if not found or pg_catalog.regexp_replace(pg_catalog.coalesce(v_customer.phone, ''), '\D', '', 'g') <> v_phone then
+  if not found or pg_catalog.regexp_replace(coalesce(v_customer.phone, ''), '\D', '', 'g') <> v_phone then
     raise exception using errcode = '42501', message = 'Reward does not belong to this customer';
   end if;
 
   if v_reward.reward_type = 'percent' then
-    v_discount := pg_catalog.least(
-      pg_catalog.round(pg_catalog.coalesce(p_subtotal, 0)::numeric * pg_catalog.coalesce(v_reward.percentage_value, 0) / 100, 2),
-      pg_catalog.round(pg_catalog.coalesce(p_subtotal, 0)::numeric, 2)
+    v_discount := least(
+      pg_catalog.round(coalesce(p_subtotal, 0)::numeric * coalesce(v_reward.percentage_value, 0) / 100, 2),
+      pg_catalog.round(coalesce(p_subtotal, 0)::numeric, 2)
     );
   elsif v_reward.reward_type = 'fixed' then
-    v_discount := pg_catalog.least(
-      pg_catalog.round(pg_catalog.coalesce(v_reward.fixed_amount, 0)::numeric, 2),
-      pg_catalog.round(pg_catalog.coalesce(p_subtotal, 0)::numeric, 2)
+    v_discount := least(
+      pg_catalog.round(coalesce(v_reward.fixed_amount, 0)::numeric, 2),
+      pg_catalog.round(coalesce(p_subtotal, 0)::numeric, 2)
     );
   elsif v_reward.reward_type = 'free_shipping' then
-    if pg_catalog.coalesce(p_address ->> 'fulfillment_type', 'delivery') <> 'delivery'
-       or pg_catalog.coalesce(p_delivery_fee, 0) <= 0 then
+    if coalesce(p_address ->> 'fulfillment_type', 'delivery') <> 'delivery'
+       or coalesce(p_delivery_fee, 0) <= 0 then
       raise exception using errcode = '23514', message = 'Free shipping reward requires a paid delivery';
     end if;
-    v_discount := pg_catalog.round(pg_catalog.coalesce(p_delivery_fee, 0)::numeric, 2);
+    v_discount := pg_catalog.round(coalesce(p_delivery_fee, 0)::numeric, 2);
   elsif v_reward.reward_type = 'free_product' then
     select p.* into v_product
     from public.products p
@@ -202,9 +202,9 @@ begin
     raise exception using errcode = '23514', message = 'Unsupported reward type';
   end if;
 
-  v_total := pg_catalog.greatest(
-    pg_catalog.round(pg_catalog.coalesce(p_subtotal, 0)::numeric, 2)
-      + pg_catalog.round(pg_catalog.coalesce(p_delivery_fee, 0)::numeric, 2)
+  v_total := greatest(
+    pg_catalog.round(coalesce(p_subtotal, 0)::numeric, 2)
+      + pg_catalog.round(coalesce(p_delivery_fee, 0)::numeric, 2)
       - v_discount,
     0
   );
@@ -216,8 +216,8 @@ begin
     p_customer_phone => v_phone,
     p_address => p_address,
     p_items => v_items,
-    p_subtotal => pg_catalog.round(pg_catalog.coalesce(p_subtotal, 0)::numeric, 2),
-    p_delivery_fee => pg_catalog.round(pg_catalog.coalesce(p_delivery_fee, 0)::numeric, 2),
+    p_subtotal => pg_catalog.round(coalesce(p_subtotal, 0)::numeric, 2),
+    p_delivery_fee => pg_catalog.round(coalesce(p_delivery_fee, 0)::numeric, 2),
     p_discount => v_discount,
     p_total => v_total,
     p_payment_method => p_payment_method,
