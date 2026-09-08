@@ -95,8 +95,10 @@ begin
     return new;
   end if;
 
-  if tg_op = 'UPDATE' and old.status = 'done' then
-    return new;
+  if tg_op = 'UPDATE' then
+    if old.status = 'done' then
+      return new;
+    end if;
   end if;
 
   if coalesce(new.is_test, false) then
