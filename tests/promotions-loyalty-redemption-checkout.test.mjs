@@ -103,7 +103,7 @@ test("backend do cliente expõe saldo, catálogo e origem do benefício para o c
 
 test("descoberta de fidelidade normaliza telefones históricos antes de carregar a conta", () => {
   assert.match(reviewHardeningMigration, /find_loyalty_customers_by_phone/);
-  assert.match(reviewHardeningMigration, /regexp_replace\(pg_catalog\.coalesce\(c\.phone, ''\), '\\D', '', 'g'\)/);
+  assert.match(reviewHardeningMigration, /regexp_replace\(coalesce\(c\.phone, ''\), '\\D', '', 'g'\)/);
   assert.match(loyaltyRoute, /find_loyalty_customers_by_phone/);
   assert.doesNotMatch(loyaltyRoute, /\.eq\("phone", context\.phone\)/);
 });
