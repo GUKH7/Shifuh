@@ -6,7 +6,9 @@ const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD || "Shifuh-E2E-2026!";
 test.describe("fluxo comercial completo", () => {
   test.describe.configure({ mode: "serial" });
 
-  test("vitrine cria pedido real, painel recebe a venda e fidelidade pontua uma única vez", async ({ page }) => {
+  test("vitrine cria pedido real, fidelidade pontua uma única vez e catálogo persiste recompensa", async ({ page }) => {
+    test.setTimeout(60_000);
+
     await page.goto("/loja-e2e");
 
     await expect(page.getByRole("heading", { name: "Loja E2E CI", level: 1 })).toBeVisible();
@@ -58,13 +60,40 @@ test.describe("fluxo comercial completo", () => {
 
     await page.goto("/admin/promotions/loyalty");
     await expect(page.getByRole("heading", { name: "Programa de fidelidade" })).toBeVisible({ timeout: 20_000 });
-    await page.getByLabel("Status").selectOption("active");
+    await page.getByLabel("Status").first().selectOption("active");
     await page.getByLabel("Forma de acúmulo").selectOption("spend");
     await page.getByLabel("A cada valor gasto").fill("1,00");
     await page.getByLabel("Pontos concedidos").fill("1");
     await page.getByLabel("Pedido mínimo para pontuar").fill("0,00");
     await page.getByRole("button", { name: "Salvar configuração" }).click();
     await expect(page.getByRole("status")).toContainText("Configuração do programa salva com sucesso.");
+
+    // The catalog is a sibling workspace, so reload after first-time program creation to hydrate it
+    // from the persisted program. Existing programs load both workspaces together on first render.
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "Catálogo de recompensas" })).toBeVisible({ timeout: 20_000 });
+
+    const rewardName = `Recompensa E2E ${Date.now()}`;
+    await page.getByLabel("Nome da recompensa").fill(rewardName);
+    await page.getByLabel("Tipo de benefício").selectOption("fixed");
+    await page.getByLabel("Custo em pontos").fill("50");
+    await page.getByLabel("Valor do desconto (R$)").fill("5,00");
+    await page.getByLabel("Pedido mínimo (R$)").fill("10,00");
+    await page.getByLabel("Validade após resgate (dias)").fill("15");
+    await page.getByLabel("Limite total de resgates").fill("25");
+    await page.getByRole("button", { name: "Adicionar recompensa" }).click();
+    await expect(page.getByRole("status")).toContainText("Recompensa adicionada ao catálogo.");
+
+    const rewardHeading = page.getByRole("heading", { name: rewardName, exact: true });
+    await expect(rewardHeading).toBeVisible();
+    const rewardCard = rewardHeading.locator("xpath=ancestor::article");
+    await expect(rewardCard.getByText(/R\$\s*5,00 OFF · 50 pts/)).toBeVisible();
+    await expect(rewardCard.getByText(/pedido mínimo R\$\s*10,00/)).toBeVisible();
+    await expect(rewardCard.getByText(/15 dias de validade/)).toBeVisible();
+    await expect(rewardCard.getByText(/Limite total: 25 resgates/)).toBeVisible();
+
+    await page.reload();
+    await expect(page.getByRole("heading", { name: rewardName, exact: true })).toBeVisible({ timeout: 20_000 });
 
     await page.goto("/admin/orders");
     await page.waitForURL((url) => url.pathname === "/admin/orders", { timeout: 20_000 });
