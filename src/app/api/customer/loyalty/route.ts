@@ -28,13 +28,14 @@ export async function GET(request: Request) {
     return NextResponse.json({ code: "INVALID_RESTAURANT", error: "Loja inválida." }, { status: 400 });
   }
 
-  let customerQuery = adminSupabase
-    .from("customers")
-    .select("id, restaurant_id")
-    .eq("phone", context.phone);
-  if (restaurantId) customerQuery = customerQuery.eq("restaurant_id", restaurantId);
+  const { data: customers, error: customerError } = await adminSupabase.rpc(
+    "find_loyalty_customers_by_phone",
+    {
+      p_customer_phone: context.phone,
+      p_restaurant_id: restaurantId || null,
+    },
+  );
 
-  const { data: customers, error: customerError } = await customerQuery;
   if (customerError) {
     console.error("Falha ao localizar cliente da fidelidade:", customerError);
     return NextResponse.json({ error: "Não foi possível carregar sua fidelidade agora." }, { status: 503 });
@@ -83,6 +84,27 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Não foi possível carregar sua fidelidade agora." }, { status: 503 });
   }
 
+  const rewardIds = (rewards || []).map((reward: any) => reward.id);
+  const redemptionCountByReward = new Map<string, number>();
+  if (rewardIds.length > 0) {
+    const { data: redemptions, error: redemptionError } = await adminSupabase
+      .from("loyalty_redemptions")
+      .select("reward_id")
+      .in("reward_id", rewardIds);
+
+    if (redemptionError) {
+      console.error("Falha ao carregar limites de resgate da fidelidade:", redemptionError);
+      return NextResponse.json({ error: "Não foi possível carregar sua fidelidade agora." }, { status: 503 });
+    }
+
+    for (const redemption of redemptions || []) {
+      redemptionCountByReward.set(
+        redemption.reward_id,
+        (redemptionCountByReward.get(redemption.reward_id) || 0) + 1,
+      );
+    }
+  }
+
   const restaurantsById = new Map((restaurants || []).map((restaurant: any) => [restaurant.id, restaurant]));
   const customerByRestaurant = new Map(customers.map((customer: any) => [customer.restaurant_id, customer.id]));
   const accountByProgramCustomer = new Map(
@@ -117,20 +139,34 @@ export async function GET(request: Request) {
           lifetimeRedeemed: Number(account?.lifetime_redeemed || 0),
           lifetimeExpired: Number(account?.lifetime_expired || 0),
         },
-        rewards: (rewardsByProgram.get(program.id) || []).map((reward: any) => ({
-          id: reward.id,
-          name: reward.name,
-          description: reward.description,
-          type: reward.reward_type,
-          pointsCost: Number(reward.points_cost || 0),
-          percentageValue: reward.percentage_value == null ? null : Number(reward.percentage_value),
-          fixedAmount: reward.fixed_amount == null ? null : Number(reward.fixed_amount),
-          productId: reward.product_id,
-          minimumOrderAmount: Number(reward.minimum_order_amount || 0),
-          rewardValidityDays: reward.reward_validity_days,
-          maxRedemptionsTotal: reward.max_redemptions_total,
-          canRedeem: Boolean(account && balance >= Number(reward.points_cost || 0)),
-        })),
+        rewards: (rewardsByProgram.get(program.id) || []).map((reward: any) => {
+          const redemptionsTotal = redemptionCountByReward.get(reward.id) || 0;
+          const maxRedemptionsTotal = reward.max_redemptions_total == null
+            ? null
+            : Number(reward.max_redemptions_total);
+          const remainingRedemptions = maxRedemptionsTotal == null
+            ? null
+            : Math.max(0, maxRedemptionsTotal - redemptionsTotal);
+          const hasCapacity = remainingRedemptions == null || remainingRedemptions > 0;
+          const pointsCost = Number(reward.points_cost || 0);
+
+          return {
+            id: reward.id,
+            name: reward.name,
+            description: reward.description,
+            type: reward.reward_type,
+            pointsCost,
+            percentageValue: reward.percentage_value == null ? null : Number(reward.percentage_value),
+            fixedAmount: reward.fixed_amount == null ? null : Number(reward.fixed_amount),
+            productId: reward.product_id,
+            minimumOrderAmount: Number(reward.minimum_order_amount || 0),
+            rewardValidityDays: reward.reward_validity_days,
+            maxRedemptionsTotal,
+            redemptionsTotal,
+            remainingRedemptions,
+            canRedeem: Boolean(account && balance >= pointsCost && hasCapacity),
+          };
+        }),
       };
     }),
   });
