@@ -10,6 +10,10 @@ const unifiedCheckoutMigration = fs.readFileSync(
   "supabase/migrations/20260908151000_unify_issued_reward_checkout.sql",
   "utf8",
 );
+const reviewHardeningMigration = fs.readFileSync(
+  "supabase/migrations/20260908153000_loyalty_redemption_review_hardening.sql",
+  "utf8",
+);
 const redeemRoute = fs.readFileSync(
   "src/app/api/customer/loyalty/redeem/route.ts",
   "utf8",
@@ -95,4 +99,25 @@ test("backend do cliente expõe saldo, catálogo e origem do benefício para o c
   assert.match(customerRewardsRoute, /loyalty_redemption_id/);
   assert.match(customerRewardsRoute, /source === "loyalty"/);
   assert.match(checkoutRewards, /source: "roulette" \| "loyalty"/);
+});
+
+test("descoberta de fidelidade normaliza telefones históricos antes de carregar a conta", () => {
+  assert.match(reviewHardeningMigration, /find_loyalty_customers_by_phone/);
+  assert.match(reviewHardeningMigration, /regexp_replace\(pg_catalog\.coalesce\(c\.phone, ''\), '\\D', '', 'g'\)/);
+  assert.match(loyaltyRoute, /find_loyalty_customers_by_phone/);
+  assert.doesNotMatch(loyaltyRoute, /\.eq\("phone", context\.phone\)/);
+});
+
+test("catálogo do cliente respeita o limite global antes de oferecer resgate", () => {
+  assert.match(loyaltyRoute, /\.from\("loyalty_redemptions"\)/);
+  assert.match(loyaltyRoute, /redemptionCountByReward/);
+  assert.match(loyaltyRoute, /remainingRedemptions/);
+  assert.match(loyaltyRoute, /balance >= pointsCost && hasCapacity/);
+});
+
+test("produto grátis preserva a origem da fidelidade no item do pedido", () => {
+  assert.match(reviewHardeningMigration, /v_reward\.source_type = 'loyalty'/);
+  assert.match(reviewHardeningMigration, /Recompensa do Programa de Fidelidade/);
+  assert.match(reviewHardeningMigration, /Prêmio da Roleta da Sorte/);
+  assert.match(reviewHardeningMigration, /'observation', v_reward_observation/);
 });
