@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { createBrowserClient } from "@supabase/ssr"
 import { useRouter } from "next/navigation"
 import { User, MapPin, ShoppingBag, LogOut, Loader2, Star, Home, ArrowLeft, Gift, ChevronRight, Sparkles } from "lucide-react"
@@ -90,11 +90,6 @@ export default function MyAccountPage() {
     }
   }
 
-  const totalLoyaltyPoints = useMemo(
-    () => loyaltyPrograms.reduce((sum, program) => sum + Number(program.account?.balance || 0), 0),
-    [loyaltyPrograms],
-  )
-
   const handleOpenReview = (order: any) => {
     setSelectedOrder(order)
     setReviewModalOpen(true)
@@ -129,6 +124,7 @@ export default function MyAccountPage() {
 
   const formatPrice = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
   const formatDate = (date: string) => new Date(date).toLocaleDateString('pt-BR')
+  const singleLoyaltyProgram = loyaltyPrograms.length === 1 ? loyaltyPrograms[0] : null
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><Loader2 className="animate-spin text-orange-500" /></div>
 
@@ -163,10 +159,22 @@ export default function MyAccountPage() {
             <div>
               <div className="flex items-center gap-2 text-orange-400"><Sparkles size={18} /><span className="text-xs font-black uppercase tracking-[0.14em]">Programa de fidelidade</span></div>
               {loyaltyIdentityReady ? (
-                <>
-                  <div className="mt-4 flex items-end gap-2"><strong className="text-4xl font-black tracking-tight">{totalLoyaltyPoints}</strong><span className="pb-1 text-sm font-bold text-white/50">pontos</span></div>
-                  <p className="mt-2 text-sm text-white/55">{loyaltyPrograms.length > 0 ? `${loyaltyPrograms.length} ${loyaltyPrograms.length === 1 ? 'programa ativo' : 'programas ativos'} · veja recompensas e seu histórico` : 'Veja seus programas e recompensas disponíveis'}</p>
-                </>
+                singleLoyaltyProgram ? (
+                  <>
+                    <div className="mt-4 flex items-end gap-2"><strong className="text-4xl font-black tracking-tight">{singleLoyaltyProgram.account.balance}</strong><span className="pb-1 text-sm font-bold text-white/50">pontos</span></div>
+                    <p className="mt-2 text-sm text-white/55">{singleLoyaltyProgram.restaurant?.name || singleLoyaltyProgram.name} · veja recompensas e seu histórico</p>
+                  </>
+                ) : loyaltyPrograms.length > 1 ? (
+                  <>
+                    <h2 className="mt-4 text-2xl font-black">{loyaltyPrograms.length} programas ativos</h2>
+                    <p className="mt-2 text-sm text-white/55">Cada loja mantém seu próprio saldo. Abra a Fidelidade para conferir seus pontos e recompensas.</p>
+                  </>
+                ) : (
+                  <>
+                    <h2 className="mt-4 text-xl font-black">Seus programas aparecem aqui</h2>
+                    <p className="mt-2 text-sm text-white/55">Quando uma loja ativar a Fidelidade para você, o saldo ficará disponível nesta área.</p>
+                  </>
+                )
               ) : (
                 <>
                   <h2 className="mt-4 text-xl font-black">Confirme seu telefone para acessar seus pontos</h2>
