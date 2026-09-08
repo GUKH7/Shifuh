@@ -7,6 +7,7 @@ const PUBLIC_ROUTE_PATTERNS = [
   /src\/app\/api\/orders\/\[id\]\/tracking\/route\.ts$/,
   /src\/app\/api\/customer\/profile\/route\.ts$/,
   /src\/app\/api\/customer\/rewards\/route\.ts$/,
+  /src\/app\/api\/customer\/loyalty(?:\/redeem)?\/route\.ts$/,
   /src\/app\/api\/storefront\/checkout-events\/route\.ts$/,
   /src\/app\/api\/storefront\/delivery-quote\/route\.ts$/,
   /src\/app\/api\/storefront\/payment-methods\/route\.ts$/,
