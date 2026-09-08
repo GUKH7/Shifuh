@@ -212,7 +212,10 @@ begin
     v_expires_at := now() + pg_catalog.make_interval(days => v_program.points_validity_days);
   end if;
 
-  v_order_label := coalesce(new.display_number::text, left(new.id::text, 8));
+  v_order_label := case
+    when new.display_number is not null then pg_catalog.lpad(new.display_number::text, 4, '0')
+    else left(new.id::text, 8)
+  end;
 
   insert into public.loyalty_point_transactions (
     account_id,
