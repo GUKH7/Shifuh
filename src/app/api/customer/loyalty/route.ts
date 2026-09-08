@@ -4,6 +4,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { createAdminClient } from "@/lib/supabase/server";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const HISTORY_LIMIT_PER_ACCOUNT = 20;
 
 export async function GET(request: Request) {
   const rateLimitResponse = await checkRateLimit(request, {
@@ -84,25 +85,66 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Não foi possível carregar sua fidelidade agora." }, { status: 503 });
   }
 
+  const accountIds = (accounts || []).map((account: any) => account.id);
   const rewardIds = (rewards || []).map((reward: any) => reward.id);
+  const productIds = [...new Set((rewards || []).map((reward: any) => reward.product_id).filter(Boolean))];
+
+  const [redemptionCapacityResult, transactionResult, redemptionHistoryResult, productResult] = await Promise.all([
+    rewardIds.length > 0
+      ? adminSupabase.from("loyalty_redemptions").select("reward_id").in("reward_id", rewardIds)
+      : Promise.resolve({ data: [], error: null }),
+    accountIds.length > 0
+      ? adminSupabase
+          .from("loyalty_point_transactions")
+          .select("id, account_id, transaction_type, points_delta, balance_after, source_order_id, description, expires_at, created_at")
+          .in("account_id", accountIds)
+          .order("created_at", { ascending: false })
+          .limit(Math.max(HISTORY_LIMIT_PER_ACCOUNT, accountIds.length * HISTORY_LIMIT_PER_ACCOUNT))
+      : Promise.resolve({ data: [], error: null }),
+    accountIds.length > 0
+      ? adminSupabase
+          .from("loyalty_redemptions")
+          .select("id, account_id, reward_id, reward_type, label, points_spent, balance_after, status, expires_at, redeemed_at, redeemed_order_id, created_at")
+          .in("account_id", accountIds)
+          .order("created_at", { ascending: false })
+          .limit(Math.max(HISTORY_LIMIT_PER_ACCOUNT, accountIds.length * HISTORY_LIMIT_PER_ACCOUNT))
+      : Promise.resolve({ data: [], error: null }),
+    productIds.length > 0
+      ? adminSupabase
+          .from("products")
+          .select("id, restaurant_id, name")
+          .in("id", productIds)
+          .in("restaurant_id", restaurantIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+
+  const secondaryError = redemptionCapacityResult.error || transactionResult.error || redemptionHistoryResult.error || productResult.error;
+  if (secondaryError) {
+    console.error("Falha ao carregar histórico/capacidade da fidelidade:", secondaryError);
+    return NextResponse.json({ error: "Não foi possível carregar sua fidelidade agora." }, { status: 503 });
+  }
+
   const redemptionCountByReward = new Map<string, number>();
-  if (rewardIds.length > 0) {
-    const { data: redemptions, error: redemptionError } = await adminSupabase
-      .from("loyalty_redemptions")
-      .select("reward_id")
-      .in("reward_id", rewardIds);
+  for (const redemption of redemptionCapacityResult.data || []) {
+    redemptionCountByReward.set(
+      redemption.reward_id,
+      (redemptionCountByReward.get(redemption.reward_id) || 0) + 1,
+    );
+  }
 
-    if (redemptionError) {
-      console.error("Falha ao carregar limites de resgate da fidelidade:", redemptionError);
-      return NextResponse.json({ error: "Não foi possível carregar sua fidelidade agora." }, { status: 503 });
-    }
+  const productsById = new Map((productResult.data || []).map((product: any) => [product.id, product]));
+  const transactionsByAccount = new Map<string, any[]>();
+  for (const transaction of transactionResult.data || []) {
+    const list = transactionsByAccount.get(transaction.account_id) || [];
+    if (list.length < HISTORY_LIMIT_PER_ACCOUNT) list.push(transaction);
+    transactionsByAccount.set(transaction.account_id, list);
+  }
 
-    for (const redemption of redemptions || []) {
-      redemptionCountByReward.set(
-        redemption.reward_id,
-        (redemptionCountByReward.get(redemption.reward_id) || 0) + 1,
-      );
-    }
+  const redemptionsByAccount = new Map<string, any[]>();
+  for (const redemption of redemptionHistoryResult.data || []) {
+    const list = redemptionsByAccount.get(redemption.account_id) || [];
+    if (list.length < HISTORY_LIMIT_PER_ACCOUNT) list.push(redemption);
+    redemptionsByAccount.set(redemption.account_id, list);
   }
 
   const restaurantsById = new Map((restaurants || []).map((restaurant: any) => [restaurant.id, restaurant]));
@@ -123,6 +165,9 @@ export async function GET(request: Request) {
       const account = customerId ? accountByProgramCustomer.get(`${program.id}:${customerId}`) as any : null;
       const balance = Number(account?.points_balance || 0);
       const restaurant = restaurantsById.get(program.restaurant_id) as any;
+      const accountTransactions = account ? transactionsByAccount.get(account.id) || [] : [];
+      const accountRedemptions = account ? redemptionsByAccount.get(account.id) || [] : [];
+
       return {
         id: program.id,
         name: program.name,
@@ -149,6 +194,7 @@ export async function GET(request: Request) {
             : Math.max(0, maxRedemptionsTotal - redemptionsTotal);
           const hasCapacity = remainingRedemptions == null || remainingRedemptions > 0;
           const pointsCost = Number(reward.points_cost || 0);
+          const product = reward.product_id ? productsById.get(reward.product_id) as any : null;
 
           return {
             id: reward.id,
@@ -159,6 +205,7 @@ export async function GET(request: Request) {
             percentageValue: reward.percentage_value == null ? null : Number(reward.percentage_value),
             fixedAmount: reward.fixed_amount == null ? null : Number(reward.fixed_amount),
             productId: reward.product_id,
+            productName: product?.name || null,
             minimumOrderAmount: Number(reward.minimum_order_amount || 0),
             rewardValidityDays: reward.reward_validity_days,
             maxRedemptionsTotal,
@@ -167,6 +214,29 @@ export async function GET(request: Request) {
             canRedeem: Boolean(account && balance >= pointsCost && hasCapacity),
           };
         }),
+        transactions: accountTransactions.map((transaction: any) => ({
+          id: transaction.id,
+          type: transaction.transaction_type,
+          pointsDelta: Number(transaction.points_delta || 0),
+          balanceAfter: Number(transaction.balance_after || 0),
+          sourceOrderId: transaction.source_order_id,
+          description: transaction.description,
+          expiresAt: transaction.expires_at,
+          createdAt: transaction.created_at,
+        })),
+        redemptions: accountRedemptions.map((redemption: any) => ({
+          id: redemption.id,
+          rewardId: redemption.reward_id,
+          type: redemption.reward_type,
+          label: redemption.label,
+          pointsSpent: Number(redemption.points_spent || 0),
+          balanceAfter: Number(redemption.balance_after || 0),
+          status: redemption.status,
+          expiresAt: redemption.expires_at,
+          redeemedAt: redemption.redeemed_at,
+          redeemedOrderId: redemption.redeemed_order_id,
+          createdAt: redemption.created_at,
+        })),
       };
     }),
   });
