@@ -81,7 +81,7 @@ export async function POST(request: Request) {
   }
 
   const result = Array.isArray(data) ? data[0] : data;
-  if (!result?.redemption_id) {
+  if (!result?.redemption_id || !result?.benefit_id) {
     return NextResponse.json(
       { code: "LOYALTY_REDEMPTION_FAILED", error: "Não foi possível concluir o resgate." },
       { status: 503 },
@@ -91,6 +91,7 @@ export async function POST(request: Request) {
   return NextResponse.json({
     redemption: {
       id: result.redemption_id,
+      benefitId: result.benefit_id,
       source: "loyalty",
       restaurantId: result.restaurant_id,
       programId: result.program_id,
