@@ -95,7 +95,7 @@ export async function POST(request: Request) {
   const identityRateLimitResponse = await checkRateLimit(request, {
     keyPrefix: "customer:loyalty:redeem:verified-user",
     identity: context.authUserId,
-    limit: 6,
+    limit: 8,
     windowMs: 60_000,
   });
   if (identityRateLimitResponse) return identityRateLimitResponse;
