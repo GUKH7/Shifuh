@@ -12,6 +12,7 @@ const PUBLIC_ROUTE_PATTERNS = [
   /src\/app\/api\/storefront\/checkout-events\/route\.ts$/,
   /src\/app\/api\/storefront\/delivery-quote\/route\.ts$/,
   /src\/app\/api\/storefront\/payment-methods\/route\.ts$/,
+  /src\/app\/api\/storefront\/promotions\/summary\/route\.ts$/,
   /src\/app\/api\/storefront\/promotions\/wheel(?:\/eligibility)?\/route\.ts$/,
   /src\/app\/api\/health(?:\/.*)?\/route\.ts$/,
   /src\/app\/api\/integrations\/ifood\/.*public.*\/route\.ts$/,
