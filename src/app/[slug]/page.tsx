@@ -1,4 +1,5 @@
 "use client";
-import StorefrontPage from "@/features/storefront/StorefrontPage";
-import StorefrontBridges from "@/features/storefront/StorefrontBridges";
-export default function Page(){return <><StorefrontPage/><StorefrontBridges/></>}
+import P from "@/features/storefront/StorefrontPage";
+import B from "@/features/storefront/StorefrontBridges";
+import W from "@/features/storefront/LuckyWheelStorefrontBridge";
+export default function Page(){return <><P/><B/><W/></>}
