@@ -6,18 +6,31 @@ import { createAdminClient } from "@/lib/supabase/server";
 const IDEMPOTENCY_KEY_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+function firstForwardedValue(value: string | null) {
+  return value?.split(",")[0]?.trim() || "";
+}
+
 function hasTrustedMutationOrigin(request: Request) {
   const origin = request.headers.get("origin")?.trim();
   if (!origin) return false;
 
-  let requestOrigin = "";
+  let originUrl: URL;
   try {
-    requestOrigin = new URL(request.url).origin;
+    originUrl = new URL(origin);
   } catch {
     return false;
   }
 
-  if (origin !== requestOrigin) return false;
+  // Reverse proxies can rewrite request.url internally. Host/X-Forwarded-Host represent
+  // the browser-facing target and cannot be set by normal browser JavaScript.
+  const forwardedHost = firstForwardedValue(request.headers.get("x-forwarded-host"));
+  const requestHost = forwardedHost || request.headers.get("host")?.trim() || "";
+  if (!requestHost || originUrl.host.toLowerCase() !== requestHost.toLowerCase()) return false;
+
+  const forwardedProto = firstForwardedValue(request.headers.get("x-forwarded-proto")).toLowerCase();
+  if (forwardedProto && originUrl.protocol.replace(":", "").toLowerCase() !== forwardedProto) {
+    return false;
+  }
 
   const fetchSite = request.headers.get("sec-fetch-site")?.trim().toLowerCase();
   return !fetchSite || fetchSite === "same-origin";
