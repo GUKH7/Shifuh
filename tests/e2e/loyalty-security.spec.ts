@@ -7,6 +7,7 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const RESTAURANT_ID = "11111111-1111-4111-8111-111111111111";
+const FOREIGN_RESTAURANT_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 
 async function loginVerifiedCustomer(page: Page) {
   await page.goto("/admin/login");
@@ -40,7 +41,7 @@ async function browserRedeem(page: Page, rewardId: string, idempotencyKey: strin
 test.describe("segurança final da fidelidade", () => {
   test.describe.configure({ mode: "serial" });
 
-  test("bloqueia fraude de identidade, RPC direta, replay e double-spend", async ({ page, request }) => {
+  test("bloqueia fraude de identidade, tenant, RPC direta, replay e double-spend", async ({ page, request }) => {
     test.setTimeout(90_000);
     expect(ADMIN_PASSWORD).toBeTruthy();
     expect(SUPABASE_URL).toBeTruthy();
@@ -80,7 +81,39 @@ test.describe("segurança final da fidelidade", () => {
       .single();
     expect(existingRewardError).toBeNull();
 
-    // Checkout/account cookies without a verified Supabase Auth session are not customer identity.
+    const { data: users, error: usersError } = await service.auth.admin.listUsers({ page: 1, perPage: 100 });
+    expect(usersError).toBeNull();
+    const ownerUser = users.users.find((user) => user.email === ADMIN_EMAIL);
+    expect(ownerUser?.id).toBeTruthy();
+
+    const foreignProgramId = crypto.randomUUID();
+    const foreignProgramResult = await service.from("loyalty_programs").insert({
+      id: foreignProgramId,
+      restaurant_id: FOREIGN_RESTAURANT_ID,
+      name: "Fidelidade Estrangeira E2E",
+      status: "active",
+      earn_mode: "order",
+      points_per_order: 1,
+      created_by: ownerUser!.id,
+    });
+    expect(foreignProgramResult.error).toBeNull();
+
+    const { data: foreignReward, error: foreignRewardError } = await service
+      .from("loyalty_rewards")
+      .insert({
+        restaurant_id: FOREIGN_RESTAURANT_ID,
+        program_id: foreignProgramId,
+        name: `Recompensa estrangeira ${Date.now()}`,
+        reward_type: "fixed",
+        points_cost: 1,
+        fixed_amount: 50,
+        active: true,
+      })
+      .select("id")
+      .single();
+    expect(foreignRewardError).toBeNull();
+
+    // A browser without a verified Supabase Auth session is not customer identity.
     await page.goto("/loja-e2e");
     const anonymousAttempt = await browserRedeem(page, existingReward!.id, crypto.randomUUID());
     expect(anonymousAttempt.status).toBe(401);
@@ -153,6 +186,11 @@ test.describe("segurança final da fidelidade", () => {
     expect(rewardError).toBeNull();
 
     await loginVerifiedCustomer(page);
+
+    // The verified phone is not a customer of the foreign restaurant, even though the reward ID is valid.
+    const crossTenantAttempt = await browserRedeem(page, foreignReward!.id, crypto.randomUUID());
+    expect(crossTenantAttempt.status).toBe(403);
+    expect(crossTenantAttempt.payload.code).toBe("LOYALTY_CUSTOMER_MISMATCH");
 
     const concurrentKeys = [crypto.randomUUID(), crypto.randomUUID()];
     const concurrentAttempts = await page.evaluate(
