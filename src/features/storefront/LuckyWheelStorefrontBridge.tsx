@@ -205,7 +205,7 @@ export default function LuckyWheelStorefrontBridge() {
       router.push(`/auth?returnUrl=${encodeURIComponent(pathname)}`);
       return;
     }
-    router.push("/minha-conta");
+    router.push(`/auth/phone?returnUrl=${encodeURIComponent(pathname)}`);
   };
 
   const showIdentityNotice = Boolean(identityIssue && !identityNoticeDismissed && !spin && !open);
@@ -242,7 +242,7 @@ export default function LuckyWheelStorefrontBridge() {
                 onClick={handleIdentityAction}
                 className="mt-2 inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-black text-orange-600 transition hover:bg-orange-50"
               >
-                {needsLogin ? "Entrar" : "Abrir minha conta"} <ArrowRight size={14} />
+                {needsLogin ? "Entrar" : "Confirmar telefone"} <ArrowRight size={14} />
               </button>
             </div>
             <button

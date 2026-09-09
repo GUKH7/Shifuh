@@ -1,25 +1,48 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Loader2, Lock, Mail } from "lucide-react";
 import { useToast } from "@/components/ui/toast-provider";
+import {
+  buildCustomerPhoneVerificationUrl,
+  sanitizeCustomerReturnUrl,
+} from "@/lib/customer-auth-routing";
 
 function AuthContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const returnUrl = searchParams.get("returnUrl") || "/";
+  const returnUrl = sanitizeCustomerReturnUrl(searchParams.get("returnUrl"));
   const { showToast } = useToast();
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  const supabase = useMemo(
+    () => createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    ),
+    [],
   );
 
+  const [checkingSession, setCheckingSession] = useState(true);
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({ email: "", password: "" });
+
+  useEffect(() => {
+    let active = true;
+    supabase.auth.getUser().then(({ data }) => {
+      if (!active) return;
+      if (data.user) {
+        router.replace(buildCustomerPhoneVerificationUrl(returnUrl));
+        return;
+      }
+      setCheckingSession(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, [returnUrl, router, supabase]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,20 +50,31 @@ function AuthContent() {
 
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email: formData.email,
           password: formData.password,
         });
         if (error) throw error;
+        if (!data.session || !data.user) throw new Error("Não foi possível iniciar sua sessão.");
       } else {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email: formData.email,
           password: formData.password,
         });
         if (error) throw error;
+
+        if (!data.session || !data.user) {
+          showToast({
+            title: "Confirme seu e-mail",
+            description: "Abra a mensagem enviada para seu e-mail e depois entre na sua conta para continuar.",
+            tone: "success",
+          });
+          setIsLogin(true);
+          return;
+        }
       }
 
-      router.push(decodeURIComponent(returnUrl));
+      router.push(buildCustomerPhoneVerificationUrl(returnUrl));
       router.refresh();
     } catch (error: any) {
       showToast({
@@ -52,6 +86,14 @@ function AuthContent() {
       setLoading(false);
     }
   };
+
+  if (checkingSession) {
+    return (
+      <div className="flex min-h-28 items-center justify-center">
+        <Loader2 className="animate-spin text-red-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-md rounded-2xl border border-gray-100 bg-white p-8 shadow-sm">

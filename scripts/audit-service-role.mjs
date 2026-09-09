@@ -19,6 +19,7 @@ const PUBLIC_ROUTE_PATTERNS = [
 ];
 const CRON_ROUTE_PATTERN = /src\/app\/api\/cron\/.*\/route\.ts$/;
 const PLATFORM_ROUTE_PATTERN = /src\/app\/api\/platform\/.*\/route\.ts$/;
+const CUSTOMER_IDENTITY_ROUTE_PATTERN = /src\/app\/api\/customer\/phone\/link\/route\.ts$/;
 
 async function walk(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -53,6 +54,7 @@ for (const file of files) {
   const isPublicRoute = PUBLIC_ROUTE_PATTERNS.some((pattern) => pattern.test(filename));
   const isCronRoute = CRON_ROUTE_PATTERN.test(filename);
   const isPlatformRoute = PLATFORM_ROUTE_PATTERN.test(filename);
+  const isCustomerIdentityRoute = CUSTOMER_IDENTITY_ROUTE_PATTERN.test(filename);
   const authenticatesUser = hasAny(source, [
     /auth\.getUser\s*\(/,
     /getUser\s*\(/,
@@ -97,6 +99,11 @@ for (const file of files) {
       safe = hasPlatformProtection;
       if (!authenticatesUser) reasons.push("rota de plataforma sem autenticação detectável");
       if (!hasPlatformProtection) reasons.push("rota de plataforma sem requirePlatformPermission detectável");
+    } else if (isCustomerIdentityRoute) {
+      classification = "customer-identity-route";
+      safe = authenticatesUser && hasPublicProtection;
+      if (!authenticatesUser) reasons.push("rota de identidade do cliente sem sessão autenticada detectável");
+      if (!hasPublicProtection) reasons.push("rota de identidade do cliente sem rate limit ou proteção equivalente");
     } else if (isPublicRoute) {
       classification = "public-route";
       safe = hasPublicProtection && resolvesRestaurant;
