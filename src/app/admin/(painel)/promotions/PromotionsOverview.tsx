@@ -82,11 +82,6 @@ const FUTURE_MECHANICS = [
     icon: BadgePercent,
   },
   {
-    title: "Fidelidade",
-    description: "Recompense frequência e recorrência com benefícios progressivos.",
-    icon: Sparkles,
-  },
-  {
     title: "Cashback",
     description: "Transforme parte da compra atual em saldo para um próximo pedido.",
     icon: Wallet,
@@ -417,7 +412,7 @@ export default function PromotionsOverview() {
     <AdminPageShell className="space-y-6 pb-12">
       <AdminPageHeader
         title="Promoções"
-        description="Acompanhe o impacto consolidado de cupons e campanhas da Roleta da Sorte em um só lugar."
+        description="Gerencie Cupons, Roleta da Sorte e Fidelidade. Os indicadores consolidados abaixo refletem cupons e roleta, que já possuem mensuração promocional direta."
         icon={<Percent size={24} />}
       />
 
@@ -444,7 +439,7 @@ export default function PromotionsOverview() {
         })}
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-2">
+      <section className="grid gap-4 lg:grid-cols-3">
         <Link
           href="/admin/promotions/coupons"
           className="surface-card group rounded-3xl p-5 transition-transform hover:-translate-y-0.5 sm:p-6"
@@ -453,12 +448,10 @@ export default function PromotionsOverview() {
             <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#fff2ea] text-[var(--brand)]">
               <Ticket size={20} />
             </span>
-            <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
-              Disponível
-            </span>
+            <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">Disponível</span>
           </div>
           <h2 className="mt-5 text-xl font-black text-gray-950">Cupons</h2>
-          <p className="mt-2 max-w-xl text-sm leading-6 text-gray-500">
+          <p className="mt-2 text-sm leading-6 text-gray-500">
             Crie códigos promocionais, ative ou pause campanhas e acompanhe o resultado de cada cupom.
           </p>
           <div className="mt-5 flex flex-wrap gap-2 text-xs font-bold text-gray-500">
@@ -479,12 +472,10 @@ export default function PromotionsOverview() {
             <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#fff2ea] text-[var(--brand)]">
               <Gift size={20} />
             </span>
-            <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
-              Disponível
-            </span>
+            <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">Disponível</span>
           </div>
           <h2 className="mt-5 text-xl font-black text-gray-950">Roleta da Sorte</h2>
-          <p className="mt-2 max-w-xl text-sm leading-6 text-gray-500">
+          <p className="mt-2 text-sm leading-6 text-gray-500">
             Configure campanhas, regras e prêmios e acompanhe giros, resgates, receita e retorno da mecânica.
           </p>
           <div className="mt-5 flex flex-wrap gap-2 text-xs font-bold text-gray-500">
@@ -494,6 +485,30 @@ export default function PromotionsOverview() {
           </div>
           <span className="mt-6 inline-flex items-center gap-2 text-sm font-black text-[var(--brand)]">
             Gerenciar roleta <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
+          </span>
+        </Link>
+
+        <Link
+          href="/admin/promotions/loyalty"
+          className="surface-card group rounded-3xl p-5 transition-transform hover:-translate-y-0.5 sm:p-6"
+        >
+          <div className="flex items-start justify-between gap-4">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#fff2ea] text-[var(--brand)]">
+              <Sparkles size={20} />
+            </span>
+            <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">Disponível</span>
+          </div>
+          <h2 className="mt-5 text-xl font-black text-gray-950">Fidelidade</h2>
+          <p className="mt-2 text-sm leading-6 text-gray-500">
+            Recompense recorrência com pontos, catálogo de benefícios, resgate no checkout e gestão de desempenho.
+          </p>
+          <div className="mt-5 flex flex-wrap gap-2 text-xs font-bold text-gray-500">
+            <span className="rounded-full bg-[#fcfaf7] px-3 py-1.5">Pontos e carteira</span>
+            <span className="rounded-full bg-[#fcfaf7] px-3 py-1.5">Resgate seguro</span>
+            <span className="rounded-full bg-[#fcfaf7] px-3 py-1.5">Dashboard gerencial</span>
+          </div>
+          <span className="mt-6 inline-flex items-center gap-2 text-sm font-black text-[var(--brand)]">
+            Gerenciar fidelidade <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
           </span>
         </Link>
       </section>
@@ -509,7 +524,7 @@ export default function PromotionsOverview() {
           </p>
         </div>
 
-        <div className="mt-5 grid gap-3 md:grid-cols-3">
+        <div className="mt-5 grid gap-3 md:grid-cols-2">
           {FUTURE_MECHANICS.map((mechanic) => {
             const Icon = mechanic.icon;
             return (
@@ -518,9 +533,7 @@ export default function PromotionsOverview() {
                   <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-[var(--brand)] shadow-sm">
                     <Icon size={18} />
                   </span>
-                  <span className="rounded-full bg-gray-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.08em] text-gray-500">
-                    Planejado
-                  </span>
+                  <span className="rounded-full bg-gray-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.08em] text-gray-500">Planejado</span>
                 </div>
                 <h3 className="mt-4 font-black text-gray-950">{mechanic.title}</h3>
                 <p className="mt-2 text-sm leading-6 text-gray-500">{mechanic.description}</p>
