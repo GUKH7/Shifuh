@@ -124,7 +124,15 @@ jobs:
         run: node scripts/e2e-seed.mjs
 
       - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          # GitHub's Ubuntu image includes Google's Chrome APT repository, but
+          # Playwright only needs Ubuntu system libraries plus its own Chromium.
+          # Removing that unrelated source prevents transient Google index/hash
+          # mismatches from blocking the entire commercial E2E gate.
+          sudo rm -f /etc/apt/sources.list.d/google-chrome.list
+          npx playwright install --with-deps chromium
 
       - name: Run commercial E2E
         run: npm run test:e2e:commercial
