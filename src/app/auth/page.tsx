@@ -5,11 +5,15 @@ import { createBrowserClient } from "@supabase/ssr";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Loader2, Lock, Mail } from "lucide-react";
 import { useToast } from "@/components/ui/toast-provider";
+import {
+  buildCustomerPhoneVerificationUrl,
+  sanitizeCustomerReturnUrl,
+} from "@/lib/customer-auth-routing";
 
 function AuthContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const returnUrl = searchParams.get("returnUrl") || "/";
+  const returnUrl = sanitizeCustomerReturnUrl(searchParams.get("returnUrl"));
   const { showToast } = useToast();
 
   const supabase = createBrowserClient(
@@ -27,20 +31,31 @@ function AuthContent() {
 
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email: formData.email,
           password: formData.password,
         });
         if (error) throw error;
+        if (!data.session || !data.user) throw new Error("Não foi possível iniciar sua sessão.");
       } else {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email: formData.email,
           password: formData.password,
         });
         if (error) throw error;
+
+        if (!data.session || !data.user) {
+          showToast({
+            title: "Confirme seu e-mail",
+            description: "Abra a mensagem enviada para seu e-mail e depois entre na sua conta para continuar.",
+            tone: "success",
+          });
+          setIsLogin(true);
+          return;
+        }
       }
 
-      router.push(decodeURIComponent(returnUrl));
+      router.push(buildCustomerPhoneVerificationUrl(returnUrl));
       router.refresh();
     } catch (error: any) {
       showToast({
