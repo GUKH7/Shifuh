@@ -127,11 +127,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # GitHub's Ubuntu image includes Google's Chrome APT repository, but
-          # Playwright only needs Ubuntu system libraries plus its own Chromium.
-          # Removing that unrelated source prevents transient Google index/hash
-          # mismatches from blocking the entire commercial E2E gate.
-          sudo rm -f /etc/apt/sources.list.d/google-chrome.list
+          # The hosted runner can expose Google's Chrome repository through
+          # either legacy .list files or deb822 .sources files. Playwright does
+          # not need that repository: it downloads its own Chromium. Disable
+          # every source file that references it so a transient Google APT index
+          # mismatch cannot block the commercial E2E gate.
+          if [ -f /etc/apt/sources.list ]; then
+            sudo sed -i '\|dl.google.com/linux/chrome-stable/deb|d' /etc/apt/sources.list
+          fi
+          while IFS= read -r source; do
+            [ -n "$source" ] || continue
+            sudo mv "$source" "${source}.disabled"
+          done < <(sudo grep -rl 'dl\.google\.com/linux/chrome-stable/deb' /etc/apt/sources.list.d 2>/dev/null || true)
           npx playwright install --with-deps chromium
 
       - name: Run commercial E2E
