@@ -22,10 +22,13 @@ test("customer phone verification keeps the primary email session and uses an ep
   assert.doesNotMatch(phonePage, /SUPABASE_SERVICE_ROLE_KEY/);
 });
 
-test("verified OTP proof is sent to a server-only reconciliation endpoint", () => {
+test("verified OTP proof is sent to a same-origin server-only reconciliation endpoint", () => {
   assert.match(phonePage, /data\.session\?\.access_token/);
   assert.match(phonePage, /\/api\/customer\/phone\/link/);
   assert.match(phonePage, /verificationAccessToken:\s*data\.session\.access_token/);
+  assert.match(linkRoute, /hasTrustedMutationOrigin/);
+  assert.match(linkRoute, /sec-fetch-site/);
+  assert.match(linkRoute, /INVALID_REQUEST_ORIGIN/);
   assert.match(linkRoute, /createAdminClient/);
   assert.match(linkRoute, /supabase\.auth\.getUser\(\)/);
   assert.match(linkRoute, /adminSupabase\.auth\.getUser\(/);
