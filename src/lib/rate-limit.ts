@@ -6,6 +6,12 @@ type RateLimitOptions = {
   keyPrefix: string;
   limit?: number;
   windowMs?: number;
+  /**
+   * Optional trusted server-side identity used instead of the client IP.
+   * The value is always HMACed before storage, so raw user/account identifiers
+   * are never persisted in the distributed rate-limit table.
+   */
+  identity?: string;
 };
 
 type DistributedRateLimitResult = {
@@ -86,7 +92,8 @@ export async function checkRateLimit(request: Request, options: RateLimitOptions
   const windowSeconds = Math.max(1, Math.ceil(windowMs / 1000));
 
   try {
-    const identity = getClientIp(request);
+    const explicitIdentity = options.identity?.trim();
+    const identity = explicitIdentity || getClientIp(request);
     const keyHash = createHmac("sha256", getHashSecret())
       .update(`${options.keyPrefix}:${identity}`)
       .digest("hex");

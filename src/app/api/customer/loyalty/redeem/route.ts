@@ -6,6 +6,36 @@ import { createAdminClient } from "@/lib/supabase/server";
 const IDEMPOTENCY_KEY_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+function firstForwardedValue(value: string | null) {
+  return value?.split(",")[0]?.trim() || "";
+}
+
+function hasTrustedMutationOrigin(request: Request) {
+  const origin = request.headers.get("origin")?.trim();
+  if (!origin) return false;
+
+  let originUrl: URL;
+  try {
+    originUrl = new URL(origin);
+  } catch {
+    return false;
+  }
+
+  // Reverse proxies can rewrite request.url internally. Host/X-Forwarded-Host represent
+  // the browser-facing target and cannot be set by normal browser JavaScript.
+  const forwardedHost = firstForwardedValue(request.headers.get("x-forwarded-host"));
+  const requestHost = forwardedHost || request.headers.get("host")?.trim() || "";
+  if (!requestHost || originUrl.host.toLowerCase() !== requestHost.toLowerCase()) return false;
+
+  const forwardedProto = firstForwardedValue(request.headers.get("x-forwarded-proto")).toLowerCase();
+  if (forwardedProto && originUrl.protocol.replace(":", "").toLowerCase() !== forwardedProto) {
+    return false;
+  }
+
+  const fetchSite = request.headers.get("sec-fetch-site")?.trim().toLowerCase();
+  return !fetchSite || fetchSite === "same-origin";
+}
+
 function redemptionError(message = "") {
   const normalized = message.toLowerCase();
   if (normalized.includes("insufficient loyalty points")) {
@@ -35,6 +65,13 @@ function redemptionError(message = "") {
 }
 
 export async function POST(request: Request) {
+  if (!hasTrustedMutationOrigin(request)) {
+    return NextResponse.json(
+      { code: "INVALID_REQUEST_ORIGIN", error: "Não foi possível validar a origem desta tentativa de resgate." },
+      { status: 403, headers: { "Cache-Control": "no-store" } },
+    );
+  }
+
   const rateLimitResponse = await checkRateLimit(request, {
     keyPrefix: "customer:loyalty:redeem",
     limit: 10,
@@ -67,6 +104,14 @@ export async function POST(request: Request) {
       { status: 401 },
     );
   }
+
+  const identityRateLimitResponse = await checkRateLimit(request, {
+    keyPrefix: "customer:loyalty:redeem:verified-user",
+    identity: context.authUserId,
+    limit: 8,
+    windowMs: 60_000,
+  });
+  if (identityRateLimitResponse) return identityRateLimitResponse;
 
   const { data: rewardScope, error: rewardScopeError } = await adminSupabase
     .from("loyalty_rewards")
@@ -130,5 +175,7 @@ export async function POST(request: Request) {
       balanceAfter: Number(result.balance_after || 0),
       expiresAt: result.expires_at || null,
     },
+  }, {
+    headers: { "Cache-Control": "no-store" },
   });
 }
