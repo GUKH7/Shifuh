@@ -147,9 +147,11 @@ export const AdminSelect = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HT
   },
 );
 
-type AdminButtonVariant = "brand" | "secondary" | "filter" | "ghost" | "danger";
+type AdminButtonVariant = "primary" | "brand" | "secondary" | "filter" | "ghost" | "danger";
 
 const BUTTON_VARIANTS: Record<AdminButtonVariant, string> = {
+  primary:
+    "border border-[var(--brand)] bg-[var(--brand)] text-white shadow-sm hover:border-[#e94e17] hover:bg-[#e94e17] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-100",
   brand:
     "border border-[#ffd8ca] bg-[var(--brand-soft)] text-[var(--brand)] hover:border-[#ffc4ae] hover:bg-[#ffe8dc]",
   secondary: "border border-[var(--line)] bg-white text-gray-700 hover:bg-[#faf5ef] hover:text-gray-950",
@@ -163,14 +165,23 @@ export const AdminButton = forwardRef<
   HTMLButtonElement,
   ButtonHTMLAttributes<HTMLButtonElement> & { variant?: AdminButtonVariant }
 >(function AdminButton({ className, variant = "brand", type = "button", ...props }, ref) {
+  const legacyPrimary = className?.includes("bg-[#171311]") ?? false;
+  const normalizedClassName = legacyPrimary
+    ? className
+        ?.replace("bg-[#171311]", "")
+        .replace("hover:bg-black", "")
+        .replace("text-white", "")
+        .trim()
+    : className;
+
   return (
     <button
       ref={ref}
       type={type}
       className={cx(
         "admin-button inline-flex min-h-11 items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-        BUTTON_VARIANTS[variant],
-        className,
+        BUTTON_VARIANTS[legacyPrimary ? "primary" : variant],
+        normalizedClassName,
       )}
       {...props}
     />
