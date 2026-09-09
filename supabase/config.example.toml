@@ -1,0 +1,16 @@
+# Copie este arquivo para supabase/config.toml para desenvolvimento local.
+# O arquivo real fica ignorado pelo Git para que numeros e codigos OTP de teste nunca sejam versionados.
+project_id = "shifuh"
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://127.0.0.1:3000", "http://localhost:3000"]
+
+[auth.sms]
+enable_signup = true
+enable_confirmations = true
+
+# No arquivo local supabase/config.toml, adicione uma tabela [auth.sms.test_otp]
+# com um numero de teste em formato internacional (somente digitos) e um codigo de 6 digitos.
+# Nao versione esse mapeamento.
