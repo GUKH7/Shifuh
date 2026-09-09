@@ -18,7 +18,7 @@ import {
   X,
 } from "lucide-react";
 import { useToast } from "@/components/ui/toast-provider";
-import { AdminPageHeader, AdminPageShell } from "@/components/ui/admin-primitives";
+import { AdminPageHeader, AdminPageShell, AdminSelect } from "@/components/ui/admin-primitives";
 
 type PlatformRole = "owner" | "admin" | "support" | "viewer";
 type PlatformPermission =
@@ -504,9 +504,9 @@ export default function PlatformPage() {
               <div className="flex items-center gap-3"><UserPlus className="text-[var(--brand)]" size={20} /><div><h2 className="font-black text-gray-950">Adicionar operador</h2><p className="text-sm text-gray-500">O usuário precisa já possuir uma conta autenticada no Shifuh.</p></div></div>
               <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_180px_auto]">
                 <input type="email" className="admin-control" value={newMemberEmail} onChange={(event) => setNewMemberEmail(event.target.value)} placeholder="email@exemplo.com" />
-                <select className="admin-control admin-select" value={newMemberRole} onChange={(event) => setNewMemberRole(event.target.value as PlatformRole)}>
+                <AdminSelect value={newMemberRole} onChange={(event) => setNewMemberRole(event.target.value as PlatformRole)}>
                   {Object.entries(ROLE_LABELS).map(([role, label]) => <option key={role} value={role}>{label}</option>)}
-                </select>
+                </AdminSelect>
                 <button disabled={addingMember || !newMemberEmail.trim()} onClick={() => void addMember()} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[var(--brand)] px-5 text-sm font-bold text-white disabled:opacity-50">{addingMember ? <Loader2 size={16} className="animate-spin" /> : <UserPlus size={16} />} Adicionar</button>
               </div>
             </div>
@@ -520,9 +520,9 @@ export default function PlatformPage() {
                   <p className="mt-1 text-xs text-gray-400">Desde {formatDate(member.created_at)}</p>
                 </div>
                 {can("members.manage") ? (
-                  <select disabled={busyId === member.user_id} className="admin-control admin-select" value={member.role} onChange={(event) => void updateMember(member, { role: event.target.value as PlatformRole })}>
+                  <AdminSelect disabled={busyId === member.user_id} value={member.role} onChange={(event) => void updateMember(member, { role: event.target.value as PlatformRole })}>
                     {Object.entries(ROLE_LABELS).map(([role, label]) => <option key={role} value={role}>{label}</option>)}
-                  </select>
+                  </AdminSelect>
                 ) : <span className="text-sm font-bold text-gray-600">{ROLE_LABELS[member.role]}</span>}
                 {can("members.manage") && (
                   <button disabled={busyId === member.user_id} onClick={() => void updateMember(member, { is_active: !member.is_active })} className={`rounded-xl border px-4 py-2.5 text-sm font-bold disabled:opacity-50 ${member.is_active ? "border-red-200 text-red-600" : "border-emerald-200 text-emerald-700"}`}>
