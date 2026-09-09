@@ -15,10 +15,9 @@ test("AdminButton possui CTA primário sólido com a cor da marca", () => {
   assert.match(primitives, /focus-visible:ring-orange-100/);
 });
 
-test("CTA legado de criar cupom é normalizado para o variant primário", () => {
+test("Criar cupom usa o CTA primário sem classes legadas pretas", () => {
+  assert.match(coupons, /<AdminButton type="submit" variant="primary" disabled=\{creating\}>/);
   assert.match(coupons, /Criar cupom/);
-  assert.match(coupons, /bg-\[#171311\]/);
-  assert.match(primitives, /className\?\.includes\("bg-\[#171311\]"\)/);
-  assert.match(primitives, /BUTTON_VARIANTS\[legacyPrimary \? "primary" : variant\]/);
-  assert.match(primitives, /\.replace\("bg-\[#171311\]", ""\)/);
+  assert.doesNotMatch(coupons, /bg-\[#171311\]/);
+  assert.doesNotMatch(coupons, /hover:bg-black/);
 });
