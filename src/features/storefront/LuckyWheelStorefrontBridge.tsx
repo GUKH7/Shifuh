@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, Gift, Loader2, Sparkles, Trophy, X } from "lucide-react";
-import { useParams, useRouter } from "next/navigation";
+import { ArrowRight, Gift, Loader2, LogIn, Phone, Sparkles, Trophy, X } from "lucide-react";
+import { useParams, usePathname, useRouter } from "next/navigation";
 
 type WheelSpin = {
   id: string;
@@ -30,6 +30,12 @@ type WheelResult = {
   rewardExpiresAt: string | null;
 };
 
+type WheelIdentityIssue =
+  | "unauthenticated"
+  | "phone_unverified"
+  | "phone_account_missing"
+  | "phone_mismatch";
+
 const SEGMENT_COLORS = ["#ff6e1f", "#111827", "#fff1e8", "#f59e0b", "#f3f4f6", "#fb923c"];
 
 function wheelBackground(segments: WheelSegment[]) {
@@ -46,8 +52,16 @@ function shortLabel(label: string) {
   return label.length > 18 ? `${label.slice(0, 16)}…` : label;
 }
 
+function isIdentityIssue(value: unknown): value is WheelIdentityIssue {
+  return value === "unauthenticated"
+    || value === "phone_unverified"
+    || value === "phone_account_missing"
+    || value === "phone_mismatch";
+}
+
 export default function LuckyWheelStorefrontBridge() {
   const params = useParams<{ slug: string | string[] }>();
+  const pathname = usePathname();
   const router = useRouter();
   const slug = Array.isArray(params.slug) ? params.slug[0] : params.slug;
   const [spin, setSpin] = useState<WheelSpin | null>(null);
@@ -58,6 +72,8 @@ export default function LuckyWheelStorefrontBridge() {
   const [rotation, setRotation] = useState(0);
   const [result, setResult] = useState<WheelResult | null>(null);
   const [error, setError] = useState("");
+  const [identityIssue, setIdentityIssue] = useState<WheelIdentityIssue | null>(null);
+  const [identityNoticeDismissed, setIdentityNoticeDismissed] = useState(false);
   const checkedOrdersRef = useRef(new Set<string>());
 
   const refreshState = useCallback(async () => {
@@ -71,6 +87,10 @@ export default function LuckyWheelStorefrontBridge() {
       if (!response.ok) return;
       setSpin(payload.spin || null);
       setSegments(Array.isArray(payload.segments) ? payload.segments : []);
+      if (payload.spin) {
+        setIdentityIssue(null);
+        setIdentityNoticeDismissed(false);
+      }
       if (payload.primaryColor) setPrimaryColor(payload.primaryColor);
     } catch {
       // Promotions never block the storefront.
@@ -96,7 +116,17 @@ export default function LuckyWheelStorefrontBridge() {
       if (payload.spin) {
         setSpin(payload.spin);
         setSegments(Array.isArray(payload.segments) ? payload.segments : []);
+        setIdentityIssue(null);
+        setIdentityNoticeDismissed(false);
         if (payload.primaryColor) setPrimaryColor(payload.primaryColor);
+        return;
+      }
+
+      if (isIdentityIssue(payload.identityStatus)) {
+        setIdentityIssue(payload.identityStatus);
+        setIdentityNoticeDismissed(false);
+      } else {
+        setIdentityIssue(null);
       }
     } catch {
       checkedOrdersRef.current.delete(orderId);
@@ -170,10 +200,63 @@ export default function LuckyWheelStorefrontBridge() {
     refreshState();
   };
 
-  if (!spin && !open) return null;
+  const handleIdentityAction = () => {
+    if (identityIssue === "unauthenticated") {
+      router.push(`/auth?returnUrl=${encodeURIComponent(pathname)}`);
+      return;
+    }
+    router.push("/minha-conta");
+  };
+
+  const showIdentityNotice = Boolean(identityIssue && !identityNoticeDismissed && !spin && !open);
+  if (!spin && !open && !showIdentityNotice) return null;
+
+  const needsLogin = identityIssue === "unauthenticated";
 
   return (
     <>
+      {showIdentityNotice && identityIssue && (
+        <aside
+          role="status"
+          aria-live="polite"
+          aria-label="Ação necessária para participar da Roleta"
+          className="fixed bottom-24 left-1/2 z-[58] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 rounded-2xl border border-gray-200 bg-white p-4 shadow-[0_18px_50px_rgba(17,24,39,0.14)] sm:bottom-6"
+        >
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-600">
+              {needsLogin ? <LogIn size={19} /> : <Phone size={19} />}
+            </span>
+            <div className="min-w-0 flex-1 pr-7">
+              <strong className="block text-sm font-black text-gray-950">
+                {needsLogin
+                  ? "Entre para validar sua chance na Roleta"
+                  : "Confirme seu telefone para validar a Roleta"}
+              </strong>
+              <p className="mt-1 text-xs font-medium leading-5 text-gray-500">
+                {needsLogin
+                  ? "A Roleta usa sua conta para confirmar com segurança se o pedido liberou um giro."
+                  : "Promoções exigem uma conta com telefone confirmado e corretamente vinculado."}
+              </p>
+              <button
+                type="button"
+                onClick={handleIdentityAction}
+                className="mt-2 inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-black text-orange-600 transition hover:bg-orange-50"
+              >
+                {needsLogin ? "Entrar" : "Abrir minha conta"} <ArrowRight size={14} />
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIdentityNoticeDismissed(true)}
+              className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+              aria-label="Dispensar aviso da Roleta"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </aside>
+      )}
+
       {spin && !open && (
         <button
           type="button"
