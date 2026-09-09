@@ -347,7 +347,7 @@ export default function CouponsWorkspace() {
               className="pl-11"
             />
           </label>
-          <AdminButton type="submit" disabled={creating} className="bg-[#171311] text-white hover:bg-black">
+          <AdminButton type="submit" variant="primary" disabled={creating}>
             {creating ? <Loader2 className="animate-spin" size={16} /> : <Plus size={16} />}
             Criar cupom
           </AdminButton>
