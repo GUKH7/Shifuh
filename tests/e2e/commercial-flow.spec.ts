@@ -90,7 +90,7 @@ test.describe("fluxo comercial completo", () => {
     await page.waitForURL((url) => url.pathname === "/admin", { timeout: 20_000 });
 
     await page.goto("/admin/promotions/loyalty");
-    await expect(page.getByRole("heading", { name: "Programa de fidelidade" })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole("heading", { name: "Programa de fidelidade", exact: true })).toBeVisible({ timeout: 20_000 });
     await page.getByLabel("Status").first().selectOption("active");
     await page.getByLabel("Forma de acúmulo").selectOption("spend");
     await page.getByLabel("A cada valor gasto").fill("1,00");
