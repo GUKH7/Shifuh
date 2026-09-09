@@ -1,21 +1,18 @@
 import { NextResponse } from "next/server";
 
+const SUPABASE_URL = "https://inpnszjwuwefitljrzrd.supabase.co";
+
 export async function GET() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseKey) {
-    return NextResponse.json({ error: "Supabase environment unavailable." }, { status: 503 });
-  }
-
   try {
-    const response = await fetch(`${supabaseUrl}/auth/v1/settings`, {
-      headers: { apikey: supabaseKey },
+    const response = await fetch(`${SUPABASE_URL}/auth/v1/settings`, {
       cache: "no-store",
     });
 
     if (!response.ok) {
-      return NextResponse.json({ error: "Auth settings unavailable." }, { status: 503 });
+      return NextResponse.json(
+        { error: "Auth settings unavailable.", status: response.status },
+        { status: 503 },
+      );
     }
 
     const settings = await response.json();
