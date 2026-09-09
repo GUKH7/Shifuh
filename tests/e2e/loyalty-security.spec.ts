@@ -92,7 +92,7 @@ test.describe("segurança final da fidelidade", () => {
       restaurant_id: FOREIGN_RESTAURANT_ID,
       name: "Fidelidade Estrangeira E2E",
       status: "active",
-      earn_mode: "order",
+      earning_mode: "order",
       points_per_order: 1,
       created_by: ownerUser!.id,
     });
