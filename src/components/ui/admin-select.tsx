@@ -236,7 +236,7 @@ export const AdminCustomSelect = forwardRef<
             setOpen(false);
           }
         }}
-        className={`admin-control admin-select flex w-full min-w-0 items-center justify-between gap-3 text-left ${className || ""}`}
+        className={`admin-control flex w-full min-w-0 items-center justify-between gap-3 text-left ${className || ""}`}
         style={style}
       >
         <span className="min-w-0 flex-1 truncate">{selectedOption?.label || "Selecionar"}</span>
