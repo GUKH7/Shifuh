@@ -165,23 +165,14 @@ export const AdminButton = forwardRef<
   HTMLButtonElement,
   ButtonHTMLAttributes<HTMLButtonElement> & { variant?: AdminButtonVariant }
 >(function AdminButton({ className, variant = "brand", type = "button", ...props }, ref) {
-  const legacyPrimary = className?.includes("bg-[#171311]") ?? false;
-  const normalizedClassName = legacyPrimary
-    ? className
-        ?.replace("bg-[#171311]", "")
-        .replace("hover:bg-black", "")
-        .replace("text-white", "")
-        .trim()
-    : className;
-
   return (
     <button
       ref={ref}
       type={type}
       className={cx(
         "admin-button inline-flex min-h-11 items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-        BUTTON_VARIANTS[legacyPrimary ? "primary" : variant],
-        normalizedClassName,
+        BUTTON_VARIANTS[variant],
+        className,
       )}
       {...props}
     />
