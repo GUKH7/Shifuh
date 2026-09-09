@@ -14,6 +14,34 @@ type AuthUser = {
   phone_confirmed_at?: string | null;
 };
 
+function firstForwardedValue(value: string | null) {
+  return value?.split(",")[0]?.trim() || "";
+}
+
+function hasTrustedMutationOrigin(request: Request) {
+  const origin = request.headers.get("origin")?.trim();
+  if (!origin) return false;
+
+  let originUrl: URL;
+  try {
+    originUrl = new URL(origin);
+  } catch {
+    return false;
+  }
+
+  const forwardedHost = firstForwardedValue(request.headers.get("x-forwarded-host"));
+  const requestHost = forwardedHost || request.headers.get("host")?.trim() || "";
+  if (!requestHost || originUrl.host.toLowerCase() !== requestHost.toLowerCase()) return false;
+
+  const forwardedProto = firstForwardedValue(request.headers.get("x-forwarded-proto")).toLowerCase();
+  if (forwardedProto && originUrl.protocol.replace(":", "").toLowerCase() !== forwardedProto) {
+    return false;
+  }
+
+  const fetchSite = request.headers.get("sec-fetch-site")?.trim().toLowerCase();
+  return !fetchSite || fetchSite === "same-origin";
+}
+
 function jsonError(code: string, error: string, status: number) {
   return NextResponse.json({ code, error }, { status });
 }
@@ -81,6 +109,14 @@ async function upsertPhoneAccount(adminSupabase: any, userId: string, phone: str
 }
 
 export async function POST(request: Request) {
+  if (!hasTrustedMutationOrigin(request)) {
+    return jsonError(
+      "INVALID_REQUEST_ORIGIN",
+      "Não foi possível validar a origem desta confirmação de telefone.",
+      403,
+    );
+  }
+
   const rateLimitResponse = await checkRateLimit(request, {
     keyPrefix: "customer:phone:link",
     limit: 8,
