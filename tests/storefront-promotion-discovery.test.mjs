@@ -14,7 +14,10 @@ const bridge = fs.readFileSync(
   "src/features/storefront/StorefrontPromotionDiscoveryBridge.tsx",
   "utf8",
 );
-const storefrontPage = fs.readFileSync("src/app/[slug]/page.tsx", "utf8");
+const storefrontBridges = fs.readFileSync(
+  "src/features/storefront/StorefrontBridges.tsx",
+  "utf8",
+);
 const serviceRoleAudit = fs.readFileSync("scripts/audit-service-role.mjs", "utf8");
 
 test("public promotion summary is rate-limited, tenant-scoped and exposes only active mechanics", () => {
@@ -63,7 +66,7 @@ test("wheel copy covers every real unlock rule and keeps guards separate", () =>
 });
 
 test("storefront renders active loyalty and wheel in one compact area before category navigation", () => {
-  assert.match(storefrontPage, /StorefrontPromotionDiscoveryBridge/);
+  assert.match(storefrontBridges, /StorefrontPromotionDiscoveryBridge/);
   assert.match(bridge, /\[data-catalog-nav\]/);
   assert.match(bridge, /insertBefore\(target, catalogNavigation\)/);
   assert.match(bridge, /aria-label="Promoções da loja"/);
