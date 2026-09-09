@@ -1,5 +1,6 @@
 import { forwardRef, type ButtonHTMLAttributes, type HTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
 import { ArrowUpDown, ChevronDown, ChevronUp } from "lucide-react";
+import { AdminCustomSelect } from "@/components/ui/admin-select";
 import { AdminDashboardPeriodSelect } from "@/components/ui/admin-dashboard-period-select";
 
 function cx(...classes: Array<string | false | null | undefined>) {
@@ -114,7 +115,7 @@ export const AdminInput = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLI
 );
 
 export const AdminSelect = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSelectElement>>(
-  function AdminSelect({ className, id, children, ...props }, ref) {
+  function AdminSelect({ className, id, children, multiple, size, ...props }, ref) {
     if (id === "dashboard-period") {
       return (
         <AdminDashboardPeriodSelect ref={ref} id={id} className={className} {...props}>
@@ -123,10 +124,25 @@ export const AdminSelect = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HT
       );
     }
 
+    if (multiple || (typeof size === "number" && size > 1)) {
+      return (
+        <select
+          ref={ref}
+          id={id}
+          multiple={multiple}
+          size={size}
+          className={cx("admin-control admin-select", className)}
+          {...props}
+        >
+          {children}
+        </select>
+      );
+    }
+
     return (
-      <select ref={ref} id={id} className={cx("admin-control admin-select", className)} {...props}>
+      <AdminCustomSelect ref={ref} id={id} className={className} {...props}>
         {children}
-      </select>
+      </AdminCustomSelect>
     );
   },
 );
