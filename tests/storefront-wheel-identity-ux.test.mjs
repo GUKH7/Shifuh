@@ -35,6 +35,7 @@ test("storefront guides login or phone confirmation and preserves the storefront
   assert.match(bridgeSource, /Entre para validar sua chance na Roleta/);
   assert.match(bridgeSource, /Confirme seu telefone para validar a Roleta/);
   assert.match(bridgeSource, /\/auth\?returnUrl=\$\{encodeURIComponent\(pathname\)\}/);
-  assert.match(bridgeSource, /router\.push\("\/minha-conta"\)/);
+  assert.match(bridgeSource, /\/auth\/phone\?returnUrl=\$\{encodeURIComponent\(pathname\)\}/);
+  assert.match(bridgeSource, /Confirmar telefone/);
   assert.match(bridgeSource, /Dispensar aviso da Roleta/);
 });
