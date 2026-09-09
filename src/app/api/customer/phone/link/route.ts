@@ -145,14 +145,6 @@ export async function POST(request: Request) {
   }
 
   const mappedUserId = phoneAccount?.auth_user_id || null;
-  if (mappedUserId && mappedUserId !== currentUser.id && mappedUserId !== proofUser.id) {
-    return jsonError(
-      "PHONE_ALREADY_LINKED",
-      "Este telefone já está associado a outra conta. Entre nessa conta para continuar.",
-      409,
-    );
-  }
-
   let recoveredName = "";
   const sourceUserIds = [...new Set([proofUser.id, mappedUserId].filter(
     (userId): userId is string => Boolean(userId && userId !== currentUser.id),
@@ -162,12 +154,23 @@ export async function POST(request: Request) {
     for (const sourceUserId of sourceUserIds) {
       const { data: sourceAuthResult, error: sourceAuthError } = await adminSupabase.auth.admin.getUserById(sourceUserId);
       const sourceAuthUser = sourceAuthResult?.user as AuthUser | undefined;
-      if (sourceAuthError || !sourceAuthUser) continue;
+      if (sourceAuthError || !sourceAuthUser) {
+        throw sourceAuthError || new Error("Disposable customer identity not found.");
+      }
 
       if (sourceAuthUser.email || await hasPrivilegedOwnership(adminSupabase, sourceUserId)) {
         return jsonError(
           "PHONE_ALREADY_LINKED",
           "Este telefone já está associado a outra conta. Entre nessa conta para continuar.",
+          409,
+        );
+      }
+
+      const sourcePhone = normalizeCustomerPhone(sourceAuthUser.phone || "");
+      if (sourcePhone !== normalizedPhone) {
+        return jsonError(
+          "PHONE_ALREADY_LINKED",
+          "Este telefone está vinculado a outro cadastro e não pode ser migrado automaticamente.",
           409,
         );
       }
