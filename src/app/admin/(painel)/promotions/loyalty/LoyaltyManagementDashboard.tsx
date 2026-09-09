@@ -19,7 +19,7 @@ import {
   Users,
   WalletCards,
 } from "lucide-react";
-import { AdminPageShell } from "@/components/ui/admin-primitives";
+import { AdminPageShell, AdminSelect } from "@/components/ui/admin-primitives";
 import { AdminErrorState, AdminPageSkeleton } from "@/components/ui/admin-page-states";
 import { getCurrentRestaurant } from "@/lib/supabase/restaurant";
 
@@ -298,15 +298,16 @@ export default function LoyaltyManagementDashboard() {
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
             <label className="min-w-40">
               <span className="sr-only">Período das métricas</span>
-              <select
+              <AdminSelect
+                aria-label="Período das métricas"
                 value={periodDays}
                 onChange={(event) => setPeriodDays(Number(event.target.value))}
-                className="min-h-11 w-full rounded-2xl border border-[var(--line)] bg-white px-4 text-sm font-bold text-gray-700 outline-none transition focus:border-[var(--brand)] focus:ring-2 focus:ring-orange-100"
+                className="font-bold"
               >
                 {PERIOD_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>{option.label}</option>
                 ))}
-              </select>
+              </AdminSelect>
             </label>
             <button
               type="button"
