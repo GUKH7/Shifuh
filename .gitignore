@@ -36,8 +36,9 @@ ops/oracle/alerts.env
 # vercel
 .vercel
 
-# supabase local metadata
+# supabase local metadata and local-only auth config
 supabase/.temp/
+supabase/config.toml
 
 # typescript
 *.tsbuildinfo
