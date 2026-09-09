@@ -41,6 +41,13 @@ test("select nativo fica oculto para manter forms, name e ref sem abrir lista do
   assert.match(customSelect, /assignRef\(forwardedRef, node\)/);
 });
 
+test("mudanças programáticas no select oculto continuam atualizando o formulário", () => {
+  assert.match(customSelect, /const handleNativeChange = \(event: ChangeEvent<HTMLSelectElement>\)/);
+  assert.match(customSelect, /if \(!controlled\) setInternalValue\(nextValue\)/);
+  assert.match(customSelect, /onChange\?\.\(event\)/);
+  assert.match(customSelect, /onChange=\{handleNativeChange\}/);
+});
+
 test("dropdown suporta mouse, fechamento externo e navegação por teclado", () => {
   assert.match(customSelect, /document\.addEventListener\("pointerdown"/);
   assert.match(customSelect, /event\.key === "ArrowDown"/);
