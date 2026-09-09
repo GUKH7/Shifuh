@@ -34,7 +34,7 @@ test("resgate exige same-origin, idempotência e limites por IP e por usuário v
   assert.match(redeemRoute, /customer:loyalty:redeem/);
   assert.match(redeemRoute, /customer:loyalty:redeem:verified-user/);
   assert.match(redeemRoute, /identity: context\.authUserId/);
-  assert.match(redeemRoute, /limit: 6/);
+  assert.match(redeemRoute, /limit: 8/);
   assert.match(rateLimit, /identity\?: string/);
   assert.match(rateLimit, /explicitIdentity \|\| getClientIp\(request\)/);
   assert.match(rateLimit, /createHmac\("sha256"/);
@@ -75,10 +75,12 @@ test("RPCs capazes de descobrir cliente ou debitar pontos continuam exclusivos d
   );
 });
 
-test("E2E comercial passa a provar antifraude real da fidelidade", () => {
+test("E2E comercial passa a provar antifraude real e isolamento por tenant da fidelidade", () => {
   assert.match(packageJson, /tests\/e2e\/loyalty-security\.spec\.ts/);
   assert.match(e2eSecurity, /LOYALTY_SESSION_REQUIRED/);
   assert.match(e2eSecurity, /INVALID_REQUEST_ORIGIN/);
+  assert.match(e2eSecurity, /LOYALTY_CUSTOMER_MISMATCH/);
+  assert.match(e2eSecurity, /FOREIGN_RESTAURANT_ID/);
   assert.match(e2eSecurity, /directRpc\.error/);
   assert.match(e2eSecurity, /directLedgerMutation\.error/);
   assert.match(e2eSecurity, /concurrentAttempts/);
