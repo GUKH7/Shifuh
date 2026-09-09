@@ -159,6 +159,12 @@ export const AdminCustomSelect = forwardRef<
     setActiveIndex(enabledIndexes[normalizedPosition]);
   };
 
+  const handleNativeChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    const nextValue = event.target.value;
+    if (!controlled) setInternalValue(nextValue);
+    onChange?.(event);
+  };
+
   const selectOption = (nextValue: string) => {
     const option = options.find((item) => item.value === nextValue);
     if (!option || option.disabled) return;
@@ -183,7 +189,7 @@ export const AdminCustomSelect = forwardRef<
         }}
         name={name}
         value={selectedValue}
-        onChange={() => undefined}
+        onChange={handleNativeChange}
         disabled={disabled}
         required={required}
         form={form}
