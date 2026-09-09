@@ -40,5 +40,9 @@ test("membro autenticado consegue editar produto sem falhar no guard de recompen
 
   await expect(page.getByRole("heading", { name: "Editar produto" })).toBeHidden({ timeout: 20_000 });
   expect(unexpectedDialog).toBe("");
-  await expect(page.getByText(description, { exact: true })).toBeVisible({ timeout: 20_000 });
+
+  const productRow = page
+    .getByRole("button", { name: "Editar produto Prato E2E CI" })
+    .locator("xpath=ancestor::div[contains(@class,'menu-product-row')]");
+  await expect(productRow.getByText(description, { exact: true })).toBeVisible({ timeout: 20_000 });
 });
