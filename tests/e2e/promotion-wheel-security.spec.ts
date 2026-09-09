@@ -44,6 +44,33 @@ async function postJson(page: any, path: string, body: Record<string, unknown>) 
 test.describe("segurança e antifraude da Roleta da Sorte", () => {
   test.describe.configure({ mode: "serial" });
 
+  test("orienta visitante após o pedido sem exibir um giro inexistente", async ({ page }) => {
+    await page.addInitScript(
+      ({ key, orderId }) => {
+        window.localStorage.setItem(key, JSON.stringify({ orderId }));
+      },
+      {
+        key: "gestor-delivery:last-order:loja-e2e",
+        orderId: DESKTOP_ORDER_ID,
+      },
+    );
+
+    await page.goto("/loja-e2e");
+    await expect(page.getByRole("heading", { name: "Loja E2E CI", level: 1 })).toBeVisible();
+
+    const identityNotice = page.getByRole("status", {
+      name: "Ação necessária para participar da Roleta",
+    });
+    await expect(identityNotice).toBeVisible({ timeout: 15_000 });
+    await expect(identityNotice.getByText("Entre para validar sua chance na Roleta")).toBeVisible();
+    await expect(page.getByRole("button", { name: /Você ganhou um giro!/ })).toHaveCount(0);
+
+    await identityNotice.getByRole("button", { name: "Entrar" }).click();
+    await expect(page).toHaveURL((url) =>
+      url.pathname === "/auth" && url.searchParams.get("returnUrl") === "/loja-e2e",
+    );
+  });
+
   test("isola tenants e resolve o giro real pelo servidor", async ({ page }, testInfo) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await loginWithVerifiedPromotionIdentity(page);

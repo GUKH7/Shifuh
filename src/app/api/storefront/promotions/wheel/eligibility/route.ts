@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { createAdminClient } from "@/lib/supabase/server";
-import { resolveCustomerPromotionContext } from "@/lib/promotions/customer-context";
+import {
+  getCustomerPromotionIdentityStatus,
+  resolveCustomerPromotionContext,
+} from "@/lib/promotions/customer-context";
 
 function firstRow<T>(value: T | T[] | null | undefined): T | null {
   if (Array.isArray(value)) return value[0] || null;
@@ -25,7 +28,10 @@ export async function POST(request: Request) {
 
   const adminSupabase = createAdminClient() as any;
   const context = await resolveCustomerPromotionContext(adminSupabase);
-  if (!context) return NextResponse.json({ spin: null }, { status: 200 });
+  if (!context) {
+    const identityStatus = await getCustomerPromotionIdentityStatus(adminSupabase);
+    return NextResponse.json({ spin: null, identityStatus }, { status: 200 });
+  }
 
   const { data: restaurant } = await adminSupabase
     .from("restaurants")

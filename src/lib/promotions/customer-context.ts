@@ -8,6 +8,13 @@ export type CustomerPromotionContext = {
   name: string;
 };
 
+export type CustomerPromotionIdentityStatus =
+  | "verified"
+  | "unauthenticated"
+  | "phone_unverified"
+  | "phone_account_missing"
+  | "phone_mismatch";
+
 async function buildPromotionContext(adminSupabase: any, authUserId: string): Promise<CustomerPromotionContext | null> {
   const [{ data: account }, { data: profile }] = await Promise.all([
     adminSupabase
@@ -50,6 +57,41 @@ async function buildVerifiedPromotionContext(
   if (!verifiedPhone || verifiedPhone !== context.normalizedPhone) return null;
 
   return context;
+}
+
+/**
+ * Returns only the minimum identity state required for customer-facing guidance.
+ * It never exposes the phone number, account mapping or customer data.
+ */
+export async function getCustomerPromotionIdentityStatus(
+  adminSupabase: any,
+): Promise<CustomerPromotionIdentityStatus> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.id) return "unauthenticated";
+
+  const [{ data: account }, { data: authUserResult, error }] = await Promise.all([
+    adminSupabase
+      .from("customer_phone_accounts")
+      .select("phone")
+      .eq("auth_user_id", user.id)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    adminSupabase.auth.admin.getUserById(user.id),
+  ]);
+
+  const authUser = authUserResult?.user;
+  if (error || !authUser?.phone_confirmed_at) return "phone_unverified";
+
+  const accountPhone = normalizeCustomerPhone(account?.phone || "");
+  if (!accountPhone) return "phone_account_missing";
+
+  const verifiedPhone = normalizeCustomerPhone(authUser.phone || "");
+  if (!verifiedPhone) return "phone_unverified";
+  if (verifiedPhone !== accountPhone) return "phone_mismatch";
+
+  return "verified";
 }
 
 /**
