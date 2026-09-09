@@ -180,6 +180,16 @@ test.describe("fluxo comercial completo", () => {
       canRedeem: true,
     }));
 
+    const summaryBeforeRedemption = await browserJson(
+      page,
+      "/api/customer/benefits-summary?slug=loja-e2e",
+    );
+    expect(summaryBeforeRedemption.status).toBe(200);
+    expect(summaryBeforeRedemption.payload).toEqual({
+      pointsBalance: 19,
+      availableRewards: 0,
+    });
+
     const redemptionKey = crypto.randomUUID();
     const firstRedemption = await browserJson(page, "/api/customer/loyalty/redeem", {
       method: "POST",
@@ -219,6 +229,16 @@ test.describe("fluxo comercial completo", () => {
       pointsSpent: 10,
       balanceAfter: 9,
     }));
+
+    const summaryAfterRedemption = await browserJson(
+      page,
+      "/api/customer/benefits-summary?slug=loja-e2e",
+    );
+    expect(summaryAfterRedemption.status).toBe(200);
+    expect(summaryAfterRedemption.payload).toEqual({
+      pointsBalance: 9,
+      availableRewards: 1,
+    });
 
     const loyaltyOrderKey = crypto.randomUUID();
     const loyaltyOrderBody = {
@@ -277,6 +297,16 @@ test.describe("fluxo comercial completo", () => {
     expect(loyaltyAfterRedemption.status).toBe(200);
     expect(loyaltyAfterRedemption.payload.programs[0].account.balance).toBe(9);
     expect(loyaltyAfterRedemption.payload.programs[0].account.lifetimeRedeemed).toBe(10);
+
+    const summaryAfterCheckout = await browserJson(
+      page,
+      "/api/customer/benefits-summary?slug=loja-e2e",
+    );
+    expect(summaryAfterCheckout.status).toBe(200);
+    expect(summaryAfterCheckout.payload).toEqual({
+      pointsBalance: 9,
+      availableRewards: 0,
+    });
 
     await page.goto("/admin/promotions/loyalty");
     await expect(page.getByText(`Resgate: ${rewardName}`, { exact: true })).toHaveCount(1);
