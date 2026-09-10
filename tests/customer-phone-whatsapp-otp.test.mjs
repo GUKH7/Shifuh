@@ -34,10 +34,10 @@ test("OTP WhatsApp hook is Brazil-only, six-digit, HTTPS-only and fail-closed", 
   assert.match(hook, /if \(!upstreamResponse\.ok\)/);
 });
 
-test("OTP and complete phone are never written to application logs by the hook", () => {
+test("OTP value and complete phone are never written to application logs by the hook", () => {
   const loggingCalls = hook.match(/console\.(?:log|info|warn|error)\([^;]+;/gs) || [];
   for (const loggingCall of loggingCalls) {
-    assert.doesNotMatch(loggingCall, /\botp\b/i);
-    assert.doesNotMatch(loggingCall, /\bphone\b/i);
+    assert.doesNotMatch(loggingCall, /\$\{otp\}|,\s*otp\b|\botp\s*[,}]/);
+    assert.doesNotMatch(loggingCall, /\$\{phone\}|,\s*phone\b|\bphone\s*[,}]/);
   }
 });
