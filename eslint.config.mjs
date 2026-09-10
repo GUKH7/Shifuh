@@ -8,6 +8,7 @@ const eslintConfig = [
       ".next-e2e/**",
       "node_modules/**",
       "next-env.d.ts",
+      "supabase/functions/**",
     ],
   },
   {
