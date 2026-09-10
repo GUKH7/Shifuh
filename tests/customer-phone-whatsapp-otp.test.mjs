@@ -20,7 +20,7 @@ test("Send SMS hook verifies the signed Supabase webhook before exposing the OTP
   assert.match(hook, /new Webhook\(secret\)\.verify/);
   assert.match(hook, /SEND_SMS_HOOK_SECRET/);
   assert.match(hook, /invalid_signature/);
-  assert.match(hook, /configuredSecrets\.split\(["']\|["']\)/);
+  assert.match(hook, /configuredSecrets\s*\.split\(["']\|["']\)/);
 });
 
 test("OTP WhatsApp hook is Brazil-only, six-digit, HTTPS-only and fail-closed", () => {
