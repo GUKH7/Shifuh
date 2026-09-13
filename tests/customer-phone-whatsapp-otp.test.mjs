@@ -23,6 +23,12 @@ test("Send SMS hook verifies the signed Supabase webhook before exposing the OTP
   assert.match(hook, /configuredSecrets\s*\.split\(["']\|["']\)/);
 });
 
+test("Send SMS hook strips the complete Supabase Standard Webhooks prefix before verification", () => {
+  assert.match(hook, /STANDARD_WEBHOOK_SECRET_PREFIX\s*=\s*["']v1,whsec_["']/);
+  assert.match(hook, /trimmed\.startsWith\(STANDARD_WEBHOOK_SECRET_PREFIX\)/);
+  assert.match(hook, /trimmed\.slice\(STANDARD_WEBHOOK_SECRET_PREFIX\.length\)/);
+});
+
 test("OTP WhatsApp hook is Brazil-only, six-digit, HTTPS-only and fail-closed", () => {
   assert.match(hook, /\^\\\+55\\d\{10,11\}\$/);
   assert.match(hook, /\^\\d\{6\}\$/);
