@@ -13,6 +13,8 @@ type SendSmsHookPayload = {
 const MAX_BODY_BYTES = 16 * 1024;
 const DEFAULT_SEND_PATH = "/send-message";
 const DEFAULT_TIMEOUT_MS = 10_000;
+const STANDARD_WEBHOOK_SECRET_PREFIX = "v1,whsec_";
+const LEGACY_WEBHOOK_SECRET_PREFIX = "whsec_";
 
 function jsonResponse(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), {
@@ -28,7 +30,16 @@ function parsePositiveInteger(value: string | undefined, fallback: number) {
 
 function normalizeHookSecret(secret: string) {
   const trimmed = secret.trim();
-  return trimmed.startsWith("v1,") ? trimmed.slice(3) : trimmed;
+
+  if (trimmed.startsWith(STANDARD_WEBHOOK_SECRET_PREFIX)) {
+    return trimmed.slice(STANDARD_WEBHOOK_SECRET_PREFIX.length);
+  }
+
+  if (trimmed.startsWith(LEGACY_WEBHOOK_SECRET_PREFIX)) {
+    return trimmed.slice(LEGACY_WEBHOOK_SECRET_PREFIX.length);
+  }
+
+  return trimmed;
 }
 
 function verifyHookPayload(rawBody: string, headers: Headers, configuredSecrets: string) {
