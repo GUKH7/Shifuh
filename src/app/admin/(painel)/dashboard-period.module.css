@@ -181,6 +181,34 @@
   border-bottom: 0;
 }
 
+/* Mantém o início e a ocupação do conteúdo iguais entre os cards analíticos. */
+.page :global(.dashboard-top-products-card > div:last-child),
+.page :global(.dashboard-sources-card > div:last-child) {
+  margin-top: 0 !important;
+}
+
+.page :global(.dashboard-sources-card > p:nth-child(2)) {
+  margin-bottom: 2.1rem;
+}
+
+.page :global(.dashboard-top-products-card > .border-dashed),
+.page :global(.dashboard-sources-card > .border-dashed) {
+  flex: 1 1 auto;
+  min-height: 10rem;
+}
+
+/* O estado vazio de Pedidos recentes usa a mesma área útil e o mesmo respiro. */
+.page :global(.dashboard-secondary-grid > article:nth-child(2)) {
+  display: flex;
+  flex-direction: column;
+}
+
+.page :global(.dashboard-secondary-grid > article:nth-child(2) > .border-dashed) {
+  flex: 1 1 auto;
+  min-height: 10rem;
+  margin: 1.25rem;
+}
+
 .page :global(.dashboard-top-products-card .recharts-wrapper),
 .page :global(.dashboard-top-products-card .recharts-surface) {
   overflow: visible !important;
