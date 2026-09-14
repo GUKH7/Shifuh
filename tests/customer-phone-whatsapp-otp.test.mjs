@@ -33,8 +33,8 @@ test("restaurant routing context is authenticated, short-lived and resolved serv
   assert.match(otpRoute, /checkRateLimit/);
   assert.match(otpRoute, /supabase\.auth\.getUser\(\)/);
   assert.match(otpRoute, /sanitizeCustomerReturnUrl/);
-  assert.match(otpRoute, /\.from\(["']restaurants["']\)/);
-  assert.match(otpRoute, /\.eq\(["']slug["'],\s*storefrontSlug\)/);
+  assert.ok(otpRoute.includes('.from("restaurants")'));
+  assert.ok(otpRoute.includes('.eq("slug", storefrontSlug)'));
   assert.match(otpRoute, /customer_phone_otp_routes/);
   assert.match(otpRoute, /5 \* 60_000/);
   assert.doesNotMatch(otpRoute, /restaurantId\s*=\s*body\./);
@@ -53,7 +53,7 @@ test("OTP hook requires a live restaurant route and only calls restaurant-scoped
   assert.match(hook, /restaurant_id/);
   assert.match(hook, /consumed_at/);
   assert.match(hook, /expires_at/);
-  assert.match(hook, /\/restaurants\/\$\{encodeURIComponent\(restaurantId\)\}\/send-message/);
+  assert.ok(hook.includes('/restaurants/${encodeURIComponent(restaurantId)}/send-message'));
   assert.match(hook, /SUPABASE_SERVICE_ROLE_KEY/);
   assert.match(hook, /Authorization:\s*`Bearer \$\{whatsappApiToken\}`/);
   assert.match(hook, /parsed\.protocol !== ["']https:["']/);
