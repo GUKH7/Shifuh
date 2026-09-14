@@ -46,6 +46,21 @@ test("phone reconciliation only absorbs disposable phone identities and fails cl
   assert.match(linkRoute, /phone_confirm:\s*true/);
 });
 
+test("privileged membership checks query columns that exist on membership tables", () => {
+  assert.match(
+    linkRoute,
+    /from\(["']restaurant_members["']\)\.select\(["']user_id["'],\s*\{ count: ["']exact["'], head: true \}\)/,
+  );
+  assert.match(
+    linkRoute,
+    /from\(["']platform_members["']\)\.select\(["']user_id["'],\s*\{ count: ["']exact["'], head: true \}\)/,
+  );
+  assert.doesNotMatch(
+    linkRoute,
+    /from\(["'](?:restaurant_members|platform_members)["']\)\.select\(["']id["']/,
+  );
+});
+
 test("legacy customer data is moved to the authenticated account before the disposable user is removed", () => {
   const migrationIndex = linkRoute.indexOf("migrateDisposableCustomerIdentity");
   const deleteIndex = linkRoute.indexOf("deleteUser(sourceUserId)");
