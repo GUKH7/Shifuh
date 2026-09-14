@@ -45,7 +45,11 @@ function getStorefrontSlug(returnUrl: string) {
   const firstSegment = pathname.split("/").filter(Boolean)[0]?.trim() || "";
   if (!firstSegment || firstSegment.length > 120) return null;
 
-  return decodeURIComponent(firstSegment);
+  try {
+    return decodeURIComponent(firstSegment);
+  } catch {
+    return null;
+  }
 }
 
 function jsonError(code: string, error: string, status: number) {
