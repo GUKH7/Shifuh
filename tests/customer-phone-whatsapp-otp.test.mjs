@@ -6,6 +6,7 @@ const phonePage = fs.readFileSync("src/app/auth/phone/page.tsx", "utf8");
 const hook = fs.readFileSync("supabase/functions/send-phone-otp-whatsapp/index.ts", "utf8");
 const otpRoute = fs.readFileSync("src/app/api/customer/phone/otp-route/route.ts", "utf8");
 const linkRoute = fs.readFileSync("src/app/api/customer/phone/link/route.ts", "utf8");
+const orderStatusRoute = fs.readFileSync("src/app/api/orders/[id]/status/route.ts", "utf8");
 const oracleApi = fs.readFileSync("ops/oracle/whatsapp-api/index.js", "utf8");
 
 test("WhatsApp delivery remains a transport layer while Supabase owns OTP verification", () => {
@@ -38,6 +39,11 @@ test("restaurant routing context is authenticated, short-lived and resolved serv
   assert.match(otpRoute, /customer_phone_otp_routes/);
   assert.match(otpRoute, /5 \* 60_000/);
   assert.doesNotMatch(otpRoute, /restaurantId\s*=\s*body\./);
+});
+
+test("restaurant routing rejects malformed encoded storefront paths without throwing", () => {
+  assert.match(otpRoute, /try\s*{\s*return decodeURIComponent\(firstSegment\);/s);
+  assert.match(otpRoute, /catch\s*{\s*return null;\s*}/s);
 });
 
 test("Send SMS hook verifies the signed Supabase webhook before exposing the OTP to transport", () => {
@@ -73,6 +79,12 @@ test("OTP value and complete phone are never written to application logs by the 
     assert.doesNotMatch(loggingCall, /\$\{otp\}|,\s*otp\b|\botp\s*[,}]/);
     assert.doesNotMatch(loggingCall, /\$\{phone\}|,\s*phone\b|\bphone\s*[,}]/);
   }
+});
+
+test("order status notifications are sent through the order restaurant WhatsApp session", () => {
+  assert.match(orderStatusRoute, /sendWhatsappMessage\s*\(\s*{/);
+  assert.match(orderStatusRoute, /restaurantId:\s*restaurant\.id/);
+  assert.match(orderStatusRoute, /\.eq\(["']id["'],\s*order\.restaurant_id\)/);
 });
 
 test("Oracle exposes isolated WhatsApp lifecycle and send routes per restaurant", () => {
