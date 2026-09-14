@@ -10,14 +10,35 @@ type SendSmsHookPayload = {
   };
 };
 
+type WhatsappStatusPayload = {
+  status?: string;
+};
+
+type WhatsappPreflightResult =
+  | { ready: true }
+  | { ready: false; message: string };
+
 const MAX_BODY_BYTES = 16 * 1024;
 const DEFAULT_SEND_PATH = "/send-message";
+const DEFAULT_STATUS_PATH = "/status";
 const DEFAULT_TIMEOUT_MS = 10_000;
+const PREFLIGHT_TIMEOUT_MS = 2_000;
+const STANDARD_WEBHOOK_SECRET_PREFIX = "v1,whsec_";
+const LEGACY_WEBHOOK_SECRET_PREFIX = "whsec_";
 
 function jsonResponse(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), {
     status,
     headers: { "Content-Type": "application/json" },
+  });
+}
+
+function hookErrorResponse(status: number, message: string) {
+  return jsonResponse(status, {
+    error: {
+      http_code: status,
+      message,
+    },
   });
 }
 
@@ -28,7 +49,16 @@ function parsePositiveInteger(value: string | undefined, fallback: number) {
 
 function normalizeHookSecret(secret: string) {
   const trimmed = secret.trim();
-  return trimmed.startsWith("v1,") ? trimmed.slice(3) : trimmed;
+
+  if (trimmed.startsWith(STANDARD_WEBHOOK_SECRET_PREFIX)) {
+    return trimmed.slice(STANDARD_WEBHOOK_SECRET_PREFIX.length);
+  }
+
+  if (trimmed.startsWith(LEGACY_WEBHOOK_SECRET_PREFIX)) {
+    return trimmed.slice(LEGACY_WEBHOOK_SECRET_PREFIX.length);
+  }
+
+  return trimmed;
 }
 
 function verifyHookPayload(rawBody: string, headers: Headers, configuredSecrets: string) {
@@ -50,6 +80,17 @@ function verifyHookPayload(rawBody: string, headers: Headers, configuredSecrets:
   throw new Error("invalid webhook signature");
 }
 
+function normalizeBrazilPhone(value: string) {
+  const trimmed = value.trim();
+  const digits = trimmed.replace(/\D/g, "");
+
+  if (/^55\d{10,11}$/.test(digits)) {
+    return `+${digits}`;
+  }
+
+  return "";
+}
+
 function resolveWhatsappEndpoint(baseUrl: string, path: string) {
   const parsed = new URL(baseUrl);
   if (parsed.protocol !== "https:") {
@@ -60,47 +101,125 @@ function resolveWhatsappEndpoint(baseUrl: string, path: string) {
   return `${parsed.origin}${parsed.pathname.replace(/\/$/, "")}${normalizedPath}`;
 }
 
+async function checkWhatsappReady(
+  statusEndpoint: string,
+  apiToken: string,
+): Promise<WhatsappPreflightResult> {
+  try {
+    const response = await fetch(statusEndpoint, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${apiToken}`,
+      },
+      signal: AbortSignal.timeout(PREFLIGHT_TIMEOUT_MS),
+    });
+
+    if (!response.ok) {
+      console.error("API do WhatsApp recusou a verificacao de status.", { status: response.status });
+      return {
+        ready: false,
+        message: `A API do WhatsApp recusou a verificacao de status (HTTP ${response.status}).`,
+      };
+    }
+
+    const payload = (await response.json()) as WhatsappStatusPayload;
+    if (payload.status !== "conectado") {
+      return {
+        ready: false,
+        message: "A sessao do WhatsApp nao esta conectada.",
+      };
+    }
+
+    return { ready: true };
+  } catch {
+    console.error("API do WhatsApp indisponivel durante verificacao de status.");
+    return {
+      ready: false,
+      message: "A API do WhatsApp nao esta acessivel a partir do Supabase.",
+    };
+  }
+}
+
+async function deliverWhatsappOtp(
+  endpoint: string,
+  apiToken: string,
+  phone: string,
+  message: string,
+  timeoutMs: number,
+) {
+  try {
+    const upstreamResponse = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiToken}`,
+      },
+      body: JSON.stringify({ phone, message }),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+
+    if (!upstreamResponse.ok) {
+      console.error("API do WhatsApp recusou a entrega do OTP.", { status: upstreamResponse.status });
+      return;
+    }
+
+    console.info("API do WhatsApp aceitou a entrega do OTP.");
+  } catch {
+    console.error("Falha de rede ao entregar OTP via WhatsApp.");
+  }
+}
+
 Deno.serve(async (request: Request) => {
   if (request.method !== "POST") {
-    return jsonResponse(405, { error: "method_not_allowed" });
+    return hookErrorResponse(405, "Metodo nao permitido para o Send SMS Hook.");
   }
 
   const hookSecret = Deno.env.get("SEND_SMS_HOOK_SECRET")?.trim() || "";
   const whatsappApiUrl = Deno.env.get("WHATSAPP_BOT_API_URL")?.trim() || "";
   const whatsappApiToken = Deno.env.get("WHATSAPP_BOT_API_TOKEN")?.trim() || "";
   const whatsappSendPath = Deno.env.get("WHATSAPP_BOT_SEND_MESSAGE_PATH")?.trim() || DEFAULT_SEND_PATH;
+  const whatsappStatusPath = Deno.env.get("WHATSAPP_BOT_STATUS_PATH")?.trim() || DEFAULT_STATUS_PATH;
   const timeoutMs = parsePositiveInteger(Deno.env.get("WHATSAPP_BOT_TIMEOUT_MS") || undefined, DEFAULT_TIMEOUT_MS);
 
   if (!hookSecret || !whatsappApiUrl || !whatsappApiToken) {
     console.error("Hook de OTP por WhatsApp sem configuracao obrigatoria.");
-    return jsonResponse(503, { error: "delivery_unavailable" });
+    return hookErrorResponse(503, "O transporte de OTP por WhatsApp nao esta configurado.");
   }
 
   const rawBody = await request.text();
   if (new TextEncoder().encode(rawBody).byteLength > MAX_BODY_BYTES) {
-    return jsonResponse(413, { error: "payload_too_large" });
+    return hookErrorResponse(413, "Payload do Send SMS Hook excede o limite permitido.");
   }
 
   let payload: SendSmsHookPayload;
   try {
     payload = verifyHookPayload(rawBody, request.headers, hookSecret);
   } catch {
-    return jsonResponse(401, { error: "invalid_signature" });
+    return hookErrorResponse(401, "Assinatura do Send SMS Hook invalida.");
   }
 
-  const phone = String(payload.user?.phone || "").trim();
+  const phone = normalizeBrazilPhone(String(payload.user?.phone || ""));
   const otp = String(payload.sms?.otp || "").trim();
 
-  if (!/^\+55\d{10,11}$/.test(phone) || !/^\d{6}$/.test(otp)) {
-    return jsonResponse(400, { error: "invalid_auth_payload" });
+  if (!phone || !/^\d{6}$/.test(otp)) {
+    return hookErrorResponse(400, "Payload de telefone ou OTP invalido.");
   }
 
-  let endpoint: string;
+  let sendEndpoint: string;
+  let statusEndpoint: string;
   try {
-    endpoint = resolveWhatsappEndpoint(whatsappApiUrl, whatsappSendPath);
+    sendEndpoint = resolveWhatsappEndpoint(whatsappApiUrl, whatsappSendPath);
+    statusEndpoint = resolveWhatsappEndpoint(whatsappApiUrl, whatsappStatusPath);
   } catch {
     console.error("Endpoint HTTPS do WhatsApp invalido.");
-    return jsonResponse(503, { error: "delivery_unavailable" });
+    return hookErrorResponse(503, "A URL HTTPS da API do WhatsApp e invalida.");
+  }
+
+  const preflight = await checkWhatsappReady(statusEndpoint, whatsappApiToken);
+  if (!preflight.ready) {
+    console.error("WhatsApp nao esta pronto para receber OTPs.");
+    return hookErrorResponse(503, preflight.message);
   }
 
   const message = [
@@ -109,25 +228,12 @@ Deno.serve(async (request: Request) => {
     "Nao compartilhe este codigo com ninguem.",
   ].join(" ");
 
-  try {
-    const upstreamResponse = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${whatsappApiToken}`,
-      },
-      body: JSON.stringify({ phone, message }),
-      signal: AbortSignal.timeout(timeoutMs),
-    });
+  // Supabase HTTP Auth Hooks have a short response deadline. The authenticated
+  // transport preflight above fails closed; the slower Baileys send continues
+  // as an Edge Runtime background task so Auth is not held open by WhatsApp.
+  EdgeRuntime.waitUntil(
+    deliverWhatsappOtp(sendEndpoint, whatsappApiToken, phone, message, timeoutMs),
+  );
 
-    if (!upstreamResponse.ok) {
-      console.error("API do WhatsApp recusou a entrega do OTP.", { status: upstreamResponse.status });
-      return jsonResponse(502, { error: "delivery_failed" });
-    }
-
-    return jsonResponse(200, {});
-  } catch {
-    console.error("Falha de rede ao entregar OTP via WhatsApp.");
-    return jsonResponse(502, { error: "delivery_failed" });
-  }
+  return jsonResponse(200, {});
 });

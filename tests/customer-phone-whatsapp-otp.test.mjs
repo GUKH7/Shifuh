@@ -19,8 +19,14 @@ test("Send SMS hook verifies the signed Supabase webhook before exposing the OTP
   assert.match(hook, /standardwebhooks/);
   assert.match(hook, /new Webhook\(secret\)\.verify/);
   assert.match(hook, /SEND_SMS_HOOK_SECRET/);
-  assert.match(hook, /invalid_signature/);
+  assert.match(hook, /Assinatura do Send SMS Hook invalida/);
   assert.match(hook, /configuredSecrets\s*\.split\(["']\|["']\)/);
+});
+
+test("Send SMS hook strips the complete Supabase Standard Webhooks prefix before verification", () => {
+  assert.match(hook, /STANDARD_WEBHOOK_SECRET_PREFIX\s*=\s*["']v1,whsec_["']/);
+  assert.match(hook, /trimmed\.startsWith\(STANDARD_WEBHOOK_SECRET_PREFIX\)/);
+  assert.match(hook, /trimmed\.slice\(STANDARD_WEBHOOK_SECRET_PREFIX\.length\)/);
 });
 
 test("OTP WhatsApp hook is Brazil-only, six-digit, HTTPS-only and fail-closed", () => {
@@ -29,9 +35,26 @@ test("OTP WhatsApp hook is Brazil-only, six-digit, HTTPS-only and fail-closed", 
   assert.match(hook, /parsed\.protocol !== ["']https:["']/);
   assert.match(hook, /WHATSAPP_BOT_API_URL/);
   assert.match(hook, /WHATSAPP_BOT_API_TOKEN/);
-  assert.match(hook, /Authorization:\s*`Bearer \$\{whatsappApiToken\}`/);
+  assert.match(hook, /Authorization:\s*`Bearer \$\{apiToken\}`/);
   assert.match(hook, /AbortSignal\.timeout/);
   assert.match(hook, /if \(!upstreamResponse\.ok\)/);
+});
+
+test("Auth hook errors use the Supabase HTTP hook error schema", () => {
+  assert.match(hook, /function hookErrorResponse/);
+  assert.match(hook, /error:\s*\{\s*http_code:\s*status,\s*message,/s);
+  assert.match(hook, /hookErrorResponse\(503,/);
+  assert.doesNotMatch(hook, /jsonResponse\(503,\s*\{\s*error:\s*["']/);
+});
+
+test("Auth hook checks transport synchronously but sends the OTP outside the five-second response path", () => {
+  assert.match(hook, /DEFAULT_STATUS_PATH\s*=\s*["']\/status["']/);
+  assert.match(hook, /PREFLIGHT_TIMEOUT_MS\s*=\s*2_000/);
+  assert.match(hook, /payload\.status !== ["']conectado["']/);
+  assert.match(hook, /const preflight = await checkWhatsappReady\(/);
+  assert.match(hook, /EdgeRuntime\.waitUntil\(/);
+  assert.match(hook, /deliverWhatsappOtp\(/);
+  assert.doesNotMatch(hook, /await\s+deliverWhatsappOtp\(/);
 });
 
 test("OTP value and complete phone are never written to application logs by the hook", () => {
