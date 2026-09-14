@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useRouter } from "next/navigation";
 import {
@@ -28,8 +28,23 @@ import { useToast } from "@/components/ui/toast-provider";
 import { AdminPageHeader, AdminPageShell } from "@/components/ui/admin-primitives";
 import { AdminEmptyState, AdminErrorState, AdminPageSkeleton } from "@/components/ui/admin-page-states";
 
-type SortKey = "name" | "price";
+type SortKey = "manual" | "name" | "price";
 type SortDirection = "asc" | "desc";
+
+type DraggedProduct = {
+  id: string;
+  categoryId: string;
+};
+
+const manualProductComparator = (a: any, b: any) => {
+  const aOrder = Number(a.sort_order);
+  const bOrder = Number(b.sort_order);
+  const normalizedA = Number.isFinite(aOrder) && aOrder > 0 ? aOrder : Number.MAX_SAFE_INTEGER;
+  const normalizedB = Number.isFinite(bOrder) && bOrder > 0 ? bOrder : Number.MAX_SAFE_INTEGER;
+
+  if (normalizedA !== normalizedB) return normalizedA - normalizedB;
+  return String(a.name || "").localeCompare(String(b.name || ""), "pt-BR");
+};
 
 export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
@@ -37,8 +52,9 @@ export default function AdminDashboard() {
   const [restaurant, setRestaurant] = useState<any>(null);
   const [categories, setCategories] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
+  const productsRef = useRef<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortBy, setSortBy] = useState<SortKey>("name");
+  const [sortBy, setSortBy] = useState<SortKey>("manual");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
@@ -47,6 +63,8 @@ export default function AdminDashboard() {
   const [editingName, setEditingName] = useState("");
   const [draggedCategoryIndex, setDraggedCategoryIndex] = useState<number | null>(null);
   const [isSavingCategory, setIsSavingCategory] = useState(false);
+  const [draggedProduct, setDraggedProduct] = useState<DraggedProduct | null>(null);
+  const [isSavingProductOrder, setIsSavingProductOrder] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [categoryModalError, setCategoryModalError] = useState("");
@@ -66,6 +84,10 @@ export default function AdminDashboard() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   );
+
+  useEffect(() => {
+    productsRef.current = products;
+  }, [products]);
 
   useEffect(() => {
     checkUser();
@@ -117,7 +139,16 @@ export default function AdminDashboard() {
         .select("*")
         .eq("restaurant_id", resto.id);
 
-      if (prods) setProducts(prods);
+      if (prods) {
+        const orderedProducts = [...prods].sort((a, b) => {
+          if (a.category_id !== b.category_id) {
+            return String(a.category_id).localeCompare(String(b.category_id));
+          }
+          return manualProductComparator(a, b);
+        });
+        productsRef.current = orderedProducts;
+        setProducts(orderedProducts);
+      }
     } catch (error) {
       console.error("Erro ao buscar cardápio:", error);
       setErrorMsg("Não foi possível carregar o cardápio.");
@@ -457,6 +488,107 @@ export default function AdminDashboard() {
     setIsSavingCategory(false);
   };
 
+  const canReorderProducts = sortBy === "manual" && !searchTerm.trim() && !isSavingProductOrder;
+
+  const handleProductDragStart = (event: React.DragEvent, product: any) => {
+    if (!canReorderProducts) {
+      event.preventDefault();
+      return;
+    }
+
+    event.stopPropagation();
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", product.id);
+    setDraggedProduct({ id: product.id, categoryId: product.category_id });
+  };
+
+  const handleProductDragOver = (event: React.DragEvent, targetProduct: any) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (
+      !draggedProduct ||
+      draggedProduct.categoryId !== targetProduct.category_id ||
+      draggedProduct.id === targetProduct.id ||
+      !canReorderProducts
+    ) {
+      return;
+    }
+
+    setProducts((current) => {
+      const categoryProducts = current
+        .filter((product) => product.category_id === targetProduct.category_id)
+        .sort(manualProductComparator);
+      const fromIndex = categoryProducts.findIndex((product) => product.id === draggedProduct.id);
+      const toIndex = categoryProducts.findIndex((product) => product.id === targetProduct.id);
+
+      if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return current;
+
+      const reordered = [...categoryProducts];
+      const [movedProduct] = reordered.splice(fromIndex, 1);
+      reordered.splice(toIndex, 0, movedProduct);
+
+      const positions = new Map(
+        reordered.map((product, index) => [product.id, index + 1] as const),
+      );
+      const nextProducts = current.map((product) => {
+        const nextPosition = positions.get(product.id);
+        return nextPosition ? { ...product, sort_order: nextPosition } : product;
+      });
+
+      productsRef.current = nextProducts;
+      return nextProducts;
+    });
+  };
+
+  const persistProductOrder = async (categoryId: string) => {
+    if (!restaurant?.id || isSavingProductOrder) return;
+
+    const productIds = productsRef.current
+      .filter((product) => product.category_id === categoryId)
+      .sort(manualProductComparator)
+      .map((product) => product.id);
+
+    if (productIds.length === 0) return;
+
+    setIsSavingProductOrder(true);
+
+    try {
+      const { error } = await supabase.rpc("reorder_products", {
+        p_category_id: categoryId,
+        p_product_ids: productIds,
+      });
+
+      if (error) throw error;
+    } catch (error) {
+      console.error("Erro ao salvar ordem dos produtos:", error);
+      await fetchData();
+      showToast({
+        title: "Não foi possível salvar a nova ordem",
+        description:
+          error instanceof Error ? error.message : "A lista foi recarregada. Tente novamente.",
+        tone: "error",
+      });
+    } finally {
+      setIsSavingProductOrder(false);
+    }
+  };
+
+  const handleProductDrop = async (event: React.DragEvent, categoryId: string) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!draggedProduct || draggedProduct.categoryId !== categoryId) return;
+
+    setDraggedProduct(null);
+    await persistProductOrder(categoryId);
+  };
+
+  const handleProductDragEnd = (event: React.DragEvent) => {
+    event.stopPropagation();
+    setDraggedProduct(null);
+  };
+
   const toggleCategory = (categoryId: string) => {
     setExpandedCategories((prev) => ({ ...prev, [categoryId]: !prev[categoryId] }));
   };
@@ -483,6 +615,8 @@ export default function AdminDashboard() {
         });
 
         const sortedProducts = [...categoryProducts].sort((a, b) => {
+          if (sortBy === "manual") return manualProductComparator(a, b);
+
           if (sortBy === "price") {
             return sortDirection === "asc" ? a.price - b.price : b.price - a.price;
           }
@@ -559,7 +693,11 @@ export default function AdminDashboard() {
         }
       />
       <p className="text-sm font-medium text-gray-500">
-        {isSavingCategory ? "Salvando ordem das categorias..." : <>{categories.length} categorias e {products.length} produtos na loja</>}
+        {isSavingProductOrder
+          ? "Salvando ordem dos produtos..."
+          : isSavingCategory
+            ? "Salvando ordem das categorias..."
+            : <>{categories.length} categorias e {products.length} produtos na loja</>}
       </p>
 
       <div className="grid min-w-0 gap-6 2xl:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
@@ -573,9 +711,28 @@ export default function AdminDashboard() {
                 <h2 className="mt-1 text-xl font-black text-gray-950">
                   Ordene e visualize como os itens vão aparecer.
                 </h2>
+                {sortBy === "manual" && (
+                  <p className="mt-2 max-w-xl text-xs leading-5 text-gray-500">
+                    {searchTerm.trim()
+                      ? "Limpe a busca para arrastar e reposicionar os produtos."
+                      : "Arraste os produtos pelo ícone de alça para definir a ordem exibida na vitrine."}
+                  </p>
+                )}
               </div>
 
               <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSortBy("manual")}
+                  className={`inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-bold ${
+                    sortBy === "manual"
+                      ? "bg-[var(--brand-soft)] text-[var(--brand)]"
+                      : "border border-[var(--line)] bg-white text-gray-600"
+                  }`}
+                >
+                  <GripVertical size={16} />
+                  Ordem manual
+                </button>
                 <button
                   onClick={() => {
                     setSortBy("name");
@@ -644,7 +801,7 @@ export default function AdminDashboard() {
                 return (
                   <div
                     key={category.id}
-                    draggable={!isEditing}
+                    draggable={!isEditing && !draggedProduct}
                     onDragStart={() => handleDragStart(index)}
                     onDragOver={(e) => handleDragOver(e, index)}
                     onDragEnd={handleDragEnd}
@@ -754,7 +911,37 @@ export default function AdminDashboard() {
                       <div className="divide-y divide-[var(--line)] bg-[#fffdfa]">
                         {category.categoryProducts.length > 0 ? (
                           category.categoryProducts.map((product: any) => (
-                            <div key={product.id} className="menu-product-row group flex min-w-0 flex-wrap items-center gap-4 px-5 py-4 sm:flex-nowrap">
+                            <div
+                              key={product.id}
+                              onDragOver={(event) => handleProductDragOver(event, product)}
+                              onDrop={(event) => void handleProductDrop(event, category.id)}
+                              className={`menu-product-row group flex min-w-0 flex-wrap items-center gap-3 px-5 py-4 transition sm:flex-nowrap ${
+                                draggedProduct?.id === product.id ? "bg-[#fff7f2] opacity-60" : ""
+                              }`}
+                            >
+                              <button
+                                type="button"
+                                draggable={canReorderProducts}
+                                onDragStart={(event) => handleProductDragStart(event, product)}
+                                onDragEnd={handleProductDragEnd}
+                                disabled={!canReorderProducts}
+                                className={`inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl transition ${
+                                  canReorderProducts
+                                    ? "cursor-grab bg-[#fbf7f2] text-gray-400 hover:bg-[#fff0e8] hover:text-[var(--brand)] active:cursor-grabbing"
+                                    : "cursor-not-allowed bg-[#fbf7f2] text-gray-300"
+                                }`}
+                                title={
+                                  sortBy !== "manual"
+                                    ? "Selecione Ordem manual para reposicionar"
+                                    : searchTerm.trim()
+                                      ? "Limpe a busca para reposicionar"
+                                      : "Arrastar para reposicionar"
+                                }
+                                aria-label={`Reposicionar produto ${product.name}`}
+                              >
+                                <GripVertical size={17} />
+                              </button>
+
                               <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-2xl border border-[var(--line)] bg-[#fbf7f2]">
                                 {product.image_url ? (
                                   <img
@@ -791,7 +978,7 @@ export default function AdminDashboard() {
                                 </p>
                               </div>
 
-                              <div className="menu-product-actions ml-20 flex flex-shrink-0 items-center gap-2 opacity-100 transition-opacity sm:ml-0 md:opacity-0 md:group-hover:opacity-100">
+                              <div className="menu-product-actions ml-[124px] flex flex-shrink-0 items-center gap-2 opacity-100 transition-opacity sm:ml-0 md:opacity-0 md:group-hover:opacity-100">
                                 <button
                                   onClick={() => handleEditProduct(product)}
                                   className="menu-product-edit admin-button border border-[var(--line)] bg-white px-3 py-2 text-xs font-bold text-gray-600"
