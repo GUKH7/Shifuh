@@ -29,7 +29,7 @@ function friendlyPhoneError(message = "") {
     return "Aguarde um pouco antes de solicitar outro código.";
   }
   if (normalized.includes("sms") || normalized.includes("phone provider") || normalized.includes("unsupported")) {
-    return "O envio do código por SMS está temporariamente indisponível.";
+    return "O envio do código pelo WhatsApp está temporariamente indisponível.";
   }
   if (normalized.includes("expired") || normalized.includes("token") || normalized.includes("otp")) {
     return "O código é inválido ou expirou. Solicite um novo código.";
@@ -147,6 +147,17 @@ function PhoneVerificationContent() {
 
     setSending(true);
     try {
+      const routeResponse = await fetch("/api/customer/phone/otp-route", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone, returnUrl }),
+      });
+      const routePayload = await routeResponse.json().catch(() => ({}));
+      if (!routeResponse.ok) {
+        throw new Error(routePayload.error || "Não foi possível identificar o WhatsApp da loja.");
+      }
+
       const { error } = await verifier.auth.signInWithOtp({
         phone,
         options: { shouldCreateUser: true },
@@ -159,7 +170,7 @@ function PhoneVerificationContent() {
       setCooldown(60);
       showToast({
         title: "Código enviado",
-        description: "Digite o código de 6 dígitos recebido por SMS.",
+        description: "Digite o código de 6 dígitos recebido pelo WhatsApp da loja.",
         tone: "success",
       });
     } catch (cause) {
@@ -241,8 +252,8 @@ function PhoneVerificationContent() {
         </h1>
         <p className="mt-2 text-sm leading-6 text-gray-500">
           {step === "phone"
-            ? "Seu telefone conecta pedidos, pontos, prêmios e a Roleta à mesma conta. Enviaremos um código por SMS."
-            : `Enviamos um código para ${formatPhoneInput(verifiedPhone)}. Ele confirma que este número realmente pertence a você.`}
+            ? "Seu telefone conecta pedidos, pontos, prêmios e a Roleta à mesma conta. Enviaremos um código pelo WhatsApp do restaurante."
+            : `Enviamos pelo WhatsApp da loja um código para ${formatPhoneInput(verifiedPhone)}. Ele confirma que este número realmente pertence a você.`}
         </p>
 
         {step === "phone" ? (
@@ -268,7 +279,7 @@ function PhoneVerificationContent() {
               disabled={sending}
               className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-gray-950 px-5 font-black text-white transition hover:bg-gray-800 disabled:opacity-60"
             >
-              {sending ? <><Loader2 className="animate-spin" size={18} /> Enviando...</> : "Enviar código por SMS"}
+              {sending ? <><Loader2 className="animate-spin" size={18} /> Enviando...</> : "Enviar código pelo WhatsApp"}
             </button>
           </form>
         ) : (
