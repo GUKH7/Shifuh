@@ -80,6 +80,17 @@ function verifyHookPayload(rawBody: string, headers: Headers, configuredSecrets:
   throw new Error("invalid webhook signature");
 }
 
+function normalizeBrazilPhone(value: string) {
+  const trimmed = value.trim();
+  const digits = trimmed.replace(/\D/g, "");
+
+  if (/^55\d{10,11}$/.test(digits)) {
+    return `+${digits}`;
+  }
+
+  return "";
+}
+
 function resolveWhatsappEndpoint(baseUrl: string, path: string) {
   const parsed = new URL(baseUrl);
   if (parsed.protocol !== "https:") {
@@ -188,10 +199,10 @@ Deno.serve(async (request: Request) => {
     return hookErrorResponse(401, "Assinatura do Send SMS Hook invalida.");
   }
 
-  const phone = String(payload.user?.phone || "").trim();
+  const phone = normalizeBrazilPhone(String(payload.user?.phone || ""));
   const otp = String(payload.sms?.otp || "").trim();
 
-  if (!/^\+55\d{10,11}$/.test(phone) || !/^\d{6}$/.test(otp)) {
+  if (!phone || !/^\d{6}$/.test(otp)) {
     return hookErrorResponse(400, "Payload de telefone ou OTP invalido.");
   }
 
