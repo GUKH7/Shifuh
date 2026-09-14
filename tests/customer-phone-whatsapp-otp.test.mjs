@@ -35,9 +35,19 @@ test("OTP WhatsApp hook is Brazil-only, six-digit, HTTPS-only and fail-closed", 
   assert.match(hook, /parsed\.protocol !== ["']https:["']/);
   assert.match(hook, /WHATSAPP_BOT_API_URL/);
   assert.match(hook, /WHATSAPP_BOT_API_TOKEN/);
-  assert.match(hook, /Authorization:\s*`Bearer \$\{whatsappApiToken\}`/);
+  assert.match(hook, /Authorization:\s*`Bearer \$\{apiToken\}`/);
   assert.match(hook, /AbortSignal\.timeout/);
   assert.match(hook, /if \(!upstreamResponse\.ok\)/);
+});
+
+test("Auth hook checks transport synchronously but sends the OTP outside the five-second response path", () => {
+  assert.match(hook, /DEFAULT_STATUS_PATH\s*=\s*["']\/status["']/);
+  assert.match(hook, /PREFLIGHT_TIMEOUT_MS\s*=\s*2_000/);
+  assert.match(hook, /payload\.status === ["']conectado["']/);
+  assert.match(hook, /if \(!\(await isWhatsappReady\(/);
+  assert.match(hook, /EdgeRuntime\.waitUntil\(/);
+  assert.match(hook, /deliverWhatsappOtp\(/);
+  assert.doesNotMatch(hook, /await\s+deliverWhatsappOtp\(/);
 });
 
 test("OTP value and complete phone are never written to application logs by the hook", () => {
