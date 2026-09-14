@@ -106,6 +106,9 @@ export default function ProductModal({
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
   const [isCropping, setIsCropping] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   useEffect(() => {
     if (!croppedImageBlob) {
@@ -128,6 +131,9 @@ export default function ProductModal({
     setCrop({ x: 0, y: 0 });
     setZoom(1);
     setIsCropping(false);
+    setIsDeleteConfirmOpen(false);
+    setIsDeleting(false);
+    setDeleteError("");
 
     if (productToEdit) {
       setName(productToEdit.name);
@@ -271,6 +277,76 @@ export default function ProductModal({
     setIsCropping(false);
   };
 
+  const handleOpenDeleteConfirm = () => {
+    if (!productToEdit) return;
+    setDeleteError("");
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const handleCloseDeleteConfirm = () => {
+    if (isDeleting) return;
+    setDeleteError("");
+    setIsDeleteConfirmOpen(false);
+  };
+
+  const handleDeleteProduct = async () => {
+    if (!productToEdit?.id || !restaurantId || isDeleting) return;
+
+    setIsDeleting(true);
+    setDeleteError("");
+
+    try {
+      const { error } = await supabase
+        .from("products")
+        .delete()
+        .eq("id", productToEdit.id)
+        .eq("restaurant_id", restaurantId);
+
+      if (error) throw error;
+
+      const storagePath = getMenuImageStoragePath(productToEdit.image_url);
+      if (storagePath) {
+        const { error: storageError } = await supabase.storage
+          .from("menu-images")
+          .remove([storagePath]);
+
+        if (storageError) {
+          console.warn("Produto excluído, mas não foi possível limpar a imagem do storage:", storageError);
+        }
+      }
+
+      setIsDeleteConfirmOpen(false);
+      onProductSaved();
+      onClose();
+    } catch (error) {
+      console.error("Erro ao excluir produto:", error);
+
+      const rawMessage =
+        typeof (error as { message?: unknown } | null)?.message === "string"
+          ? (error as { message: string }).message
+          : "Não foi possível excluir o produto agora.";
+      const errorCode =
+        typeof (error as { code?: unknown } | null)?.code === "string"
+          ? (error as { code: string }).code
+          : "";
+      const normalizedMessage = rawMessage.toLowerCase();
+      const hasProtectedDependency =
+        errorCode === "23503" ||
+        normalizedMessage.includes("foreign key") ||
+        normalizedMessage.includes("reward") ||
+        normalizedMessage.includes("promotion") ||
+        normalizedMessage.includes("prize");
+
+      setDeleteError(
+        hasProtectedDependency
+          ? "Este produto está vinculado a uma promoção, prêmio ou recompensa. Remova esse vínculo antes de excluir o produto."
+          : rawMessage,
+      );
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!restaurantId || !categoryId) return alert("Categoria obrigatória!");
@@ -407,8 +483,9 @@ export default function ProductModal({
           <button
             type="button"
             onClick={onClose}
+            disabled={isLoading || isDeleting}
             aria-label="Fechar"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#fbf7f2] text-gray-500 transition-colors hover:bg-[#f1ebe3] hover:text-gray-700"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#fbf7f2] text-gray-500 transition-colors hover:bg-[#f1ebe3] hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <X size={20} />
           </button>
@@ -640,32 +717,132 @@ export default function ProductModal({
           </div>
         </form>
 
-        <div className="flex justify-end gap-3 border-t border-[var(--line)] bg-white px-6 py-5">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isLoading}
-            className="rounded-2xl border border-[var(--line)] bg-white px-5 py-3 text-sm font-bold text-gray-600 disabled:opacity-60"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={isLoading}
-            className="brand-gradient rounded-2xl px-6 py-3 text-sm font-bold text-white disabled:opacity-60"
-          >
-            {isLoading ? (
-              <span className="inline-flex items-center gap-2">
-                <Loader2 className="animate-spin" size={16} />
-                Salvando...
-              </span>
-            ) : (
-              "Salvar produto"
-            )}
-          </button>
+        <div className="flex flex-col gap-3 border-t border-[var(--line)] bg-white px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+          {productToEdit ? (
+            <button
+              type="button"
+              onClick={handleOpenDeleteConfirm}
+              disabled={isLoading || isDeleting}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-red-200 bg-white px-5 py-3 text-sm font-bold text-red-600 transition-colors hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Trash2 size={16} />
+              Excluir produto
+            </button>
+          ) : (
+            <span />
+          )}
+
+          <div className="flex flex-col-reverse gap-3 sm:flex-row">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isLoading || isDeleting}
+              className="rounded-2xl border border-[var(--line)] bg-white px-5 py-3 text-sm font-bold text-gray-600 disabled:opacity-60"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isLoading || isDeleting}
+              className="brand-gradient rounded-2xl px-6 py-3 text-sm font-bold text-white disabled:opacity-60"
+            >
+              {isLoading ? (
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 className="animate-spin" size={16} />
+                  Salvando...
+                </span>
+              ) : (
+                "Salvar produto"
+              )}
+            </button>
+          </div>
         </div>
       </div>
+
+      {isDeleteConfirmOpen && productToEdit && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) handleCloseDeleteConfirm();
+          }}
+        >
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="delete-product-title"
+            aria-describedby="delete-product-description"
+            className="w-full max-w-md overflow-hidden rounded-[28px] border border-red-100 bg-[#fffdfa] shadow-[0_30px_90px_rgba(17,16,15,0.26)]"
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-red-100 bg-white px-6 py-5">
+              <div className="flex items-start gap-3">
+                <span className="inline-flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-red-50 text-red-600">
+                  <Trash2 size={21} />
+                </span>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-red-600">
+                    Ação permanente
+                  </p>
+                  <h2 id="delete-product-title" className="mt-1 text-2xl font-black tracking-tight text-gray-950">
+                    Excluir produto?
+                  </h2>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleCloseDeleteConfirm}
+                disabled={isDeleting}
+                aria-label="Fechar confirmação de exclusão"
+                className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[#fbf7f2] text-gray-500 transition-colors hover:bg-[#f1ebe3] disabled:opacity-50"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-4 px-6 py-5">
+              <p id="delete-product-description" className="text-sm leading-6 text-gray-600">
+                O produto <strong className="font-bold text-gray-950">“{productToEdit.name}”</strong> será removido permanentemente do cardápio. Esta ação não pode ser desfeita.
+              </p>
+
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
+                Se o produto estiver vinculado a uma promoção, prêmio ou recompensa, a exclusão será bloqueada para preservar o histórico.
+              </div>
+
+              {deleteError && (
+                <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-700">
+                  {deleteError}
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col-reverse gap-3 border-t border-[var(--line)] bg-white px-6 py-5 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={handleCloseDeleteConfirm}
+                disabled={isDeleting}
+                className="rounded-2xl border border-[var(--line)] bg-white px-5 py-3 text-sm font-bold text-gray-700 transition-colors hover:bg-[#fbf7f2] disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteProduct}
+                disabled={isDeleting}
+                className="rounded-2xl bg-red-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <span className="inline-flex items-center gap-2">
+                  {isDeleting ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <Trash2 size={16} />
+                  )}
+                  {isDeleting ? "Excluindo..." : "Excluir produto"}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
