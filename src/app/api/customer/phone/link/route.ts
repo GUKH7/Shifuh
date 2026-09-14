@@ -48,8 +48,8 @@ function jsonError(code: string, error: string, status: number) {
 
 async function hasPrivilegedOwnership(adminSupabase: any, userId: string) {
   const checks = await Promise.all([
-    adminSupabase.from("restaurant_members").select("id", { count: "exact", head: true }).eq("user_id", userId),
-    adminSupabase.from("platform_members").select("id", { count: "exact", head: true }).eq("user_id", userId),
+    adminSupabase.from("restaurant_members").select("user_id", { count: "exact", head: true }).eq("user_id", userId),
+    adminSupabase.from("platform_members").select("user_id", { count: "exact", head: true }).eq("user_id", userId),
     adminSupabase.from("restaurants").select("id", { count: "exact", head: true }).eq("user_id", userId),
     adminSupabase.from("promotion_campaigns").select("id", { count: "exact", head: true }).eq("created_by", userId),
     adminSupabase.from("loyalty_programs").select("id", { count: "exact", head: true }).eq("created_by", userId),
