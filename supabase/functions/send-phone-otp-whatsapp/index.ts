@@ -14,6 +14,10 @@ type WhatsappStatusPayload = {
   status?: string;
 };
 
+type WhatsappPreflightResult =
+  | { ready: true }
+  | { ready: false; message: string };
+
 const MAX_BODY_BYTES = 16 * 1024;
 const DEFAULT_SEND_PATH = "/send-message";
 const DEFAULT_STATUS_PATH = "/status";
@@ -26,6 +30,15 @@ function jsonResponse(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), {
     status,
     headers: { "Content-Type": "application/json" },
+  });
+}
+
+function hookErrorResponse(status: number, message: string) {
+  return jsonResponse(status, {
+    error: {
+      http_code: status,
+      message,
+    },
   });
 }
 
@@ -77,7 +90,10 @@ function resolveWhatsappEndpoint(baseUrl: string, path: string) {
   return `${parsed.origin}${parsed.pathname.replace(/\/$/, "")}${normalizedPath}`;
 }
 
-async function isWhatsappReady(statusEndpoint: string, apiToken: string) {
+async function checkWhatsappReady(
+  statusEndpoint: string,
+  apiToken: string,
+): Promise<WhatsappPreflightResult> {
   try {
     const response = await fetch(statusEndpoint, {
       method: "GET",
@@ -90,14 +106,27 @@ async function isWhatsappReady(statusEndpoint: string, apiToken: string) {
 
     if (!response.ok) {
       console.error("API do WhatsApp recusou a verificacao de status.", { status: response.status });
-      return false;
+      return {
+        ready: false,
+        message: `A API do WhatsApp recusou a verificacao de status (HTTP ${response.status}).`,
+      };
     }
 
     const payload = (await response.json()) as WhatsappStatusPayload;
-    return payload.status === "conectado";
+    if (payload.status !== "conectado") {
+      return {
+        ready: false,
+        message: "A sessao do WhatsApp nao esta conectada.",
+      };
+    }
+
+    return { ready: true };
   } catch {
     console.error("API do WhatsApp indisponivel durante verificacao de status.");
-    return false;
+    return {
+      ready: false,
+      message: "A API do WhatsApp nao esta acessivel a partir do Supabase.",
+    };
   }
 }
 
@@ -132,7 +161,7 @@ async function deliverWhatsappOtp(
 
 Deno.serve(async (request: Request) => {
   if (request.method !== "POST") {
-    return jsonResponse(405, { error: "method_not_allowed" });
+    return hookErrorResponse(405, "Metodo nao permitido para o Send SMS Hook.");
   }
 
   const hookSecret = Deno.env.get("SEND_SMS_HOOK_SECRET")?.trim() || "";
@@ -144,26 +173,26 @@ Deno.serve(async (request: Request) => {
 
   if (!hookSecret || !whatsappApiUrl || !whatsappApiToken) {
     console.error("Hook de OTP por WhatsApp sem configuracao obrigatoria.");
-    return jsonResponse(503, { error: "delivery_unavailable" });
+    return hookErrorResponse(503, "O transporte de OTP por WhatsApp nao esta configurado.");
   }
 
   const rawBody = await request.text();
   if (new TextEncoder().encode(rawBody).byteLength > MAX_BODY_BYTES) {
-    return jsonResponse(413, { error: "payload_too_large" });
+    return hookErrorResponse(413, "Payload do Send SMS Hook excede o limite permitido.");
   }
 
   let payload: SendSmsHookPayload;
   try {
     payload = verifyHookPayload(rawBody, request.headers, hookSecret);
   } catch {
-    return jsonResponse(401, { error: "invalid_signature" });
+    return hookErrorResponse(401, "Assinatura do Send SMS Hook invalida.");
   }
 
   const phone = String(payload.user?.phone || "").trim();
   const otp = String(payload.sms?.otp || "").trim();
 
   if (!/^\+55\d{10,11}$/.test(phone) || !/^\d{6}$/.test(otp)) {
-    return jsonResponse(400, { error: "invalid_auth_payload" });
+    return hookErrorResponse(400, "Payload de telefone ou OTP invalido.");
   }
 
   let sendEndpoint: string;
@@ -173,12 +202,13 @@ Deno.serve(async (request: Request) => {
     statusEndpoint = resolveWhatsappEndpoint(whatsappApiUrl, whatsappStatusPath);
   } catch {
     console.error("Endpoint HTTPS do WhatsApp invalido.");
-    return jsonResponse(503, { error: "delivery_unavailable" });
+    return hookErrorResponse(503, "A URL HTTPS da API do WhatsApp e invalida.");
   }
 
-  if (!(await isWhatsappReady(statusEndpoint, whatsappApiToken))) {
+  const preflight = await checkWhatsappReady(statusEndpoint, whatsappApiToken);
+  if (!preflight.ready) {
     console.error("WhatsApp nao esta pronto para receber OTPs.");
-    return jsonResponse(503, { error: "delivery_unavailable" });
+    return hookErrorResponse(503, preflight.message);
   }
 
   const message = [
