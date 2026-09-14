@@ -10,9 +10,15 @@ type SendSmsHookPayload = {
   };
 };
 
+type WhatsappStatusPayload = {
+  status?: string;
+};
+
 const MAX_BODY_BYTES = 16 * 1024;
 const DEFAULT_SEND_PATH = "/send-message";
+const DEFAULT_STATUS_PATH = "/status";
 const DEFAULT_TIMEOUT_MS = 10_000;
+const PREFLIGHT_TIMEOUT_MS = 2_000;
 const STANDARD_WEBHOOK_SECRET_PREFIX = "v1,whsec_";
 const LEGACY_WEBHOOK_SECRET_PREFIX = "whsec_";
 
@@ -71,6 +77,59 @@ function resolveWhatsappEndpoint(baseUrl: string, path: string) {
   return `${parsed.origin}${parsed.pathname.replace(/\/$/, "")}${normalizedPath}`;
 }
 
+async function isWhatsappReady(statusEndpoint: string, apiToken: string) {
+  try {
+    const response = await fetch(statusEndpoint, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${apiToken}`,
+      },
+      signal: AbortSignal.timeout(PREFLIGHT_TIMEOUT_MS),
+    });
+
+    if (!response.ok) {
+      console.error("API do WhatsApp recusou a verificacao de status.", { status: response.status });
+      return false;
+    }
+
+    const payload = (await response.json()) as WhatsappStatusPayload;
+    return payload.status === "conectado";
+  } catch {
+    console.error("API do WhatsApp indisponivel durante verificacao de status.");
+    return false;
+  }
+}
+
+async function deliverWhatsappOtp(
+  endpoint: string,
+  apiToken: string,
+  phone: string,
+  message: string,
+  timeoutMs: number,
+) {
+  try {
+    const upstreamResponse = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiToken}`,
+      },
+      body: JSON.stringify({ phone, message }),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+
+    if (!upstreamResponse.ok) {
+      console.error("API do WhatsApp recusou a entrega do OTP.", { status: upstreamResponse.status });
+      return;
+    }
+
+    console.info("API do WhatsApp aceitou a entrega do OTP.");
+  } catch {
+    console.error("Falha de rede ao entregar OTP via WhatsApp.");
+  }
+}
+
 Deno.serve(async (request: Request) => {
   if (request.method !== "POST") {
     return jsonResponse(405, { error: "method_not_allowed" });
@@ -80,6 +139,7 @@ Deno.serve(async (request: Request) => {
   const whatsappApiUrl = Deno.env.get("WHATSAPP_BOT_API_URL")?.trim() || "";
   const whatsappApiToken = Deno.env.get("WHATSAPP_BOT_API_TOKEN")?.trim() || "";
   const whatsappSendPath = Deno.env.get("WHATSAPP_BOT_SEND_MESSAGE_PATH")?.trim() || DEFAULT_SEND_PATH;
+  const whatsappStatusPath = Deno.env.get("WHATSAPP_BOT_STATUS_PATH")?.trim() || DEFAULT_STATUS_PATH;
   const timeoutMs = parsePositiveInteger(Deno.env.get("WHATSAPP_BOT_TIMEOUT_MS") || undefined, DEFAULT_TIMEOUT_MS);
 
   if (!hookSecret || !whatsappApiUrl || !whatsappApiToken) {
@@ -106,11 +166,18 @@ Deno.serve(async (request: Request) => {
     return jsonResponse(400, { error: "invalid_auth_payload" });
   }
 
-  let endpoint: string;
+  let sendEndpoint: string;
+  let statusEndpoint: string;
   try {
-    endpoint = resolveWhatsappEndpoint(whatsappApiUrl, whatsappSendPath);
+    sendEndpoint = resolveWhatsappEndpoint(whatsappApiUrl, whatsappSendPath);
+    statusEndpoint = resolveWhatsappEndpoint(whatsappApiUrl, whatsappStatusPath);
   } catch {
     console.error("Endpoint HTTPS do WhatsApp invalido.");
+    return jsonResponse(503, { error: "delivery_unavailable" });
+  }
+
+  if (!(await isWhatsappReady(statusEndpoint, whatsappApiToken))) {
+    console.error("WhatsApp nao esta pronto para receber OTPs.");
     return jsonResponse(503, { error: "delivery_unavailable" });
   }
 
@@ -120,25 +187,12 @@ Deno.serve(async (request: Request) => {
     "Nao compartilhe este codigo com ninguem.",
   ].join(" ");
 
-  try {
-    const upstreamResponse = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${whatsappApiToken}`,
-      },
-      body: JSON.stringify({ phone, message }),
-      signal: AbortSignal.timeout(timeoutMs),
-    });
+  // Supabase HTTP Auth Hooks have a short response deadline. The authenticated
+  // transport preflight above fails closed; the slower Baileys send continues
+  // as an Edge Runtime background task so Auth is not held open by WhatsApp.
+  EdgeRuntime.waitUntil(
+    deliverWhatsappOtp(sendEndpoint, whatsappApiToken, phone, message, timeoutMs),
+  );
 
-    if (!upstreamResponse.ok) {
-      console.error("API do WhatsApp recusou a entrega do OTP.", { status: upstreamResponse.status });
-      return jsonResponse(502, { error: "delivery_failed" });
-    }
-
-    return jsonResponse(200, {});
-  } catch {
-    console.error("Falha de rede ao entregar OTP via WhatsApp.");
-    return jsonResponse(502, { error: "delivery_failed" });
-  }
+  return jsonResponse(200, {});
 });
