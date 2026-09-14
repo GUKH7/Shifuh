@@ -1,6 +1,7 @@
 type SendWhatsappMessageInput = {
   phone: string;
   message: string;
+  restaurantId?: string;
   orderId?: string;
   status?: string;
 };
@@ -44,6 +45,15 @@ export function buildWhatsappBotUrl(path: string) {
   return `${baseUrl}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
+export function buildWhatsappRestaurantBotUrl(restaurantId: string, path: string) {
+  const baseUrl = getWhatsappBotBaseUrl();
+  const normalizedRestaurantId = restaurantId?.trim();
+  if (!baseUrl || !normalizedRestaurantId) return null;
+
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${baseUrl}/restaurants/${encodeURIComponent(normalizedRestaurantId)}${normalizedPath}`;
+}
+
 export function buildWhatsappBotHeaders(init?: HeadersInit) {
   const headers = new Headers(init);
   const token = process.env.WHATSAPP_BOT_API_TOKEN?.trim();
@@ -68,6 +78,7 @@ export function getWhatsappBotRequestSignal() {
 export async function sendWhatsappMessage({
   phone,
   message,
+  restaurantId,
   orderId,
   status,
 }: SendWhatsappMessageInput): Promise<SendWhatsappMessageResult> {
@@ -91,8 +102,20 @@ export async function sendWhatsappMessage({
     };
   }
 
+  const sendUrl = restaurantId
+    ? buildWhatsappRestaurantBotUrl(restaurantId, "/send-message")
+    : `${baseUrl}${getWhatsappBotSendPath()}`;
+
+  if (!sendUrl) {
+    return {
+      ok: false,
+      skipped: false,
+      error: "Restaurante inválido para envio via WhatsApp.",
+    };
+  }
+
   try {
-    const response = await fetch(`${baseUrl}${getWhatsappBotSendPath()}`, {
+    const response = await fetch(sendUrl, {
       method: "POST",
       headers: buildWhatsappBotHeaders({ "content-type": "application/json" }),
       signal: getWhatsappBotRequestSignal(),
