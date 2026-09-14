@@ -61,6 +61,22 @@ async function getCroppedImg(imageSrc: string, pixelCrop: any): Promise<Blob | n
   );
 }
 
+function getMenuImageStoragePath(publicUrl: string | null | undefined) {
+  if (!publicUrl) return null;
+
+  try {
+    const url = new URL(publicUrl);
+    const marker = "/storage/v1/object/public/menu-images/";
+    const markerIndex = url.pathname.indexOf(marker);
+    if (markerIndex === -1) return null;
+
+    const encodedPath = url.pathname.slice(markerIndex + marker.length);
+    return encodedPath ? decodeURIComponent(encodedPath) : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function ProductModal({
   isOpen,
   onClose,
@@ -85,20 +101,40 @@ export default function ProductModal({
   const [isLoading, setIsLoading] = useState(false);
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [croppedImageBlob, setCroppedImageBlob] = useState<Blob | null>(null);
+  const [croppedPreviewUrl, setCroppedPreviewUrl] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
   const [isCropping, setIsCropping] = useState(false);
 
   useEffect(() => {
+    if (!croppedImageBlob) {
+      setCroppedPreviewUrl(null);
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(croppedImageBlob);
+    setCroppedPreviewUrl(previewUrl);
+
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [croppedImageBlob]);
+
+  useEffect(() => {
     if (!isOpen) return;
+
+    setCroppedImageBlob(null);
+    setImageSrc(null);
+    setCroppedAreaPixels(null);
+    setCrop({ x: 0, y: 0 });
+    setZoom(1);
+    setIsCropping(false);
 
     if (productToEdit) {
       setName(productToEdit.name);
       setDescription(productToEdit.description || "");
       setPrice(productToEdit.price.toString());
       setCategoryId(productToEdit.category_id);
-      setImageUrl(productToEdit.image_url);
+      setImageUrl(productToEdit.image_url || null);
       setIsPromotional(Boolean(productToEdit.is_promotional));
       setIsVegetarian(Boolean(productToEdit.is_vegetarian));
 
@@ -127,17 +163,15 @@ export default function ProductModal({
       setPrice("");
       setAddonGroups([]);
       setImageUrl(null);
-      setCroppedImageBlob(null);
-      setImageSrc(null);
       setIsPromotional(false);
       setIsVegetarian(false);
-      if (categories.length > 0) setCategoryId(categories[0].id);
+      setCategoryId(categories[0]?.id || "");
     }
   }, [isOpen, productToEdit, categories]);
 
   const addGroup = () => {
-    setAddonGroups([
-      ...addonGroups,
+    setAddonGroups((current) => [
+      ...current,
       {
         id: crypto.randomUUID(),
         title: "",
@@ -149,27 +183,38 @@ export default function ProductModal({
   };
 
   const removeGroup = (index: number) => {
-    const newGroups = [...addonGroups];
-    newGroups.splice(index, 1);
-    setAddonGroups(newGroups);
+    setAddonGroups((current) => current.filter((_, currentIndex) => currentIndex !== index));
   };
 
   const updateGroup = (index: number, field: keyof AddonGroup, value: any) => {
-    const newGroups = [...addonGroups];
-    newGroups[index] = { ...newGroups[index], [field]: value };
-    setAddonGroups(newGroups);
+    setAddonGroups((current) =>
+      current.map((group, currentIndex) =>
+        currentIndex === index ? { ...group, [field]: value } : group,
+      ),
+    );
   };
 
   const addOptionToGroup = (groupIndex: number) => {
-    const newGroups = [...addonGroups];
-    newGroups[groupIndex].options.push({ name: "", price: 0 });
-    setAddonGroups(newGroups);
+    setAddonGroups((current) =>
+      current.map((group, currentIndex) =>
+        currentIndex === groupIndex
+          ? { ...group, options: [...group.options, { name: "", price: 0 }] }
+          : group,
+      ),
+    );
   };
 
   const removeOptionFromGroup = (groupIndex: number, optionIndex: number) => {
-    const newGroups = [...addonGroups];
-    newGroups[groupIndex].options.splice(optionIndex, 1);
-    setAddonGroups(newGroups);
+    setAddonGroups((current) =>
+      current.map((group, currentIndex) =>
+        currentIndex === groupIndex
+          ? {
+              ...group,
+              options: group.options.filter((_, currentOptionIndex) => currentOptionIndex !== optionIndex),
+            }
+          : group,
+      ),
+    );
   };
 
   const updateOption = (
@@ -178,23 +223,37 @@ export default function ProductModal({
     field: "name" | "price",
     value: string,
   ) => {
-    const newGroups = [...addonGroups];
-    const option = newGroups[groupIndex].options[optionIndex];
-    if (field === "price") option.price = parseFloat(value) || 0;
-    else option.name = value;
-    setAddonGroups(newGroups);
+    setAddonGroups((current) =>
+      current.map((group, currentGroupIndex) => {
+        if (currentGroupIndex !== groupIndex) return group;
+
+        return {
+          ...group,
+          options: group.options.map((option, currentOptionIndex) => {
+            if (currentOptionIndex !== optionIndex) return option;
+            return {
+              ...option,
+              [field]: field === "price" ? parseFloat(value) || 0 : value,
+            };
+          }),
+        };
+      }),
+    );
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0];
-      const reader = new FileReader();
-      reader.addEventListener("load", () => {
-        setImageSrc(reader.result as string);
-        setIsCropping(true);
-      });
-      reader.readAsDataURL(file);
-    }
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.addEventListener("load", () => {
+      setImageSrc(reader.result as string);
+      setIsCropping(true);
+    });
+    reader.readAsDataURL(file);
+
+    // Permite escolher novamente o mesmo arquivo após remover/cancelar um recorte.
+    e.target.value = "";
   };
 
   const showCroppedImage = async () => {
@@ -204,10 +263,20 @@ export default function ProductModal({
     setIsCropping(false);
   };
 
+  const handleRemoveImage = () => {
+    setImageUrl(null);
+    setCroppedImageBlob(null);
+    setImageSrc(null);
+    setCroppedAreaPixels(null);
+    setIsCropping(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!restaurantId || !categoryId) return alert("Categoria obrigatória!");
     setIsLoading(true);
+
+    let uploadedPath: string | null = null;
 
     try {
       let finalUrl = imageUrl;
@@ -218,6 +287,8 @@ export default function ProductModal({
           .from("menu-images")
           .upload(fileName, croppedImageBlob);
         if (upErr) throw upErr;
+
+        uploadedPath = fileName;
         const { data } = supabase.storage.from("menu-images").getPublicUrl(fileName);
         finalUrl = data.publicUrl;
       }
@@ -253,7 +324,26 @@ export default function ProductModal({
         error = insertErr;
       }
 
-      if (error) throw error;
+      if (error) {
+        if (uploadedPath) {
+          await supabase.storage.from("menu-images").remove([uploadedPath]);
+        }
+        throw error;
+      }
+
+      const previousImageUrl = productToEdit?.image_url as string | null | undefined;
+      if (previousImageUrl && previousImageUrl !== finalUrl) {
+        const previousStoragePath = getMenuImageStoragePath(previousImageUrl);
+        if (previousStoragePath) {
+          const { error: removeError } = await supabase.storage
+            .from("menu-images")
+            .remove([previousStoragePath]);
+
+          if (removeError) {
+            console.warn("Produto salvo, mas não foi possível limpar a imagem antiga:", removeError);
+          }
+        }
+      }
 
       onProductSaved();
       onClose();
@@ -272,7 +362,7 @@ export default function ProductModal({
       <div className="fixed inset-0 z-[60] flex h-screen flex-col bg-black">
         <div className="flex justify-between bg-[#11100f] p-4 text-white">
           <span>Ajustar foto</span>
-          <button onClick={() => setIsCropping(false)}>
+          <button type="button" onClick={() => setIsCropping(false)} aria-label="Fechar recorte">
             <X />
           </button>
         </div>
@@ -289,6 +379,7 @@ export default function ProductModal({
         </div>
         <div className="bg-white p-4">
           <button
+            type="button"
             onClick={showCroppedImage}
             className="brand-gradient w-full rounded-2xl py-3 font-bold text-white"
           >
@@ -298,6 +389,8 @@ export default function ProductModal({
       </div>
     );
   }
+
+  const hasImage = Boolean(croppedPreviewUrl || imageUrl);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
@@ -312,7 +405,9 @@ export default function ProductModal({
             </p>
           </div>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Fechar"
             className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#fbf7f2] text-gray-500 transition-colors hover:bg-[#f1ebe3] hover:text-gray-700"
           >
             <X size={20} />
@@ -326,21 +421,41 @@ export default function ProductModal({
                 type="file"
                 accept="image/*"
                 onChange={handleFileChange}
+                aria-label={hasImage ? "Alterar imagem do produto" : "Adicionar imagem do produto"}
                 className="absolute inset-0 z-10 cursor-pointer opacity-0"
               />
-              {croppedImageBlob ? (
-                <img src={URL.createObjectURL(croppedImageBlob)} className="h-full w-full object-cover" />
+
+              {croppedPreviewUrl ? (
+                <img
+                  src={croppedPreviewUrl}
+                  alt="Prévia da imagem do produto"
+                  className="h-full w-full object-cover"
+                />
               ) : imageUrl ? (
-                <img src={imageUrl} className="h-full w-full object-cover" />
+                <img src={imageUrl} alt="Imagem do produto" className="h-full w-full object-cover" />
               ) : (
                 <div className="text-center text-xs font-medium text-gray-500">
                   <Upload className="mx-auto mb-2 text-gray-400" size={22} />
                   Adicionar foto
                 </div>
               )}
-              <div className="absolute inset-0 hidden items-center justify-center bg-black/45 text-xs font-bold text-white group-hover:flex">
-                Alterar
-              </div>
+
+              {hasImage && (
+                <>
+                  <div className="pointer-events-none absolute inset-0 hidden items-center justify-center bg-black/45 text-xs font-bold text-white group-hover:flex">
+                    Alterar
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleRemoveImage}
+                    aria-label="Remover imagem do produto"
+                    title="Remover imagem"
+                    className="absolute right-2 top-2 z-20 inline-flex h-8 w-8 items-center justify-center rounded-xl border border-white/70 bg-white/95 text-red-600 shadow-sm transition hover:bg-red-50 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-300"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </>
+              )}
             </div>
 
             <div className="space-y-4">
@@ -462,7 +577,7 @@ export default function ProductModal({
                         type="number"
                         value={group.max_options || ""}
                         onChange={(e) =>
-                          updateGroup(groupIndex, "max_options", parseInt(e.target.value))
+                          updateGroup(groupIndex, "max_options", parseInt(e.target.value) || 0)
                         }
                         className="w-12 bg-transparent text-center outline-none"
                         placeholder="0"
@@ -471,6 +586,7 @@ export default function ProductModal({
                     <button
                       type="button"
                       onClick={() => removeGroup(groupIndex)}
+                      aria-label={`Remover grupo ${group.title || groupIndex + 1}`}
                       className="rounded-xl p-2 text-gray-400 hover:bg-[#fff0e8] hover:text-[var(--brand)]"
                     >
                       <Trash2 size={15} />
@@ -488,6 +604,7 @@ export default function ProductModal({
                         />
                         <input
                           type="number"
+                          step="0.01"
                           placeholder="0.00"
                           value={option.price}
                           onChange={(e) =>
@@ -498,6 +615,7 @@ export default function ProductModal({
                         <button
                           type="button"
                           onClick={() => removeOptionFromGroup(groupIndex, optionIndex)}
+                          aria-label={`Remover opção ${option.name || optionIndex + 1}`}
                           className="rounded-xl p-2 text-gray-400 hover:bg-[#fff0e8] hover:text-[var(--brand)]"
                         >
                           <X size={16} />
@@ -524,12 +642,15 @@ export default function ProductModal({
 
         <div className="flex justify-end gap-3 border-t border-[var(--line)] bg-white px-6 py-5">
           <button
+            type="button"
             onClick={onClose}
-            className="rounded-2xl border border-[var(--line)] bg-white px-5 py-3 text-sm font-bold text-gray-600"
+            disabled={isLoading}
+            className="rounded-2xl border border-[var(--line)] bg-white px-5 py-3 text-sm font-bold text-gray-600 disabled:opacity-60"
           >
             Cancelar
           </button>
           <button
+            type="button"
             onClick={handleSubmit}
             disabled={isLoading}
             className="brand-gradient rounded-2xl px-6 py-3 text-sm font-bold text-white disabled:opacity-60"
