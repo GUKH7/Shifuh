@@ -7,6 +7,7 @@ export interface Product {
   category_id: string;
   is_active: boolean;
   addons: any[];
+  sort_order?: number;
   is_promotional?: boolean;
   is_vegetarian?: boolean;
   is_best_seller?: boolean;
