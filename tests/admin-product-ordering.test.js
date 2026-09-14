@@ -17,7 +17,7 @@ const migration = fs.readFileSync(
     "..",
     "supabase",
     "migrations",
-    "20260914010500_product_manual_sort_order.sql",
+    "20260914010039_product_manual_sort_order.sql",
   ),
   "utf8",
 );
