@@ -671,24 +671,39 @@ export default function ProductModal({
                   </div>
 
                   <div className="space-y-3 p-4">
+                    <div className="grid grid-cols-[1fr_140px_auto] gap-3 px-1 text-[11px] font-bold uppercase tracking-[0.08em] text-gray-400">
+                      <span>Opção</span>
+                      <span>Preço adicional</span>
+                      <span className="w-8" aria-hidden="true" />
+                    </div>
+                    <p className="px-1 text-xs text-gray-500">
+                      Informe um valor somente quando esta opção tiver custo extra. Deixe em branco para não cobrar acréscimo.
+                    </p>
                     {group.options.map((option, optionIndex) => (
-                      <div key={optionIndex} className="grid gap-3 md:grid-cols-[1fr_120px_auto]">
+                      <div key={optionIndex} className="grid gap-3 md:grid-cols-[1fr_140px_auto]">
                         <input
                           placeholder="Nome da opção"
                           value={option.name}
                           onChange={(e) => updateOption(groupIndex, optionIndex, "name", e.target.value)}
                           className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm outline-none focus:border-[var(--brand)]"
                         />
-                        <input
-                          type="number"
-                          step="0.01"
-                          placeholder="0.00"
-                          value={option.price}
-                          onChange={(e) =>
-                            updateOption(groupIndex, optionIndex, "price", e.target.value)
-                          }
-                          className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm outline-none focus:border-[var(--brand)]"
-                        />
+                        <div className="relative">
+                          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">
+                            R$
+                          </span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            aria-label={`Preço adicional de ${option.name || `opção ${optionIndex + 1}`}`}
+                            placeholder="0,00"
+                            value={option.price || ""}
+                            onChange={(e) =>
+                              updateOption(groupIndex, optionIndex, "price", e.target.value)
+                            }
+                            className="w-full rounded-xl border border-[var(--line)] py-2.5 pl-9 pr-3 text-sm outline-none focus:border-[var(--brand)]"
+                          />
+                        </div>
                         <button
                           type="button"
                           onClick={() => removeOptionFromGroup(groupIndex, optionIndex)}
