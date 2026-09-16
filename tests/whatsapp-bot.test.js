@@ -130,16 +130,33 @@ test("ignora NEXT_PUBLIC_WHATSAPP_BOT_API_URL para nao expor a API do robo", () 
   }
 });
 
-test("envia Authorization Bearer ao chamar a API WhatsApp", async () => {
+test("constroi endpoint isolado por restaurante", () => {
+  const envSnapshot = { ...process.env };
+  process.env.WHATSAPP_BOT_API_URL = "https://bot.example.test";
+
+  try {
+    const { buildWhatsappRestaurantBotUrl } = loadWhatsappBotLib();
+    assert.equal(
+      buildWhatsappRestaurantBotUrl("store-1", "/status"),
+      "https://bot.example.test/restaurants/store-1/status",
+    );
+  } finally {
+    restoreEnv(envSnapshot);
+  }
+});
+
+test("envia Authorization Bearer e usa a sessao do restaurante quando informada", async () => {
   const envSnapshot = { ...process.env };
   const originalFetch = global.fetch;
   let requestedHeaders;
+  let requestedUrl;
 
   process.env.WHATSAPP_BOT_API_URL = "https://bot.example.test";
   process.env.WHATSAPP_BOT_API_TOKEN = "secret-token";
   process.env.WHATSAPP_BOT_TIMEOUT_MS = "0";
 
-  global.fetch = async (_url, init) => {
+  global.fetch = async (url, init) => {
+    requestedUrl = String(url);
     requestedHeaders = init.headers;
     return new Response("{}", { status: 200 });
   };
@@ -150,9 +167,11 @@ test("envia Authorization Bearer ao chamar a API WhatsApp", async () => {
     const result = await sendWhatsappMessage({
       phone: "(11) 99999-9999",
       message: "Pedido atualizado",
+      restaurantId: "store-1",
     });
 
     assert.equal(result.ok, true);
+    assert.equal(requestedUrl, "https://bot.example.test/restaurants/store-1/send-message");
     assert.equal(new Headers(requestedHeaders).get("authorization"), "Bearer secret-token");
   } finally {
     global.fetch = originalFetch;
@@ -180,6 +199,31 @@ test("bloqueia status da API WhatsApp sem usuario autenticado", async () => {
   }
 });
 
+test("consulta status da sessao do restaurante autenticado", async () => {
+  const envSnapshot = { ...process.env };
+  const originalFetch = global.fetch;
+  let requestedUrl;
+
+  process.env.WHATSAPP_BOT_API_URL = "https://bot.example.test";
+  process.env.WHATSAPP_BOT_TIMEOUT_MS = "0";
+  supabaseState = { user: { id: "user-1" }, restaurants: [{ id: "store-1" }] };
+  global.fetch = async (url) => {
+    requestedUrl = String(url);
+    return Response.json({ status: "conectado", qrcode: "" });
+  };
+
+  try {
+    const { GET } = loadWhatsappRoute(statusRoutePath);
+    const response = await GET();
+
+    assert.equal(response.status, 200);
+    assert.equal(requestedUrl, "https://bot.example.test/restaurants/store-1/status");
+  } finally {
+    global.fetch = originalFetch;
+    restoreEnv(envSnapshot);
+  }
+});
+
 test("bloqueia restart da API WhatsApp quando usuario nao tem loja", async () => {
   const originalFetch = global.fetch;
   let fetchCalled = false;
@@ -200,7 +244,7 @@ test("bloqueia restart da API WhatsApp quando usuario nao tem loja", async () =>
   }
 });
 
-test("reinicia a API WhatsApp usando POST no servidor externo", async () => {
+test("reinicia somente a sessao WhatsApp do restaurante autenticado", async () => {
   const envSnapshot = { ...process.env };
   const originalFetch = global.fetch;
   let requestedUrl;
@@ -220,7 +264,7 @@ test("reinicia a API WhatsApp usando POST no servidor externo", async () => {
     const response = await POST();
 
     assert.equal(response.status, 200);
-    assert.equal(requestedUrl, "https://bot.example.test/restart");
+    assert.equal(requestedUrl, "https://bot.example.test/restaurants/store-1/restart");
     assert.equal(requestedMethod, "POST");
   } finally {
     global.fetch = originalFetch;

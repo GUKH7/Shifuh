@@ -19,7 +19,7 @@ const PUBLIC_ROUTE_PATTERNS = [
 ];
 const CRON_ROUTE_PATTERN = /src\/app\/api\/cron\/.*\/route\.ts$/;
 const PLATFORM_ROUTE_PATTERN = /src\/app\/api\/platform\/.*\/route\.ts$/;
-const CUSTOMER_IDENTITY_ROUTE_PATTERN = /src\/app\/api\/customer\/phone\/link\/route\.ts$/;
+const CUSTOMER_IDENTITY_ROUTE_PATTERN = /src\/app\/api\/customer\/phone\/(?:link|otp-route)\/route\.ts$/;
 
 async function walk(directory) {
   const entries = await readdir(directory, { withFileTypes: true });

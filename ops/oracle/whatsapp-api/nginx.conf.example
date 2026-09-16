@@ -32,6 +32,7 @@ server {
         proxy_send_timeout 15s;
     }
 
+    # Rotas globais mantidas temporariamente somente durante a migracao.
     location = /status {
         limit_req zone=whatsapp_general burst=20 nodelay;
         limit_except GET { deny all; }
@@ -63,6 +64,52 @@ server {
     }
 
     location = /restart {
+        limit_req zone=whatsapp_restart burst=2 nodelay;
+        limit_except POST { deny all; }
+        proxy_pass http://127.0.0.1:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header Authorization $http_authorization;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 15s;
+        proxy_send_timeout 15s;
+    }
+
+    # Uma unica conexao/QR por restaurante. O Node valida o UUID novamente.
+    location ~ ^/restaurants/[0-9A-Fa-f-]{36}/status$ {
+        limit_req zone=whatsapp_general burst=20 nodelay;
+        limit_except GET { deny all; }
+        proxy_pass http://127.0.0.1:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header Authorization $http_authorization;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 15s;
+        proxy_send_timeout 15s;
+    }
+
+    location ~ ^/restaurants/[0-9A-Fa-f-]{36}/send-message$ {
+        limit_req zone=whatsapp_send burst=15 nodelay;
+        limit_except POST { deny all; }
+        proxy_pass http://127.0.0.1:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header Authorization $http_authorization;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 15s;
+        proxy_send_timeout 15s;
+    }
+
+    location ~ ^/restaurants/[0-9A-Fa-f-]{36}/restart$ {
         limit_req zone=whatsapp_restart burst=2 nodelay;
         limit_except POST { deny all; }
         proxy_pass http://127.0.0.1:3001;

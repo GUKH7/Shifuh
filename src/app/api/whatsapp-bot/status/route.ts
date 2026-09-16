@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireWhatsappBotAccess } from "@/lib/whatsapp-bot-access";
 import {
   buildWhatsappBotHeaders,
-  buildWhatsappBotUrl,
+  buildWhatsappRestaurantBotUrl,
   getWhatsappBotRequestSignal,
 } from "@/lib/whatsapp-bot";
 
@@ -13,7 +13,7 @@ export async function GET() {
     return access.response;
   }
 
-  const statusUrl = buildWhatsappBotUrl("/status");
+  const statusUrl = buildWhatsappRestaurantBotUrl(access.restaurant.id, "/status");
 
   if (!statusUrl) {
     return NextResponse.json(
