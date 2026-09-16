@@ -29,6 +29,9 @@ const BIND_HOST = process.env.WHATSAPP_BIND_HOST || '127.0.0.1';
 const PORT = readPositiveInteger(process.env.WHATSAPP_PORT, 3001);
 const ALLOW_PUBLIC_BIND = isTruthy(process.env.WHATSAPP_ALLOW_PUBLIC_BIND);
 const LEGACY_AUTH_DIR = './baileys_auth_info';
+const LEGACY_SESSION_ENABLED = process.env.WHATSAPP_LEGACY_SESSION_ENABLED === undefined
+  ? true
+  : isTruthy(process.env.WHATSAPP_LEGACY_SESSION_ENABLED);
 const RESTAURANT_AUTH_ROOT = process.env.WHATSAPP_RESTAURANT_SESSIONS_DIR || './baileys_restaurant_sessions';
 const RESTAURANT_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -162,10 +165,12 @@ async function sendWithSocket(socket, body, logContext) {
 }
 
 // ---------------------------------------------------------------------------
-// Legacy global session. It remains available only for backwards compatibility
-// while existing non-tenant callers are migrated to restaurant-scoped routes.
+// Legacy global session. It remains available only during staged migrations.
+// Once an existing QR session is assigned to a restaurant, disable it with
+// WHATSAPP_LEGACY_SESSION_ENABLED=false so the same credentials are never opened
+// by both the legacy and tenant sockets at the same time.
 // ---------------------------------------------------------------------------
-let statusConexao = 'iniciando';
+let statusConexao = LEGACY_SESSION_ENABLED ? 'iniciando' : 'desativado';
 let qrCodeBase64 = '';
 let sock = null;
 let isConnecting = false;
@@ -188,7 +193,7 @@ function resetLegacyAuth() {
 }
 
 function scheduleLegacyReconnect(reason) {
-  if (reconnectTimer || isConnecting) return;
+  if (!LEGACY_SESSION_ENABLED || reconnectTimer || isConnecting) return;
 
   statusConexao = 'reconectando';
   qrCodeBase64 = '';
@@ -208,7 +213,7 @@ function scheduleLegacyReconnect(reason) {
 }
 
 async function connectLegacyWhatsapp() {
-  if (isConnecting) return;
+  if (!LEGACY_SESSION_ENABLED || isConnecting) return;
 
   isConnecting = true;
   clearLegacyReconnectTimer();
@@ -483,15 +488,23 @@ app.get('/health', (_req, res) => {
     status: 'ok',
     service: 'shifuh-whatsapp-api',
     restaurantSessions: restaurantSessions.size,
+    legacySessionEnabled: LEGACY_SESSION_ENABLED,
   });
 });
 
 // Legacy compatibility endpoints.
 app.get('/status', authRateLimit, requireMainApiToken, (_req, res) => {
-  res.json({ status: statusConexao, qrcode: qrCodeBase64 });
+  if (!LEGACY_SESSION_ENABLED) {
+    return res.status(410).json({ error: 'Sessao global desativada; use a rota do restaurante.' });
+  }
+  return res.json({ status: statusConexao, qrcode: qrCodeBase64 });
 });
 
 app.post('/restart', authRateLimit, restartRateLimit, requireMainApiToken, (_req, res) => {
+  if (!LEGACY_SESSION_ENABLED) {
+    return res.status(410).json({ error: 'Sessao global desativada; use a rota do restaurante.' });
+  }
+
   console.log('Comando de reinicio da sessao legacy recebido.');
   res.json({ message: 'Reiniciando conexao legacy...' });
 
@@ -515,6 +528,9 @@ app.post('/restart', authRateLimit, restartRateLimit, requireMainApiToken, (_req
 });
 
 app.post('/send-message', authRateLimit, sendMessageRateLimit, requireMainApiToken, async (req, res) => {
+  if (!LEGACY_SESSION_ENABLED) {
+    return res.status(410).json({ error: 'Sessao global desativada; use a rota do restaurante.' });
+  }
   if (statusConexao !== 'conectado' || !sock) {
     return res.status(503).json({ error: 'WhatsApp nao esta pronto.' });
   }
@@ -595,7 +611,11 @@ app.post(
 );
 
 bootstrapPersistedRestaurantSessions();
-connectLegacyWhatsapp();
+if (LEGACY_SESSION_ENABLED) {
+  connectLegacyWhatsapp();
+} else {
+  console.log('Sessao global do WhatsApp desativada; somente sessoes por restaurante serao iniciadas.');
+}
 
 app.listen(PORT, BIND_HOST, () => {
   console.log(`API Baileys rodando em http://${BIND_HOST}:${PORT}.`);
