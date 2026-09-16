@@ -110,15 +110,38 @@ test('rate limiter bloqueia acima do limite', () => {
   assert.ok(blocked.headers.get('retry-after'));
 });
 
-test('nginx limita antes do Node e publica somente rotas esperadas', () => {
+test('nginx limita antes do Node e publica somente rotas globais e tenant esperadas', () => {
   const nginx = fs.readFileSync(path.join(__dirname, 'nginx.conf.example'), 'utf8');
 
   assert.match(nginx, /limit_req_zone\s+\$binary_remote_addr/);
   assert.match(nginx, /location = \/send-message/);
   assert.match(nginx, /location = \/restart/);
+  assert.match(nginx, /\/restaurants\/\[0-9A-Fa-f-\]\{36\}\/status/);
+  assert.match(nginx, /\/restaurants\/\[0-9A-Fa-f-\]\{36\}\/send-message/);
+  assert.match(nginx, /\/restaurants\/\[0-9A-Fa-f-\]\{36\}\/restart/);
   assert.match(nginx, /proxy_pass http:\/\/127\.0\.0\.1:3001/);
   assert.match(nginx, /location \/ \{\s*return 404;/s);
   assert.doesNotMatch(nginx, /proxy_pass http:\/\/0\.0\.0\.0/);
+});
+
+test('servidor permite desligar sessao global apos migracao para impedir socket duplicado', () => {
+  const server = fs.readFileSync(path.join(__dirname, 'index.js'), 'utf8');
+
+  assert.match(server, /WHATSAPP_LEGACY_SESSION_ENABLED/);
+  assert.match(server, /if \(LEGACY_SESSION_ENABLED\) \{\s*connectLegacyWhatsapp\(\);/s);
+  assert.match(server, /Sessao global desativada/);
+  assert.match(server, /status\(410\)/);
+});
+
+test('script de migracao preserva backup, para apenas o bot e desativa a sessao global', () => {
+  const migration = fs.readFileSync(path.join(__dirname, '..', 'migrate-whatsapp-session-to-restaurant.sh'), 'utf8');
+
+  assert.match(migration, /pre-tenant-migration/);
+  assert.match(migration, /pm2 stop "\$PM2_PROCESS"/);
+  assert.match(migration, /baileys_auth_info\.migrated-/);
+  assert.match(migration, /WHATSAPP_LEGACY_SESSION_ENABLED=false/);
+  assert.match(migration, /pm2 restart "\$PM2_PROCESS" --update-env/);
+  assert.match(migration, /rollback_on_error/);
 });
 
 test('script de firewall bloqueia portas internas do WhatsApp e EconoApp', () => {
