@@ -1099,7 +1099,7 @@ export default function StorePage() {
                           <div className={`relative overflow-hidden rounded-xl ${
                             storefrontTheme.catalog_layout === "list"
                               ? "aspect-square w-[clamp(112px,36vw,132px)] self-start flex-shrink-0 sm:w-36"
-                              : "aspect-square h-20 w-20 self-start flex-shrink-0 min-[380px]:h-24 min-[380px]:w-24 sm:mt-3 sm:h-auto sm:w-full"
+                              : "aspect-square w-[clamp(112px,36vw,132px)] self-start flex-shrink-0 sm:mt-3 sm:w-full"
                           }`}>
                             <ProductImage
                               src={product.image_url}
