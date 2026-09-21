@@ -226,7 +226,7 @@ function SectionTitle({ icon, title, description }: { icon: ReactNode; title: st
   );
 }
 
-function Toggle({ checked, onChange, label }: { checked: boolean; onChange: () => void; label: string }) {
+function Toggle({ checked, onChange, label, disabled = false }: { checked: boolean; onChange: () => void; label: string; disabled?: boolean }) {
   return (
     <button
       type="button"
@@ -234,7 +234,8 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: () =
       aria-checked={checked}
       aria-label={label}
       onClick={onChange}
-      className={`relative h-7 w-12 shrink-0 overflow-hidden rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]/30 ${checked ? "border-orange-300 bg-[var(--brand)]" : "border-gray-200 bg-gray-100"}`}
+      disabled={disabled}
+      className={`relative h-7 w-12 shrink-0 overflow-hidden rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]/30 disabled:cursor-not-allowed disabled:opacity-50 ${checked ? "border-orange-300 bg-[var(--brand)]" : "border-gray-200 bg-gray-100"}`}
     >
       <span className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${checked ? "translate-x-5" : "translate-x-0"}`} />
     </button>
@@ -429,7 +430,8 @@ export default function WheelCampaignWorkspace() {
     return errors;
   }, [campaign, prizes, rules]);
 
-  const saveCampaign = async () => {
+  const saveCampaign = async (statusOverride?: CampaignStatus) => {
+    const statusToSave = statusOverride ?? campaign.status;
     if (validationErrors.length || !restaurantId) {
       setNotice("");
       setErrorMsg(validationErrors[0] || "Loja não localizada.");
@@ -470,7 +472,7 @@ export default function WheelCampaignWorkspace() {
         p_restaurant_id: restaurantId,
         p_campaign: {
           name: campaign.name.trim(),
-          status: campaign.status,
+          status: statusToSave,
           starts_at: new Date(campaign.startsAt).toISOString(),
           ends_at: new Date(campaign.endsAt).toISOString(),
           distribution_mode: campaign.mode,
@@ -483,7 +485,8 @@ export default function WheelCampaignWorkspace() {
       });
       if (error) throw error;
       setCampaignId(String(data));
-      setNotice(campaign.status === "active" ? "Roleta salva e publicada na vitrine." : "Configuração salva com sucesso.");
+      setCampaign((current) => ({ ...current, status: statusToSave }));
+      setNotice(statusToSave === "active" ? "Campanha ativada. Novos pedidos elegíveis já podem liberar giros." : "Configuração salva com sucesso.");
       await loadWorkspace();
       window.dispatchEvent(new CustomEvent(WHEEL_CAMPAIGN_SAVED_EVENT, { detail: { campaignId: String(data) } }));
     } catch (error: any) {
@@ -492,6 +495,42 @@ export default function WheelCampaignWorkspace() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const toggleCampaignActive = async () => {
+    if (!restaurantId || saving) return;
+
+    if (campaign.status === "active") {
+      if (!campaignId) {
+        setCampaign((current) => ({ ...current, status: "paused" }));
+        return;
+      }
+
+      setSaving(true);
+      setErrorMsg("");
+      setNotice("");
+      try {
+        const { error } = await (supabase as any)
+          .from("promotion_campaigns")
+          .update({ status: "paused" })
+          .eq("id", campaignId)
+          .eq("restaurant_id", restaurantId);
+
+        if (error) throw error;
+
+        setCampaign((current) => ({ ...current, status: "paused" }));
+        setNotice("Campanha desativada. Nenhum novo giro será liberado até você ativá-la novamente.");
+        window.dispatchEvent(new CustomEvent(WHEEL_CAMPAIGN_SAVED_EVENT, { detail: { campaignId } }));
+      } catch (error: any) {
+        console.error(error);
+        setErrorMsg(error?.message || "Não foi possível desativar a campanha.");
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
+    await saveCampaign("active");
   };
 
   const updatePrize = (id: string, patch: Partial<PrizeForm>) => setPrizes((current) => current.map((prize) => prize.id === id ? { ...prize, ...patch } : prize));
@@ -505,7 +544,7 @@ export default function WheelCampaignWorkspace() {
         title="Roleta da Sorte"
         description="Configure, salve e publique uma campanha real na vitrine. O resultado de cada giro continua decidido exclusivamente no servidor."
         icon={<Gift size={24} />}
-        action={<AdminButton onClick={() => void saveCampaign()} disabled={saving}>{saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}{campaign.status === "active" ? "Salvar e publicar" : "Salvar configuração"}</AdminButton>}
+        action={<AdminButton onClick={() => void saveCampaign()} disabled={saving}>{saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}Salvar alterações</AdminButton>}
       />
 
       <section className="rounded-[22px] border border-emerald-100 bg-emerald-50/70 px-4 py-3 text-sm text-emerald-800">
@@ -584,7 +623,57 @@ export default function WheelCampaignWorkspace() {
         </div>
 
         <aside className="space-y-4 xl:sticky xl:top-6 xl:self-start">
-          <section className="surface-card rounded-[28px] p-5"><p className="text-xs font-black uppercase tracking-[0.12em] text-[var(--brand)]">Publicação</p><h2 className="mt-2 text-lg font-black text-gray-950">{campaign.name || "Nova campanha"}</h2><dl className="mt-5 space-y-3 text-sm"><div><dt className="font-bold text-gray-400">Estado</dt><dd className="mt-1 font-bold text-gray-800">{campaign.status === "active" ? "Ativa na vitrine" : campaign.status === "scheduled" ? "Agendada" : campaign.status === "paused" ? "Pausada" : "Rascunho"}</dd></div><div><dt className="font-bold text-gray-400">Distribuição</dt><dd className="mt-1 text-gray-700">{campaign.mode === "probability" ? "Probabilidade" : "Frequência controlada"}</dd></div><div><dt className="font-bold text-gray-400">Resultados</dt><dd className="mt-1 text-gray-700">{prizes.length} segmentos</dd></div></dl><AdminButton className="mt-5 w-full" onClick={() => void saveCampaign()} disabled={saving}>{saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}Salvar agora</AdminButton></section>
+          <section className="surface-card rounded-[28px] p-5">
+            <p className="text-xs font-black uppercase tracking-[0.12em] text-[var(--brand)]">Publicação</p>
+            <h2 className="mt-2 text-lg font-black text-gray-950">{campaign.name || "Nova campanha"}</h2>
+
+            <div className={`mt-5 rounded-[20px] border p-4 ${
+              campaign.status === "active"
+                ? "border-emerald-200 bg-emerald-50"
+                : "border-[var(--line)] bg-[#fbf7f2]"
+            }`}>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className={`font-black ${campaign.status === "active" ? "text-emerald-900" : "text-gray-900"}`}>
+                    {campaign.status === "active" ? "Campanha ativa" : "Campanha desativada"}
+                  </p>
+                  <p className={`mt-1 text-xs leading-5 ${campaign.status === "active" ? "text-emerald-700" : "text-gray-500"}`}>
+                    {campaign.status === "active"
+                      ? "Novos pedidos elegíveis podem liberar um giro."
+                      : "Nenhum novo giro será liberado enquanto estiver desativada."}
+                  </p>
+                </div>
+                <Toggle
+                  checked={campaign.status === "active"}
+                  onChange={() => void toggleCampaignActive()}
+                  disabled={saving}
+                  label={campaign.status === "active" ? "Desativar campanha" : "Ativar campanha"}
+                />
+              </div>
+            </div>
+
+            <dl className="mt-5 space-y-3 text-sm">
+              <div>
+                <dt className="font-bold text-gray-400">Estado</dt>
+                <dd className="mt-1 font-bold text-gray-800">
+                  {campaign.status === "active" ? "Ativa na vitrine" : campaign.status === "scheduled" ? "Agendada" : campaign.status === "paused" ? "Pausada" : "Rascunho"}
+                </dd>
+              </div>
+              <div>
+                <dt className="font-bold text-gray-400">Distribuição</dt>
+                <dd className="mt-1 text-gray-700">{campaign.mode === "probability" ? "Probabilidade" : "Frequência controlada"}</dd>
+              </div>
+              <div>
+                <dt className="font-bold text-gray-400">Resultados</dt>
+                <dd className="mt-1 text-gray-700">{prizes.length} segmentos</dd>
+              </div>
+            </dl>
+
+            <AdminButton className="mt-5 w-full" onClick={() => void saveCampaign()} disabled={saving}>
+              {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+              Salvar alterações
+            </AdminButton>
+          </section>
           <section className={`rounded-[24px] border p-5 ${validationErrors.length ? "border-amber-200 bg-amber-50" : "border-emerald-200 bg-emerald-50"}`}><p className={`font-black ${validationErrors.length ? "text-amber-800" : "text-emerald-800"}`}>{validationErrors.length ? `${validationErrors.length} ponto(s) para revisar` : "Configuração pronta"}</p>{validationErrors.length ? <ul className="mt-3 space-y-2 text-xs leading-5 text-amber-800">{validationErrors.slice(0, 5).map((error) => <li key={error}>• {error}</li>)}</ul> : <p className="mt-2 text-sm leading-6 text-emerald-700">A campanha pode ser salva com segurança no banco.</p>}</section>
           <section className="rounded-[24px] border border-blue-100 bg-blue-50 p-5"><div className="flex items-start gap-3"><CalendarDays size={18} className="mt-0.5 text-blue-700" /><div><p className="font-black text-blue-900">Resultado protegido</p><p className="mt-1 text-sm leading-6 text-blue-700">A vitrine nunca recebe as probabilidades. O servidor persiste o resultado primeiro e o navegador apenas anima até o prêmio definido.</p></div></div></section>
         </aside>
