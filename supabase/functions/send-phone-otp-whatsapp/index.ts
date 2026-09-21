@@ -13,6 +13,9 @@ type SendSmsHookPayload = {
 type OtpRouteRow = {
   id: string;
   restaurant_id: string;
+  restaurant?: {
+    name?: string | null;
+  } | null;
 };
 
 const MAX_BODY_BYTES = 16 * 1024;
@@ -80,6 +83,13 @@ function normalizeBrazilPhone(value: string) {
   return /^55\d{10,11}$/.test(digits) ? `+${digits}` : "";
 }
 
+function normalizeRestaurantName(value: string | null | undefined) {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 120);
+}
+
 function resolveWhatsappEndpoint(baseUrl: string, restaurantId: string) {
   const parsed = new URL(baseUrl);
   if (parsed.protocol !== "https:") {
@@ -99,7 +109,10 @@ async function findOtpRoute(
   phone: string,
 ): Promise<OtpRouteRow | null> {
   const url = new URL(`${supabaseUrl.replace(/\/$/, "")}/rest/v1/customer_phone_otp_routes`);
-  url.searchParams.set("select", "id,restaurant_id");
+  url.searchParams.set(
+    "select",
+    "id,restaurant_id,restaurant:restaurants(name)",
+  );
   url.searchParams.set("phone", `eq.${phone}`);
   url.searchParams.set("consumed_at", "is.null");
   url.searchParams.set("expires_at", `gt.${new Date().toISOString()}`);
@@ -125,7 +138,17 @@ async function findOtpRoute(
     return null;
   }
 
-  return route;
+  const restaurantName = normalizeRestaurantName(route.restaurant?.name);
+  if (!restaurantName) {
+    return null;
+  }
+
+  return {
+    ...route,
+    restaurant: {
+      name: restaurantName,
+    },
+  };
 }
 
 async function markOtpRouteConsumed(
@@ -220,8 +243,13 @@ Deno.serve(async (request: Request) => {
     return hookErrorResponse(503, "A configuracao do WhatsApp da loja e invalida.");
   }
 
+  const restaurantName = normalizeRestaurantName(route.restaurant?.name);
+  if (!restaurantName) {
+    return hookErrorResponse(503, "Nao foi possivel identificar o nome do restaurante.");
+  }
+
   const message = [
-    `Seu codigo de verificacao Shifuh e ${otp}.`,
+    `Seu codigo de confirmacao do ${restaurantName} e ${otp}.`,
     "Ele expira em poucos minutos.",
     "Nao compartilhe este codigo com ninguem.",
   ].join(" ");
