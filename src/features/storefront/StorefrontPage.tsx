@@ -1096,8 +1096,10 @@ export default function StorePage() {
                               <span className="text-[15px] font-black text-gray-950">{formatMoney(product.price)}</span>
                             </div>
                           </div>
-                          <div className={`relative aspect-square overflow-hidden rounded-xl ${
-                            storefrontTheme.catalog_layout === "list" ? "w-20 flex-shrink-0 min-[380px]:w-24 sm:w-36" : "w-20 flex-shrink-0 min-[380px]:w-24 sm:mt-3 sm:w-full"
+                          <div className={`relative overflow-hidden rounded-xl ${
+                            storefrontTheme.catalog_layout === "list"
+                              ? "h-20 w-20 self-start flex-shrink-0 min-[380px]:h-24 min-[380px]:w-24 sm:h-36 sm:w-36"
+                              : "aspect-square h-20 w-20 self-start flex-shrink-0 min-[380px]:h-24 min-[380px]:w-24 sm:mt-3 sm:h-auto sm:w-full"
                           }`}>
                             <ProductImage
                               src={product.image_url}
