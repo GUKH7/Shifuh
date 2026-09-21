@@ -161,7 +161,9 @@ export function useStorefront({ slug, onCustomerLoaded, onMissingStore }: UseSto
         supabase
           .from("public_storefront_products")
           .select("*")
-          .eq("restaurant_id", resto.id),
+          .eq("restaurant_id", resto.id)
+          .order("sort_order", { ascending: true })
+          .order("name", { ascending: true }),
       ]);
       const cats = categoriesResult.data;
 
@@ -177,7 +179,9 @@ export function useStorefront({ slug, onCustomerLoaded, onMissingStore }: UseSto
           .from("products")
           .select("*")
           .eq("restaurant_id", resto.id)
-          .eq("is_active", true);
+          .eq("is_active", true)
+          .order("sort_order", { ascending: true })
+          .order("name", { ascending: true });
         prods = fallbackProductsResult.data;
       }
 
