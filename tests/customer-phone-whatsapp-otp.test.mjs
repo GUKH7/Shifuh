@@ -73,6 +73,12 @@ test("OTP hook accepts only Brazilian phones and six-digit codes", () => {
   assert.match(hook, /\^\\d\{6\}\$/);
 });
 
+test("OTP message uses the storefront restaurant name instead of Shifuh branding", () => {
+  assert.match(hook, /restaurant:restaurants\(name\)/);
+  assert.match(hook, /Seu codigo de confirmacao do \$\{restaurantName\} e \$\{otp\}/);
+  assert.doesNotMatch(hook, /codigo de verificacao Shifuh/i);
+});
+
 test("OTP value and complete phone are never written to application logs by the hook", () => {
   const loggingCalls = hook.match(/console\.(?:log|info|warn|error)\([^;]+;/gs) || [];
   for (const loggingCall of loggingCalls) {
