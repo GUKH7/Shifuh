@@ -1006,10 +1006,10 @@ export default function ProductModal({
                         onClick={() =>
                           updateGroup(groupIndex, "is_active", group.is_active === false)
                         }
-                        className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold ${
+                        className={`inline-flex items-center gap-1.5 rounded-xl border bg-white px-3 py-2 text-xs font-bold transition-colors ${
                           group.is_active === false
-                            ? "bg-gray-200 text-gray-600"
-                            : "bg-emerald-50 text-emerald-700"
+                            ? "border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-700"
+                            : "border-emerald-100 text-emerald-700 hover:bg-emerald-50"
                         }`}
                       >
                         {group.is_active === false ? (
@@ -1049,7 +1049,7 @@ export default function ProductModal({
                             : `Remover grupo ${group.title || groupIndex + 1}`
                         }
                         title={group.persisted ? "Desvincular deste produto" : "Remover grupo"}
-                        className="rounded-xl p-2 text-gray-400 hover:bg-[#fff0e8] hover:text-[var(--brand)]"
+                        className="rounded-xl p-2 text-gray-400 transition-colors hover:text-red-600"
                       >
                         <Trash2 size={15} />
                       </button>
@@ -1124,10 +1124,10 @@ export default function ProductModal({
                           <button
                             type="button"
                             onClick={() => toggleOptionActive(groupIndex, optionIndex)}
-                            className={`inline-flex min-h-10 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold ${
+                            className={`inline-flex min-h-10 items-center gap-1.5 rounded-xl border bg-white px-3 py-2 text-xs font-bold transition-colors ${
                               option.is_active === false
-                                ? "bg-gray-100 text-gray-600"
-                                : "bg-emerald-50 text-emerald-700"
+                                ? "border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-700"
+                                : "border-emerald-100 text-emerald-700 hover:bg-emerald-50"
                             }`}
                           >
                             {option.is_active === false ? (
@@ -1143,9 +1143,10 @@ export default function ProductModal({
                             type="button"
                             onClick={() => removeOptionFromGroup(groupIndex, optionIndex)}
                             aria-label={`Remover opção ${option.name || optionIndex + 1}`}
-                            className="rounded-xl p-2 text-gray-400 hover:bg-[#fff0e8] hover:text-[var(--brand)]"
+                            title="Excluir opção"
+                            className="rounded-xl p-2 text-gray-400 transition-colors hover:text-red-600"
                           >
-                            <X size={16} />
+                            <Trash2 size={16} />
                           </button>
                         </div>
                       </div>
