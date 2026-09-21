@@ -10,6 +10,39 @@ import {
   sanitizeCustomerReturnUrl,
 } from "@/lib/customer-auth-routing";
 
+function friendlyAuthError(message = "") {
+  const normalized = message.toLowerCase();
+
+  if (normalized.includes("already registered") || normalized.includes("already exists")) {
+    return {
+      description: "Este e-mail já possui uma conta. Faça login para continuar.",
+      switchToLogin: true,
+    };
+  }
+
+  if (
+    normalized.includes("invalid login credentials") ||
+    normalized.includes("invalid credentials")
+  ) {
+    return {
+      description: "E-mail ou senha incorretos. Verifique os dados e tente novamente.",
+      switchToLogin: false,
+    };
+  }
+
+  if (normalized.includes("email not confirmed")) {
+    return {
+      description: "Confirme seu e-mail antes de entrar na conta.",
+      switchToLogin: false,
+    };
+  }
+
+  return {
+    description: message || "Verifique seus dados e tente novamente.",
+    switchToLogin: false,
+  };
+}
+
 function AuthContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -77,9 +110,15 @@ function AuthContent() {
       router.push(buildCustomerPhoneVerificationUrl(returnUrl));
       router.refresh();
     } catch (error: any) {
+      const friendlyError = friendlyAuthError(error?.message || "");
+
+      if (friendlyError.switchToLogin) {
+        setIsLogin(true);
+      }
+
       showToast({
         title: "Não foi possível autenticar",
-        description: error.message || "Verifique seus dados e tente novamente.",
+        description: friendlyError.description,
         tone: "error",
       });
     } finally {
@@ -127,7 +166,7 @@ function AuthContent() {
             type="password"
             required
             minLength={6}
-            placeholder="Crie uma senha"
+            placeholder={isLogin ? "Sua senha" : "Crie uma senha"}
             className="w-full rounded-xl border p-3 pl-10 outline-none focus:border-red-500"
             value={formData.password}
             onChange={(e) => setFormData({ ...formData, password: e.target.value })}
