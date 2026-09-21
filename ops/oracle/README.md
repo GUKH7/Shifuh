@@ -6,6 +6,8 @@ Scripts usados pelo bot principal do WhatsApp na VM Oracle.
 
 O codigo implantado em `/home/ubuntu/whatsapp-api` esta versionado em `ops/oracle/whatsapp-api`. A API consulta explicitamente a versao atual do WhatsApp Web antes de abrir o socket e usa uma versao de fallback durante falhas temporarias da consulta externa.
 
+A arquitetura tenant-aware usa **uma unica conexao/QR por restaurante**. O mesmo WhatsApp conectado no painel da loja e usado para OTP, atualizacoes de pedido e demais mensagens daquele restaurante.
+
 ### Seguranca obrigatoria
 
 A API trabalha em modo fail-closed:
@@ -13,10 +15,10 @@ A API trabalha em modo fail-closed:
 - `WHATSAPP_BOT_API_TOKEN` ou `WHATSAPP_MAIN_API_TOKEN` e obrigatorio;
 - sem token, o processo recusa a inicializacao;
 - o Node aceita exclusivamente bind em loopback (`127.0.0.1`, `localhost` ou `::1`);
-- nao existe mais opt-in para publicar diretamente a porta do Node;
-- `/status`, `/restart`, `/send-message` e `/econoapp` possuem rate limit no Express;
+- nao existe opt-in para publicar diretamente a porta do Node;
+- rotas globais legacy e rotas `/restaurants/{restaurant_id}/...` possuem rate limit no Express;
 - o Nginx aplica uma segunda camada de rate limit antes do Node;
-- o reverse proxy publica somente `/health`, `/status`, `/restart`, `/send-message` e `/econoapp`; qualquer outra rota recebe `404`;
+- o reverse proxy publica somente `/health`, as rotas legacy explicitamente listadas, as tres rotas tenant-aware e `/econoapp`; qualquer outra rota recebe `404`;
 - `/send-message` valida telefone, limita a mensagem a 4096 caracteres e nao grava o numero completo nos logs;
 - o corpo JSON e limitado a 16 KB.
 
@@ -41,9 +43,24 @@ Use `whatsapp-api/nginx.conf.example` como base do virtual host HTTPS. Quando o 
 
 Na VM, execute `whatsapp-api/network-hardening.sh` somente depois de o UFW ja estar ativo e o acesso SSH estar corretamente permitido. O script nao habilita o firewall sozinho para evitar bloquear administradores; ele garante deny para as portas internas 3001/3002 e allow para HTTPS 443.
 
-No OCI NSG/Security List, mantenha a mesma regra arquitetural: **nenhum ingress publico para 3001 ou 3002**. Exponha 443 para o reverse proxy e restrinja SSH ao CIDR administrativo adequado. Como as regras OCI pertencem a infraestrutura externa ao repositorio, a validacao final precisa ser feita na console/VM Oracle.
+No OCI NSG/Security List, mantenha a mesma regra arquitetural: **nenhum ingress publico para 3001 ou 3002**. Exponha 443 para o reverse proxy e restrinja SSH ao CIDR administrativo adequado.
 
-Ao implantar uma atualizacao, preserve `baileys_auth_info`, as variaveis do PM2 e os arquivos atuais como backup antes de reiniciar apenas `whatsapp-api`.
+## Migrar o QR/conexao existente para uma loja
+
+Nao crie um segundo QR para OTP. Quando a sessao global existente pertencer a um restaurante conhecido, use `migrate-whatsapp-session-to-restaurant.sh` para reaproveitar as credenciais atuais.
+
+O rollout seguro e:
+
+1. coloque na VM a versao tenant-aware de `whatsapp-api/index.js`, `security.js` e dependencias sem reiniciar o processo ainda;
+2. atualize o virtual host Nginx para permitir apenas `/restaurants/{uuid}/status`, `/restart` e `/send-message`, valide com `nginx -t`, mas mantenha a sessao atual ativa ate a migracao;
+3. execute os testes em `/home/ubuntu/whatsapp-api`;
+4. execute `migrate-whatsapp-session-to-restaurant.sh <restaurant_id>`;
+5. o script cria backup privado, para somente `whatsapp-api`, copia a sessao para `baileys_restaurant_sessions/<restaurant_id>`, arquiva a pasta global, desativa `WHATSAPP_LEGACY_SESSION_ENABLED` no PM2 e reinicia o processo;
+6. valide a rota tenant-aware `/restaurants/<restaurant_id>/status` antes de ativar o novo Send SMS Hook.
+
+O script recusa sobrescrever uma sessao tenant que ja exista e tenta restaurar a pasta global/processo em caso de falha. O diretorio `baileys_auth_info.migrated-*` e o arquivo `pre-tenant-migration-*.tar.gz` devem ser preservados ate o rollout ser confirmado.
+
+`WHATSAPP_LEGACY_SESSION_ENABLED=false` garante que as mesmas credenciais nao sejam abertas simultaneamente por um socket global e um socket da loja.
 
 ## Watchdog
 

@@ -138,6 +138,7 @@ export async function PATCH(request: Request, context: Params) {
 
     if (body.notifyCustomer !== false) {
       const result = await sendWhatsappMessage({
+        restaurantId: restaurant.id,
         phone: order.customer_phone,
         message: buildStatusMessage(updatedOrder),
         orderId: order.id,
