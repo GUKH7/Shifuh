@@ -1098,13 +1098,13 @@ export default function StorePage() {
                           </div>
                           <div className={`relative overflow-hidden rounded-xl ${
                             storefrontTheme.catalog_layout === "list"
-                              ? "aspect-square w-[36%] min-w-[96px] max-w-[112px] self-start flex-shrink-0 sm:w-36 sm:min-w-0 sm:max-w-none"
+                              ? "aspect-square w-[clamp(112px,36vw,132px)] self-start flex-shrink-0 sm:w-36"
                               : "aspect-square h-20 w-20 self-start flex-shrink-0 min-[380px]:h-24 min-[380px]:w-24 sm:mt-3 sm:h-auto sm:w-full"
                           }`}>
                             <ProductImage
                               src={product.image_url}
                               alt={product.name}
-                              sizes="(max-width: 379px) 96px, (max-width: 640px) 112px, (max-width: 1280px) 144px, 320px"
+                              sizes="(max-width: 379px) 132px, (max-width: 640px) 132px, (max-width: 1280px) 144px, 320px"
                             />
                             {product.is_active && (
                               <span className="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-[0_4px_12px_rgba(17,16,15,0.14)]" style={{ color: primaryColor }}><Plus size={17} /></span>
