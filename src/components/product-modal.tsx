@@ -2,20 +2,40 @@
 
 import { useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
-import { GripVertical, Info, Loader2, Plus, Scissors, Trash2, Upload, X } from "lucide-react";
+import {
+  Copy,
+  GripVertical,
+  Info,
+  Link2,
+  Loader2,
+  PauseCircle,
+  PlayCircle,
+  Plus,
+  Scissors,
+  Trash2,
+  Upload,
+  X,
+} from "lucide-react";
 import Cropper from "react-easy-crop";
 
 interface AddonOption {
+  id: string;
   name: string;
   price: number;
+  is_active: boolean;
 }
 
 interface AddonGroup {
   id: string;
   title: string;
   required: boolean;
+  min_options: number;
   max_options: number;
+  is_active: boolean;
   options: AddonOption[];
+  linked_product_count?: number;
+  persisted?: boolean;
+  product_links?: Array<{ product_id: string; sort_order: number }>;
 }
 
 interface ProductModalProps {
@@ -77,6 +97,81 @@ function getMenuImageStoragePath(publicUrl: string | null | undefined) {
   }
 }
 
+function normalizeAddonOption(option: any): AddonOption {
+  return {
+    id: typeof option?.id === "string" && option.id ? option.id : crypto.randomUUID(),
+    name: typeof option?.name === "string" ? option.name : "",
+    price: Number(option?.price) || 0,
+    is_active: option?.is_active !== false,
+  };
+}
+
+function normalizeAddonGroup(
+  group: any,
+  linkedProductCount = 0,
+  persisted = false,
+): AddonGroup {
+  const required = Boolean(group?.required);
+
+  return {
+    id: typeof group?.id === "string" && group.id ? group.id : crypto.randomUUID(),
+    title: typeof group?.title === "string" ? group.title : "",
+    required,
+    min_options: Math.max(
+      0,
+      Number(group?.min_options ?? (required ? 1 : 0)) || 0,
+    ),
+    max_options: Math.max(0, Number(group?.max_options) || 0),
+    is_active: group?.is_active !== false,
+    options: Array.isArray(group?.options)
+      ? group.options.map(normalizeAddonOption)
+      : [],
+    linked_product_count: linkedProductCount,
+    persisted,
+    product_links: Array.isArray(group?.product_addon_group_links)
+      ? group.product_addon_group_links
+      : Array.isArray(group?.product_links)
+        ? group.product_links
+        : [],
+  };
+}
+
+function cloneAddonGroup(group: AddonGroup): AddonGroup {
+  return {
+    ...group,
+    id: crypto.randomUUID(),
+    options: group.options.map((option) => ({
+      ...option,
+      id: crypto.randomUUID(),
+    })),
+    linked_product_count: 0,
+    persisted: false,
+    product_links: [],
+  };
+}
+
+function buildEffectiveAddonCache(groups: AddonGroup[]) {
+  return groups
+    .filter((group) => group.is_active !== false && group.title.trim())
+    .map((group) => ({
+      id: group.id,
+      title: group.title.trim(),
+      required: group.required,
+      min_options: group.required
+        ? Math.max(1, Number(group.min_options) || 1)
+        : Math.max(0, Number(group.min_options) || 0),
+      max_options: Math.max(0, Number(group.max_options) || 0),
+      options: group.options
+        .filter((option) => option.is_active !== false && option.name.trim())
+        .map((option) => ({
+          id: option.id,
+          name: option.name.trim(),
+          price: Math.max(0, Number(option.price) || 0),
+        })),
+    }))
+    .filter((group) => group.options.length > 0);
+}
+
 export default function ProductModal({
   isOpen,
   onClose,
@@ -98,6 +193,9 @@ export default function ProductModal({
   const [isVegetarian, setIsVegetarian] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [addonGroups, setAddonGroups] = useState<AddonGroup[]>([]);
+  const [addonLibrary, setAddonLibrary] = useState<AddonGroup[]>([]);
+  const [isAddonLibraryOpen, setIsAddonLibraryOpen] = useState(false);
+  const [isAddonLibraryLoading, setIsAddonLibraryLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [croppedImageBlob, setCroppedImageBlob] = useState<Blob | null>(null);
@@ -134,6 +232,7 @@ export default function ProductModal({
     setIsDeleteConfirmOpen(false);
     setIsDeleting(false);
     setDeleteError("");
+    setIsAddonLibraryOpen(false);
 
     if (productToEdit) {
       setName(productToEdit.name);
@@ -146,16 +245,20 @@ export default function ProductModal({
 
       if (productToEdit.addons && Array.isArray(productToEdit.addons)) {
         if (productToEdit.addons.length > 0 && productToEdit.addons[0].title) {
-          setAddonGroups(productToEdit.addons);
+          setAddonGroups(
+            productToEdit.addons.map((group: any) => normalizeAddonGroup(group)),
+          );
         } else if (productToEdit.addons.length > 0) {
           setAddonGroups([
-            {
+            normalizeAddonGroup({
               id: crypto.randomUUID(),
               title: "Adicionais",
               required: false,
+              min_options: 0,
               max_options: 0,
+              is_active: true,
               options: productToEdit.addons,
-            },
+            }),
           ]);
         } else {
           setAddonGroups([]);
@@ -175,6 +278,77 @@ export default function ProductModal({
     }
   }, [isOpen, productToEdit, categories]);
 
+  useEffect(() => {
+    if (!isOpen || !restaurantId) return;
+
+    let active = true;
+
+    const loadAddonLibrary = async () => {
+      setIsAddonLibraryLoading(true);
+
+      try {
+        const { data, error } = await supabase
+          .from("addon_groups")
+          .select(
+            "id, restaurant_id, title, required, min_options, max_options, is_active, options, product_addon_group_links(product_id, sort_order)",
+          )
+          .eq("restaurant_id", restaurantId)
+          .order("title");
+
+        if (error) throw error;
+        if (!active) return;
+
+        const libraryGroups = (data || []).map((row: any) =>
+          normalizeAddonGroup(
+            row,
+            Array.isArray(row.product_addon_group_links)
+              ? row.product_addon_group_links.length
+              : 0,
+            true,
+          ),
+        );
+
+        setAddonLibrary(libraryGroups);
+
+        if (productToEdit?.id) {
+          const linkedGroups = libraryGroups
+            .filter((group) =>
+              group.product_links?.some(
+                (link) => link.product_id === productToEdit.id,
+              ),
+            )
+            .sort((a, b) => {
+              const aOrder =
+                a.product_links?.find(
+                  (link) => link.product_id === productToEdit.id,
+                )?.sort_order || 0;
+              const bOrder =
+                b.product_links?.find(
+                  (link) => link.product_id === productToEdit.id,
+                )?.sort_order || 0;
+              return aOrder - bOrder;
+            });
+
+          if (linkedGroups.length > 0) {
+            setAddonGroups(linkedGroups);
+          }
+        }
+      } catch (error) {
+        console.error("Erro ao carregar biblioteca de complementos:", error);
+      } finally {
+        if (active) setIsAddonLibraryLoading(false);
+      }
+    };
+
+    void loadAddonLibrary();
+
+    return () => {
+      active = false;
+    };
+    // O cliente Supabase é recriado no render; os gatilhos reais são a loja/produto/modal.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, restaurantId, productToEdit?.id]);
+
   const addGroup = () => {
     setAddonGroups((current) => [
       ...current,
@@ -182,8 +356,20 @@ export default function ProductModal({
         id: crypto.randomUUID(),
         title: "",
         required: false,
+        min_options: 0,
         max_options: 0,
-        options: [{ name: "", price: 0 }],
+        is_active: true,
+        options: [
+          {
+            id: crypto.randomUUID(),
+            name: "",
+            price: 0,
+            is_active: true,
+          },
+        ],
+        linked_product_count: 0,
+        persisted: false,
+        product_links: [],
       },
     ]);
   };
@@ -191,6 +377,20 @@ export default function ProductModal({
   const removeGroup = (index: number) => {
     setAddonGroups((current) => current.filter((_, currentIndex) => currentIndex !== index));
   };
+
+  const linkLibraryGroup = (group: AddonGroup) => {
+    setAddonGroups((current) => {
+      if (current.some((item) => item.id === group.id)) return current;
+      return [...current, { ...group, persisted: true }];
+    });
+  };
+
+  const copyLibraryGroup = (group: AddonGroup) => {
+    setAddonGroups((current) => [...current, cloneAddonGroup(group)]);
+  };
+
+  const isGroupAttached = (groupId: string) =>
+    addonGroups.some((group) => group.id === groupId);
 
   const updateGroup = (index: number, field: keyof AddonGroup, value: any) => {
     setAddonGroups((current) =>
@@ -204,7 +404,18 @@ export default function ProductModal({
     setAddonGroups((current) =>
       current.map((group, currentIndex) =>
         currentIndex === groupIndex
-          ? { ...group, options: [...group.options, { name: "", price: 0 }] }
+          ? {
+              ...group,
+              options: [
+                ...group.options,
+                {
+                  id: crypto.randomUUID(),
+                  name: "",
+                  price: 0,
+                  is_active: true,
+                },
+              ],
+            }
           : group,
       ),
     );
@@ -242,6 +453,23 @@ export default function ProductModal({
               [field]: field === "price" ? parseFloat(value) || 0 : value,
             };
           }),
+        };
+      }),
+    );
+  };
+
+  const toggleOptionActive = (groupIndex: number, optionIndex: number) => {
+    setAddonGroups((current) =>
+      current.map((group, currentGroupIndex) => {
+        if (currentGroupIndex !== groupIndex) return group;
+
+        return {
+          ...group,
+          options: group.options.map((option, currentOptionIndex) =>
+            currentOptionIndex === optionIndex
+              ? { ...option, is_active: option.is_active === false }
+              : option,
+          ),
         };
       }),
     );
@@ -372,8 +600,22 @@ export default function ProductModal({
       const cleanGroups = addonGroups
         .filter((group) => group.title.trim() !== "")
         .map((group) => ({
-          ...group,
-          options: group.options.filter((option) => option.name.trim() !== ""),
+          id: group.id,
+          title: group.title.trim(),
+          required: group.required,
+          min_options: group.required
+            ? Math.max(1, Number(group.min_options) || 1)
+            : Math.max(0, Number(group.min_options) || 0),
+          max_options: Math.max(0, Number(group.max_options) || 0),
+          is_active: group.is_active !== false,
+          options: group.options
+            .filter((option) => option.name.trim() !== "")
+            .map((option) => ({
+              id: option.id,
+              name: option.name.trim(),
+              price: Math.max(0, Number(option.price) || 0),
+              is_active: option.is_active !== false,
+            })),
         }));
 
       const payload = {
@@ -383,12 +625,15 @@ export default function ProductModal({
         description,
         price: parseFloat(price.replace(",", ".")),
         image_url: finalUrl,
-        addons: cleanGroups,
+        addons: buildEffectiveAddonCache(cleanGroups),
         is_promotional: isPromotional,
         is_vegetarian: isVegetarian,
       };
 
       let error;
+      let savedProductId = productToEdit?.id as string | undefined;
+      let createdProductId: string | null = null;
+
       if (productToEdit) {
         const { error: updateErr } = await supabase
           .from("products")
@@ -396,15 +641,43 @@ export default function ProductModal({
           .eq("id", productToEdit.id);
         error = updateErr;
       } else {
-        const { error: insertErr } = await supabase.from("products").insert(payload);
+        const { data: insertedProduct, error: insertErr } = await supabase
+          .from("products")
+          .insert(payload)
+          .select("id")
+          .single();
         error = insertErr;
+        savedProductId = insertedProduct?.id;
+        createdProductId = insertedProduct?.id || null;
       }
 
-      if (error) {
+      if (error || !savedProductId) {
         if (uploadedPath) {
           await supabase.storage.from("menu-images").remove([uploadedPath]);
         }
-        throw error;
+        throw error || new Error("Não foi possível identificar o produto salvo.");
+      }
+
+      const { error: addonConfigurationError } = await supabase.rpc(
+        "save_product_addon_configuration",
+        {
+          p_product_id: savedProductId,
+          p_groups: cleanGroups,
+        },
+      );
+
+      if (addonConfigurationError) {
+        if (createdProductId) {
+          await supabase
+            .from("products")
+            .delete()
+            .eq("id", createdProductId)
+            .eq("restaurant_id", restaurantId);
+        }
+        if (uploadedPath) {
+          await supabase.storage.from("menu-images").remove([uploadedPath]);
+        }
+        throw addonConfigurationError;
       }
 
       const previousImageUrl = productToEdit?.image_url as string | null | undefined;
