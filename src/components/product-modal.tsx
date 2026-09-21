@@ -870,27 +870,115 @@ export default function ProductModal({
           </div>
 
           <div className="rounded-[26px] border border-[var(--line)] bg-[#fcfaf7] p-5">
-            <div className="mb-5 flex items-center justify-between">
+            <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h3 className="inline-flex items-center gap-2 text-sm font-black uppercase tracking-[0.14em] text-gray-700">
                   <Scissors size={16} className="text-[var(--brand)]" />
                   Complementos
                 </h3>
                 <p className="mt-1 text-sm text-gray-500">
-                  Crie grupos para adicionais, tamanhos ou observações de preparo.
+                  Crie, copie ou vincule grupos reutilizáveis entre produtos.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={addGroup}
-                className="rounded-2xl border border-[var(--line)] bg-white px-4 py-2 text-xs font-bold text-gray-700"
-              >
-                <span className="inline-flex items-center gap-2">
-                  <Plus size={14} />
-                  Novo grupo
-                </span>
-              </button>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddonLibraryOpen((current) => !current)}
+                  className="rounded-2xl border border-[var(--line)] bg-white px-4 py-2 text-xs font-bold text-gray-700"
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <Link2 size={14} />
+                    Usar existente
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={addGroup}
+                  className="rounded-2xl border border-[var(--line)] bg-white px-4 py-2 text-xs font-bold text-gray-700"
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <Plus size={14} />
+                    Novo grupo
+                  </span>
+                </button>
+              </div>
             </div>
+
+            {isAddonLibraryOpen && (
+              <div className="mb-5 rounded-2xl border border-[var(--line)] bg-white p-4">
+                <div className="mb-3">
+                  <p className="text-sm font-black text-gray-900">Biblioteca de grupos</p>
+                  <p className="mt-1 text-xs leading-5 text-gray-500">
+                    Vincular mantém o mesmo grupo entre produtos. Copiar cria uma versão independente.
+                  </p>
+                </div>
+
+                {isAddonLibraryLoading ? (
+                  <div className="flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-4 text-sm text-gray-500">
+                    <Loader2 size={16} className="animate-spin" />
+                    Carregando grupos...
+                  </div>
+                ) : addonLibrary.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-[var(--line)] px-3 py-5 text-center text-sm text-gray-500">
+                    Ainda não há grupos salvos nesta loja.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {addonLibrary.map((libraryGroup) => {
+                      const attached = isGroupAttached(libraryGroup.id);
+
+                      return (
+                        <div
+                          key={libraryGroup.id}
+                          className="flex flex-col gap-3 rounded-xl border border-[var(--line)] px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
+                        >
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="truncate text-sm font-bold text-gray-900">
+                                {libraryGroup.title}
+                              </p>
+                              <span
+                                className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] ${
+                                  libraryGroup.is_active === false
+                                    ? "bg-gray-100 text-gray-500"
+                                    : "bg-emerald-50 text-emerald-700"
+                                }`}
+                              >
+                                {libraryGroup.is_active === false ? "Pausado" : "Ativo"}
+                              </span>
+                            </div>
+                            <p className="mt-1 text-xs text-gray-500">
+                              {libraryGroup.options.length} opções · vinculado a{" "}
+                              {libraryGroup.linked_product_count || 0} produto(s)
+                            </p>
+                          </div>
+
+                          <div className="flex shrink-0 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => copyLibraryGroup(libraryGroup)}
+                              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--line)] px-3 py-2 text-xs font-bold text-gray-700"
+                            >
+                              <Copy size={13} />
+                              Copiar
+                            </button>
+                            <button
+                              type="button"
+                              disabled={attached}
+                              onClick={() => linkLibraryGroup(libraryGroup)}
+                              className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--brand-soft)] px-3 py-2 text-xs font-bold text-[var(--brand)] disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
+                            >
+                              <Link2 size={13} />
+                              {attached ? "Vinculado" : "Vincular"}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
 
             {addonGroups.length === 0 && (
               <div className="rounded-2xl border border-dashed border-[var(--line)] bg-white px-4 py-8 text-center text-sm text-gray-500">
@@ -904,49 +992,82 @@ export default function ProductModal({
                   key={group.id || groupIndex}
                   className="overflow-hidden rounded-2xl border border-[var(--line)] bg-white"
                 >
-                  <div className="flex flex-wrap items-center gap-3 border-b border-[var(--line)] bg-[#fbf7f2] px-4 py-3">
-                    <GripVertical size={18} className="text-gray-400" />
-                    <input
-                      placeholder="Nome do grupo"
-                      value={group.title}
-                      onChange={(e) => updateGroup(groupIndex, "title", e.target.value)}
-                      className="min-w-[220px] flex-1 rounded-xl border border-transparent bg-white px-3 py-2 text-sm font-bold outline-none focus:border-[var(--brand)]"
-                    />
-                    <label className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-xs font-bold text-gray-700">
+                  <div className="border-b border-[var(--line)] bg-[#fbf7f2] px-4 py-3">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <GripVertical size={18} className="text-gray-400" />
                       <input
-                        type="checkbox"
-                        checked={group.required}
-                        onChange={(e) => updateGroup(groupIndex, "required", e.target.checked)}
-                        className="h-4 w-4 accent-[var(--brand)]"
+                        placeholder="Nome do grupo"
+                        value={group.title}
+                        onChange={(e) => updateGroup(groupIndex, "title", e.target.value)}
+                        className="min-w-[220px] flex-1 rounded-xl border border-transparent bg-white px-3 py-2 text-sm font-bold outline-none focus:border-[var(--brand)]"
                       />
-                      Obrigatório
-                    </label>
-                    <div className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-xs font-bold text-gray-700">
-                      <span>Máx.</span>
-                      <input
-                        type="number"
-                        value={group.max_options || ""}
-                        onChange={(e) =>
-                          updateGroup(groupIndex, "max_options", parseInt(e.target.value) || 0)
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateGroup(groupIndex, "is_active", group.is_active === false)
                         }
-                        className="w-12 bg-transparent text-center outline-none"
-                        placeholder="0"
-                      />
+                        className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold ${
+                          group.is_active === false
+                            ? "bg-gray-200 text-gray-600"
+                            : "bg-emerald-50 text-emerald-700"
+                        }`}
+                      >
+                        {group.is_active === false ? (
+                          <PlayCircle size={14} />
+                        ) : (
+                          <PauseCircle size={14} />
+                        )}
+                        {group.is_active === false ? "Reativar" : "Pausar"}
+                      </button>
+                      <label className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-xs font-bold text-gray-700">
+                        <input
+                          type="checkbox"
+                          checked={group.required}
+                          onChange={(e) => updateGroup(groupIndex, "required", e.target.checked)}
+                          className="h-4 w-4 accent-[var(--brand)]"
+                        />
+                        Obrigatório
+                      </label>
+                      <div className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-xs font-bold text-gray-700">
+                        <span>Máx.</span>
+                        <input
+                          type="number"
+                          value={group.max_options || ""}
+                          onChange={(e) =>
+                            updateGroup(groupIndex, "max_options", parseInt(e.target.value) || 0)
+                          }
+                          className="w-12 bg-transparent text-center outline-none"
+                          placeholder="0"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeGroup(groupIndex)}
+                        aria-label={
+                          group.persisted
+                            ? `Desvincular grupo ${group.title || groupIndex + 1}`
+                            : `Remover grupo ${group.title || groupIndex + 1}`
+                        }
+                        title={group.persisted ? "Desvincular deste produto" : "Remover grupo"}
+                        className="rounded-xl p-2 text-gray-400 hover:bg-[#fff0e8] hover:text-[var(--brand)]"
+                      >
+                        <Trash2 size={15} />
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => removeGroup(groupIndex)}
-                      aria-label={`Remover grupo ${group.title || groupIndex + 1}`}
-                      className="rounded-xl p-2 text-gray-400 hover:bg-[#fff0e8] hover:text-[var(--brand)]"
-                    >
-                      <Trash2 size={15} />
-                    </button>
+
+                    {(group.linked_product_count || 0) > 1 && (
+                      <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+                        <strong>Grupo vinculado a {group.linked_product_count} produtos.</strong>{" "}
+                        Alterações, preços e pausas deste grupo serão aplicados a todos ao salvar.
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-4 p-4">
-                    <div className="hidden grid-cols-[1fr_140px_auto] gap-3 px-1 text-[11px] font-bold uppercase tracking-[0.08em] text-gray-400 md:grid">
+                    <div className="hidden grid-cols-[1fr_140px_auto_auto] gap-3 px-1 text-[11px] font-bold uppercase tracking-[0.08em] text-gray-400 md:grid">
                       <span>Opção</span>
                       <span>Preço adicional</span>
+                      <span>Status</span>
                       <span className="w-8" aria-hidden="true" />
                     </div>
 
@@ -960,7 +1081,12 @@ export default function ProductModal({
                     </div>
 
                     {group.options.map((option, optionIndex) => (
-                      <div key={optionIndex} className="grid gap-3 md:grid-cols-[1fr_140px_auto]">
+                      <div
+                        key={option.id || optionIndex}
+                        className={`grid gap-3 rounded-xl ${
+                          option.is_active === false ? "opacity-60" : ""
+                        } md:grid-cols-[1fr_140px_auto_auto]`}
+                      >
                         <div>
                           <label className="mb-1 block text-[11px] font-bold uppercase tracking-[0.08em] text-gray-400 md:hidden">
                             Opção
@@ -993,6 +1119,24 @@ export default function ProductModal({
                               className="w-full rounded-xl border border-[var(--line)] py-2.5 pl-9 pr-3 text-sm outline-none focus:border-[var(--brand)]"
                             />
                           </div>
+                        </div>
+                        <div className="flex items-end">
+                          <button
+                            type="button"
+                            onClick={() => toggleOptionActive(groupIndex, optionIndex)}
+                            className={`inline-flex min-h-10 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold ${
+                              option.is_active === false
+                                ? "bg-gray-100 text-gray-600"
+                                : "bg-emerald-50 text-emerald-700"
+                            }`}
+                          >
+                            {option.is_active === false ? (
+                              <PlayCircle size={14} />
+                            ) : (
+                              <PauseCircle size={14} />
+                            )}
+                            {option.is_active === false ? "Reativar" : "Pausar"}
+                          </button>
                         </div>
                         <div className="flex items-end md:block">
                           <button
