@@ -48,8 +48,58 @@ function wheelBackground(segments: WheelSegment[]) {
   }).join(", ")})`;
 }
 
-function shortLabel(label: string) {
-  return label.length > 18 ? `${label.slice(0, 16)}…` : label;
+function getWheelLabelLayout(label: string) {
+  const text = label.trim();
+
+  const percentDiscount = text.match(/^(\d+(?:[.,]\d+)?)%\s+de\s+desconto$/i);
+  if (percentDiscount) {
+    return {
+      kicker: "DESCONTO",
+      lines: [`${percentDiscount[1]}%`],
+      emphasis: true,
+    };
+  }
+
+  const fixedDiscount = text.match(/^R\$\s*([\d.,]+)\s+de\s+desconto$/i);
+  if (fixedDiscount) {
+    return {
+      kicker: "DESCONTO",
+      lines: [`R$ ${fixedDiscount[1]}`],
+      emphasis: true,
+    };
+  }
+
+  if (/frete\s+gr[aá]tis/i.test(text)) {
+    return {
+      kicker: "",
+      lines: ["FRETE", "GRÁTIS"],
+      emphasis: false,
+    };
+  }
+
+  if (/n[aã]o\s+foi\s+dessa\s+vez/i.test(text)) {
+    return {
+      kicker: "",
+      lines: ["NÃO FOI", "DESSA VEZ"],
+      emphasis: false,
+    };
+  }
+
+  const words = text.toUpperCase().split(/\s+/).filter(Boolean);
+  if (words.length <= 2) {
+    return {
+      kicker: "",
+      lines: [words.join(" ")],
+      emphasis: false,
+    };
+  }
+
+  const middle = Math.ceil(words.length / 2);
+  return {
+    kicker: "",
+    lines: [words.slice(0, middle).join(" "), words.slice(middle).join(" ")],
+    emphasis: false,
+  };
 }
 
 function isIdentityIssue(value: unknown): value is WheelIdentityIssue {
@@ -360,21 +410,50 @@ export default function LuckyWheelStorefrontBridge() {
                   >
                     {segments.map((segment, index) => {
                       const angle = ((index + 0.5) * 360) / segments.length;
+                      const flipForReading = angle > 90 && angle < 270 ? 180 : 0;
+                      const label = getWheelLabelLayout(segment.label);
                       const textColor =
                         index % 6 === 0 || index % 6 === 1 || index % 6 === 5
                           ? "#ffffff"
                           : "#4b2b1b";
+
                       return (
                         <span
                           key={segment.id}
-                          className="absolute left-1/2 top-1/2 w-[94px] -translate-x-1/2 -translate-y-1/2 text-center text-[10px] font-black leading-tight"
+                          className="absolute left-1/2 top-1/2 block -translate-x-1/2 -translate-y-1/2"
                           style={{
-                            color: textColor,
-                            textShadow: textColor === "#ffffff" ? "0 1px 2px rgba(0,0,0,0.28)" : "0 1px 0 rgba(255,255,255,0.75)",
-                            transform: `translate(-50%, -50%) rotate(${angle}deg) translateY(-116px) rotate(${-angle}deg)`,
+                            transform: `translate(-50%, -50%) rotate(${angle}deg) translateY(-112px) rotate(${flipForReading}deg)`,
                           }}
                         >
-                          {shortLabel(segment.label)}
+                          <span
+                            className="flex w-[102px] flex-col items-center justify-center text-center uppercase"
+                            style={{
+                              color: textColor,
+                              textShadow:
+                                textColor === "#ffffff"
+                                  ? "0 1px 2px rgba(0,0,0,0.32)"
+                                  : "0 1px 0 rgba(255,255,255,0.72)",
+                            }}
+                          >
+                            {label.kicker ? (
+                              <span className="text-[8px] font-black leading-none tracking-[0.12em] opacity-90">
+                                {label.kicker}
+                              </span>
+                            ) : null}
+
+                            {label.lines.map((line, lineIndex) => (
+                              <span
+                                key={`${segment.id}-${lineIndex}`}
+                                className={
+                                  label.emphasis
+                                    ? "mt-1 text-[17px] font-black leading-none tracking-[-0.03em]"
+                                    : "text-[10px] font-black leading-[1.08] tracking-[-0.01em]"
+                                }
+                              >
+                                {line}
+                              </span>
+                            ))}
+                          </span>
                         </span>
                       );
                     })}
