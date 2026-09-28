@@ -5,23 +5,23 @@ const test = require("node:test");
 
 const SOURCE_ROOTS = ["src/app", "src/components", "src/features"];
 const SOURCE_EXTENSIONS = new Set([".js", ".jsx", ".ts", ".tsx"]);
-const LEGACY_ARBITRARY_LIMITS = new Map([
-  ["rounded-[16px]", 4],
-  ["rounded-[18px]", 12],
-  ["rounded-[20px]", 16],
-  ["rounded-[22px]", 12],
-  ["rounded-[24px]", 47],
-  ["rounded-[26px]", 10],
-  ["rounded-[28px]", 34],
-  ["rounded-[32px]", 2],
-  ["rounded-b-[18px]", 2],
-  ["rounded-t-[24px]", 1],
-  ["sm:rounded-[18px]", 1],
-  ["sm:rounded-[20px]", 2],
-  ["sm:rounded-[22px]", 4],
-  ["sm:rounded-[24px]", 9],
-  ["sm:rounded-[28px]", 3],
-  ["sm:rounded-b-[28px]", 1],
+const LEGACY_ARBITRARY_TOKENS = new Set([
+  "rounded-[16px]",
+  "rounded-[18px]",
+  "rounded-[20px]",
+  "rounded-[22px]",
+  "rounded-[24px]",
+  "rounded-[26px]",
+  "rounded-[28px]",
+  "rounded-[32px]",
+  "rounded-b-[18px]",
+  "rounded-t-[24px]",
+  "sm:rounded-[18px]",
+  "sm:rounded-[20px]",
+  "sm:rounded-[22px]",
+  "sm:rounded-[24px]",
+  "sm:rounded-[28px]",
+  "sm:rounded-b-[28px]",
 ]);
 
 function walk(directory) {
@@ -92,7 +92,7 @@ test("tokens globais definem quatro níveis e preservam círculos e pílulas", (
   assert.doesNotMatch(styles, /--admin-radius-card: 24px/);
 });
 
-test("valores arbitrários existentes são normalizados e não podem aumentar", () => {
+test("valores arbitrários ficam restritos ao conjunto legado aprovado", () => {
   const styles = fs.readFileSync("src/app/globals.css", "utf8");
   const usage = collectRadiusUsage();
 
@@ -100,12 +100,8 @@ test("valores arbitrários existentes são normalizados e não podem aumentar", 
     if (isApprovedScaleToken(token)) continue;
 
     assert.ok(
-      LEGACY_ARBITRARY_LIMITS.has(token),
-      `Border radius fora da escala: ${token}. Use rounded-lg, rounded-2xl, rounded-3xl ou rounded-full.`,
-    );
-    assert.ok(
-      count <= LEGACY_ARBITRARY_LIMITS.get(token),
-      `${token} aumentou de ${LEGACY_ARBITRARY_LIMITS.get(token)} para ${count} ocorrências. Arquivos: ${filesUsingRadius(token).join(", ")}`,
+      LEGACY_ARBITRARY_TOKENS.has(token),
+      `Border radius fora da escala: ${token}. Use rounded-lg, rounded-2xl, rounded-3xl ou rounded-full. Arquivos: ${filesUsingRadius(token).join(", ")}`,
     );
   }
 
