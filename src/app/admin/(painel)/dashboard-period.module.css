@@ -181,29 +181,27 @@
   border-bottom: 0;
 }
 
-/* Mantém o início e a ocupação do conteúdo iguais entre os cards analíticos. */
-.page :global(.dashboard-top-products-card > div:last-child),
-.page :global(.dashboard-sources-card > div:last-child) {
+/* Hooks semânticos evitam depender da posição dos elementos no DOM. */
+.page :global(.dashboard-card-body) {
   margin-top: 0 !important;
 }
 
-.page :global(.dashboard-sources-card > p:nth-child(2)) {
+.page :global(.dashboard-sources-description) {
   margin-bottom: 2.1rem;
 }
 
-.page :global(.dashboard-top-products-card > .border-dashed),
-.page :global(.dashboard-sources-card > .border-dashed) {
+.page :global(.dashboard-analytics-empty) {
   flex: 1 1 auto;
   min-height: 10rem;
 }
 
 /* O estado vazio de Pedidos recentes usa a mesma área útil e o mesmo respiro. */
-.page :global(.dashboard-secondary-grid > article:nth-child(2)) {
+.page :global(.dashboard-recent-orders-card) {
   display: flex;
   flex-direction: column;
 }
 
-.page :global(.dashboard-secondary-grid > article:nth-child(2) > .border-dashed) {
+.page :global(.dashboard-recent-orders-empty) {
   flex: 1 1 auto;
   min-height: 10rem;
   margin: 1.25rem;
