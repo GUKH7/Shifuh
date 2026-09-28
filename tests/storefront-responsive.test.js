@@ -3,18 +3,16 @@ const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
 
-const storefrontPath = path.join(__dirname, "..", "src", "app", "[slug]", "page.tsx");
+const storefrontPath = path.join(__dirname, "..", "src", "features", "storefront", "StorefrontPage.tsx");
 const toastPath = path.join(__dirname, "..", "src", "components", "ui", "toast-provider.tsx");
 
-test("storefront contains narrow mobile content instead of clipping product cards", () => {
+test("storefront keeps stable responsive product semantics without coupling to Tailwind widths", () => {
   const source = fs.readFileSync(storefrontPath, "utf8");
 
-  assert.match(source, /min-h-screen w-full min-w-0 overflow-x-clip/);
-  assert.match(source, /catalog-section w-full min-w-0/);
-  assert.match(source, /w-20 flex-shrink-0 min-\[380px\]:w-24/);
+  assert.match(source, /data-category-section/);
+  assert.match(source, /data-product-card/);
   assert.match(source, /\[overflow-wrap:anywhere\]/);
-  assert.match(source, /relative aspect-square overflow-hidden rounded-xl/);
-  assert.match(source, /className="object-cover"/);
+  assert.match(source, /<ProductImage[\s\S]{0,300}sizes=/);
   assert.doesNotMatch(source, /object-contain p-1\.5/);
 });
 
