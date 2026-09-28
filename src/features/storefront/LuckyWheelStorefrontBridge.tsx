@@ -422,11 +422,11 @@ export default function LuckyWheelStorefrontBridge() {
                           key={segment.id}
                           className="absolute left-1/2 top-1/2 block -translate-x-1/2 -translate-y-1/2"
                           style={{
-                            transform: `translate(-50%, -50%) rotate(${angle}deg) translateY(-112px) rotate(${flipForReading}deg)`,
+                            transform: `translate(-50%, -50%) rotate(${angle}deg) translateY(-106px) rotate(${flipForReading}deg)`,
                           }}
                         >
                           <span
-                            className="flex w-[102px] flex-col items-center justify-center text-center uppercase"
+                            className="flex w-[96px] flex-col items-center justify-center text-center uppercase"
                             style={{
                               color: textColor,
                               textShadow:
@@ -436,7 +436,7 @@ export default function LuckyWheelStorefrontBridge() {
                             }}
                           >
                             {label.kicker ? (
-                              <span className="text-[8px] font-black leading-none tracking-[0.12em] opacity-90">
+                              <span className="text-[8px] font-black leading-none tracking-[0.14em] opacity-90">
                                 {label.kicker}
                               </span>
                             ) : null}
@@ -446,8 +446,8 @@ export default function LuckyWheelStorefrontBridge() {
                                 key={`${segment.id}-${lineIndex}`}
                                 className={
                                   label.emphasis
-                                    ? "mt-1 text-[17px] font-black leading-none tracking-[-0.03em]"
-                                    : "text-[10px] font-black leading-[1.08] tracking-[-0.01em]"
+                                    ? "mt-1 text-[18px] font-black leading-none tracking-[-0.035em]"
+                                    : "text-[11px] font-black leading-[1.04] tracking-[-0.015em]"
                                 }
                               >
                                 {line}
