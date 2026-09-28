@@ -13,14 +13,17 @@ const LEGACY_ARBITRARY_TOKENS = new Set([
   "rounded-[24px]",
   "rounded-[26px]",
   "rounded-[28px]",
+  "rounded-[30px]",
   "rounded-[32px]",
   "rounded-b-[18px]",
   "rounded-t-[24px]",
+  "rounded-t-[30px]",
   "sm:rounded-[18px]",
   "sm:rounded-[20px]",
   "sm:rounded-[22px]",
   "sm:rounded-[24px]",
   "sm:rounded-[28px]",
+  "sm:rounded-[30px]",
   "sm:rounded-b-[28px]",
 ]);
 
