@@ -11,7 +11,7 @@ const LEGACY_ARBITRARY_LIMITS = new Map([
   ["rounded-[20px]", 16],
   ["rounded-[22px]", 12],
   ["rounded-[24px]", 47],
-  ["rounded-[26px]", 9],
+  ["rounded-[26px]", 10],
   ["rounded-[28px]", 34],
   ["rounded-[32px]", 2],
   ["rounded-b-[18px]", 2],
