@@ -27,6 +27,8 @@ test("Minha Conta não soma pontos que pertencem a lojas diferentes", () => {
 test("experiência do cliente possui saldo, progresso, catálogo, resgate e histórico", () => {
   assert.match(loyaltyPage, /selectedProgram\.account\.balance/);
   assert.match(loyaltyPage, /Próxima conquista/);
+  assert.match(loyaltyPage, /pontos para resgatar \$\{progressReward\.name\}/);
+  assert.match(loyaltyPage, /Você já pode resgatar \$\{progressReward\.name\}/);
   assert.match(loyaltyPage, /Troque seus pontos/);
   assert.match(loyaltyPage, /Resgatar recompensa/);
   assert.match(loyaltyPage, /Histórico de pontos/);
