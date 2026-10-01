@@ -107,10 +107,9 @@ export default function MyAccountPage() {
   const handleBackToMenu = () => {
     if (typeof window === 'undefined') return
 
-    const currentPath = window.location.pathname
-    const parts = currentPath.split('/').filter(p => p && p !== 'minha-conta')
-    if (parts.length > 0) {
-      router.push(`/${parts[0]}`)
+    const returnUrl = new URLSearchParams(window.location.search).get('returnUrl')
+    if (returnUrl && returnUrl.startsWith('/') && !returnUrl.startsWith('//')) {
+      router.push(returnUrl)
       return
     }
 
