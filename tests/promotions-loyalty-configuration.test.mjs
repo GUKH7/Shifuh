@@ -48,8 +48,11 @@ test("Tabela de fidelidade aplica isolamento por membro da loja", () => {
   assert.match(migration, /grant all on table public\.loyalty_programs to service_role/);
 });
 
-test("Frente 2 não mistura fidelidade com promotion_campaigns ou giros", () => {
+test("configuração descreve o acúmulo automático já ativo sem misturar fidelidade com giros", () => {
   assert.doesNotMatch(migration, /promotion_campaigns/);
   assert.doesNotMatch(migration, /promotion_spins/);
-  assert.match(workspace, /crédito automático será conectado na frente de acúmulo/);
+  assert.match(workspace, /pontos são creditados automaticamente ao concluir pedidos elegíveis/);
+  assert.match(workspace, /Acúmulo automático/);
+  assert.doesNotMatch(workspace, /crédito automático será conectado/);
+  assert.doesNotMatch(workspace, /Próxima frente/);
 });
