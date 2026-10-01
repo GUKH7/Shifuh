@@ -916,7 +916,7 @@ export default function StorePage() {
                   <div className="sm:hidden">
                     {currentUser ? (
                       <button
-                        onClick={() => router.push("/minha-conta")}
+                        onClick={() => router.push(`/minha-conta?returnUrl=${encodeURIComponent(pathname)}`)}
                         className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
                         aria-label="Minha conta"
                         title="Minha conta"
@@ -925,7 +925,10 @@ export default function StorePage() {
                       </button>
                     ) : (
                       <button
-                        onClick={() => router.push(`/auth?returnUrl=${encodeURIComponent(pathname)}`)}
+                        onClick={() => {
+                          const accountUrl = `/minha-conta?returnUrl=${encodeURIComponent(pathname)}`;
+                          router.push(`/auth?returnUrl=${encodeURIComponent(accountUrl)}`);
+                        }}
                         className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
                         aria-label="Entrar na conta"
                         title="Entrar"
