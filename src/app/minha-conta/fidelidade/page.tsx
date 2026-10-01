@@ -327,7 +327,7 @@ export default function LoyaltyCustomerPage() {
             {progressReward && (
               <section className="mt-5 rounded-3xl border border-gray-200 bg-white p-5 shadow-[0_8px_28px_rgba(17,24,39,0.04)] sm:p-6">
                 <div className="flex items-start justify-between gap-4">
-                  <div><p className="text-[11px] font-black uppercase tracking-[0.14em] text-orange-600">Próxima conquista</p><h2 className="mt-1 text-lg font-black">{progressReward.canRedeem ? "Você já pode resgatar" : `Faltam ${Math.max(0, progressReward.pointsCost - selectedProgram.account.balance)} pontos`}</h2><p className="mt-1 text-sm text-gray-500">{progressReward.name} · {progressReward.pointsCost} pts</p></div>
+                  <div><p className="text-[11px] font-black uppercase tracking-[0.14em] text-orange-600">Próxima conquista</p><h2 className="mt-1 text-lg font-black">{progressReward.canRedeem ? `Você já pode resgatar ${progressReward.name}` : `Faltam ${Math.max(0, progressReward.pointsCost - selectedProgram.account.balance)} pontos para resgatar ${progressReward.name}`}</h2><p className="mt-1 text-sm text-gray-500">{progressReward.name} · {progressReward.pointsCost} pts</p></div>
                   <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-orange-50 text-orange-600"><Zap size={20} /></span>
                 </div>
                 <div className="mt-5 h-2.5 overflow-hidden rounded-full bg-gray-100"><div className="h-full rounded-full bg-orange-500 transition-all" style={{ width: `${progressPercent}%` }} /></div>
