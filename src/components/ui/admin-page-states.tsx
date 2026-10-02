@@ -75,20 +75,22 @@ export function AdminEmptyState({
   description,
   action,
   compact = false,
+  className = "",
 }: {
   icon?: ReactNode;
   title: string;
   description?: string;
   action?: ReactNode;
   compact?: boolean;
+  className?: string;
 }) {
   return (
     <div
-      className={
+      className={`${
         compact
           ? "flex min-h-40 flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--line)] bg-white px-5 py-8 text-center"
           : "flex min-h-64 flex-col items-center justify-center px-6 py-14 text-center"
-      }
+      } ${className}`.trim()}
     >
       <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 text-[var(--brand)]">
         {icon ?? <Inbox size={21} />}
