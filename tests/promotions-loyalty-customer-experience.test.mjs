@@ -8,6 +8,7 @@ const rewardsPage = fs.readFileSync("src/app/minha-conta/premios/page.tsx", "utf
 const loyaltyRoute = fs.readFileSync("src/app/api/customer/loyalty/route.ts", "utf8");
 const redeemRoute = fs.readFileSync("src/app/api/customer/loyalty/redeem/route.ts", "utf8");
 const rewardsRoute = fs.readFileSync("src/app/api/customer/rewards/route.ts", "utf8");
+const storefrontAccountBridge = fs.readFileSync("src/features/storefront/StorefrontAccountAccessBridge.tsx", "utf8");
 
 test("Minha Conta deixa de simular pontos e aponta para o saldo real da fidelidade", () => {
   assert.doesNotMatch(accountPage, /orders\.length \* 10/);
@@ -88,4 +89,14 @@ test("experiência suporta múltiplos programas sem misturar os saldos", () => {
   assert.match(loyaltyPage, /programs\.length > 1/);
   assert.match(loyaltyPage, /setSelectedProgramId\(program\.id\)/);
   assert.match(loyaltyPage, /programs\.find\(\(program\) => program\.id === selectedProgramId\)/);
+});
+
+
+test("navegação da conta preserva a origem da vitrine em desktop e áreas internas", () => {
+  assert.match(storefrontAccountBridge, /accountDestination/);
+  assert.match(storefrontAccountBridge, /returnUrl=\$\{encodeURIComponent\(pathname\)\}/);
+  assert.match(accountPage, /buildAccountChildUrl/);
+  assert.match(accountPage, /new URLSearchParams\(window\.location\.search\)\.get\('returnUrl'\)/);
+  assert.match(loyaltyPage, /preserveReturnUrl/);
+  assert.match(rewardsPage, /preserveReturnUrl/);
 });
