@@ -61,6 +61,14 @@ function rewardDetail(reward: CustomerReward) {
 
 export default function MyRewardsPage() {
   const router = useRouter();
+
+  const preserveReturnUrl = (path: string) => {
+    if (typeof window === "undefined") return path;
+    const returnUrl = new URLSearchParams(window.location.search).get("returnUrl");
+    return returnUrl && returnUrl.startsWith("/") && !returnUrl.startsWith("//")
+      ? `${path}?returnUrl=${encodeURIComponent(returnUrl)}`
+      : path;
+  };
   const [loading, setLoading] = useState(true);
   const [rewards, setRewards] = useState<CustomerReward[]>([]);
   const [error, setError] = useState("");
@@ -97,7 +105,7 @@ export default function MyRewardsPage() {
           <div className="flex min-w-0 items-center gap-3">
             <button
               type="button"
-              onClick={() => router.push("/minha-conta")}
+              onClick={() => router.push(preserveReturnUrl("/minha-conta"))}
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-gray-200 bg-white text-gray-700 transition hover:bg-gray-50"
               aria-label="Voltar para Minha conta"
             >
@@ -108,7 +116,7 @@ export default function MyRewardsPage() {
               <h1 className="truncate text-xl font-black sm:text-2xl">Meus prêmios</h1>
             </div>
           </div>
-          <button type="button" onClick={() => router.push("/minha-conta/fidelidade")} className="hidden min-h-11 items-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 text-sm font-black text-gray-700 transition hover:border-orange-200 hover:text-orange-700 sm:flex">
+          <button type="button" onClick={() => router.push(preserveReturnUrl("/minha-conta/fidelidade"))} className="hidden min-h-11 items-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 text-sm font-black text-gray-700 transition hover:border-orange-200 hover:text-orange-700 sm:flex">
             <Sparkles size={17} /> Fidelidade
           </button>
         </div>
@@ -139,7 +147,7 @@ export default function MyRewardsPage() {
             <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-50 text-orange-500"><Gift size={26} /></span>
             <h2 className="mt-4 text-lg font-black">Nenhum prêmio por aqui ainda</h2>
             <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-gray-500">Quando você resgatar uma recompensa da Fidelidade ou ganhar um prêmio na Roleta, ele aparecerá automaticamente nesta página.</p>
-            <button type="button" onClick={() => router.push("/minha-conta/fidelidade")} className="mt-5 min-h-11 rounded-2xl bg-gray-950 px-5 text-sm font-black text-white">Ver programa de fidelidade</button>
+            <button type="button" onClick={() => router.push(preserveReturnUrl("/minha-conta/fidelidade"))} className="mt-5 min-h-11 rounded-2xl bg-gray-950 px-5 text-sm font-black text-white">Ver programa de fidelidade</button>
           </section>
         )}
 
