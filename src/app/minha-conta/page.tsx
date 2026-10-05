@@ -44,7 +44,10 @@ export default function MyAccountPage() {
     if (!supabase) return
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
-      return router.push(`/auth?returnUrl=/minha-conta`)
+      const currentAccountUrl = typeof window !== 'undefined'
+        ? `${window.location.pathname}${window.location.search}`
+        : '/minha-conta'
+      return router.push(`/auth?returnUrl=${encodeURIComponent(currentAccountUrl)}`)
     }
     setUser(user)
     fetchUserData(user.id)
@@ -113,6 +116,12 @@ export default function MyAccountPage() {
       return
     }
 
+    const lastStorefrontPath = window.sessionStorage.getItem('shifuh:last-storefront-path')
+    if (lastStorefrontPath && lastStorefrontPath.startsWith('/') && !lastStorefrontPath.startsWith('//')) {
+      router.push(lastStorefrontPath)
+      return
+    }
+
     if (orders.length > 0 && orders[0].restaurants?.slug) {
       router.push(`/${orders[0].restaurants.slug}`)
       return
@@ -124,9 +133,13 @@ export default function MyAccountPage() {
   const buildAccountChildUrl = (path: string) => {
     if (typeof window === 'undefined') return path
     const returnUrl = new URLSearchParams(window.location.search).get('returnUrl')
-    return returnUrl && returnUrl.startsWith('/') && !returnUrl.startsWith('//')
-      ? `${path}?returnUrl=${encodeURIComponent(returnUrl)}`
-      : path
+    const lastStorefrontPath = window.sessionStorage.getItem('shifuh:last-storefront-path')
+    const origin = returnUrl && returnUrl.startsWith('/') && !returnUrl.startsWith('//')
+      ? returnUrl
+      : lastStorefrontPath && lastStorefrontPath.startsWith('/') && !lastStorefrontPath.startsWith('//')
+        ? lastStorefrontPath
+        : null
+    return origin ? `${path}?returnUrl=${encodeURIComponent(origin)}` : path
   }
 
   const formatPrice = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
