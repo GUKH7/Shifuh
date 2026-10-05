@@ -89,6 +89,11 @@ export default function StorePage() {
   const [scheduledFor, setScheduledFor] = useState("");
   const [fulfillmentType, setFulfillmentType] = useState<FulfillmentType>("delivery");
 
+  useEffect(() => {
+    if (!pathname) return;
+    window.sessionStorage.setItem("shifuh:last-storefront-path", pathname);
+  }, [pathname]);
+
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<{
     code: string;
