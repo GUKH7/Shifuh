@@ -326,6 +326,7 @@
   flex-shrink: 0;
 }
 
+.menu-category-add-product > span,
 .menu-category-status > span,
 .menu-category-edit::after,
 .menu-category-delete::after {
@@ -348,6 +349,8 @@
 .menu-category-edit::after { content: "Editar"; }
 .menu-category-delete::after { content: "Excluir"; }
 
+.menu-category-add-product:hover,
+.menu-category-add-product:focus-visible,
 .menu-category-status:not(:disabled):hover,
 .menu-category-status:not(:disabled):focus-visible,
 .menu-category-edit:hover,
@@ -365,6 +368,7 @@
   transform: translateY(-1px);
 }
 
+.menu-category-add-product:is(:hover, :focus-visible) > span,
 .menu-category-status:not(:disabled):is(:hover, :focus-visible) > span,
 .menu-category-edit:is(:hover, :focus-visible)::after,
 .menu-category-delete:is(:hover, :focus-visible)::after {
@@ -429,6 +433,7 @@
   .menu-product-edit-label,
   .menu-product-actions > button[title="Pausar vendas"]::after,
   .menu-product-actions > button[title="Ativar vendas"]::after,
+  .menu-category-add-product > span,
   .menu-category-status > span,
   .menu-category-edit::after,
   .menu-category-delete::after {
