@@ -30,3 +30,11 @@ test("cada categoria permite criar produto já com a categoria selecionada", () 
   assert.match(productModal, /categories\.some\(\(category\) => category\.id === initialCategoryId\)/);
   assert.match(productModal, /setCategoryId\(preferredCategoryId\)/);
 });
+
+
+test("botão de novo produto da categoria expande como as demais ações", () => {
+  assert.match(menu, /menu-category-add-product/);
+  assert.match(responsive, /\.menu-category-add-product > span/);
+  assert.match(responsive, /\.menu-category-add-product:hover/);
+  assert.match(responsive, /\.menu-category-add-product:is\(:hover, :focus-visible\) > span/);
+});
