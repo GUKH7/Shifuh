@@ -221,9 +221,9 @@ jobs:
     permissions:
       contents: read
     env:
-      CI_GATE_RESULT: \${{ needs.release-gate.result }}
-      VERCEL_ORG_ID: \${{ vars.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: \${{ vars.VERCEL_PROJECT_ID }}
+      CI_GATE_RESULT: ${{ needs.release-gate.result }}
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
       VERCEL_CLI_VERSION: 64.5.0
 
     steps:
@@ -248,30 +248,30 @@ jobs:
       - name: Check Vercel credentials are configured
         shell: bash
         env:
-          VERCEL_TOKEN: \${{ secrets.VERCEL_TOKEN }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           set -euo pipefail
           test -n "$VERCEL_ORG_ID" || { echo "Missing GitHub variable VERCEL_ORG_ID"; exit 1; }
           test -n "$VERCEL_PROJECT_ID" || { echo "Missing GitHub variable VERCEL_PROJECT_ID"; exit 1; }
-          test -n "\${VERCEL_TOKEN:-}" || { echo "Missing GitHub secret VERCEL_TOKEN"; exit 1; }
+          test -n "${VERCEL_TOKEN:-}" || { echo "Missing GitHub secret VERCEL_TOKEN"; exit 1; }
 
       - name: Install pinned Vercel CLI
-        run: npm install --global "vercel@\${VERCEL_CLI_VERSION}"
+        run: npm install --global "vercel@${VERCEL_CLI_VERSION}"
 
       - name: Fetch Vercel production configuration
         env:
-          VERCEL_TOKEN: \${{ secrets.VERCEL_TOKEN }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: vercel pull --yes --environment=production
 
       - name: Build deployment with production environment
         env:
-          VERCEL_TOKEN: \${{ secrets.VERCEL_TOKEN }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: vercel build --prod
 
       - name: Recheck main and deploy validated build
         shell: bash
         env:
-          VERCEL_TOKEN: \${{ secrets.VERCEL_TOKEN }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           set -euo pipefail
           REMOTE_SHA="$(git ls-remote origin refs/heads/main | cut -f1)"
