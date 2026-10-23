@@ -45,6 +45,7 @@ interface ProductModalProps {
   restaurantId: string;
   categories: { id: string; name: string }[];
   productToEdit?: any;
+  initialCategoryId?: string | null;
 }
 
 const createImage = (url: string): Promise<HTMLImageElement> =>
@@ -179,6 +180,7 @@ export default function ProductModal({
   restaurantId,
   categories,
   productToEdit,
+  initialCategoryId,
 }: ProductModalProps) {
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -274,9 +276,13 @@ export default function ProductModal({
       setImageUrl(null);
       setIsPromotional(false);
       setIsVegetarian(false);
-      setCategoryId(categories[0]?.id || "");
+      const preferredCategoryId =
+        initialCategoryId && categories.some((category) => category.id === initialCategoryId)
+          ? initialCategoryId
+          : categories[0]?.id || "";
+      setCategoryId(preferredCategoryId);
     }
-  }, [isOpen, productToEdit, categories]);
+  }, [isOpen, productToEdit, categories, initialCategoryId]);
 
   useEffect(() => {
     if (!isOpen || !restaurantId) return;

@@ -471,7 +471,7 @@ export default function LoyaltyProgramWorkspace() {
             <div>
               <p className="text-sm font-black text-gray-950">Regra operacional segura</p>
               <p className="mt-1 text-sm leading-6 text-gray-500">
-                O acúmulo será aplicado apenas a pedidos concluídos e de forma idempotente. Salvar o programa como ativo nesta etapa registra a intenção da loja; o crédito automático será conectado na frente de acúmulo.
+                Quando o programa está ativo, os pontos são creditados automaticamente ao concluir pedidos elegíveis, com proteção contra crédito duplicado.
               </p>
             </div>
           </div>
@@ -495,9 +495,9 @@ export default function LoyaltyProgramWorkspace() {
         </article>
         <article className="surface-card rounded-3xl p-5">
           <Sparkles size={20} className="text-[var(--brand)]" />
-          <h3 className="mt-4 font-black text-gray-950">Próxima frente</h3>
+          <h3 className="mt-4 font-black text-gray-950">Acúmulo automático</h3>
           <p className="mt-2 text-sm leading-6 text-gray-500">
-            A próxima entrega cria a carteira e o ledger auditável que sustentarão saldo, créditos e débitos.
+            Ao concluir um pedido elegível, o saldo e o extrato do cliente são atualizados automaticamente conforme estas regras.
           </p>
         </article>
       </section>

@@ -44,7 +44,10 @@ export default function MyAccountPage() {
     if (!supabase) return
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
-      return router.push(`/auth?returnUrl=/minha-conta`)
+      const currentAccountUrl = typeof window !== 'undefined'
+        ? `${window.location.pathname}${window.location.search}`
+        : '/minha-conta'
+      return router.push(`/auth?returnUrl=${encodeURIComponent(currentAccountUrl)}`)
     }
     setUser(user)
     fetchUserData(user.id)
@@ -107,10 +110,15 @@ export default function MyAccountPage() {
   const handleBackToMenu = () => {
     if (typeof window === 'undefined') return
 
-    const currentPath = window.location.pathname
-    const parts = currentPath.split('/').filter(p => p && p !== 'minha-conta')
-    if (parts.length > 0) {
-      router.push(`/${parts[0]}`)
+    const returnUrl = new URLSearchParams(window.location.search).get('returnUrl')
+    if (returnUrl && returnUrl.startsWith('/') && !returnUrl.startsWith('//')) {
+      router.push(returnUrl)
+      return
+    }
+
+    const lastStorefrontPath = window.sessionStorage.getItem('shifuh:last-storefront-path')
+    if (lastStorefrontPath && lastStorefrontPath.startsWith('/') && !lastStorefrontPath.startsWith('//')) {
+      router.push(lastStorefrontPath)
       return
     }
 
@@ -120,6 +128,18 @@ export default function MyAccountPage() {
     }
 
     router.push('/')
+  }
+
+  const buildAccountChildUrl = (path: string) => {
+    if (typeof window === 'undefined') return path
+    const returnUrl = new URLSearchParams(window.location.search).get('returnUrl')
+    const lastStorefrontPath = window.sessionStorage.getItem('shifuh:last-storefront-path')
+    const origin = returnUrl && returnUrl.startsWith('/') && !returnUrl.startsWith('//')
+      ? returnUrl
+      : lastStorefrontPath && lastStorefrontPath.startsWith('/') && !lastStorefrontPath.startsWith('//')
+        ? lastStorefrontPath
+        : null
+    return origin ? `${path}?returnUrl=${encodeURIComponent(origin)}` : path
   }
 
   const formatPrice = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
@@ -152,7 +172,7 @@ export default function MyAccountPage() {
 
         <button
           type="button"
-          onClick={() => router.push('/minha-conta/fidelidade')}
+          onClick={() => router.push(buildAccountChildUrl('/minha-conta/fidelidade'))}
           className="mb-4 w-full overflow-hidden rounded-3xl bg-gray-950 p-6 text-left text-white shadow-[0_18px_55px_rgba(17,24,39,0.16)] transition hover:-translate-y-0.5 sm:p-7"
         >
           <div className="flex items-start justify-between gap-5">
@@ -189,7 +209,7 @@ export default function MyAccountPage() {
 
         <button
           type="button"
-          onClick={() => router.push('/minha-conta/premios')}
+          onClick={() => router.push(buildAccountChildUrl('/minha-conta/premios'))}
           className="mb-8 flex min-h-14 w-full items-center justify-between rounded-2xl border border-gray-200 bg-white px-5 text-left shadow-[0_6px_22px_rgba(17,24,39,0.04)] transition hover:border-orange-200"
         >
           <span className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 text-orange-600"><Gift size={20} /></span><span><strong className="block text-sm font-black text-gray-900">Meus prêmios</strong><span className="text-xs text-gray-500">Benefícios da Fidelidade e da Roleta</span></span></span>

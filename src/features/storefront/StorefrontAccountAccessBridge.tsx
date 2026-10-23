@@ -36,6 +36,7 @@ export default function StorefrontAccountAccessBridge() {
   const pathname = usePathname();
   const router = useRouter();
   const storeSlug = useMemo(() => getStoreSlug(pathname), [pathname]);
+  const accountDestination = (path: string) => `${path}?returnUrl=${encodeURIComponent(pathname)}`;
   const [portalTarget, setPortalTarget] = useState<Element | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(undefined);
   const [benefits, setBenefits] = useState<BenefitsSummaryState>({
@@ -168,7 +169,7 @@ export default function StorefrontAccountAccessBridge() {
         {hasPoints ? (
           <button
             type="button"
-            onClick={() => router.push("/minha-conta/fidelidade")}
+            onClick={() => router.push(accountDestination("/minha-conta/fidelidade"))}
             className="flex h-full items-center gap-1.5 px-3 text-xs font-bold text-gray-700 transition hover:bg-gray-50"
             aria-label={`${benefitLabel(benefits.pointsBalance, "ponto", "pontos")}. Abrir fidelidade.`}
           >
@@ -182,7 +183,7 @@ export default function StorefrontAccountAccessBridge() {
         {hasRewards ? (
           <button
             type="button"
-            onClick={() => router.push("/minha-conta/premios")}
+            onClick={() => router.push(accountDestination("/minha-conta/premios"))}
             className="flex h-full items-center gap-1.5 px-3 text-xs font-bold text-gray-700 transition hover:bg-gray-50"
             aria-label={`${benefitLabel(benefits.availableRewards, "prêmio", "prêmios")}. Abrir meus prêmios.`}
           >
@@ -213,7 +214,7 @@ export default function StorefrontAccountAccessBridge() {
         <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-56 overflow-hidden rounded-2xl border border-gray-200 bg-white p-1.5 shadow-[0_18px_45px_rgba(17,16,15,0.16)]">
           <button
             type="button"
-            onClick={() => router.push("/minha-conta")}
+            onClick={() => router.push(accountDestination("/minha-conta"))}
             className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-bold text-gray-700 transition hover:bg-gray-50"
           >
             <UserRound size={17} className="text-gray-400" />

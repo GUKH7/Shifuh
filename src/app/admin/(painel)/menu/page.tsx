@@ -58,6 +58,7 @@ export default function AdminDashboard() {
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
+  const [newProductCategoryId, setNewProductCategoryId] = useState<string | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
@@ -157,8 +158,9 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleOpenNewProduct = () => {
+  const handleOpenNewProduct = (categoryId?: string) => {
     setEditingProduct(null);
+    setNewProductCategoryId(categoryId || null);
     setIsProductModalOpen(true);
   };
 
@@ -236,6 +238,7 @@ export default function AdminDashboard() {
   };
 
   const handleEditProduct = (product: any) => {
+    setNewProductCategoryId(null);
     setEditingProduct(product);
     setIsProductModalOpen(true);
   };
@@ -686,7 +689,7 @@ export default function AdminDashboard() {
             <button onClick={handleOpenCategoryModal} className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-[var(--line)] bg-white px-4 text-sm font-bold text-gray-700">
               <Plus size={16} /> Categoria
             </button>
-            <button onClick={handleOpenNewProduct} className="brand-gradient inline-flex h-11 items-center justify-center gap-2 rounded-2xl px-4 text-sm font-bold text-white">
+            <button onClick={() => handleOpenNewProduct()} className="brand-gradient inline-flex h-11 items-center justify-center gap-2 rounded-2xl px-4 text-sm font-bold text-white">
               <Plus size={16} /> Produto
             </button>
           </div>
@@ -863,6 +866,16 @@ export default function AdminDashboard() {
                         <div className="menu-category-actions flex flex-shrink-0 items-center gap-2">
                           <button
                             type="button"
+                            onClick={() => handleOpenNewProduct(category.id)}
+                            className="menu-category-action menu-category-add-product inline-flex items-center gap-2 rounded-xl border border-orange-200 bg-[#fff7f2] px-3 py-2 text-xs font-bold text-[var(--brand)] transition hover:bg-[#fff0e8]"
+                            aria-label={`Adicionar produto em ${category.name}`}
+                            title={`Adicionar produto em ${category.name}`}
+                          >
+                            <Plus size={15} />
+                            <span className="hidden lg:inline">Produto</span>
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => void toggleCategoryStatus(category)}
                             disabled={categoryStatusUpdatingId === category.id}
                             className={`menu-category-action menu-category-status inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold transition disabled:cursor-wait disabled:opacity-60 ${
@@ -1005,7 +1018,7 @@ export default function AdminDashboard() {
                           <div className="px-5 py-10 text-center">
                             <p className="text-sm font-medium text-gray-500">Categoria vazia</p>
                             <button
-                              onClick={handleOpenNewProduct}
+                              onClick={() => handleOpenNewProduct(category.id)}
                               className="mt-3 rounded-xl bg-[var(--brand-soft)] px-4 py-2 text-xs font-bold text-[var(--brand)]"
                             >
                               Adicionar produto
@@ -1084,6 +1097,7 @@ export default function AdminDashboard() {
         restaurantId={restaurant?.id}
         categories={categories}
         productToEdit={editingProduct}
+        initialCategoryId={newProductCategoryId}
       />
 
       {isImportModalOpen && (

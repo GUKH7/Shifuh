@@ -134,6 +134,14 @@ function transactionLabel(transaction: LoyaltyTransaction) {
 
 export default function LoyaltyCustomerPage() {
   const router = useRouter();
+
+  const preserveReturnUrl = (path: string) => {
+    if (typeof window === "undefined") return path;
+    const returnUrl = new URLSearchParams(window.location.search).get("returnUrl");
+    return returnUrl && returnUrl.startsWith("/") && !returnUrl.startsWith("//")
+      ? `${path}?returnUrl=${encodeURIComponent(returnUrl)}`
+      : path;
+  };
   const [loading, setLoading] = useState(true);
   const [programs, setPrograms] = useState<LoyaltyProgram[]>([]);
   const [selectedProgramId, setSelectedProgramId] = useState<string | null>(null);
@@ -249,7 +257,7 @@ export default function LoyaltyCustomerPage() {
       <header className="sticky top-0 z-30 border-b border-gray-200/80 bg-white/92 px-4 py-4 backdrop-blur">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <button type="button" onClick={() => router.push("/minha-conta")} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-gray-200 bg-white text-gray-700 transition hover:bg-gray-50" aria-label="Voltar para Minha conta">
+            <button type="button" onClick={() => router.push(preserveReturnUrl("/minha-conta"))} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-gray-200 bg-white text-gray-700 transition hover:bg-gray-50" aria-label="Voltar para Minha conta">
               <ArrowLeft size={20} />
             </button>
             <div className="min-w-0">
@@ -257,7 +265,7 @@ export default function LoyaltyCustomerPage() {
               <h1 className="truncate text-xl font-black sm:text-2xl">Fidelidade</h1>
             </div>
           </div>
-          <button type="button" onClick={() => router.push("/minha-conta/premios")} className="hidden min-h-11 items-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 text-sm font-black text-gray-700 transition hover:border-orange-200 hover:text-orange-700 sm:flex">
+          <button type="button" onClick={() => router.push(preserveReturnUrl("/minha-conta/premios"))} className="hidden min-h-11 items-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 text-sm font-black text-gray-700 transition hover:border-orange-200 hover:text-orange-700 sm:flex">
             <Gift size={17} /> Meus prêmios
           </button>
         </div>
@@ -269,7 +277,7 @@ export default function LoyaltyCustomerPage() {
             <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-50 text-orange-600"><ShieldCheck size={28} /></span>
             <h2 className="mt-4 text-xl font-black">Confirme sua identidade para ver seus pontos</h2>
             <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-gray-500">Por segurança, saldo e resgates só aparecem quando sua conta está vinculada a um telefone confirmado.</p>
-            <button type="button" onClick={() => router.push("/auth?returnUrl=/minha-conta/fidelidade")} className="mt-5 min-h-11 rounded-2xl bg-gray-950 px-5 text-sm font-black text-white transition hover:bg-gray-800">Acessar minha conta</button>
+            <button type="button" onClick={() => router.push(`/auth?returnUrl=${encodeURIComponent(preserveReturnUrl("/minha-conta/fidelidade"))}`)} className="mt-5 min-h-11 rounded-2xl bg-gray-950 px-5 text-sm font-black text-white transition hover:bg-gray-800">Acessar minha conta</button>
           </section>
         )}
 
@@ -327,7 +335,7 @@ export default function LoyaltyCustomerPage() {
             {progressReward && (
               <section className="mt-5 rounded-3xl border border-gray-200 bg-white p-5 shadow-[0_8px_28px_rgba(17,24,39,0.04)] sm:p-6">
                 <div className="flex items-start justify-between gap-4">
-                  <div><p className="text-[11px] font-black uppercase tracking-[0.14em] text-orange-600">Próxima conquista</p><h2 className="mt-1 text-lg font-black">{progressReward.canRedeem ? "Você já pode resgatar" : `Faltam ${Math.max(0, progressReward.pointsCost - selectedProgram.account.balance)} pontos`}</h2><p className="mt-1 text-sm text-gray-500">{progressReward.name} · {progressReward.pointsCost} pts</p></div>
+                  <div><p className="text-[11px] font-black uppercase tracking-[0.14em] text-orange-600">Próxima conquista</p><h2 className="mt-1 text-lg font-black">{progressReward.canRedeem ? `Você já pode resgatar ${progressReward.name}` : `Faltam ${Math.max(0, progressReward.pointsCost - selectedProgram.account.balance)} pontos para resgatar ${progressReward.name}`}</h2><p className="mt-1 text-sm text-gray-500">{progressReward.name} · {progressReward.pointsCost} pts</p></div>
                   <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-orange-50 text-orange-600"><Zap size={20} /></span>
                 </div>
                 <div className="mt-5 h-2.5 overflow-hidden rounded-full bg-gray-100"><div className="h-full rounded-full bg-orange-500 transition-all" style={{ width: `${progressPercent}%` }} /></div>
