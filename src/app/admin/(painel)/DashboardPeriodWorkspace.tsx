@@ -671,7 +671,7 @@ export default function DashboardPeriodWorkspace() {
         title="Dashboard"
         description={`Resumo da operação da ${restaurantName} em tempo real.`}
         action={
-          <div className={`dashboard-store-card flex items-center gap-3 border px-4 py-3 shadow-sm ${storeTone.shell}`}>
+          <div data-dashboard-store-status className={`dashboard-store-card flex items-center gap-3 border px-4 py-3 shadow-sm ${storeTone.shell}`}>
             <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${storeTone.icon}`}>
               <Store size={20} />
             </div>
@@ -701,7 +701,7 @@ export default function DashboardPeriodWorkspace() {
         <div className="inline-flex w-fit items-center gap-2 rounded-full bg-[var(--brand-soft)] px-3 py-2 text-xs font-bold text-[var(--brand)]">
           <LiveStatusDot className="text-current" /> Dashboard em tempo real
         </div>
-        <div className="dashboard-period-control flex items-center gap-3">
+        <div data-dashboard-period-control className="dashboard-period-control flex items-center gap-3">
           <label htmlFor="dashboard-period" className="text-sm font-bold text-gray-600">Período das métricas</label>
           <AdminSelect
             id="dashboard-period"
@@ -748,11 +748,11 @@ export default function DashboardPeriodWorkspace() {
         </section>
       ) : null}
 
-      <section className="dashboard-metrics-grid grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <section data-dashboard-metrics className="dashboard-metrics-grid grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {dashboard.metrics.map((card) => <MetricCardView key={card.id} card={card} />)}
       </section>
 
-      <section className="dashboard-analytics-grid grid gap-4 border-t border-[var(--line)] pt-6 xl:grid-cols-12">
+      <section data-dashboard-analytics className="dashboard-analytics-grid grid gap-4 border-t border-[var(--line)] pt-6 xl:grid-cols-12">
         <article className="surface-card rounded-3xl p-4 sm:p-5 xl:col-span-5">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -783,7 +783,7 @@ export default function DashboardPeriodWorkspace() {
           </div>
         </article>
 
-        <article className="dashboard-top-products-card surface-card overflow-visible p-4 sm:p-5 xl:col-span-3">
+        <article data-dashboard-card="top-products" className="dashboard-top-products-card surface-card overflow-visible p-4 sm:p-5 xl:col-span-3">
           <div className="dashboard-card-header flex items-start justify-between gap-3">
             <div>
               <p className="text-base font-black text-gray-950">Produtos mais pedidos</p>
@@ -792,9 +792,9 @@ export default function DashboardPeriodWorkspace() {
             <span className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-xs font-bold text-gray-500">{dashboard.range.label}</span>
           </div>
           {dashboard.topProducts.length === 0 ? (
-            <AdminEmptyState compact title="Nenhum produto vendido" description="Os produtos aparecerão aqui quando houver vendas no período." />
+            <AdminEmptyState compact className="dashboard-card-body dashboard-analytics-empty" title="Nenhum produto vendido" description="Os produtos aparecerão aqui quando houver vendas no período." />
           ) : (
-            <div className="mt-5 h-[250px] w-full overflow-visible">
+            <div className="dashboard-card-body h-[250px] w-full overflow-visible">
               <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <BarChart data={dashboard.topProducts} layout="vertical" margin={{ top: 4, right: 18, left: 4, bottom: 4 }}>
                   <XAxis type="number" hide />
@@ -830,13 +830,13 @@ export default function DashboardPeriodWorkspace() {
           )}
         </article>
 
-        <article className="dashboard-sources-card surface-card p-4 sm:p-5 xl:col-span-4">
+        <article data-dashboard-card="sources" className="dashboard-sources-card surface-card p-4 sm:p-5 xl:col-span-4">
           <p className="text-base font-black text-gray-950">Fontes de pedidos</p>
-          <p className="mt-1 text-xs text-gray-400">Origem dos pedidos válidos em {dashboard.range.label.toLowerCase()}</p>
+          <p className="dashboard-sources-description mt-1 text-xs text-gray-400">Origem dos pedidos válidos em {dashboard.range.label.toLowerCase()}</p>
           {dashboard.sources.length === 0 ? (
-            <AdminEmptyState compact title="Nenhum pedido registrado" description="Altere o período ou aguarde novos pedidos." />
+            <AdminEmptyState compact className="dashboard-card-body dashboard-analytics-empty" title="Nenhum pedido registrado" description="Altere o período ou aguarde novos pedidos." />
           ) : (
-            <div className="mt-3 grid items-center gap-3 sm:grid-cols-[1fr_150px]">
+            <div className="dashboard-card-body grid items-center gap-3 sm:grid-cols-[1fr_150px]">
               <div className="relative h-[250px] min-w-0">
                 <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                   <PieChart>
@@ -910,7 +910,7 @@ export default function DashboardPeriodWorkspace() {
           </div>
         </article>
 
-        <article className="surface-card overflow-hidden rounded-[24px] xl:col-span-7">
+        <article data-dashboard-card="recent-orders" className="dashboard-recent-orders-card surface-card overflow-hidden rounded-[24px] xl:col-span-7">
           <div className="flex items-center justify-between gap-4 border-b border-[var(--line)] px-4 py-4 sm:px-5">
             <div>
               <p className="text-base font-black text-gray-950">Pedidos recentes</p>
@@ -919,7 +919,7 @@ export default function DashboardPeriodWorkspace() {
             <Link href="/admin/orders" className="text-xs font-black text-[var(--brand)] hover:underline">Ver todos</Link>
           </div>
           {dashboard.recentOrders.length === 0 ? (
-            <AdminEmptyState compact title="Nenhum pedido recente" description="Os pedidos do período aparecerão aqui." />
+            <AdminEmptyState compact className="dashboard-recent-orders-empty" title="Nenhum pedido recente" description="Os pedidos do período aparecerão aqui." />
           ) : (
             <>
               <div className="hidden overflow-x-auto md:block">

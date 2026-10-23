@@ -346,7 +346,12 @@ export default function LuckyWheelStorefrontBridge() {
 
       {open && (
         <div className="fixed inset-0 z-[80] flex items-end justify-center bg-gray-950/65 p-0 backdrop-blur-md sm:items-center sm:p-5">
-          <section className="relative max-h-[100dvh] w-full max-w-lg overflow-y-auto rounded-t-[30px] border border-white/70 bg-[#fffdfa] shadow-[0_32px_100px_rgba(17,24,39,0.35)] sm:max-h-[92dvh] sm:rounded-[30px]">
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-label="Roleta promocional"
+            className="relative max-h-[100dvh] w-full max-w-lg overflow-y-auto rounded-t-[30px] border border-white/70 bg-[#fffdfa] shadow-[0_32px_100px_rgba(17,24,39,0.35)] sm:max-h-[92dvh] sm:rounded-[30px]"
+          >
             <div className="relative overflow-hidden border-b border-orange-100 bg-[linear-gradient(145deg,#fff7f1_0%,#fffdfa_55%,#fff4ea_100%)] px-5 pb-5 pt-5 sm:px-7 sm:pt-6">
               <div
                 className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full opacity-10 blur-2xl"

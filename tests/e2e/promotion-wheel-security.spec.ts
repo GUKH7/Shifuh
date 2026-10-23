@@ -119,15 +119,17 @@ test.describe("segurança e antifraude da Roleta da Sorte", () => {
     await expect(wheelTrigger).toBeVisible({ timeout: 15_000 });
     await wheelTrigger.click();
 
-    await expect(page.getByText("Roleta da Sorte", { exact: true })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Roleta Segura E2E" })).toBeVisible();
+    const wheelDialog = page.getByRole("dialog", { name: "Roleta promocional" });
+    await expect(wheelDialog).toBeVisible();
+    await expect(wheelDialog.getByRole("heading", { name: "Gire e descubra seu prêmio" })).toBeVisible();
+    await expect(wheelDialog.getByText(/Roleta Segura E2E/)).toBeVisible();
 
     const resolveResponsePromise = page.waitForResponse(
       (response) =>
         response.url().endsWith("/api/storefront/promotions/wheel") &&
         response.request().method() === "POST",
     );
-    await page.getByRole("button", { name: "Girar agora" }).click();
+    await wheelDialog.getByRole("button", { name: "Girar a roleta" }).click();
     const resolveResponse = await resolveResponsePromise;
     expect(resolveResponse.status()).toBe(200);
 
@@ -136,10 +138,10 @@ test.describe("segurança e antifraude da Roleta da Sorte", () => {
     expect(resolvePayload.result.label).toBe("R$ 5 de desconto E2E");
     expect(resolvePayload.result.rewardId).toMatch(/^[0-9a-f-]{36}$/i);
 
-    const result = page.getByRole("status");
+    const result = wheelDialog.getByRole("status");
     await expect(result).toBeVisible({ timeout: 5_000 });
     await expect(result.getByRole("heading", { name: "R$ 5 de desconto E2E" })).toBeVisible();
-    await expect(result.getByText(/já foi registrado na sua conta/)).toBeVisible();
-    await expect(page.getByRole("button", { name: /Ver Meus prêmios/ })).toBeVisible();
+    await expect(result.getByText(/já está salvo na sua conta/)).toBeVisible();
+    await expect(wheelDialog.getByRole("button", { name: "Ver meu prêmio" })).toBeVisible();
   });
 });

@@ -21,9 +21,9 @@ test("cards do cabeçalho e período usam classes semânticas", () => {
   assert.match(styles, /height: 4\.5rem/);
   assert.match(styles, /min-height: 4\.5rem/);
   assert.match(styles, /box-sizing: border-box/);
+  assert.match(dashboard, /data-dashboard-store-status/);
+  assert.match(dashboard, /data-dashboard-period-control/);
+  assert.match(dashboard, /aria-label="Período global do dashboard"/);
   assert.match(dashboard, /LiveStatusDot className=\{storeTone\.dot\}[\s\S]{0,300}\{storeTone\.label\}/);
-  assert.match(dashboard, /truncate whitespace-nowrap text-\[15px\] font-black/);
-  assert.match(dashboard, /mt-0\.5 truncate whitespace-nowrap text-xs/);
-  assert.match(dashboard, /hidden min-h-10 shrink-0 items-center/);
   assert.doesNotMatch(styles, /:has|first-child|last-child|nth-child/);
 });
