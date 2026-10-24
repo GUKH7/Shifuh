@@ -7,16 +7,21 @@ const DEFAULT_POLLING_CATEGORIES = "FOOD";
 const DEFAULT_RETRY_ATTEMPTS = 3;
 const DEFAULT_RETRY_BASE_DELAY_MS = 500;
 const DEFAULT_REQUEST_TIMEOUT_MS = 15000;
+// Never hold a serverless request open for a multi-minute upstream cooldown.
+const MAX_INLINE_RETRY_DELAY_MS = 2_500;
+const MAX_RETRY_AFTER_MS = 15 * 60_000;
 
 export class IfoodApiError extends Error {
   status: number;
   responseBody: string;
+  retryAfterMs: number | null;
 
-  constructor(status: number, responseBody: string) {
+  constructor(status: number, responseBody: string, retryAfterMs: number | null = null) {
     super(`iFood API ${status}: ${responseBody || "request failed"}`);
     this.name = "IfoodApiError";
     this.status = status;
     this.responseBody = responseBody;
+    this.retryAfterMs = retryAfterMs;
   }
 }
 
@@ -33,6 +38,40 @@ export type IfoodOrderEvent = {
   [key: string]: unknown;
 };
 
+// Prefer the longest valid server hint. iFood/Cloudflare may put retry_after
+// in the JSON error body instead of the standard Retry-After header.
+export function readIfoodRetryAfterMs(
+  headers: Headers,
+  responseBody: string,
+  now = Date.now(),
+): number | null {
+  const candidates: number[] = [];
+  const header = headers.get("retry-after")?.trim();
+  if (header) {
+    const seconds = Number(header);
+    if (/^\d+(?:\.\d+)?$/.test(header) && Number.isFinite(seconds)) {
+      candidates.push(seconds * 1_000);
+    } else {
+      const when = Date.parse(header);
+      if (Number.isFinite(when)) candidates.push(Math.max(0, when - now));
+    }
+  }
+
+  try {
+    const payload = JSON.parse(responseBody) as { retry_after?: unknown };
+    if (typeof payload.retry_after === "number" &&
+        Number.isFinite(payload.retry_after) &&
+        payload.retry_after >= 0) {
+      candidates.push(payload.retry_after * 1_000);
+    }
+  } catch {
+    // Non-JSON upstream failures may still contain a valid Retry-After header.
+  }
+
+  if (!candidates.length) return null;
+  return Math.min(MAX_RETRY_AFTER_MS, Math.max(0, ...candidates));
+}
+
 async function ifoodOrderRequest<T>(
   path: string,
   init?: RequestInit & {
@@ -47,8 +86,6 @@ async function ifoodOrderRequest<T>(
     ? Math.max(1, init?.retryAttempts || DEFAULT_RETRY_ATTEMPTS)
     : 1;
   const { retry: _retry, retryAttempts: _retryAttempts, ...requestInit } = init || {};
-
-  let lastTransientBody = "";
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     let response: Response;
@@ -73,17 +110,19 @@ async function ifoodOrderRequest<T>(
       throw error;
     }
 
-    if (shouldRetryStatus(response.status) && attempt < maxAttempts) {
-      lastTransientBody = await response.text().catch(() => "");
-      await waitForRetry(attempt);
-      continue;
-    }
-
     if (response.status === 204) return null;
 
     if (!response.ok) {
       const text = await response.text();
-      throw new IfoodApiError(response.status, text || lastTransientBody || "request failed");
+      const retryAfterMs = readIfoodRetryAfterMs(response.headers, text);
+      if (retry && shouldRetryStatus(response.status) && attempt < maxAttempts &&
+          (retryAfterMs === null || retryAfterMs <= MAX_INLINE_RETRY_DELAY_MS)) {
+        await waitForRetry(attempt, retryAfterMs);
+        continue;
+      }
+      // Respect long cooldowns by returning the error to the scheduler;
+      // do not hammer the iFood API or sleep 120s inside a 60s function.
+      throw new IfoodApiError(response.status, text || "request failed", retryAfterMs);
     }
 
     const text = await response.text();
@@ -103,10 +142,10 @@ function shouldRetryStatus(status: number) {
   return status === 408 || status === 425 || status === 429 || status >= 500;
 }
 
-function waitForRetry(attempt: number) {
+function waitForRetry(attempt: number, serverDelayMs: number | null = null) {
   const jitter = Math.floor(Math.random() * 150);
-  const delay = DEFAULT_RETRY_BASE_DELAY_MS * 2 ** (attempt - 1) + jitter;
-
+  const backoff = DEFAULT_RETRY_BASE_DELAY_MS * 2 ** (attempt - 1) + jitter;
+  const delay = Math.max(backoff, serverDelayMs ?? 0);
   return new Promise((resolve) => setTimeout(resolve, delay));
 }
 

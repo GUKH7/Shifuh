@@ -24,9 +24,23 @@ const endpoint = new URL(endpointPath, appBaseUrl).toString();
 let running = false;
 let runCount = 0;
 let consecutiveFailures = 0;
+let serverRetryAfterMs = 0;
 
 function nextPollingDelay() {
-  return Math.min(intervalMs * 2 ** consecutiveFailures, maxIntervalMs);
+  return Math.max(
+    Math.min(intervalMs * 2 ** consecutiveFailures, maxIntervalMs),
+    serverRetryAfterMs,
+  );
+}
+
+function readServerRetryAfterMs(header, now = Date.now()) {
+  if (!header) return 0;
+  const seconds = Number(header.trim());
+  if (/^\d+(?:\.\d+)?$/.test(header.trim()) && Number.isFinite(seconds)) {
+    return Math.min(15 * 60_000, Math.max(0, Math.ceil(seconds * 1_000)));
+  }
+  const parsed = Date.parse(header);
+  return Number.isFinite(parsed) ? Math.min(15 * 60_000, Math.max(0, parsed - now)) : 0;
 }
 
 async function pollIfoodOrders() {
@@ -59,12 +73,14 @@ async function pollIfoodOrders() {
     }
 
     if (!response.ok || payload?.ok === false) {
+      serverRetryAfterMs = readServerRetryAfterMs(response.headers.get("retry-after"));
       console.error(
         `[${startedAt.toISOString()}] iFood polling failed (${response.status}): ${body}`,
       );
       return false;
     }
 
+    serverRetryAfterMs = 0;
     console.log(`[${startedAt.toISOString()}] iFood polling ok #${runCount}: ${body}`);
     return true;
   } catch (error) {

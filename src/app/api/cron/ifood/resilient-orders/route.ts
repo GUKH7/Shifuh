@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { syncIfoodOrdersWithResilience } from "@/lib/ifood/order-sync-resilience";
+import { IfoodApiError } from "@/lib/ifood/orders";
 import {
   summarizeIfoodCronResults,
   type IfoodCronResult,
@@ -56,8 +57,11 @@ export async function GET(request: Request) {
           });
           return {
             restaurantId: integration.restaurant_id,
-            ok: true,
+            ok: summary.pendingEvents === 0,
             durationMs: Date.now() - integrationStartedAt,
+            retryAfterSeconds: summary.upstreamRetryAfterMs > 0
+              ? Math.ceil(summary.upstreamRetryAfterMs / 1_000)
+              : null,
             summary,
           };
         } catch (syncError) {
@@ -73,6 +77,10 @@ export async function GET(request: Request) {
               syncError instanceof Error
                 ? syncError.message
                 : "Falha ao sincronizar a fila de pedidos.",
+            retryAfterSeconds:
+              syncError instanceof IfoodApiError && syncError.retryAfterMs !== null
+                ? Math.ceil(syncError.retryAfterMs / 1_000)
+                : null,
           };
         }
       }),
@@ -81,6 +89,9 @@ export async function GET(request: Request) {
   }
 
   const { httpStatus, ...summary } = summarizeIfoodCronResults(results);
+  const retryAfterSeconds = Math.max(0, ...results.map((result) =>
+    typeof result.retryAfterSeconds === "number" ? result.retryAfterSeconds : 0,
+  ));
 
   return NextResponse.json(
     {
@@ -89,6 +100,9 @@ export async function GET(request: Request) {
       durationMs: Date.now() - startedAt,
       results,
     },
-    { status: httpStatus },
+    {
+      status: httpStatus,
+      headers: retryAfterSeconds > 0 ? { "Retry-After": String(retryAfterSeconds) } : {},
+    },
   );
 }
