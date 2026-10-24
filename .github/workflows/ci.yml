@@ -155,7 +155,7 @@ jobs:
       - name: Verify iFood event leases against isolated Postgres
         run: IFOOD_LEASE_E2E=1 node scripts/test-ifood-event-leases.mjs
 
-      - name: Homologate iFood persisted replay against isolated Supabase
+      - name: Homologate iFood replay outages, ACK batches and idempotency in isolated Supabase
         env:
           IFOOD_REPLAY_HOMOLOGATION: "1"
           IFOOD_PERSISTED_REPLAY_ENABLED: "true"

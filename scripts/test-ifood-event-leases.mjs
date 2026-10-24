@@ -135,7 +135,51 @@ try{
   check(afterDue.error,"due event");
   assert.equal(afterDue.data.length,1);
   assert.equal(afterDue.data[0].id,future.data.id);
-  console.log("iFood isolated Postgres: concurrent leases, expiry, stale fencing and scheduled retries verified.");
+  // SKIP LOCKED partitions a backlog across two simultaneous database workers.
+  const batchIds = Array.from({length:12},()=> "lease-batch-"+randomUUID());
+  const batchRows = batchIds.map(id=>({
+    restaurant_id:restaurantId,merchant_id:merchantId,ifood_event_id:id,
+    ifood_order_id:"order-"+id,event_code:"PLC",
+    raw_payload:{id,orderId:"order-"+id,merchantId,code:"PLC"},
+  }));
+  const seededBatch = await admin.from("ifood_order_events").insert(batchRows).select("id");
+  check(seededBatch.error,"seed isolated multiworker backlog");
+  createdEventIds.push(...seededBatch.data.map(row=>row.id));
+  const [batchWorkerA,batchWorkerB] = await Promise.all([
+    admin.rpc("claim_ifood_pending_events",{p_restaurant_id:restaurantId,p_merchant_id:merchantId,p_batch_size:999}),
+    admin.rpc("claim_ifood_pending_events",{p_restaurant_id:restaurantId,p_merchant_id:merchantId,p_batch_size:999}),
+  ]);
+  check(batchWorkerA.error || batchWorkerB.error,"multiworker batch claims");
+  const claimedRows=[...batchWorkerA.data,...batchWorkerB.data];
+  assert.equal(claimedRows.length,12,"No backlog event may be claimed twice or lost");
+  assert.ok(batchWorkerA.data.length<=10 && batchWorkerB.data.length<=10,"Batch size capped at 10");
+  assert.equal(new Set(claimedRows.map(row=>row.id)).size,12,"Claims are disjoint");
+  assert.equal(new Set(claimedRows.map(row=>row.processing_lease_token)).size,12,
+    "Every claim must have an independent lease token");
+
+  // Disabling a merchant blocks replay without touching its stored events.
+  const disabledId="lease-disabled-"+randomUUID();
+  const disabledRow=await admin.from("ifood_order_events").insert({
+    restaurant_id:restaurantId,merchant_id:merchantId,ifood_event_id:disabledId,
+    ifood_order_id:"order-disabled",event_code:"PLC",
+    raw_payload:{id:disabledId,orderId:"order-disabled",merchantId,code:"PLC"},
+  }).select("id").single();
+  check(disabledRow.error,"seed disabled integration event");
+  createdEventIds.push(disabledRow.data.id);
+  check((await admin.from("ifood_integrations").update({order_sync_enabled:false})
+    .eq("restaurant_id",restaurantId)).error,"disable isolated integration");
+  const paused=await claim(restaurantId,merchantId);
+  check(paused.error,"paused merchant claim");
+  assert.equal(paused.data.length,0,"Disabled integrations cannot lease stored events");
+  check((await admin.from("ifood_integrations").update({order_sync_enabled:true})
+    .eq("restaurant_id",restaurantId)).error,"resume isolated integration");
+  const resumed=await claim(restaurantId,merchantId);
+  check(resumed.error,"resumed merchant claim");
+  assert.equal(resumed.data.length,1);
+  assert.equal(resumed.data[0].id,disabledRow.data.id);
+
+  console.log("iFood isolated Postgres: concurrency, batch cap, pause/resume, expiry and stale fencing verified.");
+
 
 }finally{
   if(createdEventIds.length){
