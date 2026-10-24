@@ -324,6 +324,7 @@ test("não esgota retries de eventos por indisponibilidade HTTP 504 do iFood", a
     });
     assert.equal(result.pendingEvents, 1);
     assert.deepEqual(result.failedEventIds, [], "sem tentativas cobradas à fila por 504 externo");
+    assert.equal(result.upstreamRetryAfterMs, 120_000);
     assert.deepEqual(acknowledged, []);
   } finally {
     console.error = originalConsoleError;

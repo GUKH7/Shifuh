@@ -57,8 +57,11 @@ export async function GET(request: Request) {
           });
           return {
             restaurantId: integration.restaurant_id,
-            ok: true,
+            ok: summary.pendingEvents === 0,
             durationMs: Date.now() - integrationStartedAt,
+            retryAfterSeconds: summary.upstreamRetryAfterMs > 0
+              ? Math.ceil(summary.upstreamRetryAfterMs / 1_000)
+              : null,
             summary,
           };
         } catch (syncError) {

@@ -501,6 +501,7 @@ export async function syncIfoodOrdersForRestaurant({
 
     let processedCount = 0;
     let failedCount = 0;
+    let upstreamRetryAfterMs = 0;
     const failedEventIds: string[] = [];
     const touchedOrders: string[] = [];
     const processedEventIds = new Set<string>();
@@ -545,7 +546,15 @@ export async function syncIfoodOrdersForRestaurant({
         const transientNetwork =
           eventError instanceof Error &&
           /timeout|timed out|network|fetch failed|abort/i.test(eventError.message);
-        if (!transientStatus && !transientNetwork) failedEventIds.push(event.id);
+        if (transientStatus || transientNetwork) {
+          const cooldown = eventError && typeof eventError === "object" && "retryAfterMs" in eventError
+            ? eventError.retryAfterMs : null;
+          if (typeof cooldown === "number" && Number.isFinite(cooldown) && cooldown > 0) {
+            upstreamRetryAfterMs = Math.max(upstreamRetryAfterMs, cooldown);
+          }
+        } else {
+          failedEventIds.push(event.id);
+        }
         console.error(`Erro ao processar evento ${event.id} do iFood:`, eventError);
       }
     }
@@ -603,6 +612,7 @@ export async function syncIfoodOrdersForRestaurant({
       duplicateEvents: sortedEvents.length - newEvents.length,
       pendingEvents: failedCount,
       failedEventIds,
+      upstreamRetryAfterMs,
       touchedOrders: Array.from(new Set(touchedOrders)),
     };
   } catch (error) {
