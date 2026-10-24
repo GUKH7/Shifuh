@@ -35,7 +35,7 @@ try{
     p_restaurant_id:r,p_merchant_id:m,p_batch_size:10,
   });
   const [first,second]=await Promise.all([claim(restaurantId,merchantId),claim(restaurantId,merchantId)]);
-  check(first.error || expiringRow.error,"concurrent claim");
+  check(first.error || second.error,"concurrent claim");
   assert.equal(first.data.length+second.data.length,1,"concurrent workers cannot share one lease");
   const row=(first.data.length?first.data:second.data)[0];
   assert.ok(row.processing_lease_token);
