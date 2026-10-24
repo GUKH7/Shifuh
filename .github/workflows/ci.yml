@@ -159,7 +159,7 @@ jobs:
         env:
           IFOOD_REPLAY_HOMOLOGATION: "1"
           IFOOD_PERSISTED_REPLAY_ENABLED: "true"
-        run: node scripts/test-ifood-replay-homologation.cjs
+        run: node scripts/ifood-replay-homologation.cjs
 
       - name: Install Playwright Chromium
         shell: bash
