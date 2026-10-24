@@ -533,7 +533,19 @@ export async function syncIfoodOrdersForRestaurant({
         processedEventIds.add(event.id);
       } catch (eventError) {
         failedCount += 1;
-        failedEventIds.push(event.id);
+        // Upstream outages are not processing attempts against a stored event.
+        // Leave them pending without burning retry_count or dead-letter budget.
+        const upstreamStatus =
+          eventError && typeof eventError === "object" && "status" in eventError
+            ? eventError.status
+            : null;
+        const transientStatus =
+          typeof upstreamStatus === "number" &&
+          ([408, 425, 429].includes(upstreamStatus) || upstreamStatus >= 500);
+        const transientNetwork =
+          eventError instanceof Error &&
+          /timeout|timed out|network|fetch failed|abort/i.test(eventError.message);
+        if (!transientStatus && !transientNetwork) failedEventIds.push(event.id);
         console.error(`Erro ao processar evento ${event.id} do iFood:`, eventError);
       }
     }

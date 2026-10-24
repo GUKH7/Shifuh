@@ -79,6 +79,9 @@ class QueryBuilder {
 
     if (this.table === "ifood_order_events" && this.operation === "update") {
       this.state.eventUpdates.push(this.payload);
+      if (this.state.failProcessedUpdate && this.payload?.processed_at) {
+        return Promise.resolve({ data: null, error: { message: "database error" } });
+      }
     }
 
     if (this.table === "orders" && this.operation === "insert") {
@@ -253,6 +256,75 @@ test("envia ACK apenas para eventos iFood processados com sucesso", async () => 
     assert.equal(state.insertedEvents.length, 2);
     assert.equal(state.insertedOrders.length, 1);
     assert.equal(state.syncRunUpdates.at(-1).events_acknowledged, 1);
+  } finally {
+    console.error = originalConsoleError;
+  }
+});
+
+
+test("não confirma evento ao iFood quando gravação de processed_at falha", async () => {
+  const originalConsoleError = console.error;
+  const state = {
+    existingEvents: [],
+    insertedEvents: [],
+    eventUpdates: [],
+    insertedOrders: [],
+    insertedItems: [],
+    syncRunUpdates: [],
+    failProcessedUpdate: true,
+  };
+  const acknowledged = [];
+  const ifoodMock = {
+    pollIfoodOrderEvents: async () => [{
+      id: "event-db-fail", code: "PLC", orderId: "order-db-fail",
+      merchantId: "merchant-1", createdAt: "2026-10-24T08:00:00Z",
+    }],
+    getIfoodOrderDetails: async (id) => createIfoodDetails(id),
+    acknowledgeIfoodOrderEvents: async (ids) => acknowledged.push(...ids),
+    mapIfoodEventCodeToStatus: () => "pending",
+  };
+  console.error = () => {};
+  try {
+    const { syncIfoodOrdersForRestaurant } = loadOrderSync(state, ifoodMock);
+    const result = await syncIfoodOrdersForRestaurant({
+      restaurantId: "restaurant-1", merchantId: "merchant-1", source: "cron",
+    });
+    assert.deepEqual(acknowledged, []);
+    assert.equal(result.eventsProcessed, 0);
+    assert.equal(result.pendingEvents, 1);
+    assert.deepEqual(result.failedEventIds, ["event-db-fail"]);
+    assert.equal(state.insertedOrders.length, 1, "pedido ainda pode ter sido persistido");
+  } finally {
+    console.error = originalConsoleError;
+  }
+});
+
+test("não esgota retries de eventos por indisponibilidade HTTP 504 do iFood", async () => {
+  const originalConsoleError = console.error;
+  const state = {
+    existingEvents: [], insertedEvents: [], eventUpdates: [],
+    insertedOrders: [], insertedItems: [], syncRunUpdates: [],
+  };
+  const acknowledged = [];
+  const upstreamError = Object.assign(new Error("upstream 504"), { status: 504, retryAfterMs: 120_000 });
+  const ifoodMock = {
+    pollIfoodOrderEvents: async () => [{
+      id: "event-upstream-fail", code: "PLC", orderId: "order-upstream-fail",
+      merchantId: "merchant-1", createdAt: "2026-10-24T08:00:00Z",
+    }],
+    getIfoodOrderDetails: async () => { throw upstreamError; },
+    acknowledgeIfoodOrderEvents: async ids => acknowledged.push(...ids),
+    mapIfoodEventCodeToStatus: () => "pending",
+  };
+  console.error = () => {};
+  try {
+    const { syncIfoodOrdersForRestaurant } = loadOrderSync(state, ifoodMock);
+    const result = await syncIfoodOrdersForRestaurant({
+      restaurantId: "restaurant-1", merchantId: "merchant-1", source: "cron",
+    });
+    assert.equal(result.pendingEvents, 1);
+    assert.deepEqual(result.failedEventIds, [], "sem tentativas cobradas à fila por 504 externo");
+    assert.deepEqual(acknowledged, []);
   } finally {
     console.error = originalConsoleError;
   }
