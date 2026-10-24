@@ -22,6 +22,7 @@ type ExistingIfoodEventState = {
   ifood_event_id: string;
   processed_at: string | null;
   acknowledged_at: string | null;
+  processing_lease_until?: string | null;
 };
 
 function roundMoney(value: unknown) {
@@ -277,7 +278,7 @@ function buildCancellationMetadata(event: IfoodOrderEvent) {
 }
 
 
-async function upsertLocalOrderFromIfood(
+export async function upsertLocalOrderFromIfood(
   admin: AdminClient,
   restaurantId: string,
   event: IfoodOrderEvent,
@@ -470,7 +471,7 @@ export async function syncIfoodOrdersForRestaurant({
     const { data: existingEvents } = eventIds.length
       ? await admin
           .from("ifood_order_events")
-          .select("ifood_event_id, processed_at, acknowledged_at")
+          .select("ifood_event_id, processed_at, acknowledged_at, processing_lease_until")
           .eq("restaurant_id", restaurantId)
           .in("ifood_event_id", eventIds)
       : { data: [] as ExistingIfoodEventState[] };
@@ -512,7 +513,12 @@ export async function syncIfoodOrdersForRestaurant({
     );
     const eventsToProcess = sortedEvents.filter((event) => {
       const existingEvent = existingEventById.get(event.id);
-      return !existingEvent || !existingEvent.processed_at;
+      // A separate serverless instance may have leased this stored event.
+      // Do not race its in-flight replay through the regular polling loop.
+      const leased = process.env.IFOOD_PERSISTED_REPLAY_ENABLED === "true" &&
+        existingEvent?.processing_lease_until &&
+        Date.parse(existingEvent.processing_lease_until) > Date.now();
+      return !leased && (!existingEvent || !existingEvent.processed_at);
     });
 
     for (const event of eventsToProcess) {

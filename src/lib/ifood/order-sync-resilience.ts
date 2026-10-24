@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import { acknowledgeIfoodOrderEvents, IfoodApiError } from "@/lib/ifood/orders";
 import { syncIfoodOrdersForRestaurant } from "@/lib/ifood/order-sync";
+import { inspectIfoodQueue, isIfoodReplayEnabled, replayStoredIfoodEvents, type IfoodReplaySummary } from "@/lib/ifood/event-replay";
 
 type SyncSource = "manual" | "cron";
 
@@ -28,6 +29,8 @@ export type IfoodSyncResult = Awaited<ReturnType<typeof syncIfoodOrdersForRestau
   pendingAcknowledgementsRecovered: number;
   retryEventsScheduled: number;
   deadLetteredEvents: number;
+  replay?: IfoodReplaySummary;
+  queueHealth?: { pending: number; awaitingAcknowledgement: number; deadLettered: number };
 };
 
 export function isTransientIfoodSyncError(error: unknown) {
@@ -180,6 +183,20 @@ async function runWithRetries(params: ResilientSyncParams): Promise<IfoodSyncRes
   const maxAttempts = Math.max(1, params.maxAttempts || DEFAULT_MAX_ATTEMPTS);
   const startedAt = Date.now();
   let lastError: unknown;
+  // Replay is optional until the additive database migration is verified.
+  // Keep polling operational when the feature flag is off.
+  const replay = isIfoodReplayEnabled()
+    ? await replayStoredIfoodEvents(params.restaurantId, params.merchantId)
+    : undefined;
+  let earlyAcknowledgementsRecovered = 0;
+  if (replay) {
+    // ACK recovery must also work if the subsequent polling endpoint times out.
+    try {
+      earlyAcknowledgementsRecovered = await recoverPendingAcknowledgements(params.restaurantId);
+    } catch {
+      console.warn("ACKs iFood permanecem na fila persistente para nova tentativa.");
+    }
+  }
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
@@ -198,9 +215,10 @@ async function runWithRetries(params: ResilientSyncParams): Promise<IfoodSyncRes
         ...result,
         attempts: attempt,
         serialized: false,
-        pendingAcknowledgementsRecovered,
+        pendingAcknowledgementsRecovered: earlyAcknowledgementsRecovered + pendingAcknowledgementsRecovered,
         retryEventsScheduled: retryResult.scheduled,
-        deadLetteredEvents: retryResult.deadLettered,
+        deadLetteredEvents: retryResult.deadLettered + (replay?.deadLetteredEvents ?? 0),
+        ...(replay ? { replay, queueHealth: await inspectIfoodQueue(params.restaurantId) } : {}),
       };
     } catch (error) {
       lastError = error;
