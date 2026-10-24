@@ -11,6 +11,7 @@ export type HealthCheck = {
   status: HealthStatus;
   latencyMs: number;
   connection?: string;
+  scope?: "service";
 };
 
 function unavailableCheck(startedAt: number): HealthCheck {
@@ -39,27 +40,40 @@ export async function checkDatabase(): Promise<HealthCheck> {
 
 export async function checkWhatsapp(): Promise<HealthCheck> {
   const startedAt = Date.now();
-  const statusUrl = buildWhatsappBotUrl("/status");
+  // /status describes the retired global WhatsApp session and intentionally
+  // returns 410 when per-restaurant sessions are enabled. /health describes
+  // the availability of the API itself, independent of tenant connection state.
+  const healthUrl = buildWhatsappBotUrl("/health");
 
-  if (!statusUrl) return unavailableCheck(startedAt);
+  if (!healthUrl) return unavailableCheck(startedAt);
 
-  const response = await fetch(statusUrl, {
+  const response = await fetch(healthUrl, {
     cache: "no-store",
     headers: buildWhatsappBotHeaders({ accept: "application/json" }),
     signal: getWhatsappBotRequestSignal(),
   });
 
   if (!response.ok) {
-    throw new Error(`WhatsApp health check returned HTTP ${response.status}.`);
+    throw new Error(`WhatsApp service health check returned HTTP ${response.status}.`);
   }
 
-  const payload = (await response.json()) as { status?: unknown };
-  const connection = typeof payload.status === "string" ? payload.status : "unknown";
+  const payload: unknown = await response.json();
+  if (
+    !payload ||
+    typeof payload !== "object" ||
+    Array.isArray(payload) ||
+    !("status" in payload) ||
+    payload.status !== "ok" ||
+    !("service" in payload) ||
+    payload.service !== "shifuh-whatsapp-api"
+  ) {
+    throw new Error("Unexpected response from WhatsApp service health endpoint.");
+  }
 
   return {
-    status: connection === "conectado" ? "healthy" : "degraded",
+    status: "healthy",
     latencyMs: Date.now() - startedAt,
-    connection,
+    scope: "service",
   };
 }
 
