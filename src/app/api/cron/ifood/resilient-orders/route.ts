@@ -55,13 +55,22 @@ export async function GET(request: Request) {
             merchantId: integration.merchant_id,
             source: "cron",
           });
+          if (summary.queueHealth?.deadLettered ||
+              (summary.queueHealth?.pending ?? 0) > 10) {
+            console.warn(JSON.stringify({
+              event: "ifood_reconciliation_backlog",
+              restaurantId: integration.restaurant_id,
+              ...summary.queueHealth,
+            }));
+          }
           return {
             restaurantId: integration.restaurant_id,
-            ok: summary.pendingEvents === 0,
+            ok: summary.pendingEvents === 0 && (summary.queueHealth?.deadLettered ?? 0) === 0,
             durationMs: Date.now() - integrationStartedAt,
-            retryAfterSeconds: summary.upstreamRetryAfterMs > 0
-              ? Math.ceil(summary.upstreamRetryAfterMs / 1_000)
-              : null,
+            retryAfterSeconds: Math.max(
+              summary.upstreamRetryAfterMs > 0 ? Math.ceil(summary.upstreamRetryAfterMs / 1_000) : 0,
+              summary.replay?.maxRetryAfterMs ? Math.ceil(summary.replay.maxRetryAfterMs / 1_000) : 0,
+            ) || null,
             summary,
           };
         } catch (syncError) {
