@@ -35,7 +35,7 @@ try{
     p_restaurant_id:r,p_merchant_id:m,p_batch_size:10,
   });
   const [first,second]=await Promise.all([claim(restaurantId,merchantId),claim(restaurantId,merchantId)]);
-  check(first.error || second.error,"concurrent claim");
+  check(first.error || expiringRow.error,"concurrent claim");
   assert.equal(first.data.length+second.data.length,1,"concurrent workers cannot share one lease");
   const row=(first.data.length?first.data:second.data)[0];
   assert.ok(row.processing_lease_token);
@@ -67,26 +67,26 @@ try{
 
   // A lease that expired must be reclaimable, and old workers are fenced out.
   const secondEventId="lease-expired-"+randomUUID();
-  const second=await admin.from("ifood_order_events").insert({
+  const expiringRow=await admin.from("ifood_order_events").insert({
     restaurant_id:restaurantId,merchant_id:merchantId,
     ifood_event_id:secondEventId,ifood_order_id:"order-expired",
     event_code:"PLC",
     raw_payload:{id:secondEventId,orderId:"order-expired",merchantId,code:"PLC"},
   }).select("id").single();
-  check(second.error,"second event");
-  createdEventIds.push(second.data.id);
+  check(expiringRow.error,"second event");
+  createdEventIds.push(expiringRow.data.id);
   const firstOwner=await claim(restaurantId,merchantId);
   check(firstOwner.error,"first owner");
   assert.equal(firstOwner.data.length,1);
-  assert.equal(firstOwner.data[0].id,second.data.id);
+  assert.equal(firstOwner.data[0].id,expiringRow.data.id);
   const tokenA=firstOwner.data[0].processing_lease_token;
   const expire=await admin.from("ifood_order_events")
     .update({processing_lease_until:new Date(Date.now()-1000).toISOString()})
-    .eq("id",second.data.id);
+    .eq("id",expiringRow.data.id);
   check(expire.error,"expire test lease");
   const expiredOwnerFinish=await admin.from("ifood_order_events")
     .update({processed_at:new Date().toISOString()})
-    .eq("id",second.data.id).eq("processing_lease_token",tokenA)
+    .eq("id",expiringRow.data.id).eq("processing_lease_token",tokenA)
     .gt("processing_lease_until",new Date().toISOString())
     .is("processed_at",null).select("id");
   check(expiredOwnerFinish.error,"expired owner fencing");
@@ -94,12 +94,12 @@ try{
   const secondOwner=await claim(restaurantId,merchantId);
   check(secondOwner.error,"second owner");
   assert.equal(secondOwner.data.length,1);
-  assert.equal(secondOwner.data[0].id,second.data.id);
+  assert.equal(secondOwner.data[0].id,expiringRow.data.id);
   const tokenB=secondOwner.data[0].processing_lease_token;
   assert.notEqual(tokenA,tokenB);
   const staleFinish=await admin.from("ifood_order_events")
     .update({processed_at:new Date().toISOString()})
-    .eq("id",second.data.id).eq("processing_lease_token",tokenA)
+    .eq("id",expiringRow.data.id).eq("processing_lease_token",tokenA)
     .gt("processing_lease_until",new Date().toISOString())
     .is("processed_at",null).select("id");
   check(staleFinish.error,"stale owner fencing");
@@ -108,7 +108,7 @@ try{
     .update({
       processed_at:new Date().toISOString(),processing_lease_token:null,
       processing_lease_until:null,
-    }).eq("id",second.data.id).eq("processing_lease_token",tokenB)
+    }).eq("id",expiringRow.data.id).eq("processing_lease_token",tokenB)
     .gt("processing_lease_until",new Date().toISOString())
     .is("processed_at",null).select("id");
   check(freshFinish.error,"fresh owner completion");
