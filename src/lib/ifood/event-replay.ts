@@ -109,7 +109,23 @@ export async function replayStoredIfoodEvents(
         next_retry_at: null,
         last_error: null,
       });
-      if (markError) throw new Error("Falha ao persistir a conclusão do evento.");
+      if (markError) {
+        // The write may have reached the database even when the response failed.
+        // Re-read ownership before attempting to reschedule this event.
+        const { data: persisted, error: readError } = await admin
+          .from("ifood_order_events")
+          .select("processed_at, processing_lease_token")
+          .eq("id", row.id)
+          .eq("restaurant_id", restaurantId)
+          .eq("merchant_id", merchantId)
+          .maybeSingle();
+        if (readError || persisted?.processed_at ||
+            persisted?.processing_lease_token !== row.processing_lease_token) {
+          summary.lostLeases += 1;
+          continue;
+        }
+        throw new Error("Falha ao persistir a conclusão do evento.");
+      }
       if (!marked?.id) {
         summary.lostLeases += 1;
         continue; // Never ACK if this worker lost its lease.
