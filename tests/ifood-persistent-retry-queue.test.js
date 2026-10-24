@@ -31,7 +31,8 @@ test("cron resiliente isola restaurantes e limita concorrência", () => {
   assert.match(route, /Promise\.all/);
   assert.match(route, /syncIfoodOrdersWithResilience/);
   assert.match(route, /summarizeIfoodCronResults/);
-  assert.match(route, /\{ status: httpStatus \}/);
+  assert.match(route, /status: httpStatus/);
+  assert.match(route, /"Retry-After"/);
   assert.match(cronResult, /partial_success/);
   assert.match(cronResult, /integrationsFailed/);
 });
