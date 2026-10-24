@@ -119,13 +119,17 @@ async function recoverPendingAcknowledgements(restaurantId: string) {
   return recovered;
 }
 
-async function schedulePendingEventRetries(restaurantId: string, reason: string) {
+async function schedulePendingEventRetries(restaurantId: string, reason: string, attemptedFailedEventIds: string[]) {
+  // A failed polling request did not attempt any stored event. Never increment
+  // all pending events or dead-letter them due to an external API outage.
+  if (!attemptedFailedEventIds.length) return { scheduled: 0, deadLettered: 0 };
   const admin = createAdminClient() as any;
   const nowIso = new Date().toISOString();
   const { data, error } = await admin
     .from("ifood_order_events")
     .select("ifood_event_id, retry_count")
     .eq("restaurant_id", restaurantId)
+    .in("ifood_event_id", attemptedFailedEventIds)
     .is("processed_at", null)
     .is("dead_lettered_at", null)
     .or(`next_retry_at.is.null,next_retry_at.lte.${nowIso}`)
@@ -185,7 +189,8 @@ async function runWithRetries(params: ResilientSyncParams): Promise<IfoodSyncRes
       );
       const retryResult = await schedulePendingEventRetries(
         params.restaurantId,
-        "O evento permaneceu sem processamento após a sincronização e será tentado novamente.",
+        "Falha real ao processar o evento; nova tentativa agendada.",
+        result.failedEventIds,
       );
       await updateLatestSyncMetrics(params.restaurantId, attempt, Date.now() - startedAt);
 
@@ -200,15 +205,13 @@ async function runWithRetries(params: ResilientSyncParams): Promise<IfoodSyncRes
     } catch (error) {
       lastError = error;
       const message = error instanceof Error ? error.message : "Falha desconhecida na sincronização.";
-      const retryResult = await schedulePendingEventRetries(params.restaurantId, message);
+      // If polling/details/ACK failed before recording an event-specific
+      // failure, do not charge unrelated stored events a retry attempt.
       await updateLatestSyncMetrics(params.restaurantId, attempt, Date.now() - startedAt);
 
-      if (!isTransientIfoodSyncError(error) || attempt >= maxAttempts) {
-        if (retryResult.deadLettered > 0) {
-          console.error(
-            `${retryResult.deadLettered} evento(s) iFood foram movidos para dead letter na loja ${params.restaurantId}.`,
-          );
-        }
+      if (!isTransientIfoodSyncError(error) || attempt >= maxAttempts ||
+          (error instanceof IfoodApiError && error.retryAfterMs !== null &&
+            error.retryAfterMs > 2_500)) {
         throw error;
       }
       await waitForRetry(attempt);

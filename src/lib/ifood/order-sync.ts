@@ -501,6 +501,7 @@ export async function syncIfoodOrdersForRestaurant({
 
     let processedCount = 0;
     let failedCount = 0;
+    const failedEventIds: string[] = [];
     const touchedOrders: string[] = [];
     const processedEventIds = new Set<string>();
     const alreadyProcessedEventIds = new Set(
@@ -516,11 +517,7 @@ export async function syncIfoodOrdersForRestaurant({
     for (const event of eventsToProcess) {
       try {
         const result = await upsertLocalOrderFromIfood(admin, restaurantId, event);
-        processedCount += 1;
-        touchedOrders.push(event.orderId);
-        processedEventIds.add(event.id);
-
-        await admin
+        const { error: processedUpdateError } = await admin
           .from("ifood_order_events")
           .update({
             local_order_id: result.localOrderId,
@@ -528,8 +525,15 @@ export async function syncIfoodOrdersForRestaurant({
           })
           .eq("restaurant_id", restaurantId)
           .eq("ifood_event_id", event.id);
+        if (processedUpdateError) {
+          throw new Error("Pedido salvo, mas evento não pôde ser marcado como processado.");
+        }
+        processedCount += 1;
+        touchedOrders.push(event.orderId);
+        processedEventIds.add(event.id);
       } catch (eventError) {
         failedCount += 1;
+        failedEventIds.push(event.id);
         console.error(`Erro ao processar evento ${event.id} do iFood:`, eventError);
       }
     }
@@ -586,6 +590,7 @@ export async function syncIfoodOrdersForRestaurant({
       eventsAcknowledged: acknowledgedCount,
       duplicateEvents: sortedEvents.length - newEvents.length,
       pendingEvents: failedCount,
+      failedEventIds,
       touchedOrders: Array.from(new Set(touchedOrders)),
     };
   } catch (error) {
