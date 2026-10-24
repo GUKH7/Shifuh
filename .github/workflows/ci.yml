@@ -152,6 +152,9 @@ jobs:
       - name: Seed commercial fixture
         run: node scripts/e2e-seed.mjs
 
+      - name: Verify iFood event leases against isolated Postgres
+        run: node scripts/test-ifood-event-leases.mjs
+
       - name: Install Playwright Chromium
         shell: bash
         run: |
