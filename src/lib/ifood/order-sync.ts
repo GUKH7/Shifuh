@@ -468,13 +468,21 @@ export async function syncIfoodOrdersForRestaurant({
     );
 
     const eventIds = Array.from(new Set(sortedEvents.map((event) => event.id)));
-    const { data: existingEvents } = eventIds.length
+    // The lease column is added by an opt-in migration. Production polling
+    // must keep working before this migration is explicitly applied.
+    const eventFields = process.env.IFOOD_PERSISTED_REPLAY_ENABLED === "true"
+      ? "ifood_event_id, processed_at, acknowledged_at, processing_lease_until"
+      : "ifood_event_id, processed_at, acknowledged_at";
+    const { data: existingEvents, error: existingEventsError } = eventIds.length
       ? await admin
           .from("ifood_order_events")
-          .select("ifood_event_id, processed_at, acknowledged_at, processing_lease_until")
+          .select(eventFields)
           .eq("restaurant_id", restaurantId)
           .in("ifood_event_id", eventIds)
-      : { data: [] as ExistingIfoodEventState[] };
+      : { data: [] as ExistingIfoodEventState[], error: null };
+    if (existingEventsError) {
+      throw new Error("Falha ao consultar eventos iFood já recebidos.");
+    }
 
     const existingEventById = new Map(
       (existingEvents || []).map((event) => [event.ifood_event_id, event]),
