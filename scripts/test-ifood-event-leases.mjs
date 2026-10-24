@@ -2,6 +2,9 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
+if (process.env.IFOOD_LEASE_E2E !== "1") {
+  console.log("Skipping lease integration test outside isolated E2E.");
+} else {
 const url=process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceKey=process.env.SUPABASE_SERVICE_ROLE_KEY;
 const anonKey=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -69,4 +72,6 @@ try{
   }
   const disabled=await admin.from("ifood_integrations").delete().eq("restaurant_id",restaurantId);
   check(disabled.error,"cleanup integration");
+}
+
 }

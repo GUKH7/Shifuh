@@ -153,7 +153,7 @@ jobs:
         run: node scripts/e2e-seed.mjs
 
       - name: Verify iFood event leases against isolated Postgres
-        run: node scripts/test-ifood-event-leases.mjs
+        run: IFOOD_LEASE_E2E=1 node scripts/test-ifood-event-leases.mjs
 
       - name: Install Playwright Chromium
         shell: bash
