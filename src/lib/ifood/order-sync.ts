@@ -468,20 +468,27 @@ export async function syncIfoodOrdersForRestaurant({
     );
 
     const eventIds = Array.from(new Set(sortedEvents.map((event) => event.id)));
-    // The lease column is added by an opt-in migration. Production polling
-    // must keep working before this migration is explicitly applied.
-    const eventFields = process.env.IFOOD_PERSISTED_REPLAY_ENABLED === "true"
-      ? "ifood_event_id, processed_at, acknowledged_at, processing_lease_until"
-      : "ifood_event_id, processed_at, acknowledged_at";
-    const { data: existingEvents, error: existingEventsError } = eventIds.length
-      ? await admin
+    // This is split into literal selects because the Supabase typed parser
+    // cannot infer dynamic field lists. Keep pre-migration polling compatible.
+    let existingEvents: ExistingIfoodEventState[] = [];
+    if (eventIds.length > 0) {
+      if (process.env.IFOOD_PERSISTED_REPLAY_ENABLED === "true") {
+        const { data, error } = await admin
           .from("ifood_order_events")
-          .select(eventFields)
+          .select("ifood_event_id, processed_at, acknowledged_at, processing_lease_until")
           .eq("restaurant_id", restaurantId)
-          .in("ifood_event_id", eventIds)
-      : { data: [] as ExistingIfoodEventState[], error: null };
-    if (existingEventsError) {
-      throw new Error("Falha ao consultar eventos iFood já recebidos.");
+          .in("ifood_event_id", eventIds);
+        if (error) throw new Error("Falha ao consultar reservas iFood.");
+        existingEvents = data || [];
+      } else {
+        const { data, error } = await admin
+          .from("ifood_order_events")
+          .select("ifood_event_id, processed_at, acknowledged_at")
+          .eq("restaurant_id", restaurantId)
+          .in("ifood_event_id", eventIds);
+        if (error) throw new Error("Falha ao consultar eventos iFood.");
+        existingEvents = data || [];
+      }
     }
 
     const existingEventById = new Map(
