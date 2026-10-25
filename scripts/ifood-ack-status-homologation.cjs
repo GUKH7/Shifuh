@@ -246,6 +246,7 @@ async function main(){
       {reasonDescription:"Cancelamento atrasado ficticio"});
     status=await orderRow(progress);
     assert.equal(status.status,"done","DONE is a terminal state");
+    assert.equal(status.cancellation_reason,null,"Late CAN must not add cancellation reason to DONE");
     assert.equal(status.external_payload.gestorDelivery.ignoredStatusEvent.reason,
       "terminal_status_protected");
 

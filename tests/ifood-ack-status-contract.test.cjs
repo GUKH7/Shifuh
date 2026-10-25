@@ -5,6 +5,7 @@ const fs=require("node:fs");
 const script=fs.readFileSync("scripts/ifood-ack-status-homologation.cjs","utf8");
 const ci=fs.readFileSync(".github/workflows/ci.yml","utf8");
 const dbTrigger=fs.readFileSync("supabase/migrations/20260725170000_guard_ifood_order_status_regression.sql","utf8");
+const orderSync=fs.readFileSync("src/lib/ifood/order-sync.ts","utf8");
 
 test("ACK ambiguity scenarios remain isolated from all remote providers",()=>{
  assert.match(script,/IFOOD_ACK_STATUS_E2E/);
@@ -35,4 +36,12 @@ test("DB trigger prevents stale events and terminal-state regression",()=>{
  assert.match(dbTrigger,/status_regression_prevented/);
  assert.match(script,/Older PLACED may not undo CONFIRMED/);
  assert.match(script,/Conflicting DONE must not erase cancellation reason/);
+});
+
+test("cancellation reason is retained across delayed events and saved on initial CAN",()=>{
+ assert.match(orderSync,/previousCancellationReason/);
+ assert.match(orderSync,/existingStatus === "done"/);
+ assert.match(orderSync,/existingStatus === "canceled"/);
+ assert.match(orderSync,/Pedido salvo, mas o motivo do cancelamento não pôde ser persistido/);
+ assert.match(orderSync,/cancellation_reason: cancellationReason/);
 });
