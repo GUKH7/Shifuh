@@ -53,7 +53,7 @@ test("slow ACK renews the exact token and cancels transport on lost lease",()=>{
  assert.match(recovery,/abortController\.abort\(\)/);
  assert.match(recovery,/acknowledgeIfoodOrderEvents\(ids, abortController\.signal\)/);
  assert.match(worker,/heartbeat must extend lease before simulated expiry/);
- assert.match(worker,/Stale worker must not mark ACK after lease expiry/);
+ assert.match(worker,/A worker that loses its ACK lease must fail closed/);
  assert.match(worker,/IFOOD_ACK_TEST_TRANSPORT_BUDGET_MS:"250"/);
 });
 test("outbound HTTP honors signal so lease loss stops all iFood retries",()=>{
