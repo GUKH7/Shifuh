@@ -41,6 +41,9 @@ function getAckTransportBudgetMs() {
       override >= 200 && override <= 5_000) return override;
   return ACK_TRANSPORT_BUDGET_MS;
 }
+class IfoodAckLeaseLostError extends Error {
+  constructor() { super("O worker perdeu a reserva do ACK iFood durante o envio."); }
+}
 const runningSyncs = new Map<string, Promise<unknown>>();
 
 export type IfoodSyncResult = Awaited<ReturnType<typeof syncIfoodOrdersForRestaurant>> & {
@@ -166,17 +169,22 @@ async function recoverLeasedAcknowledgements(restaurantId: string, merchantId: s
     };
     const timer = setInterval(heartbeat, getAckRenewIntervalMs());
     const deadline = setTimeout(() => abortController.abort(), getAckTransportBudgetMs());
+    let transportError: unknown;
     try {
       await acknowledgeIfoodOrderEvents(ids, abortController.signal);
-      clearInterval(timer);
-      if (renewal) await renewal;
-      if (ownershipLost || abortController.signal.aborted) {
-        throw new Error("ACK iFood sem reserva válida após envio.");
-      }
+    } catch (error) {
+      transportError = error;
     } finally {
       clearInterval(timer);
       clearTimeout(deadline);
       if (renewal) await renewal;
+    }
+    // A worker that loses a batch lease must end this entire sync attempt;
+    // otherwise the second ACK pass can reclaim and re-send the same event.
+    if (ownershipLost) throw new IfoodAckLeaseLostError();
+    if (transportError) throw transportError;
+    if (abortController.signal.aborted) {
+      throw new Error("ACK iFood sem reserva válida após timeout.");
     }
 
     // Fence late workers: completion is valid only for the exact batch token,
@@ -319,7 +327,8 @@ async function runWithRetries(params: ResilientSyncParams): Promise<IfoodSyncRes
     // ACK recovery must also work if the subsequent polling endpoint times out.
     try {
       earlyAcknowledgementsRecovered = await recoverPendingAcknowledgements(params.restaurantId, params.merchantId);
-    } catch {
+    } catch (error) {
+      if (error instanceof IfoodAckLeaseLostError) throw error;
       console.warn("ACKs iFood permanecem na fila persistente para nova tentativa.");
     }
   }

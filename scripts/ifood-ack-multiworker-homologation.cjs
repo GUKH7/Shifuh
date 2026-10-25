@@ -391,10 +391,11 @@ async function parent(){
         .eq("ack_lease_token",oldLease.ack_lease_token),
         "Simulate replacement ACK lease ownership");
       const oldFinished=await oldOwner.done;
-      assert.equal(oldFinished.code,0,"Expired owner cleanup failed: "+JSON.stringify(oldFinished));
-      const oldSummary=JSON.parse(oldFinished.stdout.split("\n")
-        .find(x=>x.startsWith("ACK_WORKER ")).slice("ACK_WORKER ".length));
-      assert.equal(oldSummary.recovered,0,"Stale worker must not mark ACK after lease expiry");
+      assert.equal(oldFinished.code,1,
+        "A worker that loses its ACK lease must fail closed: "+JSON.stringify(oldFinished));
+      assert.match(oldFinished.stderr,/O worker perdeu a reserva do ACK iFood/);
+      assert.doesNotMatch(oldFinished.stdout,/ACK_WORKER /,
+        "Stale worker must not report a successful sync after lease loss");
       const fenced=checked(await getRows(),"Check token after stale ACK reply")
         .find(r=>r.ifood_event_id===late);
       assert.equal(fenced.acknowledged_at,null);
