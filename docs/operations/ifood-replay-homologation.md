@@ -45,3 +45,16 @@ A separate CI step runs \`scripts/ifood-worker-restart-homologation.cjs\`. The t
 5. All rows are artificial, integration is fixture-only, provider is mocked, and both events and orders are cleaned after the test.
 
 **Important:** This test proves crash/restart and eventual processing/ACK behavior on a disposable database. It does not guarantee that distinct event statuses arrive in chronological order or that ambiguous network ACKs are externally idempotent. No feature flag is changed on production and this PR must not be merged as part of validation.
+
+
+## Ambiguous ACKs and out-of-order events
+
+The optional disposable Postgres CI step \`scripts/ifood-ack-status-homologation.cjs\` uses iFood mocks and synthetic orders only:
+
+1. Mock provider **accepts** ACK but a synthetic database write fails before commit: ACK remains pending, no order is replayed, and a later run retransmits the **same** ID. This is *at-least-once* transport, not exactly-once delivery.
+2. The database **commits** ACK but the application loses its response: a fresh query sees \`acknowledged_at\`; no duplicate provider call is needed.
+3. The provider accepts ACK then network returns synthetic HTTP 504: local ACK stays pending until a successful retry of the same ID. The mock is idempotent; this does **not** establish real iFood behavior.
+4. Out-of-order status events (CFM then stale PLC, DSP then stale CFM, terminal DONE then CAN) and canceled order followed by old PLC and conflicting DONE: PostgreSQL trigger preserves status; both status and cancellation reason must remain consistent.
+5. All rows and mocks are cleaned, with no network access to production Supabase/iFood. CI never merges or deploys on a PR.
+
+The test specifically rejects the unsafe assumption that a successful provider response guarantees durable local confirmation. Repeating the ACK may be necessary; operation must remain idempotent upstream. Never mark an ACK as committed locally if the provider has not confirmed it.

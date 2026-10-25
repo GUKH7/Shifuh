@@ -167,6 +167,12 @@ jobs:
           IFOOD_PERSISTED_REPLAY_ENABLED: "true"
         run: node scripts/ifood-worker-restart-homologation.cjs
 
+      - name: Validate iFood ACK ambiguity and out-of-order statuses on local Postgres
+        env:
+          IFOOD_ACK_STATUS_E2E: "1"
+          IFOOD_PERSISTED_REPLAY_ENABLED: "true"
+        run: node scripts/ifood-ack-status-homologation.cjs
+
       - name: Install Playwright Chromium
         shell: bash
         run: |
