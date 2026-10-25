@@ -22,6 +22,16 @@ const MAX_EVENT_RETRIES = 6;
 const BASE_DELAY_MS = 500;
 const ACK_BATCH_SIZE = 100;
 const MAX_ACK_BATCHES_PER_RUN = 5;
+const ACK_LEASE_MS = 150_000;
+const ACK_RENEW_INTERVAL_MS = 30_000;
+const ACK_TRANSPORT_BUDGET_MS = 90_000;
+// Use a short heartbeat only when the disposable local E2E suite opts in.
+function getAckRenewIntervalMs() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+  if (process.env.IFOOD_ACK_MULTIWORKER_E2E === "1" &&
+      /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/?$/.test(url)) return 40;
+  return ACK_RENEW_INTERVAL_MS;
+}
 const runningSyncs = new Map<string, Promise<unknown>>();
 
 export type IfoodSyncResult = Awaited<ReturnType<typeof syncIfoodOrdersForRestaurant>> & {
@@ -118,9 +128,47 @@ async function recoverLeasedAcknowledgements(restaurantId: string, merchantId: s
       throw new Error("Lote de ACKs iFood sem reserva válida.");
     }
 
-    // The reservation remains in the database when HTTP times out or a
-    // process crashes. A new instance may retry only after the 150s lease.
-    await acknowledgeIfoodOrderEvents(ids);
+    // Keep the reservation alive during slow HTTP. Renewal must own the exact
+    // token and still-live lease for ALL rows in the batch. A failed check
+    // aborts the provider transport and prevents stale local completion.
+    const abortController = new AbortController();
+    let renewal: Promise<void> | null = null;
+    let ownershipLost = false;
+    const heartbeat = () => {
+      if (renewal || ownershipLost) return;
+      renewal = (async () => {
+        const { data: extended, error: extensionError } = await admin
+          .from("ifood_order_events")
+          .update({ ack_lease_until: new Date(Date.now() + ACK_LEASE_MS).toISOString() })
+          .eq("restaurant_id", restaurantId)
+          .eq("merchant_id", merchantId)
+          .in("ifood_event_id", ids)
+          .eq("ack_lease_token", token)
+          .gt("ack_lease_until", new Date().toISOString())
+          .is("acknowledged_at", null)
+          .select("ifood_event_id");
+        if (extensionError || !extended || extended.length !== ids.length) {
+          throw new Error("Reserva de ACK iFood perdida durante envio.");
+        }
+      })().catch(() => {
+        ownershipLost = true;
+        abortController.abort();
+      }).finally(() => { renewal = null; });
+    };
+    const timer = setInterval(heartbeat, getAckRenewIntervalMs());
+    const deadline = setTimeout(() => abortController.abort(), ACK_TRANSPORT_BUDGET_MS);
+    try {
+      await acknowledgeIfoodOrderEvents(ids, abortController.signal);
+      clearInterval(timer);
+      if (renewal) await renewal;
+      if (ownershipLost || abortController.signal.aborted) {
+        throw new Error("ACK iFood sem reserva válida após envio.");
+      }
+    } finally {
+      clearInterval(timer);
+      clearTimeout(deadline);
+      if (renewal) await renewal;
+    }
 
     // Fence late workers: completion is valid only for the exact batch token,
     // this tenant/merchant, a still-live lease, and an unacknowledged row.

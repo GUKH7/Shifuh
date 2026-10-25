@@ -99,9 +99,13 @@ async function ifoodOrderRequest<T>(
           ...(requestInit.headers || {}),
         },
         cache: "no-store",
-        signal: AbortSignal.timeout(DEFAULT_REQUEST_TIMEOUT_MS),
+        signal: requestInit.signal
+          ? AbortSignal.any([requestInit.signal, AbortSignal.timeout(DEFAULT_REQUEST_TIMEOUT_MS)])
+          : AbortSignal.timeout(DEFAULT_REQUEST_TIMEOUT_MS),
       });
     } catch (error) {
+      // Do not retry an ACK after its lease owner aborts the request.
+      if (requestInit.signal?.aborted) throw error;
       if (attempt < maxAttempts) {
         await waitForRetry(attempt);
         continue;
@@ -176,7 +180,7 @@ export async function pollIfoodOrderEvents(merchantId: string) {
   return Array.isArray(data) ? data : [];
 }
 
-export async function acknowledgeIfoodOrderEvents(eventIds: string[]) {
+export async function acknowledgeIfoodOrderEvents(eventIds: string[], signal?: AbortSignal) {
   if (eventIds.length === 0) return;
   const uniqueEventIds = Array.from(new Set(eventIds));
 
@@ -190,6 +194,7 @@ export async function acknowledgeIfoodOrderEvents(eventIds: string[]) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(uniqueEventIds.map((id) => ({ id }))),
+      signal,
     },
   );
 }
