@@ -32,3 +32,16 @@ O E2E executa `scripts/ifood-replay-homologation.cjs` contra PostgreSQL local, s
 - A matriz de leases no PostgreSQL cobre mais de dez eventos com workers concorrentes, limite de lote 10, tokens exclusivos, isolamento de tenant, expiração, fencing e suspensão/reativação de integração.
 
 **Limite:** o teste é determinístico e acelera o tempo de retentativas atualizando apenas dados fictícios em banco local. Não substitui um teste de indisponibilidade real do fornecedor nem comprova ACKs reais em produção. A flag segue desligada na Vercel e nenhum recurso pago é criado.
+
+
+## Worker restart / crash boundaries (local Postgres, no remote calls)
+
+A separate CI step runs \`scripts/ifood-worker-restart-homologation.cjs\`. The test starts **distinct Node processes**, not merely async workers in one process:
+
+1. Process A commits a synthetic order via the **real** create-order RPC and then exits with code 71 before persisting \`processed_at\` and before any ACK. The local lease is expired in the test only.
+2. Process B starts fresh, reads the same event and existing order, persists \`processed_at\`, then exits with code 72 before ACK.
+3. Process C starts fresh, recovers the ACK even when iFood polling returns no events. A further fresh worker confirms no duplicate ACK or order.
+4. Two other Node processes reserve **distinct event IDs for the same order ID** (one each) and wait at a deterministic barrier before both upsert the order. The unique external-order constraint must prevent duplicate local orders; any losing event may retry later, after its synthetic cooldown. Both event IDs must ultimately refer to the same order and be ACKed.
+5. All rows are artificial, integration is fixture-only, provider is mocked, and both events and orders are cleaned after the test.
+
+**Important:** This test proves crash/restart and eventual processing/ACK behavior on a disposable database. It does not guarantee that distinct event statuses arrive in chronological order or that ambiguous network ACKs are externally idempotent. No feature flag is changed on production and this PR must not be merged as part of validation.

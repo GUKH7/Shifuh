@@ -161,6 +161,12 @@ jobs:
           IFOOD_PERSISTED_REPLAY_ENABLED: "true"
         run: node scripts/ifood-replay-homologation.cjs
 
+      - name: Validate iFood worker crash, restart, ACK recovery and same-order races
+        env:
+          IFOOD_REPLAY_RESTART_E2E: "1"
+          IFOOD_PERSISTED_REPLAY_ENABLED: "true"
+        run: node scripts/ifood-worker-restart-homologation.cjs
+
       - name: Install Playwright Chromium
         shell: bash
         run: |
