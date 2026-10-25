@@ -59,6 +59,9 @@ function failedWriteChain(table,payload,commitFirst,db) {
   return {
     eq(field,value){filters.push(["eq",field,value]);return this;},
     in(field,values){filters.push(["in",field,values]);return this;},
+    gt(field,value){filters.push(["gt",field,value]);return this;},
+    is(field,value){filters.push(["is",field,value]);return this;},
+    select(){return this;},
     then(resolve,reject) {
       const result=Promise.resolve().then(async()=>{
         if(commitFirst){
