@@ -35,3 +35,10 @@ test("isolated Postgres tests distributed batch leases and disabled merchants",(
   assert.match(leases,/order_sync_enabled:false/);
   assert.match(leases,/Disabled integrations cannot lease/);
 });
+
+test("concurrent same-order events are eventually processed after collision retry",()=>{
+  assert.match(script,/result\.processed\+result\.retryEventsScheduled/);
+  assert.match(script,/collision event uses one real retry/);
+  assert.match(script,/Advance synthetic collision cooldown/);
+  assert.match(script,/Retry must reuse already committed order/);
+});

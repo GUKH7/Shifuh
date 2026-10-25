@@ -159,11 +159,38 @@ async function main() {
     }, {claimed:0,processed:0,temporaryFailures:0,retryEventsScheduled:0,
         deadLetteredEvents:0,lostLeases:0,maxRetryAfterMs:0});
     assert.equal(result.claimed,4, "Two workers must never claim an event twice");
-    assert.equal(result.processed,2);
+    // Competing events of the same order can race to create the same
+    // external_order_id. The DB unique constraint protects the order;
+    // the losing event is legitimately scheduled for a retry.
+    assert.equal(result.processed+result.retryEventsScheduled,2,
+      "Same-order events must complete or remain durably retryable");
     assert.equal(result.temporaryFailures,1);
     assert.equal(result.deadLetteredEvents,1);
     assert.equal(result.maxRetryAfterMs,120_000);
     assert.equal(result.lostLeases,0);
+
+    let recoveredRaceEvents = 0;
+    if(result.retryEventsScheduled>0){
+      const dueRace=check(await admin.from("ifood_order_events")
+        .select("id,ifood_event_id,retry_count,dead_lettered_at")
+        .eq("restaurant_id",restaurantId).in("ifood_event_id",events.slice(0,2).map(e=>e.id))
+        .is("processed_at",null),"Inspect same-order race");
+      assert.equal(dueRace.length,result.retryEventsScheduled);
+      for(const row of dueRace){
+        assert.equal(row.retry_count,1,"Only the collision event uses one real retry");
+        assert.equal(row.dead_lettered_at,null,"Collision must not be dead-lettered");
+      }
+      check(await admin.from("ifood_order_events")
+        .update({next_retry_at:new Date(Date.now()-1000).toISOString()})
+        .in("id",dueRace.map(row=>row.id)),"Advance synthetic collision cooldown");
+      const raceRecovered=await replay.replayStoredIfoodEvents(restaurantId,merchantId);
+      assert.equal(raceRecovered.claimed,dueRace.length);
+      assert.equal(raceRecovered.processed,dueRace.length,
+        "Retry must reuse already committed order and complete event");
+      assert.equal(raceRecovered.deadLetteredEvents,0);
+      recoveredRaceEvents=raceRecovered.processed;
+    }
+    assert.equal(result.processed+recoveredRaceEvents,2);
 
     const stored=check(await admin.from("ifood_order_events").select(
       "ifood_event_id,processed_at,acknowledged_at,retry_count,next_retry_at,dead_lettered_at,local_order_id"
