@@ -58,3 +58,34 @@ The optional disposable Postgres CI step \`scripts/ifood-ack-status-homologation
 5. All rows and mocks are cleaned, with no network access to production Supabase/iFood. CI never merges or deploys on a PR.
 
 The test specifically rejects the unsafe assumption that a successful provider response guarantees durable local confirmation. Repeating the ACK may be necessary; operation must remain idempotent upstream. Never mark an ACK as committed locally if the provider has not confirmed it.
+
+
+## ACK delivery leased per batch across independent serverless instances
+
+The optional, additive schema in \`20261025121500_ifood_ack_recovery_leases.sql\`
+adds \`ack_lease_token\`, \`ack_lease_until\`, and
+\`claim_ifood_pending_acks\` (service-role-only, SECURITY INVOKER,
+150-second lease, max batch 100, SKIP LOCKED, tenant and merchant checks).
+
+The resilient worker uses these leases ONLY when
+\`IFOOD_PERSISTED_REPLAY_ENABLED=true\`; production remains OFF. No ACK
+is sent without acquiring the lease first. The PostgreSQL update after
+a successful provider request is fenced by the batch token, tenant,
+merchant, and a live lease. On transport failure or ambiguous DB
+write, it fails closed and **does not release the lease**; a new
+worker can retry after timeout. This is *at-least-once* transport,
+not exactly-once, if iFood accepted the ACK before the worker died.
+
+Isolated GitHub CI launches **three independent Node processes**
+contending for the same backlog, blocks the first at a mock provider,
+verifies the others never issue duplicates while its lease is held,
+then checks DB completion. It kills another process after provider
+acceptance, verifies immediate retries are suppressed, accelerates
+only the synthetic local lease timeout, and confirms eventual ACK
+recovery and fencing of stale workers. No provider or production
+URLs are called, and no paid environment is created.
+
+**Activation prerequisite:** when ready for production in a future
+authorized release, apply and verify the additive ACK-lease migration
+*before* enabling persisted replay. Do not enable the feature solely
+because the test branch passes.

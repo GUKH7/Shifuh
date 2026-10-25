@@ -173,6 +173,12 @@ jobs:
           IFOOD_PERSISTED_REPLAY_ENABLED: "true"
         run: node scripts/ifood-ack-status-homologation.cjs
 
+      - name: Validate iFood distributed ACK leases with independent Node workers
+        env:
+          IFOOD_ACK_MULTIWORKER_E2E: "1"
+          IFOOD_PERSISTED_REPLAY_ENABLED: "true"
+        run: node scripts/ifood-ack-multiworker-homologation.cjs
+
       - name: Install Playwright Chromium
         shell: bash
         run: |
