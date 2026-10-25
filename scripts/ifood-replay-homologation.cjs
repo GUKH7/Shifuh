@@ -289,6 +289,18 @@ async function main() {
     assert.equal(afterAckOutage.deadLettered,1);
     assert.equal(afterAckOutage.pending,0);
 
+    // Both failed ACK batches must retain their leases. A fast-following
+    // worker cannot resend the same IDs before timeout.
+    const held=await resilience.syncIfoodOrdersWithResilience(ackParams);
+    assert.equal(held.pendingAcknowledgementsRecovered,0);
+    assert.equal(ackBatches.length,2,"Live lease blocks immediate duplicate ACK");
+    check(await admin.from("ifood_order_events")
+      .update({ack_lease_until:new Date(Date.now()-1000).toISOString()})
+      .eq("restaurant_id",restaurantId)
+      .is("acknowledged_at",null)
+      .in("ifood_event_id",[...events.slice(0,3).map(e=>e.id),...ackOnlyIds]),
+      "Expire only synthetic ACK leases after simulated crash");
+
     // The next healthy run recovers the same ACK backlog even with an empty
     // polling result, and concurrent calls share the single in-process run.
     const beforeSuccessfulAck = ackBatches.length;

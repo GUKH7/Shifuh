@@ -177,6 +177,12 @@ async function main(){
       .eq("restaurant_id",RESTAURANT).eq("ifood_event_id",id).single(),"Read synthetic event");
   }
   const params={restaurantId:RESTAURANT,merchantId:merchant,source:"cron",maxAttempts:1};
+  async function expireAck(ifoodEventId){
+    checked(await admin.from("ifood_order_events")
+      .update({ack_lease_until:new Date(Date.now()-1000).toISOString()})
+      .eq("restaurant_id",RESTAURANT).eq("ifood_event_id",ifoodEventId),
+      "Advance isolated ACK lease only");
+  }
   async function recover(){
     return resilience.syncIfoodOrdersWithResilience(params);
   }
@@ -187,12 +193,21 @@ async function main(){
 
     // Case A: provider confirms receipt, DB never committed acknowledged_at.
     const a=await addAckCase("db-failed");
-    injected.dbNoCommit=2; // Early ACK recovery and after mocked empty polling.
-    await assert.rejects(recover(),/database update rejected|ACK enviado/i);
+    injected.dbNoCommit=2; // Two separate lease windows with failed DB commits.
+    const firstDbFailure=await recover();
+    assert.equal(firstDbFailure.pendingAcknowledgementsRecovered,0);
     assert.equal((await ackRow(a.id)).acknowledged_at,null);
     assert.ok(accepted.has(a.id),"Provider mock must have accepted ACK before DB failure");
-    assert.equal(checkAttempts(a.id),2,"ACK may be retransmitted after unknown persistence");
+    assert.equal(checkAttempts(a.id),1,"First lease must prevent duplicate ACK");
     assert.equal((await ackRow(a.id)).retry_count,0);
+    const heldDb=await recover();
+    assert.equal(heldDb.pendingAcknowledgementsRecovered,0);
+    assert.equal(checkAttempts(a.id),1,"ACK stays reserved after DB error");
+    await expireAck(a.id);
+    const secondDbFailure=await recover();
+    assert.equal(secondDbFailure.pendingAcknowledgementsRecovered,0);
+    assert.equal(checkAttempts(a.id),2);
+    await expireAck(a.id);
     const aRecovered=await recover();
     assert.equal(aRecovered.pendingAcknowledgementsRecovered,1);
     assert.ok((await ackRow(a.id)).acknowledged_at);
@@ -215,9 +230,17 @@ async function main(){
     // At-least-once retransmission is required; mock is idempotent by event ID.
     const c=await addAckCase("provider-response-lost");
     injected.networkAfterAcceptance=2;
-    await assert.rejects(recover(),error=>error instanceof IfoodApiError && error.status===504);
+    const firstLostHttp=await recover();
+    assert.equal(firstLostHttp.pendingAcknowledgementsRecovered,0);
     assert.ok(accepted.has(c.id),"Provider accepted ACK even though response was lost");
     assert.equal((await ackRow(c.id)).acknowledged_at,null);
+    await recover();
+    assert.equal(checkAttempts(c.id),1,"No concurrent resend during ambiguous HTTP lease");
+    await expireAck(c.id);
+    const secondLostHttp=await recover();
+    assert.equal(secondLostHttp.pendingAcknowledgementsRecovered,0);
+    assert.equal(checkAttempts(c.id),2);
+    await expireAck(c.id);
     const cRecovered=await recover();
     assert.equal(cRecovered.pendingAcknowledgementsRecovered,1);
     assert.ok((await ackRow(c.id)).acknowledged_at);
