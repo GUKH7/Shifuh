@@ -36,3 +36,9 @@ test("CI runs real independent Node workers only with local Supabase, no real AP
  assert.match(ci,/IFOOD_ACK_MULTIWORKER_E2E: "1"/);
  assert.match(ci,/node scripts\/ifood-ack-multiworker-homologation\.cjs/);
 });
+
+test("polling does not bypass ACK leases when replay flag is on",()=>{
+ const polling=fs.readFileSync("src/lib/ifood/order-sync.ts","utf8");
+ assert.match(polling,/ackEventIds\.length > 0 && process\.env\.IFOOD_PERSISTED_REPLAY_ENABLED !== "true"/);
+ assert.match(polling,/await acknowledgeIfoodOrderEvents\(ackEventIds\)/);
+});

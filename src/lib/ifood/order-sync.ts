@@ -611,7 +611,10 @@ export async function syncIfoodOrdersForRestaurant({
     );
     let acknowledgedCount = 0;
 
-    if (ackEventIds.length > 0) {
+    // With persisted replay enabled, only the resilient ACK lease recovery
+    // may call iFood. Direct polling ACKs would bypass distributed leases
+    // and allow independent workers to send duplicate acknowledgements.
+    if (ackEventIds.length > 0 && process.env.IFOOD_PERSISTED_REPLAY_ENABLED !== "true") {
       await acknowledgeIfoodOrderEvents(ackEventIds);
       acknowledgedCount = ackEventIds.length;
       await admin
