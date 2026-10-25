@@ -42,3 +42,23 @@ test("polling does not bypass ACK leases when replay flag is on",()=>{
  assert.match(polling,/ackEventIds\.length > 0 && process\.env\.IFOOD_PERSISTED_REPLAY_ENABLED !== "true"/);
  assert.match(polling,/await acknowledgeIfoodOrderEvents\(ackEventIds\)/);
 });
+
+test("slow ACK renews the exact token and cancels transport on lost lease",()=>{
+ assert.match(recovery,/ACK_LEASE_MS = 150_000/);
+ assert.match(recovery,/ACK_RENEW_INTERVAL_MS = 30_000/);
+ assert.match(recovery,/ACK_TRANSPORT_BUDGET_MS = 90_000/);
+ assert.match(recovery,/setInterval\(heartbeat, getAckRenewIntervalMs\(\)\)/);
+ assert.match(recovery,/\.eq\("ack_lease_token", token\)/);
+ assert.match(recovery,/\.gt\("ack_lease_until"/);
+ assert.match(recovery,/abortController\.abort\(\)/);
+ assert.match(recovery,/acknowledgeIfoodOrderEvents\(ids, abortController\.signal\)/);
+ assert.match(worker,/heartbeat must extend lease before simulated expiry/);
+ assert.match(worker,/Stale worker must not mark ACK after lease expiry/);
+ assert.match(worker,/IFOOD_ACK_TEST_TRANSPORT_BUDGET_MS:"250"/);
+});
+test("outbound HTTP honors signal so lease loss stops all iFood retries",()=>{
+ const orders=fs.readFileSync("src/lib/ifood/orders.ts","utf8");
+ assert.match(orders,/AbortSignal\.any/);
+ assert.match(orders,/requestInit\.signal\?\.aborted/);
+ assert.match(orders,/acknowledgeIfoodOrderEvents\(eventIds: string\[\], signal\?: AbortSignal\)/);
+});

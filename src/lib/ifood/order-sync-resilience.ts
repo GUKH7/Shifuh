@@ -26,11 +26,20 @@ const ACK_LEASE_MS = 150_000;
 const ACK_RENEW_INTERVAL_MS = 30_000;
 const ACK_TRANSPORT_BUDGET_MS = 90_000;
 // Use a short heartbeat only when the disposable local E2E suite opts in.
-function getAckRenewIntervalMs() {
+function isIsolatedAckE2e() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-  if (process.env.IFOOD_ACK_MULTIWORKER_E2E === "1" &&
-      /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/?$/.test(url)) return 40;
-  return ACK_RENEW_INTERVAL_MS;
+  return process.env.IFOOD_ACK_MULTIWORKER_E2E === "1" &&
+    /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/?$/.test(url);
+}
+function getAckRenewIntervalMs() {
+  return isIsolatedAckE2e() ? 40 : ACK_RENEW_INTERVAL_MS;
+}
+function getAckTransportBudgetMs() {
+  // The 250ms timeout case is test-only; production always uses 90s.
+  const override = Number(process.env.IFOOD_ACK_TEST_TRANSPORT_BUDGET_MS);
+  if (isIsolatedAckE2e() && Number.isInteger(override) &&
+      override >= 200 && override <= 5_000) return override;
+  return ACK_TRANSPORT_BUDGET_MS;
 }
 const runningSyncs = new Map<string, Promise<unknown>>();
 
@@ -156,7 +165,7 @@ async function recoverLeasedAcknowledgements(restaurantId: string, merchantId: s
       }).finally(() => { renewal = null; });
     };
     const timer = setInterval(heartbeat, getAckRenewIntervalMs());
-    const deadline = setTimeout(() => abortController.abort(), ACK_TRANSPORT_BUDGET_MS);
+    const deadline = setTimeout(() => abortController.abort(), getAckTransportBudgetMs());
     try {
       await acknowledgeIfoodOrderEvents(ids, abortController.signal);
       clearInterval(timer);

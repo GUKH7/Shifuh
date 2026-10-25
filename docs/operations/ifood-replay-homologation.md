@@ -89,3 +89,12 @@ URLs are called, and no paid environment is created.
 authorized release, apply and verify the additive ACK-lease migration
 *before* enabling persisted replay. Do not enable the feature solely
 because the test branch passes.
+
+
+## ACK HTTP lento, heartbeat e confirmação tardia (CI local descartável)
+
+O teste de três processos também cobre uma chamada HTTP artificialmente lenta. Em CI, diminui-se **somente o vencimento da reserva sintética**; a renovação condicional deve estender o mesmo token e impedir que concorrentes enviem o evento enquanto o ACK inicial permanece em andamento. A chamada é liberada e registrada apenas pelo proprietário.
+
+Se a reserva expirar antes de uma renovação, a atualização condicional do heartbeat falha e aborta o transporte via `AbortSignal`. Outro worker poderá assumir a reserva; o primeiro não pode gravar o ACK com token antigo. Se o provedor já aceitou a chamada anterior, o reenvio após expiração é *at-least-once* e pode ocorrer: não há garantia de exatamente uma entrega externa.
+
+Em operação normal, o heartbeat renova a cada **30 segundos**, prorrogando a reserva de **150 segundos**, e cada tentativa de transporte com ACK fica limitada a **90 segundos**. Um timeout artificial de **250 ms** verifica o cancelamento e a recuperação posterior em CI local; não altera timeouts reais. O cliente HTTP encaminha o sinal de cancelamento e não repete requisições após aborto de propriedade. Falhas de rede e de renovação deixam a reserva pendente até expirar, sem marcar ACK ficticiamente como confirmado. Nenhuma migração adicional nem recursos pagos.

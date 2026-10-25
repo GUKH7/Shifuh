@@ -75,14 +75,21 @@ async function child() {
   assert.ok(action && merchant && dir && actor);
   const sent=[];
   const provider={
-    acknowledgeIfoodOrderEvents:async ids=>{
+    acknowledgeIfoodOrderEvents:async (ids, signal)=>{
       sent.push(...ids);
       fs.appendFileSync(path.join(dir,"provider.log"),
         JSON.stringify({actor,ids,accepted:true})+"\n");
       if(action==="crash") process.exit(CHILD_CRASH_CODE);
       if(action==="block"){
         fs.writeFileSync(path.join(dir,"provider-accepted"),actor);
-        await until(()=>fs.existsSync(path.join(dir,"release")),"release blocked ACK provider");
+        fs.writeFileSync(path.join(dir,"accepted-"+actor),"1");
+        await until(()=>fs.existsSync(path.join(dir,"release")) || signal?.aborted,
+          "release blocked ACK provider or abort after lease loss");
+        if (signal?.aborted) throw new Error("Simulated provider request aborted after lease loss");
+      }
+      if(action==="timeout"){
+        await until(()=>signal?.aborted,"bound HTTP timeout in disposable CI",3000);
+        throw new Error("Synthetic HTTP operation aborted at deadline");
       }
     },
     IfoodApiError:class extends Error{},
@@ -157,7 +164,10 @@ async function parent(){
   const ids=Array.from({length:3},(_,i)=>prefix+"-parallel-"+i);
   const interrupted=prefix+"-crashed";
   const stale=prefix+"-stale";
-  const all=[...ids,interrupted,stale];
+  const slow=prefix+"-slow";
+  const late=prefix+"-late";
+  const timedOut=prefix+"-timeout";
+  const all=[...ids,interrupted,stale,slow,late,timedOut];
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),"shifuh-ack-lease-"));
   const env={IFOOD_ACK_WORKER_MERCHANT:merchant,IFOOD_ACK_WORKER_DIR:dir};
   const getRows=()=>admin.from("ifood_order_events")
@@ -188,12 +198,12 @@ async function parent(){
       processed_at:new Date().toISOString(),
       local_order_id:localOrderId,
       raw_payload:{id,orderId,merchantId:merchant,code:"PLC"},
-      ...([interrupted,stale].includes(id)
+      ...([interrupted,stale,slow,late,timedOut].includes(id)
         ? {ack_lease_until:new Date(Date.now()+60*60*1000).toISOString(),
           ack_lease_token:randomUUID()} : {}),
     }))).select("id"),"Seed five processed synthetic ACK events");
     rowIds=seed.map(x=>x.id);
-    assert.equal(rowIds.length,5);
+    assert.equal(rowIds.length,8);
 
     // SECURITY: RPC is callable only with the service role, scoped to the
     // configured restaurant and merchant and an enabled integration.
@@ -310,8 +320,118 @@ async function parent(){
     assert.equal(staleRecovered.recovered,1);
     assert.deepEqual(staleRecovered.sent,[stale]);
 
+    // Slow outbound ACK that would outlast an artificially shortened lease.
+    // The test accelerates only ack_lease_until; the heartbeat must extend
+    // the same token while the provider remains blocked and competitors poll.
+    checked(await admin.from("ifood_order_events").update({
+      ack_lease_token:null,ack_lease_until:null,
+    }).eq("restaurant_id",RESTAURANT).eq("ifood_event_id",slow),
+      "Release local synthetic hold for slow ACK");
+    fs.rmSync(path.join(dir,"release"),{force:true});
+    const slowOwner=start("block","slow-owner",env);
+    try {
+      await until(()=>fs.existsSync(path.join(dir,"accepted-slow-owner")),
+        "slow worker must reach provider");
+      const slowBefore=checked(await getRows(),"Read slow worker lease")
+        .find(r=>r.ifood_event_id===slow);
+      assert.ok(slowBefore.ack_lease_token);
+      checked(await admin.from("ifood_order_events")
+        .update({ack_lease_until:new Date(Date.now()+180).toISOString()})
+        .eq("restaurant_id",RESTAURANT).eq("ifood_event_id",slow),
+        "Accelerate only synthetic slow-worker lease");
+      await until(async()=>{
+        const row=checked(await getRows(),"Inspect ACK heartbeat")
+          .find(r=>r.ifood_event_id===slow);
+        return row.ack_lease_token===slowBefore.ack_lease_token &&
+          Date.parse(row.ack_lease_until)>Date.now()+120000;
+      },"heartbeat must extend lease before simulated expiry",3000);
+      const competitors=await Promise.all([
+        run("normal","slow-racer-1",env),
+        run("normal","slow-racer-2",env),
+      ]);
+      assert.ok(competitors.every(r=>r.sent.length===0 && r.recovered===0),
+        "No competing worker can send while slow owner renews");
+      assert.equal(acceptedLog(dir).filter(x=>x.ids.includes(slow)).length,1);
+      fs.writeFileSync(path.join(dir,"release"),"1");
+      const finished=await slowOwner.done;
+      assert.equal(finished.code,0,"Renewed slow owner failed: "+JSON.stringify(finished));
+      assert.equal(JSON.parse(finished.stdout.split("\n")
+        .find(x=>x.startsWith("ACK_WORKER ")).slice("ACK_WORKER ".length)).recovered,1);
+      assert.ok(checked(await getRows(),"Slow ACK persisted")
+        .find(r=>r.ifood_event_id===slow).acknowledged_at);
+    } finally {
+      fs.writeFileSync(path.join(dir,"release"),"1");
+      if(slowOwner.p.exitCode===null) slowOwner.p.kill("SIGKILL");
+      await slowOwner.done.catch(()=>{});
+    }
+
+    // Simulate an expired lease while the original HTTP response is blocked.
+    // Its heartbeat discovers lost ownership, aborts the old transport, and
+    // an independent worker completes with a new token. Late completion is fenced.
+    checked(await admin.from("ifood_order_events").update({
+      ack_lease_token:null,ack_lease_until:null,
+    }).eq("restaurant_id",RESTAURANT).eq("ifood_event_id",late),
+      "Release local synthetic hold for late ACK");
+    fs.rmSync(path.join(dir,"release"),{force:true});
+    const oldOwner=start("block","late-owner",env);
+    try {
+      await until(()=>fs.existsSync(path.join(dir,"accepted-late-owner")),
+        "late owner must reach provider");
+      const oldLease=checked(await getRows(),"Read late owner lease")
+        .find(r=>r.ifood_event_id===late);
+      checked(await admin.from("ifood_order_events")
+        .update({ack_lease_until:new Date(Date.now()-1000).toISOString()})
+        .eq("restaurant_id",RESTAURANT).eq("ifood_event_id",late),
+        "Expire only synthetic late ACK lease");
+      const newOwner=await run("normal","late-new-owner",env);
+      assert.deepEqual(newOwner.sent,[late]);
+      assert.equal(newOwner.recovered,1);
+      const oldFinished=await oldOwner.done;
+      assert.equal(oldFinished.code,0,"Expired owner cleanup failed: "+JSON.stringify(oldFinished));
+      const oldSummary=JSON.parse(oldFinished.stdout.split("\n")
+        .find(x=>x.startsWith("ACK_WORKER ")).slice("ACK_WORKER ".length));
+      assert.equal(oldSummary.recovered,0,"Stale worker must not mark ACK after lease expiry");
+      const finalLease=checked(await getRows(),"Check late ACK")
+        .find(r=>r.ifood_event_id===late);
+      assert.ok(finalLease.acknowledged_at);
+      assert.equal(finalLease.ack_lease_token,null);
+      assert.notEqual(finalLease.ack_lease_token,oldLease.ack_lease_token);
+      assert.equal(acceptedLog(dir).filter(x=>x.ids.includes(late)).length,2,
+        "After forced expiry at-least-once provider delivery can occur");
+    } finally {
+      fs.writeFileSync(path.join(dir,"release"),"1");
+      if(oldOwner.p.exitCode===null) oldOwner.p.kill("SIGKILL");
+      await oldOwner.done.catch(()=>{});
+    }
+
+    // Abort a hung provider mock with a local-only shortened 250ms deadline.
+    // The lease remains held until its expiry; only then may another worker
+    // retry that event. Production transport budget is 90 seconds.
+    checked(await admin.from("ifood_order_events").update({
+      ack_lease_token:null,ack_lease_until:null,
+    }).eq("restaurant_id",RESTAURANT).eq("ifood_event_id",timedOut),
+      "Release local synthetic hold for HTTP timeout");
+    const timeoutResult=await run("timeout","timeout-owner",
+      {...env,IFOOD_ACK_TEST_TRANSPORT_BUDGET_MS:"250"});
+    assert.equal(timeoutResult.recovered,0);
+    assert.equal(timeoutResult.sent.length,1);
+    const timeoutPending=checked(await getRows(),"Read timeout pending event")
+      .find(r=>r.ifood_event_id===timedOut);
+    assert.equal(timeoutPending.acknowledged_at,null);
+    assert.ok(timeoutPending.ack_lease_token);
+    const blockedRetry=await run("normal","timeout-too-early",env);
+    assert.equal(blockedRetry.recovered,0);
+    assert.deepEqual(blockedRetry.sent,[]);
+    checked(await admin.from("ifood_order_events").update({
+      ack_lease_until:new Date(Date.now()-1000).toISOString(),
+    }).eq("restaurant_id",RESTAURANT).eq("ifood_event_id",timedOut),
+      "Advance timeout lease only on isolated database");
+    const afterTimeout=await run("normal","timeout-recovered",env);
+    assert.deepEqual(afterTimeout.sent,[timedOut]);
+    assert.equal(afterTimeout.recovered,1);
+
     const final=checked(await getRows(),"Final ACK queue");
-    assert.equal(final.length,5);
+    assert.equal(final.length,8);
     assert.ok(final.every(r=>r.processed_at && r.acknowledged_at),
       "Every synthetic ACK must end durably acknowledged");
     const originalOrder=checked(await admin.from("orders").select("id")
@@ -328,6 +448,12 @@ async function parent(){
       staleCompletionUpdates:0,
       tenantIsolation:true,anonRpcBlocked:true,
       outstandingAcks:final.filter(r=>!r.acknowledged_at).length,
+      slowAckLeaseRenewed:true,
+      duplicateSendsDuringSlowAck:0,
+      staleSlowOwnerConfirmations:0,
+      abortedProviderOnLostLease:true,
+      transportTimeoutEnforced:true,
+      timeoutRecoveryAfterExpiry:true,
       duplicateOrders:0,
     }));
   } finally {
