@@ -379,23 +379,42 @@ async function parent(){
         "late owner must reach provider");
       const oldLease=checked(await getRows(),"Read late owner lease")
         .find(r=>r.ifood_event_id===late);
+      // Force a deterministic virtual handoff. Directly assigning a new
+      // token in the disposable database represents another instance winning
+      // a claim after expiry. Otherwise the 40ms heartbeat and a spawned
+      // process race in CI, making this validation nondeterministic.
+      const handedOffToken=randomUUID();
       checked(await admin.from("ifood_order_events")
-        .update({ack_lease_until:new Date(Date.now()-1000).toISOString()})
-        .eq("restaurant_id",RESTAURANT).eq("ifood_event_id",late),
-        "Expire only synthetic late ACK lease");
-      const newOwner=await run("normal","late-new-owner",env);
-      assert.deepEqual(newOwner.sent,[late]);
-      assert.equal(newOwner.recovered,1);
+        .update({ack_lease_token:handedOffToken,
+          ack_lease_until:new Date(Date.now()+150000).toISOString()})
+        .eq("restaurant_id",RESTAURANT).eq("ifood_event_id",late)
+        .eq("ack_lease_token",oldLease.ack_lease_token),
+        "Simulate replacement ACK lease ownership");
       const oldFinished=await oldOwner.done;
       assert.equal(oldFinished.code,0,"Expired owner cleanup failed: "+JSON.stringify(oldFinished));
       const oldSummary=JSON.parse(oldFinished.stdout.split("\n")
         .find(x=>x.startsWith("ACK_WORKER ")).slice("ACK_WORKER ".length));
       assert.equal(oldSummary.recovered,0,"Stale worker must not mark ACK after lease expiry");
+      const fenced=checked(await getRows(),"Check token after stale ACK reply")
+        .find(r=>r.ifood_event_id===late);
+      assert.equal(fenced.acknowledged_at,null);
+      assert.equal(fenced.ack_lease_token,handedOffToken,
+        "Stale worker cannot overwrite new owner's token");
+      const stillOwned=await run("normal","late-waiting-owner",env);
+      assert.deepEqual(stillOwned.sent,[],
+        "Unexpired replacement lease must prevent duplicate provider sends");
+      checked(await admin.from("ifood_order_events")
+        .update({ack_lease_until:new Date(Date.now()-1000).toISOString()})
+        .eq("restaurant_id",RESTAURANT).eq("ifood_event_id",late)
+        .eq("ack_lease_token",handedOffToken),
+        "Expire only synthetic replacement lease");
+      const newOwner=await run("normal","late-new-owner",env);
+      assert.deepEqual(newOwner.sent,[late]);
+      assert.equal(newOwner.recovered,1);
       const finalLease=checked(await getRows(),"Check late ACK")
         .find(r=>r.ifood_event_id===late);
       assert.ok(finalLease.acknowledged_at);
       assert.equal(finalLease.ack_lease_token,null);
-      assert.notEqual(finalLease.ack_lease_token,oldLease.ack_lease_token);
       assert.equal(acceptedLog(dir).filter(x=>x.ids.includes(late)).length,2,
         "After forced expiry at-least-once provider delivery can occur");
     } finally {
