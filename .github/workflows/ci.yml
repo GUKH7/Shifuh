@@ -2,6 +2,12 @@ name: CI
 
 on:
   workflow_dispatch:
+    inputs:
+      deploy_production:
+        description: "Authorize production deployment after all gates pass"
+        type: boolean
+        required: false
+        default: false
   pull_request:
   push:
     branches:
@@ -11,8 +17,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.deploy_production == true && 'manual-production' || 'checks' }}
+  cancel-in-progress: ${{ !(github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.deploy_production == true) }}
 
 jobs:
   validate:
@@ -230,14 +236,15 @@ jobs:
           test "${VALIDATE_RESULT}" = "success"
           test "${COMMERCIAL_E2E_RESULT}" = "success"
 
-  # This job is the *only* automatic production deployment path.
-  # Vercel's Git auto-deploy is disabled for main in vercel.json.
+  # Production deployments require explicit workflow_dispatch approval and green gates.
+  # Git auto-deploy of main is disabled independently in vercel.json.
   deploy-production:
     name: Deploy production (gated)
     needs: release-gate
     if: >-
-      github.event_name == 'push' &&
+      github.event_name == 'workflow_dispatch' &&
       github.ref == 'refs/heads/main' &&
+      inputs.deploy_production == true &&
       needs.release-gate.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 35
@@ -249,6 +256,7 @@ jobs:
       contents: read
     env:
       CI_GATE_RESULT: ${{ needs.release-gate.result }}
+      DEPLOY_PRODUCTION_APPROVED: ${{ inputs.deploy_production }}
       VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
       VERCEL_CLI_VERSION: 64.5.0

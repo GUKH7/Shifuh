@@ -2,7 +2,8 @@
 
 // Fail closed: even a successful past CI run cannot publish an outdated commit.
 function releaseContextError(context) {
-  if (context.eventName !== "push") return "not a push event";
+  if (context.eventName !== "workflow_dispatch") return "not a manual dispatch event";
+  if (context.deployProductionApproved !== "true") return "production deployment not explicitly authorized";
   if (context.ref !== "refs/heads/main") return "not the main branch";
   if (context.gateResult !== "success") return "Release gate did not pass";
   if (!/^[0-9a-f]{40}$/.test(context.expectedSha || "")) return "invalid tested commit SHA";
@@ -14,6 +15,7 @@ function releaseContextError(context) {
 if (require.main === module) {
   const error = releaseContextError({
     eventName: process.env.GITHUB_EVENT_NAME,
+    deployProductionApproved: process.env.DEPLOY_PRODUCTION_APPROVED,
     ref: process.env.GITHUB_REF,
     gateResult: process.env.CI_GATE_RESULT,
     expectedSha: process.env.GITHUB_SHA,
