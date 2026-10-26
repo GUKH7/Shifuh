@@ -66,6 +66,48 @@ async function until(predicate,label,timeout=12000) {
   }
   throw new Error("Timeout: "+label);
 }
+// Fault injection wraps only the service-role client's ACK heartbeat UPDATE.
+// All claims, fencing and recovery still execute against disposable local SQL.
+// No production DB is stopped, contacted or modified.
+function injectHeartbeatFault(admin, action, actor, dir) {
+  if (!action.startsWith("heartbeat-")) return;
+  const originalFrom = admin.from.bind(admin);
+  admin.from = (table) => {
+    const query = originalFrom(table);
+    if (table !== "ifood_order_events") return query;
+    const originalUpdate = query.update.bind(query);
+    query.update = (values, ...options) => {
+      const builder = originalUpdate(values, ...options);
+      if (!values || Object.keys(values).length !== 1 ||
+          typeof values.ack_lease_until !== "string") return builder;
+      const originalThen = builder.then.bind(builder);
+      builder.then = (resolve, reject) => (async () => {
+        fs.writeFileSync(path.join(dir, "heartbeat-started-" + actor), "1");
+        if (action === "heartbeat-db-down") {
+          return {data:null,error:{message:"Synthetic Supabase connection refused"}};
+        }
+        if (action === "heartbeat-delayed-write") {
+          // Simulated DB outage: PostgreSQL never receives this query until
+          // the controlling E2E process restores connectivity.
+          await until(() => fs.existsSync(path.join(dir, "resume-heartbeat-" + actor)),
+            "restore delayed ACK heartbeat request");
+        }
+        const response = await new Promise((ok, fail) => originalThen(ok, fail));
+        if (action === "heartbeat-delayed-response") {
+          // The real local DB HAS committed the renewal, but its response is
+          // withheld. Concurrent claimers must still observe the live lease.
+          fs.writeFileSync(path.join(dir, "heartbeat-persisted-" + actor), "1");
+          await until(() => fs.existsSync(path.join(dir, "resume-heartbeat-" + actor)),
+            "restore delayed ACK heartbeat response");
+        }
+        return response;
+      })().then(resolve, reject);
+      return builder;
+    };
+    return query;
+  };
+}
+
 async function child() {
   const admin=localDb();
   const action=process.env.IFOOD_ACK_WORKER_ACTION;
@@ -73,6 +115,7 @@ async function child() {
   const dir=process.env.IFOOD_ACK_WORKER_DIR;
   const actor=process.env.IFOOD_ACK_WORKER_NAME;
   assert.ok(action && merchant && dir && actor);
+  injectHeartbeatFault(admin, action, actor, dir);
   const sent=[];
   const provider={
     acknowledgeIfoodOrderEvents:async (ids, signal)=>{
@@ -80,7 +123,7 @@ async function child() {
       fs.appendFileSync(path.join(dir,"provider.log"),
         JSON.stringify({actor,ids,accepted:true})+"\n");
       if(action==="crash") process.exit(CHILD_CRASH_CODE);
-      if(action==="block"){
+      if(action==="block" || action.startsWith("heartbeat-")){
         fs.writeFileSync(path.join(dir,"provider-accepted"),actor);
         fs.writeFileSync(path.join(dir,"accepted-"+actor),"1");
         await until(()=>fs.existsSync(path.join(dir,"release")) || signal?.aborted,
@@ -167,7 +210,10 @@ async function parent(){
   const slow=prefix+"-slow";
   const late=prefix+"-late";
   const timedOut=prefix+"-timeout";
-  const all=[...ids,interrupted,stale,slow,late,timedOut];
+  const dbDown=prefix+"-db-outage";
+  const delayedReply=prefix+"-delayed-reply";
+  const delayedWrite=prefix+"-delayed-write";
+  const all=[...ids,interrupted,stale,slow,late,timedOut,dbDown,delayedReply,delayedWrite];
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),"shifuh-ack-lease-"));
   const env={IFOOD_ACK_WORKER_MERCHANT:merchant,IFOOD_ACK_WORKER_DIR:dir};
   const getRows=()=>admin.from("ifood_order_events")
@@ -198,12 +244,12 @@ async function parent(){
       processed_at:new Date().toISOString(),
       local_order_id:localOrderId,
       raw_payload:{id,orderId,merchantId:merchant,code:"PLC"},
-      ...([interrupted,stale,slow,late,timedOut].includes(id)
+      ...([interrupted,stale,slow,late,timedOut,dbDown,delayedReply,delayedWrite].includes(id)
         ? {ack_lease_until:new Date(Date.now()+60*60*1000).toISOString(),
           ack_lease_token:randomUUID()} : {}),
-    }))).select("id"),"Seed five processed synthetic ACK events");
+    }))).select("id"),"Seed only processed synthetic ACK events");
     rowIds=seed.map(x=>x.id);
-    assert.equal(rowIds.length,8);
+    assert.equal(rowIds.length,11);
 
     // SECURITY: RPC is callable only with the service role, scoped to the
     // configured restaurant and merchant and an enabled integration.
@@ -450,8 +496,150 @@ async function parent(){
     assert.deepEqual(afterTimeout.sent,[timedOut]);
     assert.equal(afterTimeout.recovered,1);
 
+    // Loss of Supabase connectivity during a heartbeat (only the local
+    // service-role heartbeat response is mocked as failed). The owner must
+    // cancel its outstanding HTTP and refuse to complete or release the
+    // pending lease. Competing workers cannot send before lease expiry.
+    checked(await admin.from("ifood_order_events").update({
+      ack_lease_token:null,ack_lease_until:null,
+    }).eq("restaurant_id",RESTAURANT).eq("ifood_event_id",dbDown),
+      "Release synthetic hold for heartbeat DB outage");
+    fs.rmSync(path.join(dir,"release"),{force:true});
+    const dbDownOwner=start("heartbeat-db-down","db-down-owner",env);
+    try {
+      await until(()=>fs.existsSync(path.join(dir,"accepted-db-down-owner")),
+        "database outage owner must reach ACK mock");
+      await until(()=>fs.existsSync(path.join(dir,"heartbeat-started-db-down-owner")),
+        "heartbeat must encounter synthetic Supabase connection refusal");
+      const stopped=await dbDownOwner.done;
+      assert.equal(stopped.code,1,
+        "DB outage should stop stale worker: "+JSON.stringify(stopped));
+      assert.match(stopped.stderr,/O worker perdeu a reserva do ACK iFood/);
+      assert.doesNotMatch(stopped.stdout,/ACK_WORKER /,
+        "DB outage may not report a successful sync");
+      const pending=checked(await getRows(),"DB outage leaves ACK reserved")
+        .find(r=>r.ifood_event_id===dbDown);
+      assert.equal(pending.acknowledged_at,null);
+      assert.ok(pending.ack_lease_token && Date.parse(pending.ack_lease_until)>Date.now());
+      const blocked=await Promise.all([
+        run("normal","db-down-racer-a",env),run("normal","db-down-racer-b",env),
+      ]);
+      assert.ok(blocked.every(x=>x.sent.length===0 && x.recovered===0),
+        "No duplicate ACK during a still-valid DB-outage lease");
+      assert.equal(acceptedLog(dir).filter(x=>x.ids.includes(dbDown)).length,1,
+        "No second provider transmission before ownership expires");
+      checked(await admin.from("ifood_order_events").update({
+        ack_lease_until:new Date(Date.now()-1000).toISOString(),
+      }).eq("restaurant_id",RESTAURANT).eq("ifood_event_id",dbDown),
+        "Advance only the synthetic DB-outage lease");
+      const restored=await run("normal","db-restored-worker",env);
+      assert.equal(restored.recovered,1);
+      assert.deepEqual(restored.sent,[dbDown]);
+      assert.ok(checked(await getRows(),"DB outage recovered")
+        .find(r=>r.ifood_event_id===dbDown).acknowledged_at);
+      assert.equal(acceptedLog(dir).filter(x=>x.ids.includes(dbDown)).length,2,
+        "After expiry retransmission is allowed under at-least-once semantics");
+    } finally {
+      fs.writeFileSync(path.join(dir,"release"),"1");
+      if(dbDownOwner.p.exitCode===null) dbDownOwner.p.kill("SIGKILL");
+      await dbDownOwner.done.catch(()=>{});
+    }
+
+    // PostgreSQL COMMITTED the renewal, but the Supabase response is slow.
+    // Ownership stays protected even though the heartbeat Promise is pending.
+    checked(await admin.from("ifood_order_events").update({
+      ack_lease_token:null,ack_lease_until:null,
+    }).eq("restaurant_id",RESTAURANT).eq("ifood_event_id",delayedReply),
+      "Release hold for delayed heartbeat response");
+    fs.rmSync(path.join(dir,"release"),{force:true});
+    const replyOwner=start("heartbeat-delayed-response","reply-owner",env);
+    try {
+      await until(()=>fs.existsSync(path.join(dir,"accepted-reply-owner")),
+        "delayed-response ACK must reach mock");
+      await until(()=>fs.existsSync(path.join(dir,"heartbeat-persisted-reply-owner")),
+        "local database must commit heartbeat before response stalls");
+      const renewed=checked(await getRows(),"Read committed heartbeat lease")
+        .find(r=>r.ifood_event_id===delayedReply);
+      assert.ok(Date.parse(renewed.ack_lease_until)>Date.now()+120000,
+        "Heartbeat renewal must have been committed in local PostgreSQL");
+      const competitors=await Promise.all([
+        run("normal","reply-racer-a",env),run("normal","reply-racer-b",env),
+      ]);
+      assert.ok(competitors.every(x=>x.sent.length===0 && x.recovered===0),
+        "No competing ACK while remote heartbeat response is withheld");
+      assert.equal(acceptedLog(dir).filter(x=>x.ids.includes(delayedReply)).length,1);
+      fs.writeFileSync(path.join(dir,"resume-heartbeat-reply-owner"),"1");
+      fs.writeFileSync(path.join(dir,"release"),"1");
+      const resumed=await replyOwner.done;
+      assert.equal(resumed.code,0,"Slow DB response owner failed: "+JSON.stringify(resumed));
+      assert.ok(checked(await getRows(),"DB heartbeat response recovery")
+        .find(r=>r.ifood_event_id===delayedReply).acknowledged_at);
+      assert.equal(acceptedLog(dir).filter(x=>x.ids.includes(delayedReply)).length,1,
+        "Successful renewal may not duplicate provider ACK");
+    } finally {
+      fs.writeFileSync(path.join(dir,"resume-heartbeat-reply-owner"),"1");
+      fs.writeFileSync(path.join(dir,"release"),"1");
+      if(replyOwner.p.exitCode===null) replyOwner.p.kill("SIGKILL");
+      await replyOwner.done.catch(()=>{});
+    }
+
+    // SQL request itself stalls across virtual expiry (unlike the previous
+    // scenario, the heartbeat has NOT yet committed). A competing worker
+    // reclaims naturally through the real local SKIP LOCKED RPC. When DB
+    // connectivity returns, the original UPDATE must affect zero rows.
+    checked(await admin.from("ifood_order_events").update({
+      ack_lease_token:null,ack_lease_until:null,
+    }).eq("restaurant_id",RESTAURANT).eq("ifood_event_id",delayedWrite),
+      "Release hold for slow heartbeat write");
+    fs.rmSync(path.join(dir,"release"),{force:true});
+    const writeOwner=start("heartbeat-delayed-write","write-owner",env);
+    try {
+      await until(()=>fs.existsSync(path.join(dir,"accepted-write-owner")),
+        "slow heartbeat owner must reach provider");
+      checked(await admin.from("ifood_order_events").update({
+        ack_lease_until:new Date(Date.now()+4000).toISOString(),
+      }).eq("restaurant_id",RESTAURANT).eq("ifood_event_id",delayedWrite),
+        "Shorten only synthetic delayed-write lease");
+      await until(()=>fs.existsSync(path.join(dir,"heartbeat-started-write-owner")),
+        "heartbeat SQL request must be stalled");
+      const whileOwned=await Promise.all([
+        run("normal","write-racer-a",env),run("normal","write-racer-b",env),
+      ]);
+      assert.ok(whileOwned.every(x=>x.sent.length===0 && x.recovered===0),
+        "No duplicate delivery while DB heartbeat is stalled but lease valid");
+      assert.equal(acceptedLog(dir).filter(x=>x.ids.includes(delayedWrite)).length,1);
+      await until(async()=>{
+        const r=checked(await getRows(),"Wait synthetic lease expiry")
+          .find(x=>x.ifood_event_id===delayedWrite);
+        return Date.parse(r.ack_lease_until)<=Date.now();
+      },"virtual lease expiry while DB heartbeat request is stalled",6500);
+      const successor=await run("normal","write-successor",env);
+      assert.deepEqual(successor.sent,[delayedWrite],
+        "Only the new owner may send ACK after lease expiry");
+      assert.equal(successor.recovered,1);
+      fs.writeFileSync(path.join(dir,"resume-heartbeat-write-owner"),"1");
+      const lateResult=await writeOwner.done;
+      assert.equal(lateResult.code,1,
+        "old owner cannot confirm after slow SQL is applied past lease handoff: "+
+          JSON.stringify(lateResult));
+      assert.match(lateResult.stderr,/O worker perdeu a reserva do ACK iFood/);
+      assert.doesNotMatch(lateResult.stdout,/ACK_WORKER /);
+      const fenced=checked(await getRows(),"Inspect delayed heartbeat stale owner")
+        .find(r=>r.ifood_event_id===delayedWrite);
+      assert.ok(fenced.acknowledged_at,"Replacement owner must confirm ACK");
+      assert.equal(fenced.ack_lease_token,null,
+        "Late heartbeat cannot resurrect an obsolete token");
+      assert.equal(acceptedLog(dir).filter(x=>x.ids.includes(delayedWrite)).length,2,
+        "Only at-least-once resend after synthetic expiry is allowed");
+    } finally {
+      fs.writeFileSync(path.join(dir,"resume-heartbeat-write-owner"),"1");
+      fs.writeFileSync(path.join(dir,"release"),"1");
+      if(writeOwner.p.exitCode===null) writeOwner.p.kill("SIGKILL");
+      await writeOwner.done.catch(()=>{});
+    }
+
     const final=checked(await getRows(),"Final ACK queue");
-    assert.equal(final.length,8);
+    assert.equal(final.length,11);
     assert.ok(final.every(r=>r.processed_at && r.acknowledged_at),
       "Every synthetic ACK must end durably acknowledged");
     const originalOrder=checked(await admin.from("orders").select("id")
@@ -474,6 +662,12 @@ async function parent(){
       abortedProviderOnLostLease:true,
       transportTimeoutEnforced:true,
       timeoutRecoveryAfterExpiry:true,
+      heartbeatOutageAborted:true,
+      noDuplicatesBeforeOutageLeaseExpiry:true,
+      dbRecoveryAfterHeartbeatOutage:true,
+      delayedHeartbeatResponseKeepsLease:true,
+      delayedHeartbeatWriteFenced:true,
+      staleHeartbeatCompletionUpdates:0,
       duplicateOrders:0,
     }));
   } finally {
