@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 function extractMigration(file) {
-  const match = /^(\\d+)_([a-z0-9_]+)\\.sql$/i.exec(path.basename(file));
+  const match = /^(\d+)_([a-z0-9_]+)\.sql$/i.exec(path.basename(file));
   if (!match) return null;
   return { version: match[1], name: match[2] };
 }

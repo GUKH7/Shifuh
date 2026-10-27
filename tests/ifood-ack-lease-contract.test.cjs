@@ -22,7 +22,7 @@ test("feature-flagged ACK path fences completion without falling back to unsafe 
  assert.match(recovery,/claim_ifood_pending_acks/);
  assert.match(recovery,/\.eq\("ack_lease_token", token\)/);
  assert.match(recovery,/\.gt\("ack_lease_until"/);
- assert.match(recovery,/acknowledgeIfoodOrderEvents\(ids\)/);
+ assert.match(recovery,/acknowledgeIfoodOrderEvents\(ids, signal\)/);
  assert.match(recovery,/if \(claimError\) throw/);
  assert.match(recovery,/MAX_ACK_BATCHES_PER_RUN = 5/);
 });
@@ -40,7 +40,7 @@ test("CI runs real independent Node workers only with local Supabase, no real AP
 test("polling does not bypass ACK leases when replay flag is on",()=>{
  const polling=fs.readFileSync("src/lib/ifood/order-sync.ts","utf8");
  assert.match(polling,/ackEventIds\.length > 0 && process\.env\.IFOOD_PERSISTED_REPLAY_ENABLED !== "true"/);
- assert.match(polling,/await acknowledgeIfoodOrderEvents\(ackEventIds\)/);
+ assert.match(polling,/await acknowledgeIfoodOrderEvents\(ackEventIds, signal\)/);
 });
 
 test("slow ACK renews the exact token and cancels transport on lost lease",()=>{
