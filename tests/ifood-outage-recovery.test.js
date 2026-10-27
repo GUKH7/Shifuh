@@ -70,8 +70,15 @@ test("outage before event processing does not increment queue retries or dead-le
   const source = fs.readFileSync(resiliencePath, "utf8");
   assert.match(source, /if \(!attemptedFailedEventIds\.length\) return \{ scheduled: 0, deadLettered: 0 \}/);
   assert.match(source, /\.in\("ifood_event_id", attemptedFailedEventIds\)/);
-  const catchBody = source.slice(source.indexOf("} catch (error) {", source.indexOf("async function runWithRetries")));
-  assert.doesNotMatch(catchBody.split("export async function syncIfoodOrdersWithResilience")[0], /schedulePendingEventRetries\(/);
+  // Select the polling retry loop's failure handler, not the earlier
+  // ACK-lease recovery catch: those are distinct recovery paths.
+  const pollingLoop = source.indexOf("for (let attempt = 1;", source.indexOf("async function runWithRetries"));
+  assert.ok(pollingLoop > 0, "Polling retry loop must be present");
+  const retryCatch = source.indexOf("} catch (error) {", pollingLoop);
+  assert.ok(retryCatch > pollingLoop, "Polling failure handler must be present");
+  const catchBody = source.slice(retryCatch,
+    source.indexOf("export async function syncIfoodOrdersWithResilience", retryCatch));
+  assert.doesNotMatch(catchBody, /schedulePendingEventRetries\(/);
   assert.match(source, /error\.retryAfterMs > 2_500/);
 });
 

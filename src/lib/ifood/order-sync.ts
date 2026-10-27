@@ -332,7 +332,7 @@ export async function upsertLocalOrderFromIfood(
   const cancellation = buildCancellationMetadata(event);
   const existingOrderQuery = await admin
     .from("orders")
-    .select("id, display_number, status, external_payload")
+    .select("id, display_number, status, external_payload, cancellation_reason")
     .eq("restaurant_id", restaurantId)
     .eq("external_order_id", event.orderId)
     .maybeSingle();
@@ -340,6 +340,19 @@ export async function upsertLocalOrderFromIfood(
   let localOrderId = existingOrderQuery.data?.id || null;
   const existingStatus = (existingOrderQuery.data?.status as LocalOrderStatus | null) || null;
   const nextStatus: LocalOrderStatus = mappedStatus || existingStatus || "pending";
+  // PostgreSQL preserves terminal states when older iFood events arrive.
+  // Keep cancellation metadata consistent with that persisted status too:
+  // a late DONE must not erase a cancellation, and a late CAN must not
+  // mark an already DONE order as canceled in its auxiliary fields.
+  const previousCancellationReason = existingOrderQuery.data?.cancellation_reason || null;
+  const cancellationReason = existingStatus === "done"
+    ? null
+    : existingStatus === "canceled"
+      ? (nextStatus === "canceled" && cancellation?.reason)
+        || previousCancellationReason || "Cancelado pelo iFood"
+      : nextStatus === "canceled"
+        ? cancellation?.reason || "Cancelado pelo iFood"
+        : null;
   const existingPayload =
     existingOrderQuery.data?.external_payload && typeof existingOrderQuery.data.external_payload === "object"
       ? (existingOrderQuery.data.external_payload as Record<string, unknown>)
@@ -397,6 +410,19 @@ export async function upsertLocalOrderFromIfood(
     }
 
     localOrderId = createdOrder.order_id;
+    if (nextStatus === "canceled") {
+      // The shared order-creation RPC has no cancellation_reason argument.
+      // Persist it explicitly for orders whose first iFood event is CAN.
+      // If this write fails the event is not completed/ACKed, and retry
+      // reuses the existing order via external_order_id.
+      const { error: cancellationError } = await admin
+        .from("orders")
+        .update({ cancellation_reason: cancellationReason })
+        .eq("id", localOrderId);
+      if (cancellationError) {
+        throw new Error("Pedido salvo, mas o motivo do cancelamento não pôde ser persistido.");
+      }
+    }
   } else {
     const { error: updateOrderError } = await admin
       .from("orders")
@@ -415,7 +441,7 @@ export async function upsertLocalOrderFromIfood(
         external_order_id: event.orderId,
         external_display_id: displayNumberText || null,
         is_test: Boolean(details.isTest),
-        cancellation_reason: nextStatus === "canceled" ? cancellation?.reason || "Cancelado pelo iFood" : null,
+        cancellation_reason: cancellationReason,
         external_payload: {
           ...existingPayload,
           ...(details as Json as Record<string, unknown>),
@@ -585,7 +611,10 @@ export async function syncIfoodOrdersForRestaurant({
     );
     let acknowledgedCount = 0;
 
-    if (ackEventIds.length > 0) {
+    // With persisted replay enabled, only the resilient ACK lease recovery
+    // may call iFood. Direct polling ACKs would bypass distributed leases
+    // and allow independent workers to send duplicate acknowledgements.
+    if (ackEventIds.length > 0 && process.env.IFOOD_PERSISTED_REPLAY_ENABLED !== "true") {
       await acknowledgeIfoodOrderEvents(ackEventIds);
       acknowledgedCount = ackEventIds.length;
       await admin

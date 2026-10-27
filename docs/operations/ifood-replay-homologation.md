@@ -17,3 +17,84 @@ O replay permanece **desligado** em ambientes persistentes, incluindo produção
 
 ## Limites
 Um teste com fornecedor simulado não confirma entrega real de ACK ao iFood nem garante consistência durante uma falha prolongada de múltiplos workers em produção. Antes da ativação persistente, criar banco de homologação independente (a branch Supabase exige aprovação dos custos), configurar credenciais iFood não produtivas, verificar migration instalada e preparar rollback. Nunca ligar a flag na Preview que compartilhe credenciais com produção.
+
+
+## Matriz gratuita de falhas prolongadas (CI, banco descartável)
+
+O E2E executa `scripts/ifood-replay-homologation.cjs` contra PostgreSQL local, sem iFood ou WhatsApp reais. Foram adicionados cenários com as seguintes condições de aprovação:
+
+- Dois workers disputam simultaneamente eventos pelo RPC; a soma dos eventos reservados não excede o total de eventos disponíveis.
+- Oito respostas HTTP 504, com `Retry-After: 120s`, simulam **16 minutos de indisponibilidade por avanço artificial** de `next_retry_at`. Não há espera de 16 minutos nem alteração do relógio real.
+- A indisponibilidade não aumenta `retry_count`, não cria pedidos e não envia eventos à dead-letter.
+- Assim que o mock iFood volta a funcionar, o evento previamente persistido é recuperado **sem depender de novo polling**, criando um único pedido de teste; replay imediato não o duplica.
+- Um backlog de **107 ACKs** já processados é preservado após duas falhas de transporte 504; na recuperação, são enviados nos lotes [100, 7] e marcados no banco apenas depois da confirmação simulada.
+- Duas chamadas simultâneas do serviço resiliente compartilham o processamento da instância; uma chamada subsequente não reenvia ACKs já persistidos.
+- A matriz de leases no PostgreSQL cobre mais de dez eventos com workers concorrentes, limite de lote 10, tokens exclusivos, isolamento de tenant, expiração, fencing e suspensão/reativação de integração.
+
+**Limite:** o teste é determinístico e acelera o tempo de retentativas atualizando apenas dados fictícios em banco local. Não substitui um teste de indisponibilidade real do fornecedor nem comprova ACKs reais em produção. A flag segue desligada na Vercel e nenhum recurso pago é criado.
+
+
+## Worker restart / crash boundaries (local Postgres, no remote calls)
+
+A separate CI step runs \`scripts/ifood-worker-restart-homologation.cjs\`. The test starts **distinct Node processes**, not merely async workers in one process:
+
+1. Process A commits a synthetic order via the **real** create-order RPC and then exits with code 71 before persisting \`processed_at\` and before any ACK. The local lease is expired in the test only.
+2. Process B starts fresh, reads the same event and existing order, persists \`processed_at\`, then exits with code 72 before ACK.
+3. Process C starts fresh, recovers the ACK even when iFood polling returns no events. A further fresh worker confirms no duplicate ACK or order.
+4. Two other Node processes reserve **distinct event IDs for the same order ID** (one each) and wait at a deterministic barrier before both upsert the order. The unique external-order constraint must prevent duplicate local orders; any losing event may retry later, after its synthetic cooldown. Both event IDs must ultimately refer to the same order and be ACKed.
+5. All rows are artificial, integration is fixture-only, provider is mocked, and both events and orders are cleaned after the test.
+
+**Important:** This test proves crash/restart and eventual processing/ACK behavior on a disposable database. It does not guarantee that distinct event statuses arrive in chronological order or that ambiguous network ACKs are externally idempotent. No feature flag is changed on production and this PR must not be merged as part of validation.
+
+
+## Ambiguous ACKs and out-of-order events
+
+The optional disposable Postgres CI step \`scripts/ifood-ack-status-homologation.cjs\` uses iFood mocks and synthetic orders only:
+
+1. Mock provider **accepts** ACK but a synthetic database write fails before commit: ACK remains pending, no order is replayed, and a later run retransmits the **same** ID. This is *at-least-once* transport, not exactly-once delivery.
+2. The database **commits** ACK but the application loses its response: a fresh query sees \`acknowledged_at\`; no duplicate provider call is needed.
+3. The provider accepts ACK then network returns synthetic HTTP 504: local ACK stays pending until a successful retry of the same ID. The mock is idempotent; this does **not** establish real iFood behavior.
+4. Out-of-order status events (CFM then stale PLC, DSP then stale CFM, terminal DONE then CAN) and canceled order followed by old PLC and conflicting DONE: PostgreSQL trigger preserves status; both status and cancellation reason must remain consistent.
+5. All rows and mocks are cleaned, with no network access to production Supabase/iFood. CI never merges or deploys on a PR.
+
+The test specifically rejects the unsafe assumption that a successful provider response guarantees durable local confirmation. Repeating the ACK may be necessary; operation must remain idempotent upstream. Never mark an ACK as committed locally if the provider has not confirmed it.
+
+
+## ACK delivery leased per batch across independent serverless instances
+
+The optional, additive schema in \`20261025121500_ifood_ack_recovery_leases.sql\`
+adds \`ack_lease_token\`, \`ack_lease_until\`, and
+\`claim_ifood_pending_acks\` (service-role-only, SECURITY INVOKER,
+150-second lease, max batch 100, SKIP LOCKED, tenant and merchant checks).
+
+The resilient worker uses these leases ONLY when
+\`IFOOD_PERSISTED_REPLAY_ENABLED=true\`; production remains OFF. No ACK
+is sent without acquiring the lease first. The PostgreSQL update after
+a successful provider request is fenced by the batch token, tenant,
+merchant, and a live lease. On transport failure or ambiguous DB
+write, it fails closed and **does not release the lease**; a new
+worker can retry after timeout. This is *at-least-once* transport,
+not exactly-once, if iFood accepted the ACK before the worker died.
+
+Isolated GitHub CI launches **three independent Node processes**
+contending for the same backlog, blocks the first at a mock provider,
+verifies the others never issue duplicates while its lease is held,
+then checks DB completion. It kills another process after provider
+acceptance, verifies immediate retries are suppressed, accelerates
+only the synthetic local lease timeout, and confirms eventual ACK
+recovery and fencing of stale workers. No provider or production
+URLs are called, and no paid environment is created.
+
+**Activation prerequisite:** when ready for production in a future
+authorized release, apply and verify the additive ACK-lease migration
+*before* enabling persisted replay. Do not enable the feature solely
+because the test branch passes.
+
+
+## ACK HTTP lento, heartbeat e confirmação tardia (CI local descartável)
+
+O teste de três processos também cobre uma chamada HTTP artificialmente lenta. Em CI, diminui-se **somente o vencimento da reserva sintética**; a renovação condicional deve estender o mesmo token e impedir que concorrentes enviem o evento enquanto o ACK inicial permanece em andamento. A chamada é liberada e registrada apenas pelo proprietário.
+
+Se a reserva expirar antes de uma renovação, a atualização condicional do heartbeat falha e aborta o transporte via `AbortSignal`. Outro worker poderá assumir a reserva; o primeiro não pode gravar o ACK com token antigo. Se o provedor já aceitou a chamada anterior, o reenvio após expiração é *at-least-once* e pode ocorrer: não há garantia de exatamente uma entrega externa.
+
+Em operação normal, o heartbeat renova a cada **30 segundos**, prorrogando a reserva de **150 segundos**, e cada tentativa de transporte com ACK fica limitada a **90 segundos**. Um timeout artificial de **250 ms** verifica o cancelamento e a recuperação posterior em CI local; não altera timeouts reais. O cliente HTTP encaminha o sinal de cancelamento e não repete requisições após aborto de propriedade. Falhas de rede e de renovação deixam a reserva pendente até expirar, sem marcar ACK ficticiamente como confirmado. Nenhuma migração adicional nem recursos pagos.

@@ -21,6 +21,29 @@ const DEFAULT_MAX_ATTEMPTS = 3;
 const MAX_EVENT_RETRIES = 6;
 const BASE_DELAY_MS = 500;
 const ACK_BATCH_SIZE = 100;
+const MAX_ACK_BATCHES_PER_RUN = 5;
+const ACK_LEASE_MS = 150_000;
+const ACK_RENEW_INTERVAL_MS = 30_000;
+const ACK_TRANSPORT_BUDGET_MS = 90_000;
+// Use a short heartbeat only when the disposable local E2E suite opts in.
+function isIsolatedAckE2e() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+  return process.env.IFOOD_ACK_MULTIWORKER_E2E === "1" &&
+    /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/?$/.test(url);
+}
+function getAckRenewIntervalMs() {
+  return isIsolatedAckE2e() ? 40 : ACK_RENEW_INTERVAL_MS;
+}
+function getAckTransportBudgetMs() {
+  // The 250ms timeout case is test-only; production always uses 90s.
+  const override = Number(process.env.IFOOD_ACK_TEST_TRANSPORT_BUDGET_MS);
+  if (isIsolatedAckE2e() && Number.isInteger(override) &&
+      override >= 200 && override <= 5_000) return override;
+  return ACK_TRANSPORT_BUDGET_MS;
+}
+class IfoodAckLeaseLostError extends Error {
+  constructor() { super("O worker perdeu a reserva do ACK iFood durante o envio."); }
+}
 const runningSyncs = new Map<string, Promise<unknown>>();
 
 export type IfoodSyncResult = Awaited<ReturnType<typeof syncIfoodOrdersForRestaurant>> & {
@@ -86,7 +109,118 @@ async function updateLatestSyncMetrics(
     .eq("id", data.id);
 }
 
-async function recoverPendingAcknowledgements(restaurantId: string) {
+// Distributed ACK ownership is separate from order/event processing ownership.
+// Never send unclaimed ACKs from another instance when replay is enabled.
+// ACK delivery is at-least-once if the remote endpoint accepts a request and
+// its response is lost: the provider must tolerate duplicate event IDs.
+async function recoverLeasedAcknowledgements(restaurantId: string, merchantId: string) {
+  const admin = createAdminClient() as any;
+  let recovered = 0;
+
+  for (let batch = 0; batch < MAX_ACK_BATCHES_PER_RUN; batch += 1) {
+    const { data: claimed, error: claimError } = await admin.rpc("claim_ifood_pending_acks", {
+      p_restaurant_id: restaurantId,
+      p_merchant_id: merchantId,
+      p_batch_size: ACK_BATCH_SIZE,
+    });
+    // Fail closed: never use an unsafe direct select if the migration is absent.
+    if (claimError) throw new Error("Falha ao reservar ACKs iFood no banco.");
+
+    const rows = (claimed || []) as Array<{
+      ifood_event_id: string;
+      ack_lease_token: string | null;
+    }>;
+    if (!rows.length) break;
+
+    const token = rows[0]?.ack_lease_token;
+    const ids = rows.map((row) => row.ifood_event_id).filter(Boolean);
+    if (!token || ids.length !== rows.length ||
+        rows.some((row) => row.ack_lease_token !== token) ||
+        new Set(ids).size !== ids.length) {
+      throw new Error("Lote de ACKs iFood sem reserva válida.");
+    }
+
+    // Keep the reservation alive during slow HTTP. Renewal must own the exact
+    // token and still-live lease for ALL rows in the batch. A failed check
+    // aborts the provider transport and prevents stale local completion.
+    const abortController = new AbortController();
+    let renewal: Promise<void> | null = null;
+    let ownershipLost = false;
+    const heartbeat = () => {
+      if (renewal || ownershipLost) return;
+      renewal = (async () => {
+        const { data: extended, error: extensionError } = await admin
+          .from("ifood_order_events")
+          .update({ ack_lease_until: new Date(Date.now() + ACK_LEASE_MS).toISOString() })
+          .eq("restaurant_id", restaurantId)
+          .eq("merchant_id", merchantId)
+          .in("ifood_event_id", ids)
+          .eq("ack_lease_token", token)
+          .gt("ack_lease_until", new Date().toISOString())
+          .is("acknowledged_at", null)
+          .select("ifood_event_id");
+        if (extensionError || !extended || extended.length !== ids.length) {
+          throw new Error("Reserva de ACK iFood perdida durante envio.");
+        }
+      })().catch(() => {
+        ownershipLost = true;
+        abortController.abort();
+      }).finally(() => { renewal = null; });
+    };
+    const timer = setInterval(heartbeat, getAckRenewIntervalMs());
+    const deadline = setTimeout(() => abortController.abort(), getAckTransportBudgetMs());
+    let transportError: unknown;
+    try {
+      await acknowledgeIfoodOrderEvents(ids, abortController.signal);
+    } catch (error) {
+      transportError = error;
+    } finally {
+      clearInterval(timer);
+      clearTimeout(deadline);
+      if (renewal) await renewal;
+    }
+    // A worker that loses a batch lease must end this entire sync attempt;
+    // otherwise the second ACK pass can reclaim and re-send the same event.
+    if (ownershipLost) throw new IfoodAckLeaseLostError();
+    if (transportError) throw transportError;
+    if (abortController.signal.aborted) {
+      throw new Error("ACK iFood sem reserva válida após timeout.");
+    }
+
+    // Fence late workers: completion is valid only for the exact batch token,
+    // this tenant/merchant, a still-live lease, and an unacknowledged row.
+    const { data: persisted, error: updateError } = await admin
+      .from("ifood_order_events")
+      .update({
+        acknowledged_at: new Date().toISOString(),
+        last_error: null,
+        ack_lease_token: null,
+        ack_lease_until: null,
+      })
+      .eq("restaurant_id", restaurantId)
+      .eq("merchant_id", merchantId)
+      .in("ifood_event_id", ids)
+      .eq("ack_lease_token", token)
+      .gt("ack_lease_until", new Date().toISOString())
+      .is("acknowledged_at", null)
+      .select("ifood_event_id");
+
+    if (updateError || !persisted || persisted.length !== ids.length) {
+      // The write may already have committed despite a lost database response.
+      // Do not release the lease or immediately re-send any ACK.
+      throw new Error("ACK iFood possivelmente enviado; conclusão local não confirmada.");
+    }
+    recovered += persisted.length;
+  }
+
+  return recovered;
+}
+
+async function recoverPendingAcknowledgements(restaurantId: string, merchantId: string) {
+  if (isIfoodReplayEnabled()) {
+    return recoverLeasedAcknowledgements(restaurantId, merchantId);
+  }
+
   const admin = createAdminClient() as any;
   const { data, error } = await admin
     .from("ifood_order_events")
@@ -192,8 +326,9 @@ async function runWithRetries(params: ResilientSyncParams): Promise<IfoodSyncRes
   if (replay) {
     // ACK recovery must also work if the subsequent polling endpoint times out.
     try {
-      earlyAcknowledgementsRecovered = await recoverPendingAcknowledgements(params.restaurantId);
-    } catch {
+      earlyAcknowledgementsRecovered = await recoverPendingAcknowledgements(params.restaurantId, params.merchantId);
+    } catch (error) {
+      if (error instanceof IfoodAckLeaseLostError) throw error;
       console.warn("ACKs iFood permanecem na fila persistente para nova tentativa.");
     }
   }
@@ -203,6 +338,7 @@ async function runWithRetries(params: ResilientSyncParams): Promise<IfoodSyncRes
       const result = await syncIfoodOrdersForRestaurant(params);
       const pendingAcknowledgementsRecovered = await recoverPendingAcknowledgements(
         params.restaurantId,
+        params.merchantId,
       );
       const retryResult = await schedulePendingEventRetries(
         params.restaurantId,

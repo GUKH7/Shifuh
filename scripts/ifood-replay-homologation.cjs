@@ -31,6 +31,8 @@ async function main() {
     { id: prefix + "-permanent", orderId: prefix + "-bad", code: "PLC", behavior: "permanent", retry_count: 5 },
   ];
   const recordedAckIds = [];
+  const ackBatches = [];
+  let ackFailuresRemaining = 0;
 
   class IfoodApiError extends Error {
     constructor(status, retryAfterMs) {
@@ -56,7 +58,14 @@ async function main() {
     IfoodApiError,
     getIfoodOrderDetails: async oid => orderDetails(oid),
     mapIfoodEventCodeToStatus: code => code === "CFM" ? "preparing" : "pending",
-    acknowledgeIfoodOrderEvents: async ids => { recordedAckIds.push(...ids); },
+    acknowledgeIfoodOrderEvents: async ids => {
+      ackBatches.push([...ids]);
+      if (ackFailuresRemaining > 0) {
+        ackFailuresRemaining -= 1;
+        throw new IfoodApiError(504, 120_000);
+      }
+      recordedAckIds.push(...ids);
+    },
     pollIfoodOrderEvents: async () => [],
   };
 
@@ -94,6 +103,19 @@ async function main() {
     ...baseMocks, "@/lib/ifood/order-sync": sync,
   });
   assert.equal(replay.isIfoodReplayEnabled(), true);
+  const resilience = loadTs("src/lib/ifood/order-sync-resilience.ts", {
+    ...baseMocks,
+    "@/lib/ifood/event-replay": replay,
+    "@/lib/ifood/order-sync": {
+      // The mocked polling response contains no events. The real resilience
+      // routine must still recover stored ACKs when polling is empty.
+      syncIfoodOrdersForRestaurant: async () => ({
+        eventsReceived: 0, eventsProcessed: 0, eventsAcknowledged: 0,
+        duplicateEvents: 0, pendingEvents: 0, failedEventIds: [],
+        upstreamRetryAfterMs: 0, touchedOrders: [],
+      }),
+    },
+  });
 
   function check(result, context) {
     if (result.error) throw new Error(context + ": " + result.error.message);
@@ -123,13 +145,52 @@ async function main() {
     assert.equal(initial.deadLettered,0);
     console.log("HOMOLOG initial", JSON.stringify(initial));
 
-    const result = await replay.replayStoredIfoodEvents(restaurantId,merchantId);
-    assert.equal(result.claimed,4);
-    assert.equal(result.processed,2);
+    // Exercise two independent replay invocations racing for the same queue.
+    // The atomic lease RPC must reserve every event only once.
+    const simultaneous = await Promise.all([
+      replay.replayStoredIfoodEvents(restaurantId, merchantId),
+      replay.replayStoredIfoodEvents(restaurantId, merchantId),
+    ]);
+    const result = simultaneous.reduce((aggregate, run) => {
+      for (const field of ["claimed","processed","temporaryFailures","retryEventsScheduled",
+        "deadLetteredEvents","lostLeases"]) aggregate[field] += run[field];
+      aggregate.maxRetryAfterMs = Math.max(aggregate.maxRetryAfterMs, run.maxRetryAfterMs);
+      return aggregate;
+    }, {claimed:0,processed:0,temporaryFailures:0,retryEventsScheduled:0,
+        deadLetteredEvents:0,lostLeases:0,maxRetryAfterMs:0});
+    assert.equal(result.claimed,4, "Two workers must never claim an event twice");
+    // Competing events of the same order can race to create the same
+    // external_order_id. The DB unique constraint protects the order;
+    // the losing event is legitimately scheduled for a retry.
+    assert.equal(result.processed+result.retryEventsScheduled,2,
+      "Same-order events must complete or remain durably retryable");
     assert.equal(result.temporaryFailures,1);
     assert.equal(result.deadLetteredEvents,1);
     assert.equal(result.maxRetryAfterMs,120_000);
     assert.equal(result.lostLeases,0);
+
+    let recoveredRaceEvents = 0;
+    if(result.retryEventsScheduled>0){
+      const dueRace=check(await admin.from("ifood_order_events")
+        .select("id,ifood_event_id,retry_count,dead_lettered_at")
+        .eq("restaurant_id",restaurantId).in("ifood_event_id",events.slice(0,2).map(e=>e.id))
+        .is("processed_at",null),"Inspect same-order race");
+      assert.equal(dueRace.length,result.retryEventsScheduled);
+      for(const row of dueRace){
+        assert.equal(row.retry_count,1,"Only the collision event uses one real retry");
+        assert.equal(row.dead_lettered_at,null,"Collision must not be dead-lettered");
+      }
+      check(await admin.from("ifood_order_events")
+        .update({next_retry_at:new Date(Date.now()-1000).toISOString()})
+        .in("id",dueRace.map(row=>row.id)),"Advance synthetic collision cooldown");
+      const raceRecovered=await replay.replayStoredIfoodEvents(restaurantId,merchantId);
+      assert.equal(raceRecovered.claimed,dueRace.length);
+      assert.equal(raceRecovered.processed,dueRace.length,
+        "Retry must reuse already committed order and complete event");
+      assert.equal(raceRecovered.deadLetteredEvents,0);
+      recoveredRaceEvents=raceRecovered.processed;
+    }
+    assert.equal(result.processed+recoveredRaceEvents,2);
 
     const stored=check(await admin.from("ifood_order_events").select(
       "ifood_event_id,processed_at,acknowledged_at,retry_count,next_retry_at,dead_lettered_at,local_order_id"
@@ -155,31 +216,139 @@ async function main() {
     const noReprocess=await replay.replayStoredIfoodEvents(restaurantId,merchantId);
     assert.equal(noReprocess.claimed,0,"Processed, scheduled and dead-lettered events cannot be reclaimed");
 
-    // Simulate the acknowledgement transport after durable processing only.
-    // Real iFood API must never be called in this suite.
-    const processedIds=stored.filter(e=>e.processed_at).map(e=>e.ifood_event_id);
-    await ifoodMock.acknowledgeIfoodOrderEvents(processedIds);
-    assert.deepEqual(recordedAckIds.sort(),events.slice(0,2).map(e=>e.id).sort());
+    // Simulate eight 504s across virtual 120-second cooldown windows.
+    // Fast-forward ONLY a synthetic event's next_retry_at in local Postgres;
+    // do not wait in real time or access a real merchant.
+    const offlineAttempts = 8;
+    for (let attempt = 1; attempt < offlineAttempts; attempt += 1) {
+      const blocked = await replay.replayStoredIfoodEvents(restaurantId, merchantId);
+      assert.equal(blocked.claimed, 0, "Cooldown blocks immediate retries");
+      check(await admin.from("ifood_order_events")
+        .update({next_retry_at: new Date(Date.now() - 1000).toISOString()})
+        .eq("restaurant_id",restaurantId).eq("ifood_event_id",events[2].id), "Advance virtual cooldown");
+      const failed = await replay.replayStoredIfoodEvents(restaurantId, merchantId);
+      assert.equal(failed.claimed, 1);
+      assert.equal(failed.processed, 0);
+      assert.equal(failed.temporaryFailures, 1);
+      assert.equal(failed.deadLetteredEvents, 0);
+      assert.equal(failed.retryEventsScheduled, 0);
+      assert.equal(failed.maxRetryAfterMs, 120_000);
+      const state = check(await admin.from("ifood_order_events")
+        .select("processed_at,retry_count,dead_lettered_at,next_retry_at")
+        .eq("restaurant_id",restaurantId).eq("ifood_event_id",events[2].id).single(),
+        "Inspect repeated outage");
+      assert.equal(state.processed_at,null);
+      assert.equal(state.retry_count,0,"Long outages must never burn permanent retry budget");
+      assert.equal(state.dead_lettered_at,null,"Long outages must never dead-letter recoverable events");
+      assert.ok(new Date(state.next_retry_at).getTime() > Date.now() + 115_000,
+        "Retry-After must be respected");
+    }
+
+    // Recover after the outage: the same event is retried from the database,
+    // not repolled by iFood, and creates only one new local order.
+    events[2].behavior = "ok";
     check(await admin.from("ifood_order_events")
-      .update({acknowledged_at:new Date().toISOString()})
-      .eq("restaurant_id",restaurantId).in("ifood_event_id",recordedAckIds), "Persist mock ACK");
+      .update({next_retry_at: new Date(Date.now() - 1000).toISOString()})
+      .eq("restaurant_id",restaurantId).eq("ifood_event_id",events[2].id),
+      "Mark recovered upstream event due");
+    const recovered = await replay.replayStoredIfoodEvents(restaurantId, merchantId);
+    assert.equal(recovered.claimed,1);
+    assert.equal(recovered.processed,1);
+    assert.equal(recovered.deadLetteredEvents,0);
+    const secondOrder = check(await admin.from("orders")
+      .select("id,external_order_id,is_test").eq("restaurant_id",restaurantId)
+      .eq("external_order_id",events[2].orderId), "Read recovered order");
+    assert.equal(secondOrder.length,1);
+    assert.equal(secondOrder[0].is_test,true);
+    const afterRecovery=await replay.replayStoredIfoodEvents(restaurantId,merchantId);
+    assert.equal(afterRecovery.claimed,0, "No replay of already recovered events");
+
+    // Add 104 synthetic, already-processed events linked to an existing test order:
+    // the resilient ACK path must send 100+7, never skip or duplicate an ID.
+    const ackOnlyIds = Array.from({length:104},(_,i)=>prefix+"-ack-only-"+i);
+    const ackOnly = ackOnlyIds.map(id=>({
+      restaurant_id:restaurantId, merchant_id:merchantId,
+      ifood_event_id:id, ifood_order_id:orderId, event_code:"PLC",
+      processed_at:new Date().toISOString(),local_order_id:orders[0].id,
+      raw_payload:{id,orderId,merchantId,code:"PLC"},
+    }));
+    const insertedAcks = check(await admin.from("ifood_order_events")
+      .insert(ackOnly).select("id"), "Seed isolated ACK backlog");
+    insertedEventIds.push(...insertedAcks.map(row=>row.id));
+
+    const pendingAck = await replay.inspectIfoodQueue(restaurantId);
+    assert.deepEqual(pendingAck, {pending:0,awaitingAcknowledgement:107,deadLettered:1});
+    ackFailuresRemaining = 2; // Early recovery and post-poll recovery must both fail.
+    const ackParams = {restaurantId,merchantId,source:"cron",maxAttempts:1};
+    await assert.rejects(resilience.syncIfoodOrdersWithResilience(ackParams),
+      error=>error instanceof IfoodApiError && error.status===504);
+    assert.equal(ackBatches.length,2);
+    assert.equal(recordedAckIds.length,0,"Failed transport cannot be marked ACKed");
+    const afterAckOutage=await replay.inspectIfoodQueue(restaurantId);
+    assert.equal(afterAckOutage.awaitingAcknowledgement,107);
+    assert.equal(afterAckOutage.deadLettered,1);
+    assert.equal(afterAckOutage.pending,0);
+
+    // Both failed ACK batches must retain their leases. A fast-following
+    // worker cannot resend the same IDs before timeout.
+    const held=await resilience.syncIfoodOrdersWithResilience(ackParams);
+    assert.equal(held.pendingAcknowledgementsRecovered,0);
+    assert.equal(ackBatches.length,2,"Live lease blocks immediate duplicate ACK");
+    check(await admin.from("ifood_order_events")
+      .update({ack_lease_until:new Date(Date.now()-1000).toISOString()})
+      .eq("restaurant_id",restaurantId)
+      .is("acknowledged_at",null)
+      .in("ifood_event_id",[...events.slice(0,3).map(e=>e.id),...ackOnlyIds]),
+      "Expire only synthetic ACK leases after simulated crash");
+
+    // The next healthy run recovers the same ACK backlog even with an empty
+    // polling result, and concurrent calls share the single in-process run.
+    const beforeSuccessfulAck = ackBatches.length;
+    const [success,serialized] = await Promise.all([
+      resilience.syncIfoodOrdersWithResilience(ackParams),
+      resilience.syncIfoodOrdersWithResilience(ackParams),
+    ]);
+    assert.equal(success.pendingAcknowledgementsRecovered,107);
+    assert.equal(serialized.serialized,true);
+    assert.equal(ackBatches.length-beforeSuccessfulAck,2, "ACK backlog must be chunked at 100");
+    assert.deepEqual(ackBatches.slice(beforeSuccessfulAck).map(batch=>batch.length),[100,7]);
+    const uniqueAcknowledgements = new Set(recordedAckIds);
+    assert.equal(uniqueAcknowledgements.size,107);
+    assert.equal(recordedAckIds.length,107, "Each event is ACKed exactly once in the successful run");
+    for(const id of [...events.slice(0,3).map(e=>e.id),...ackOnlyIds]) {
+      assert.ok(uniqueAcknowledgements.has(id), "No committed event may lose its ACK");
+    }
+    const noDuplicateAck=await resilience.syncIfoodOrdersWithResilience(ackParams);
+    assert.equal(noDuplicateAck.pendingAcknowledgementsRecovered,0);
+    assert.equal(recordedAckIds.length,107,"Already ACKed IDs must not be resent");
+
     const final=await replay.inspectIfoodQueue(restaurantId);
-    assert.deepEqual(final, {pending:1,awaitingAcknowledgement:0,deadLettered:1});
-    const finalOrders=check(await admin.from("orders").select("id")
-      .eq("restaurant_id",restaurantId).eq("external_order_id",orderId),"Verify no duplicate");
-    assert.equal(finalOrders.length,1);
-    console.log("HOMOLOG replay",JSON.stringify({
-      claimed:result.claimed,processed:result.processed,
-      temporaryFailures:result.temporaryFailures,deadLettered:result.deadLetteredEvents,
-      maxRetryAfterMs:result.maxRetryAfterMs,
-      acked:recordedAckIds.length,duplicateOrders:finalOrders.length-1,
+    assert.deepEqual(final, {pending:0,awaitingAcknowledgement:0,deadLettered:1});
+    const finalOrders=check(await admin.from("orders").select("id,external_order_id,is_test")
+      .eq("restaurant_id",restaurantId)
+      .in("external_order_id",[orderId,events[2].orderId]),"Verify unique local orders");
+    assert.equal(finalOrders.length,2);
+    assert.equal(finalOrders.filter(o=>o.external_order_id===orderId).length,1);
+    assert.equal(finalOrders.filter(o=>o.external_order_id===events[2].orderId).length,1);
+    console.log("HOMOLOG replay failure matrix",JSON.stringify({
+      concurrentWorkers:2,
+      initialClaims:result.claimed,
+      upstream504Attempts:offlineAttempts,
+      simulatedOutageMinutes:offlineAttempts*2,
+      permanentRetryBudgetAfter504:0,
+      recoveredEvents:recovered.processed,
+      pendingAcksBeforeRecovery:pendingAck.awaitingAcknowledgement,
+      ackTransportFailures:2,
+      ackBatches:ackBatches.slice(beforeSuccessfulAck).map(batch=>batch.length),
+      acked:recordedAckIds.length,
+      duplicateOrders:0,
       finalQueue:final,
     }));
   } finally {
     if (insertedEventIds.length) check(await admin.from("ifood_order_events")
       .delete().in("id",insertedEventIds),"Cleanup synthetic events");
     const createdOrders=check(await admin.from("orders").select("id").eq("restaurant_id",restaurantId)
-      .eq("external_order_id",orderId),"Cleanup order lookup");
+      .in("external_order_id",[orderId,events[2].orderId]),"Cleanup order lookup");
     if(createdOrders?.length) {
       check(await admin.from("order_items").delete().in("order_id",createdOrders.map(x=>x.id)),"Cleanup items");
       check(await admin.from("orders").delete().in("id",createdOrders.map(x=>x.id)),"Cleanup order");
