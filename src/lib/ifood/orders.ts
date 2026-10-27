@@ -107,7 +107,7 @@ async function ifoodOrderRequest<T>(
       // Do not retry an ACK after its lease owner aborts the request.
       if (requestInit.signal?.aborted) throw error;
       if (attempt < maxAttempts) {
-        await waitForRetry(attempt);
+        await waitForRetry(attempt, null, requestInit.signal ?? undefined);
         continue;
       }
 
@@ -121,7 +121,7 @@ async function ifoodOrderRequest<T>(
       const retryAfterMs = readIfoodRetryAfterMs(response.headers, text);
       if (retry && shouldRetryStatus(response.status) && attempt < maxAttempts &&
           (retryAfterMs === null || retryAfterMs <= MAX_INLINE_RETRY_DELAY_MS)) {
-        await waitForRetry(attempt, retryAfterMs);
+        await waitForRetry(attempt, retryAfterMs, requestInit.signal ?? undefined);
         continue;
       }
       // Respect long cooldowns by returning the error to the scheduler;
@@ -146,14 +146,30 @@ function shouldRetryStatus(status: number) {
   return status === 408 || status === 425 || status === 429 || status >= 500;
 }
 
-function waitForRetry(attempt: number, serverDelayMs: number | null = null) {
+function waitForRetry(
+  attempt: number,
+  serverDelayMs: number | null = null,
+  signal?: AbortSignal,
+): Promise<void> {
   const jitter = Math.floor(Math.random() * 150);
   const backoff = DEFAULT_RETRY_BASE_DELAY_MS * 2 ** (attempt - 1) + jitter;
   const delay = Math.max(backoff, serverDelayMs ?? 0);
-  return new Promise((resolve) => setTimeout(resolve, delay));
+  return new Promise<void>((resolve, reject) => {
+    if (signal?.aborted) return reject(signal.reason);
+    const onAbort = () => {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", onAbort);
+      reject(signal?.reason ?? new Error("iFood transport canceled."));
+    };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, delay);
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
 }
 
-export async function pollIfoodOrderEvents(merchantId: string) {
+export async function pollIfoodOrderEvents(merchantId: string, signal?: AbortSignal) {
   const params = new URLSearchParams();
   const categories = process.env.IFOOD_POLLING_CATEGORIES?.trim() || DEFAULT_POLLING_CATEGORIES;
   const groups = process.env.IFOOD_POLLING_GROUPS?.trim();
@@ -175,6 +191,7 @@ export async function pollIfoodOrderEvents(merchantId: string) {
     headers: {
       "x-polling-merchants": merchantId,
     },
+    signal,
   });
 
   return Array.isArray(data) ? data : [];
@@ -199,10 +216,10 @@ export async function acknowledgeIfoodOrderEvents(eventIds: string[], signal?: A
   );
 }
 
-export async function getIfoodOrderDetails(orderId: string) {
+export async function getIfoodOrderDetails(orderId: string, signal?: AbortSignal) {
   return ifoodOrderRequest<Record<string, unknown>>(
     `/order/v1.0/orders/${orderId}`,
-    { method: "GET", retry: true },
+    { method: "GET", retry: true, signal },
   );
 }
 

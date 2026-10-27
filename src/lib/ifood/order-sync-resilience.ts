@@ -10,6 +10,7 @@ type ResilientSyncParams = {
   merchantId: string;
   source: SyncSource;
   maxAttempts?: number;
+  signal?: AbortSignal;
 };
 
 type PendingEventRow = {
@@ -113,11 +114,12 @@ async function updateLatestSyncMetrics(
 // Never send unclaimed ACKs from another instance when replay is enabled.
 // ACK delivery is at-least-once if the remote endpoint accepts a request and
 // its response is lost: the provider must tolerate duplicate event IDs.
-async function recoverLeasedAcknowledgements(restaurantId: string, merchantId: string) {
+async function recoverLeasedAcknowledgements(restaurantId: string, merchantId: string, signal?: AbortSignal) {
   const admin = createAdminClient() as any;
   let recovered = 0;
 
   for (let batch = 0; batch < MAX_ACK_BATCHES_PER_RUN; batch += 1) {
+    signal?.throwIfAborted();
     const { data: claimed, error: claimError } = await admin.rpc("claim_ifood_pending_acks", {
       p_restaurant_id: restaurantId,
       p_merchant_id: merchantId,
@@ -144,6 +146,9 @@ async function recoverLeasedAcknowledgements(restaurantId: string, merchantId: s
     // token and still-live lease for ALL rows in the batch. A failed check
     // aborts the provider transport and prevents stale local completion.
     const abortController = new AbortController();
+    const abortFromCaller = () => abortController.abort(signal?.reason);
+    signal?.addEventListener("abort", abortFromCaller, { once: true });
+    if (signal?.aborted) abortFromCaller();
     let renewal: Promise<void> | null = null;
     let ownershipLost = false;
     const heartbeat = () => {
@@ -178,10 +183,12 @@ async function recoverLeasedAcknowledgements(restaurantId: string, merchantId: s
       clearInterval(timer);
       clearTimeout(deadline);
       if (renewal) await renewal;
+      signal?.removeEventListener("abort", abortFromCaller);
     }
     // A worker that loses a batch lease must end this entire sync attempt;
     // otherwise the second ACK pass can reclaim and re-send the same event.
     if (ownershipLost) throw new IfoodAckLeaseLostError();
+    signal?.throwIfAborted();
     if (transportError) throw transportError;
     if (abortController.signal.aborted) {
       throw new Error("ACK iFood sem reserva válida após timeout.");
@@ -216,9 +223,9 @@ async function recoverLeasedAcknowledgements(restaurantId: string, merchantId: s
   return recovered;
 }
 
-async function recoverPendingAcknowledgements(restaurantId: string, merchantId: string) {
+async function recoverPendingAcknowledgements(restaurantId: string, merchantId: string, signal?: AbortSignal) {
   if (isIfoodReplayEnabled()) {
-    return recoverLeasedAcknowledgements(restaurantId, merchantId);
+    return recoverLeasedAcknowledgements(restaurantId, merchantId, signal);
   }
 
   const admin = createAdminClient() as any;
@@ -235,13 +242,15 @@ async function recoverPendingAcknowledgements(restaurantId: string, merchantId: 
 
   let recovered = 0;
   for (let index = 0; index < data.length; index += ACK_BATCH_SIZE) {
+    signal?.throwIfAborted();
     const ids = data
       .slice(index, index + ACK_BATCH_SIZE)
       .map((row: { ifood_event_id: string }) => row.ifood_event_id)
       .filter(Boolean);
     if (!ids.length) continue;
 
-    await acknowledgeIfoodOrderEvents(ids);
+    await acknowledgeIfoodOrderEvents(ids, signal);
+    signal?.throwIfAborted();
     const acknowledgedAt = new Date().toISOString();
     const { error: updateError } = await admin
       .from("ifood_order_events")
@@ -314,6 +323,7 @@ async function schedulePendingEventRetries(restaurantId: string, reason: string,
 }
 
 async function runWithRetries(params: ResilientSyncParams): Promise<IfoodSyncResult> {
+  params.signal?.throwIfAborted();
   const maxAttempts = Math.max(1, params.maxAttempts || DEFAULT_MAX_ATTEMPTS);
   const startedAt = Date.now();
   let lastError: unknown;
@@ -326,7 +336,7 @@ async function runWithRetries(params: ResilientSyncParams): Promise<IfoodSyncRes
   if (replay) {
     // ACK recovery must also work if the subsequent polling endpoint times out.
     try {
-      earlyAcknowledgementsRecovered = await recoverPendingAcknowledgements(params.restaurantId, params.merchantId);
+      earlyAcknowledgementsRecovered = await recoverPendingAcknowledgements(params.restaurantId, params.merchantId, params.signal);
     } catch (error) {
       if (error instanceof IfoodAckLeaseLostError) throw error;
       console.warn("ACKs iFood permanecem na fila persistente para nova tentativa.");
@@ -334,11 +344,13 @@ async function runWithRetries(params: ResilientSyncParams): Promise<IfoodSyncRes
   }
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    params.signal?.throwIfAborted();
     try {
       const result = await syncIfoodOrdersForRestaurant(params);
       const pendingAcknowledgementsRecovered = await recoverPendingAcknowledgements(
         params.restaurantId,
         params.merchantId,
+        params.signal,
       );
       const retryResult = await schedulePendingEventRetries(
         params.restaurantId,
@@ -358,6 +370,7 @@ async function runWithRetries(params: ResilientSyncParams): Promise<IfoodSyncRes
       };
     } catch (error) {
       lastError = error;
+      if (params.signal?.aborted) throw error;
       const message = error instanceof Error ? error.message : "Falha desconhecida na sincronização.";
       // If polling/details/ACK failed before recording an event-specific
       // failure, do not charge unrelated stored events a retry attempt.
@@ -369,6 +382,7 @@ async function runWithRetries(params: ResilientSyncParams): Promise<IfoodSyncRes
         throw error;
       }
       await waitForRetry(attempt);
+      params.signal?.throwIfAborted();
     }
   }
 

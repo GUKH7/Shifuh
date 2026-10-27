@@ -14,6 +14,7 @@ type SyncIfoodOrdersParams = {
   restaurantId: string;
   merchantId: string;
   source: "manual" | "cron";
+  signal?: AbortSignal;
 };
 
 type LocalOrderStatus = "pending" | "preparing" | "delivering" | "done" | "canceled";
@@ -282,8 +283,11 @@ export async function upsertLocalOrderFromIfood(
   admin: AdminClient,
   restaurantId: string,
   event: IfoodOrderEvent,
+  signal?: AbortSignal,
 ) {
-  const details = await getIfoodOrderDetails(event.orderId);
+  signal?.throwIfAborted();
+  const details = await getIfoodOrderDetails(event.orderId, signal);
+  signal?.throwIfAborted();
   if (!details) {
     throw new Error(`Não foi possível obter os detalhes do pedido ${event.orderId} no iFood.`);
   }
@@ -467,7 +471,9 @@ export async function syncIfoodOrdersForRestaurant({
   restaurantId,
   merchantId,
   source,
+  signal,
 }: SyncIfoodOrdersParams) {
+  signal?.throwIfAborted();
   const admin = createAdminClient();
   const { data: syncRun, error: syncRunError } = await admin
     .from("ifood_sync_runs")
@@ -488,7 +494,8 @@ export async function syncIfoodOrdersForRestaurant({
   }
 
   try {
-    const polledEvents = await pollIfoodOrderEvents(merchantId);
+    const polledEvents = await pollIfoodOrderEvents(merchantId, signal);
+    signal?.throwIfAborted();
     const sortedEvents = [...polledEvents].sort((a, b) =>
       String(a.createdAt || "").localeCompare(String(b.createdAt || "")),
     );
@@ -563,8 +570,9 @@ export async function syncIfoodOrdersForRestaurant({
     });
 
     for (const event of eventsToProcess) {
+      signal?.throwIfAborted();
       try {
-        const result = await upsertLocalOrderFromIfood(admin, restaurantId, event);
+        const result = await upsertLocalOrderFromIfood(admin, restaurantId, event, signal);
         const { error: processedUpdateError } = await admin
           .from("ifood_order_events")
           .update({
@@ -615,13 +623,18 @@ export async function syncIfoodOrdersForRestaurant({
     // may call iFood. Direct polling ACKs would bypass distributed leases
     // and allow independent workers to send duplicate acknowledgements.
     if (ackEventIds.length > 0 && process.env.IFOOD_PERSISTED_REPLAY_ENABLED !== "true") {
-      await acknowledgeIfoodOrderEvents(ackEventIds);
-      acknowledgedCount = ackEventIds.length;
-      await admin
+      signal?.throwIfAborted();
+      await acknowledgeIfoodOrderEvents(ackEventIds, signal);
+      signal?.throwIfAborted();
+      const { error: acknowledgementWriteError } = await admin
         .from("ifood_order_events")
         .update({ acknowledged_at: new Date().toISOString() })
         .eq("restaurant_id", restaurantId)
         .in("ifood_event_id", ackEventIds);
+      if (acknowledgementWriteError) {
+        throw new Error("ACK iFood enviado, mas não foi possível confirmar sua persistência.");
+      }
+      acknowledgedCount = ackEventIds.length;
     }
 
     await admin
