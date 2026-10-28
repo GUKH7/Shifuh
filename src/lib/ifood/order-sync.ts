@@ -1,6 +1,13 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/database.types";
-import { withIfoodSqlSignal } from "@/lib/ifood/sql-abort";
+// PostgREST can abort its HTTP request, but an already committed write is
+// still ambiguous and must never be counted without reconciliation.
+function withIfoodSqlSignal<T extends { abortSignal(signal: AbortSignal): T }>(
+  query: T, signal?: AbortSignal,
+): T {
+  signal?.throwIfAborted();
+  return signal ? query.abortSignal(signal) : query;
+}
 import {
   acknowledgeIfoodOrderEvents,
   getIfoodOrderDetails,

@@ -53,7 +53,7 @@ test("outbound calls and retries obey an abort signal", () => {
 test("legacy ACK persistence errors are not reported as durable confirmations", () => {
   const sync = fs.readFileSync(path.join(root, "src/lib/ifood/order-sync.ts"), "utf8");
   assert.match(sync, /acknowledgementWriteError/);
-  assert.match(sync, /if \(acknowledgementWriteError\)/);
+  assert.match(sync, /if \(acknowledgementWriteError \|\| persistedIds\.length !== ackEventIds\.length/);
   assert.match(sync, /acknowledgedCount = ackEventIds\.length/);
 });
 test("migration audit exposes missing entries, db-only history and timestamp drift", () => {

@@ -66,6 +66,6 @@ test("outbound HTTP honors signal so lease loss stops all iFood retries",()=>{
 test("a lost ACK lease stops the entire worker sync instead of allowing immediate re-claim",()=>{
  assert.match(recovery,/class IfoodAckLeaseLostError extends Error/);
  assert.match(recovery,/if \(ownershipLost\) throw new IfoodAckLeaseLostError\(\)/);
- assert.match(recovery,/if \(error instanceof IfoodAckLeaseLostError\) throw error/);
+ assert.match(recovery,/if \(error instanceof IfoodAckLeaseLostError \|\| params\.signal\?\.aborted\) throw error/);
  assert.match(worker,/A worker that loses its ACK lease must fail closed/);
 });
