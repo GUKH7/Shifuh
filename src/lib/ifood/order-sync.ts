@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/database.types";
+import { withIfoodSqlSignal } from "@/lib/ifood/sql-abort";
 import {
   acknowledgeIfoodOrderEvents,
   getIfoodOrderDetails,
@@ -334,12 +335,12 @@ export async function upsertLocalOrderFromIfood(
     (event.fullCode ? mapIfoodEventCodeToStatus(event.fullCode) : null);
   const lastIfoodEvent = buildEventMetadata(event);
   const cancellation = buildCancellationMetadata(event);
-  const existingOrderQuery = await admin
+  const existingOrderQuery = await withIfoodSqlSignal(admin
     .from("orders")
     .select("id, display_number, status, external_payload, cancellation_reason")
     .eq("restaurant_id", restaurantId)
     .eq("external_order_id", event.orderId)
-    .maybeSingle();
+    .maybeSingle(), signal);
 
   let localOrderId = existingOrderQuery.data?.id || null;
   const existingStatus = (existingOrderQuery.data?.status as LocalOrderStatus | null) || null;
@@ -373,7 +374,7 @@ export async function upsertLocalOrderFromIfood(
   };
 
   if (!localOrderId) {
-    const { data: createdOrderData, error: createOrderError } = await admin.rpc(
+    const { data: createdOrderData, error: createOrderError } = await withIfoodSqlSignal(admin.rpc(
       "create_order_transaction",
       {
         p_restaurant_id: restaurantId,
@@ -406,7 +407,7 @@ export async function upsertLocalOrderFromIfood(
         } as Json,
         p_save_customer: true,
       },
-    );
+    ), signal);
     const createdOrder = Array.isArray(createdOrderData) ? createdOrderData[0] : createdOrderData;
 
     if (createOrderError || !createdOrder?.order_id) {
@@ -419,16 +420,16 @@ export async function upsertLocalOrderFromIfood(
       // Persist it explicitly for orders whose first iFood event is CAN.
       // If this write fails the event is not completed/ACKed, and retry
       // reuses the existing order via external_order_id.
-      const { error: cancellationError } = await admin
+      const { error: cancellationError } = await withIfoodSqlSignal(admin
         .from("orders")
         .update({ cancellation_reason: cancellationReason })
-        .eq("id", localOrderId);
+        .eq("id", localOrderId), signal);
       if (cancellationError) {
         throw new Error("Pedido salvo, mas o motivo do cancelamento não pôde ser persistido.");
       }
     }
   } else {
-    const { error: updateOrderError } = await admin
+    const { error: updateOrderError } = await withIfoodSqlSignal(admin
       .from("orders")
       .update({
         customer_name: customer.name,
@@ -452,7 +453,7 @@ export async function upsertLocalOrderFromIfood(
           gestorDelivery,
         } as Json,
       })
-      .eq("id", localOrderId);
+      .eq("id", localOrderId), signal);
 
     if (updateOrderError) {
       throw new Error(updateOrderError.message || "Não foi possível atualizar o pedido iFood.");
@@ -475,7 +476,7 @@ export async function syncIfoodOrdersForRestaurant({
 }: SyncIfoodOrdersParams) {
   signal?.throwIfAborted();
   const admin = createAdminClient();
-  const { data: syncRun, error: syncRunError } = await admin
+  const { data: syncRun, error: syncRunError } = await withIfoodSqlSignal(admin
     .from("ifood_sync_runs")
     .insert({
       restaurant_id: restaurantId,
@@ -487,7 +488,7 @@ export async function syncIfoodOrdersForRestaurant({
       },
     })
     .select("id")
-    .single();
+    .single(), signal);
 
   if (syncRunError || !syncRun) {
     throw new Error("Não foi possível iniciar o log de sincronização do iFood.");
@@ -506,19 +507,19 @@ export async function syncIfoodOrdersForRestaurant({
     let existingEvents: ExistingIfoodEventState[] = [];
     if (eventIds.length > 0) {
       if (process.env.IFOOD_PERSISTED_REPLAY_ENABLED === "true") {
-        const { data, error } = await admin
+        const { data, error } = await withIfoodSqlSignal(admin
           .from("ifood_order_events")
           .select("ifood_event_id, processed_at, acknowledged_at, processing_lease_until")
           .eq("restaurant_id", restaurantId)
-          .in("ifood_event_id", eventIds);
+          .in("ifood_event_id", eventIds), signal);
         if (error) throw new Error("Falha ao consultar reservas iFood.");
         existingEvents = data || [];
       } else {
-        const { data, error } = await admin
+        const { data, error } = await withIfoodSqlSignal(admin
           .from("ifood_order_events")
           .select("ifood_event_id, processed_at, acknowledged_at")
           .eq("restaurant_id", restaurantId)
-          .in("ifood_event_id", eventIds);
+          .in("ifood_event_id", eventIds), signal);
         if (error) throw new Error("Falha ao consultar eventos iFood.");
         existingEvents = data || [];
       }
@@ -542,7 +543,7 @@ export async function syncIfoodOrdersForRestaurant({
     }));
 
     if (eventsToInsert.length > 0) {
-      const { error: insertEventsError } = await admin.from("ifood_order_events").insert(eventsToInsert);
+      const { error: insertEventsError } = await withIfoodSqlSignal(admin.from("ifood_order_events").insert(eventsToInsert), signal);
       if (insertEventsError) {
         throw new Error(insertEventsError.message || "Não foi possível armazenar os eventos do iFood.");
       }
@@ -556,7 +557,8 @@ export async function syncIfoodOrdersForRestaurant({
     const processedEventIds = new Set<string>();
     const alreadyProcessedEventIds = new Set(
       sortedEvents
-        .filter((event) => existingEventById.get(event.id)?.processed_at)
+        .filter((event) => existingEventById.get(event.id)?.processed_at &&
+          !existingEventById.get(event.id)?.acknowledged_at)
         .map((event) => event.id),
     );
     const eventsToProcess = sortedEvents.filter((event) => {
@@ -573,14 +575,14 @@ export async function syncIfoodOrdersForRestaurant({
       signal?.throwIfAborted();
       try {
         const result = await upsertLocalOrderFromIfood(admin, restaurantId, event, signal);
-        const { error: processedUpdateError } = await admin
+        const { error: processedUpdateError } = await withIfoodSqlSignal(admin
           .from("ifood_order_events")
           .update({
             local_order_id: result.localOrderId,
             processed_at: new Date().toISOString(),
           })
           .eq("restaurant_id", restaurantId)
-          .eq("ifood_event_id", event.id);
+          .eq("ifood_event_id", event.id), signal);
         if (processedUpdateError) {
           throw new Error("Pedido salvo, mas evento não pôde ser marcado como processado.");
         }
@@ -588,6 +590,7 @@ export async function syncIfoodOrdersForRestaurant({
         touchedOrders.push(event.orderId);
         processedEventIds.add(event.id);
       } catch (eventError) {
+        if (signal?.aborted) throw eventError;
         failedCount += 1;
         // Upstream outages are not processing attempts against a stored event.
         // Leave them pending without burning retry_count or dead-letter budget.
@@ -626,30 +629,35 @@ export async function syncIfoodOrdersForRestaurant({
       signal?.throwIfAborted();
       await acknowledgeIfoodOrderEvents(ackEventIds, signal);
       signal?.throwIfAborted();
-      const { error: acknowledgementWriteError } = await admin
+      const { data: persistedAckRows, error: acknowledgementWriteError } = await withIfoodSqlSignal(admin
         .from("ifood_order_events")
         .update({ acknowledged_at: new Date().toISOString() })
         .eq("restaurant_id", restaurantId)
-        .in("ifood_event_id", ackEventIds);
-      if (acknowledgementWriteError) {
-        throw new Error("ACK iFood enviado, mas não foi possível confirmar sua persistência.");
+        .in("ifood_event_id", ackEventIds)
+        .is("acknowledged_at", null)
+        .select("ifood_event_id"), signal);
+      const persistedIds = (persistedAckRows || []).map((row) => row.ifood_event_id);
+      if (acknowledgementWriteError || persistedIds.length !== ackEventIds.length ||
+          new Set(persistedIds).size !== ackEventIds.length ||
+          ackEventIds.some((id) => !persistedIds.includes(id))) {
+        throw new Error("ACK iFood possivelmente enviado; confirmação local incompleta ou ambígua.");
       }
-      acknowledgedCount = ackEventIds.length;
+      acknowledgedCount = persistedIds.length;
     }
 
-    await admin
+    await withIfoodSqlSignal(admin
       .from("ifood_integrations")
       .update({
         last_order_sync_at: new Date().toISOString(),
       })
-      .eq("restaurant_id", restaurantId);
+      .eq("restaurant_id", restaurantId), signal);
 
     const summary =
       sortedEvents.length > 0
         ? `${processedCount} evento(s) processado(s), ${alreadyProcessedEventIds.size} duplicado(s) ja processado(s), ${failedCount} falha(s) pendente(s) e ${acknowledgedCount} ACK enviado(s).`
         : "Nenhum evento novo encontrado no polling do iFood.";
 
-    await admin
+    await withIfoodSqlSignal(admin
       .from("ifood_sync_runs")
       .update({
         status: failedCount > 0 ? "partial_success" : "success",
@@ -666,7 +674,7 @@ export async function syncIfoodOrdersForRestaurant({
           ackEventIds,
         },
       })
-      .eq("id", syncRun.id);
+      .eq("id", syncRun.id), signal);
 
     return {
       eventsReceived: sortedEvents.length,
@@ -679,7 +687,7 @@ export async function syncIfoodOrdersForRestaurant({
       touchedOrders: Array.from(new Set(touchedOrders)),
     };
   } catch (error) {
-    await admin
+    await withIfoodSqlSignal(admin
       .from("ifood_sync_runs")
       .update({
         status: "error",
@@ -689,7 +697,7 @@ export async function syncIfoodOrdersForRestaurant({
           source,
         },
       })
-      .eq("id", syncRun.id);
+      .eq("id", syncRun.id), signal);
 
     throw error;
   }

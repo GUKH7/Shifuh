@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { syncIfoodOrdersWithResilience } from "@/lib/ifood/order-sync-resilience";
 import { IfoodApiError } from "@/lib/ifood/orders";
 import { createIfoodCronBudget } from "@/lib/ifood/cron-budget";
+import { withIfoodSqlSignal } from "@/lib/ifood/sql-abort";
 import {
   summarizeIfoodCronResults,
   type IfoodCronResult,
@@ -28,11 +29,11 @@ export async function GET(request: Request) {
   const budget = createIfoodCronBudget();
   try {
   const admin = createAdminClient() as any;
-  const { data: integrations, error } = await admin
+  const { data: integrations, error } = await withIfoodSqlSignal(admin
     .from("ifood_integrations")
     .select("restaurant_id, merchant_id, order_sync_enabled")
     .eq("order_sync_enabled", true)
-    .not("merchant_id", "is", null);
+    .not("merchant_id", "is", null), budget.signal);
 
   if (error) {
     return NextResponse.json(

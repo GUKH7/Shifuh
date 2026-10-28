@@ -4,6 +4,7 @@ import { syncIfoodOrdersForRestaurant } from "@/lib/ifood/order-sync";
 import { getIfoodMerchantStatus } from "@/lib/ifood/merchant";
 import { summarizeIfoodCronResults } from "@/lib/ifood/cron-result";
 import { createIfoodCronBudget } from "@/lib/ifood/cron-budget";
+import { withIfoodSqlSignal } from "@/lib/ifood/sql-abort";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -24,10 +25,10 @@ export async function GET(request: Request) {
   const budget = createIfoodCronBudget();
   try {
   const admin = createAdminClient();
-  const { data: integrations, error } = await admin
+  const { data: integrations, error } = await withIfoodSqlSignal(admin
     .from("ifood_integrations")
     .select("restaurant_id, merchant_id, order_sync_enabled")
-    .not("merchant_id", "is", null);
+    .not("merchant_id", "is", null), budget.signal);
 
   if (error) {
     return NextResponse.json(

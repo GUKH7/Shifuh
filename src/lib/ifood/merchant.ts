@@ -34,9 +34,7 @@ async function ifoodMerchantRequest<T>(
       ...(init?.headers || {}),
     },
     cache: "no-store",
-    signal: init?.signal
-      ? AbortSignal.any([init.signal, AbortSignal.timeout(12_000)])
-      : AbortSignal.timeout(12_000),
+    signal: init?.signal,
   });
 
   if (response.status === 204) return null;
@@ -64,7 +62,7 @@ export function getIfoodMerchantDetails(merchantId: string) {
 export function getIfoodMerchantStatus(merchantId: string, signal?: AbortSignal) {
   return ifoodMerchantRequest<Record<string, unknown>>(
     `/merchant/v1.0/merchants/${merchantId}/status`,
-    { signal },
+    { signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(12_000)]) : AbortSignal.timeout(12_000) },
   );
 }
 
