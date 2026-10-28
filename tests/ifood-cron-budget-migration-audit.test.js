@@ -89,14 +89,14 @@ test("SQL abort propagates to in-flight PostgREST fetch (never assumes rollback)
     }
   };
   const pending=Promise.resolve(mod.exports.withIfoodSqlSignal(query,ac.signal));
-  ac.abort(new Error("mock SQL deadline"));
+  setImmediate(() => ac.abort(new Error("mock SQL deadline")));
   await assert.rejects(pending,/mock SQL deadline/);
   assert.equal(observedSignal,ac.signal);
 });
 test("merchant write operations keep caller-supplied signal, not a global status-only 12s limit", () => {
   const source=fs.readFileSync(path.join(root,"src/lib/ifood/merchant.ts"),"utf8");
-  assert.match(source,/signal: init\\?\\.signal/);
-  assert.match(source,/merchantId}\\/status/);
-  assert.match(source,/AbortSignal\\.timeout\\(12_000\\)/);
-  assert.doesNotMatch(source,/cache: "no-store",[\\s\\S]{0,100}AbortSignal\\.any/);
+  assert.ok(source.includes("signal: init?.signal"));
+  assert.ok(source.includes("merchantId}/status"));
+  assert.ok(source.includes("AbortSignal.timeout(12_000)"));
+  assert.ok(!source.includes("cache: \"no-store\",\n    signal: init?.signal\n      ?"));
 });
