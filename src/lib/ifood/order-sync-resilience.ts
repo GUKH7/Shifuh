@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/server";
+import { withIfoodSqlSignal } from "@/lib/ifood/sql-abort";
 import { acknowledgeIfoodOrderEvents, IfoodApiError } from "@/lib/ifood/orders";
 import { syncIfoodOrdersForRestaurant } from "@/lib/ifood/order-sync";
 import { inspectIfoodQueue, isIfoodReplayEnabled, replayStoredIfoodEvents, type IfoodReplaySummary } from "@/lib/ifood/event-replay";
@@ -76,10 +77,15 @@ export function isTransientIfoodSyncError(error: unknown) {
   return false;
 }
 
-function waitForRetry(attempt: number) {
+function waitForRetry(attempt: number, signal?: AbortSignal): Promise<void> {
   const jitter = Math.floor(Math.random() * 200);
   const delay = BASE_DELAY_MS * 2 ** Math.max(0, attempt - 1) + jitter;
-  return new Promise((resolve) => setTimeout(resolve, delay));
+  return new Promise<void>((resolve, reject) => {
+    if (signal?.aborted) return reject(signal.reason);
+    const onAbort = () => { clearTimeout(timer); signal?.removeEventListener("abort", onAbort); reject(signal?.reason); };
+    const timer = setTimeout(() => { signal?.removeEventListener("abort", onAbort); resolve(); }, delay);
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
 }
 
 export function calculateNextEventRetry(retryCount: number, now = Date.now()) {
@@ -92,22 +98,23 @@ async function updateLatestSyncMetrics(
   restaurantId: string,
   attempts: number,
   durationMs: number,
+  signal?: AbortSignal,
 ) {
   const admin = createAdminClient() as any;
-  const { data } = await admin
+  const { data } = await withIfoodSqlSignal(admin
     .from("ifood_sync_runs")
     .select("id")
     .eq("restaurant_id", restaurantId)
     .eq("sync_type", "orders_polling")
     .order("created_at", { ascending: false })
     .limit(1)
-    .maybeSingle();
+    .maybeSingle(), signal);
 
   if (!data?.id) return;
-  await admin
+  await withIfoodSqlSignal(admin
     .from("ifood_sync_runs")
     .update({ attempts, duration_ms: durationMs })
-    .eq("id", data.id);
+    .eq("id", data.id), signal);
 }
 
 // Distributed ACK ownership is separate from order/event processing ownership.
@@ -120,11 +127,11 @@ async function recoverLeasedAcknowledgements(restaurantId: string, merchantId: s
 
   for (let batch = 0; batch < MAX_ACK_BATCHES_PER_RUN; batch += 1) {
     signal?.throwIfAborted();
-    const { data: claimed, error: claimError } = await admin.rpc("claim_ifood_pending_acks", {
+    const { data: claimed, error: claimError } = await withIfoodSqlSignal(admin.rpc("claim_ifood_pending_acks", {
       p_restaurant_id: restaurantId,
       p_merchant_id: merchantId,
       p_batch_size: ACK_BATCH_SIZE,
-    });
+    }), signal);
     // Fail closed: never use an unsafe direct select if the migration is absent.
     if (claimError) throw new Error("Falha ao reservar ACKs iFood no banco.");
 
@@ -154,7 +161,7 @@ async function recoverLeasedAcknowledgements(restaurantId: string, merchantId: s
     const heartbeat = () => {
       if (renewal || ownershipLost) return;
       renewal = (async () => {
-        const { data: extended, error: extensionError } = await admin
+        const { data: extended, error: extensionError } = await withIfoodSqlSignal(admin
           .from("ifood_order_events")
           .update({ ack_lease_until: new Date(Date.now() + ACK_LEASE_MS).toISOString() })
           .eq("restaurant_id", restaurantId)
@@ -163,7 +170,7 @@ async function recoverLeasedAcknowledgements(restaurantId: string, merchantId: s
           .eq("ack_lease_token", token)
           .gt("ack_lease_until", new Date().toISOString())
           .is("acknowledged_at", null)
-          .select("ifood_event_id");
+          .select("ifood_event_id"), signal);
         if (extensionError || !extended || extended.length !== ids.length) {
           throw new Error("Reserva de ACK iFood perdida durante envio.");
         }
@@ -196,7 +203,7 @@ async function recoverLeasedAcknowledgements(restaurantId: string, merchantId: s
 
     // Fence late workers: completion is valid only for the exact batch token,
     // this tenant/merchant, a still-live lease, and an unacknowledged row.
-    const { data: persisted, error: updateError } = await admin
+    const { data: persisted, error: updateError } = await withIfoodSqlSignal(admin
       .from("ifood_order_events")
       .update({
         acknowledged_at: new Date().toISOString(),
@@ -210,7 +217,7 @@ async function recoverLeasedAcknowledgements(restaurantId: string, merchantId: s
       .eq("ack_lease_token", token)
       .gt("ack_lease_until", new Date().toISOString())
       .is("acknowledged_at", null)
-      .select("ifood_event_id");
+      .select("ifood_event_id"), signal);
 
     if (updateError || !persisted || persisted.length !== ids.length) {
       // The write may already have committed despite a lost database response.
@@ -229,14 +236,14 @@ async function recoverPendingAcknowledgements(restaurantId: string, merchantId: 
   }
 
   const admin = createAdminClient() as any;
-  const { data, error } = await admin
+  const { data, error } = await withIfoodSqlSignal(admin
     .from("ifood_order_events")
     .select("ifood_event_id")
     .eq("restaurant_id", restaurantId)
     .not("processed_at", "is", null)
     .is("acknowledged_at", null)
     .order("processed_at", { ascending: true })
-    .limit(500);
+    .limit(500), signal);
 
   if (error || !data?.length) return 0;
 
@@ -252,26 +259,31 @@ async function recoverPendingAcknowledgements(restaurantId: string, merchantId: 
     await acknowledgeIfoodOrderEvents(ids, signal);
     signal?.throwIfAborted();
     const acknowledgedAt = new Date().toISOString();
-    const { error: updateError } = await admin
+    const { data: persisted, error: updateError } = await withIfoodSqlSignal(admin
       .from("ifood_order_events")
       .update({ acknowledged_at: acknowledgedAt, last_error: null })
       .eq("restaurant_id", restaurantId)
-      .in("ifood_event_id", ids);
-
-    if (updateError) throw new Error("ACK enviado, mas não foi possível registrá-lo no banco.");
-    recovered += ids.length;
+      .in("ifood_event_id", ids)
+      .is("acknowledged_at", null)
+      .select("ifood_event_id"), signal);
+    const confirmed = (persisted || []).map((row: { ifood_event_id: string }) => row.ifood_event_id);
+    if (updateError || confirmed.length !== ids.length ||
+        new Set(confirmed).size !== ids.length || ids.some((id) => !confirmed.includes(id))) {
+      throw new Error("ACK enviado, mas persistência local está ambígua; não contabilizar sucesso.");
+    }
+    recovered += confirmed.length;
   }
 
   return recovered;
 }
 
-async function schedulePendingEventRetries(restaurantId: string, reason: string, attemptedFailedEventIds: string[]) {
+async function schedulePendingEventRetries(restaurantId: string, reason: string, attemptedFailedEventIds: string[], signal?: AbortSignal) {
   // A failed polling request did not attempt any stored event. Never increment
   // all pending events or dead-letter them due to an external API outage.
   if (!attemptedFailedEventIds.length) return { scheduled: 0, deadLettered: 0 };
   const admin = createAdminClient() as any;
   const nowIso = new Date().toISOString();
-  const { data, error } = await admin
+  const { data, error } = await withIfoodSqlSignal(admin
     .from("ifood_order_events")
     .select("ifood_event_id, retry_count")
     .eq("restaurant_id", restaurantId)
@@ -280,7 +292,7 @@ async function schedulePendingEventRetries(restaurantId: string, reason: string,
     .is("dead_lettered_at", null)
     .or(`next_retry_at.is.null,next_retry_at.lte.${nowIso}`)
     .order("event_created_at", { ascending: true })
-    .limit(200);
+    .limit(200), signal);
 
   if (error || !data?.length) {
     return { scheduled: 0, deadLettered: 0 };
@@ -307,13 +319,14 @@ async function schedulePendingEventRetries(restaurantId: string, reason: string,
           last_error: reason.slice(0, 1000),
         };
 
-    const { error: updateError } = await admin
+    const { error: updateError } = await withIfoodSqlSignal(admin
       .from("ifood_order_events")
       .update(update)
       .eq("restaurant_id", restaurantId)
       .eq("ifood_event_id", row.ifood_event_id)
-      .is("processed_at", null);
+      .is("processed_at", null), signal);
 
+    signal?.throwIfAborted();
     if (updateError) continue;
     if (reachedLimit) deadLettered += 1;
     else scheduled += 1;
@@ -338,7 +351,7 @@ async function runWithRetries(params: ResilientSyncParams): Promise<IfoodSyncRes
     try {
       earlyAcknowledgementsRecovered = await recoverPendingAcknowledgements(params.restaurantId, params.merchantId, params.signal);
     } catch (error) {
-      if (error instanceof IfoodAckLeaseLostError) throw error;
+      if (error instanceof IfoodAckLeaseLostError || params.signal?.aborted) throw error;
       console.warn("ACKs iFood permanecem na fila persistente para nova tentativa.");
     }
   }
@@ -356,8 +369,9 @@ async function runWithRetries(params: ResilientSyncParams): Promise<IfoodSyncRes
         params.restaurantId,
         "Falha real ao processar o evento; nova tentativa agendada.",
         result.failedEventIds,
+        params.signal,
       );
-      await updateLatestSyncMetrics(params.restaurantId, attempt, Date.now() - startedAt);
+      await updateLatestSyncMetrics(params.restaurantId, attempt, Date.now() - startedAt, params.signal);
 
       return {
         ...result,
@@ -374,14 +388,14 @@ async function runWithRetries(params: ResilientSyncParams): Promise<IfoodSyncRes
       const message = error instanceof Error ? error.message : "Falha desconhecida na sincronização.";
       // If polling/details/ACK failed before recording an event-specific
       // failure, do not charge unrelated stored events a retry attempt.
-      await updateLatestSyncMetrics(params.restaurantId, attempt, Date.now() - startedAt);
+      if (!params.signal?.aborted) await updateLatestSyncMetrics(params.restaurantId, attempt, Date.now() - startedAt, params.signal);
 
       if (!isTransientIfoodSyncError(error) || attempt >= maxAttempts ||
           (error instanceof IfoodApiError && error.retryAfterMs !== null &&
             error.retryAfterMs > 2_500)) {
         throw error;
       }
-      await waitForRetry(attempt);
+      await waitForRetry(attempt, params.signal);
       params.signal?.throwIfAborted();
     }
   }
