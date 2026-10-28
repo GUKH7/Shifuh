@@ -266,6 +266,7 @@ async function recoverPendingAcknowledgements(restaurantId: string, merchantId: 
       .in("ifood_event_id", ids)
       .is("acknowledged_at", null)
       .select("ifood_event_id"), signal);
+    signal?.throwIfAborted();
     const confirmed = (persisted || []).map((row: { ifood_event_id: string }) => row.ifood_event_id);
     if (updateError || confirmed.length !== ids.length ||
         new Set(confirmed).size !== ids.length || ids.some((id) => !confirmed.includes(id))) {

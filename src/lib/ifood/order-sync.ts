@@ -636,6 +636,7 @@ export async function syncIfoodOrdersForRestaurant({
         .in("ifood_event_id", ackEventIds)
         .is("acknowledged_at", null)
         .select("ifood_event_id"), signal);
+      signal?.throwIfAborted();
       const persistedIds = (persistedAckRows || []).map((row) => row.ifood_event_id);
       if (acknowledgementWriteError || persistedIds.length !== ackEventIds.length ||
           new Set(persistedIds).size !== ackEventIds.length ||

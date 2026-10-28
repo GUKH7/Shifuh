@@ -48,7 +48,14 @@ class QueryBuilder {
     return this;
   }
 
-  in() {
+  in(field, ids) {
+    if (field === "ifood_event_id") this.eventIds = ids;
+    return this;
+  }
+
+  is() { return this; }
+  abortSignal(signal) {
+    this.signal = signal;
     return this;
   }
 
@@ -81,6 +88,17 @@ class QueryBuilder {
       this.state.eventUpdates.push(this.payload);
       if (this.state.failProcessedUpdate && this.payload?.processed_at) {
         return Promise.resolve({ data: null, error: { message: "database error" } });
+      }
+      if (this.payload?.acknowledged_at) {
+        if (this.state.failAckUpdate) {
+          return Promise.resolve({ data: null, error: { message: "lost database response" } });
+        }
+        const all = [...this.state.existingEvents, ...this.state.insertedEvents];
+        const selected = all.filter((x) => this.eventIds?.includes(x.ifood_event_id) &&
+          !x.acknowledged_at);
+        const rows = this.state.zeroAckRows ? [] :
+          this.state.partialAckRows ? selected.slice(0, 1) : selected;
+        return Promise.resolve({ data: rows.map((x) => ({ ifood_event_id: x.ifood_event_id })), error: null });
       }
     }
 
@@ -329,4 +347,53 @@ test("não esgota retries de eventos por indisponibilidade HTTP 504 do iFood", a
   } finally {
     console.error = originalConsoleError;
   }
+});
+
+test("legacy ACK: update of zero rows fails closed after an accepted provider response", async () => {
+  const state = { existingEvents: [], insertedEvents: [], eventUpdates: [],
+    insertedOrders: [], insertedItems: [], syncRunUpdates: [], zeroAckRows: true };
+  let sends = 0;
+  const events = [{ id:"ack-zero", code:"PLC", orderId:"order-zero", merchantId:"merchant-1" }];
+  const mock = { pollIfoodOrderEvents: async () => events,
+    getIfoodOrderDetails: async (id) => createIfoodDetails(id),
+    acknowledgeIfoodOrderEvents: async () => { sends++; },
+    mapIfoodEventCodeToStatus: () => "pending" };
+  const { syncIfoodOrdersForRestaurant } = loadOrderSync(state, mock);
+  await assert.rejects(syncIfoodOrdersForRestaurant({
+    restaurantId:"restaurant-1",merchantId:"merchant-1",source:"manual"
+  }), /confirmação local incompleta ou ambígua/);
+  assert.equal(sends, 1);
+  assert.equal(state.syncRunUpdates.at(-1).events_acknowledged, undefined);
+});
+
+test("legacy ACK: lost database response is never counted as successful", async () => {
+  const state = { existingEvents: [], insertedEvents: [], eventUpdates: [],
+    insertedOrders: [], insertedItems: [], syncRunUpdates: [], failAckUpdate: true };
+  let sends = 0;
+  const mock = { pollIfoodOrderEvents: async () =>
+    [{ id:"ack-ambiguous", code:"PLC", orderId:"order-ambiguous", merchantId:"merchant-1" }],
+    getIfoodOrderDetails: async (id) => createIfoodDetails(id),
+    acknowledgeIfoodOrderEvents: async () => { sends++; },
+    mapIfoodEventCodeToStatus: () => "pending" };
+  await assert.rejects(loadOrderSync(state, mock).syncIfoodOrdersForRestaurant({
+    restaurantId:"restaurant-1",merchantId:"merchant-1",source:"manual"
+  }), /confirmação local incompleta ou ambígua/);
+  assert.equal(sends, 1);
+});
+
+test("legacy polling does not resend ACK for a durably acknowledged event", async () => {
+  const state = { existingEvents: [{ ifood_event_id:"already-acknowledged",
+    processed_at:"2026-10-26T10:00:00Z",acknowledged_at:"2026-10-26T10:01:00Z" }],
+    insertedEvents: [],eventUpdates: [],insertedOrders: [],insertedItems: [],syncRunUpdates: [] };
+  let sends=0;
+  const mock = { pollIfoodOrderEvents: async () =>
+    [{ id:"already-acknowledged",code:"PLC",orderId:"already-ordered",merchantId:"merchant-1" }],
+    getIfoodOrderDetails: async () => { throw Error("unexpected details call"); },
+    acknowledgeIfoodOrderEvents: async () => { sends++; },
+    mapIfoodEventCodeToStatus: () => "pending" };
+  const summary=await loadOrderSync(state,mock).syncIfoodOrdersForRestaurant({
+    restaurantId:"restaurant-1",merchantId:"merchant-1",source:"manual"
+  });
+  assert.equal(summary.eventsAcknowledged,0);
+  assert.equal(sends,0);
 });

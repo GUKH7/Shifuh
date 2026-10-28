@@ -71,3 +71,32 @@ test("migration audit exposes missing entries, db-only history and timestamp dri
     ["remove_temporary_phone_otp_delivery_diagnostics"]);
   assert.equal(output.timestampDrift.length, 2);
 });
+
+test("SQL abort propagates to in-flight PostgREST fetch (never assumes rollback)", async () => {
+  const file = path.join(root, "src/lib/ifood/sql-abort.ts");
+  const compiled = ts.transpileModule(fs.readFileSync(file, "utf8"), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+  }).outputText;
+  const mod = new Module(file, module);
+  mod.filename=file; mod.paths=Module._nodeModulePaths(path.dirname(file)); mod._compile(compiled,file);
+  const ac=new AbortController();
+  let observedSignal;
+  const query={
+    abortSignal(signal) { observedSignal=signal;return this; },
+    then(resolve,reject) {
+      const rejectOnAbort=()=>reject(observedSignal.reason);
+      observedSignal.addEventListener("abort",rejectOnAbort,{once:true});
+    }
+  };
+  const pending=Promise.resolve(mod.exports.withIfoodSqlSignal(query,ac.signal));
+  ac.abort(new Error("mock SQL deadline"));
+  await assert.rejects(pending,/mock SQL deadline/);
+  assert.equal(observedSignal,ac.signal);
+});
+test("merchant write operations keep caller-supplied signal, not a global status-only 12s limit", () => {
+  const source=fs.readFileSync(path.join(root,"src/lib/ifood/merchant.ts"),"utf8");
+  assert.match(source,/signal: init\\?\\.signal/);
+  assert.match(source,/merchantId}\\/status/);
+  assert.match(source,/AbortSignal\\.timeout\\(12_000\\)/);
+  assert.doesNotMatch(source,/cache: "no-store",[\\s\\S]{0,100}AbortSignal\\.any/);
+});
