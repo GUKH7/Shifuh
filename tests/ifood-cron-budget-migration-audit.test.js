@@ -50,11 +50,13 @@ test("outbound calls and retries obey an abort signal", () => {
   assert.match(resilience, /\.eq\("ack_lease_token", token\)/);
   assert.match(resilience, /\.gt\("ack_lease_until"/);
 });
-test("legacy ACK persistence errors are not reported as durable confirmations", () => {
+test("legacy ACKs require atomic reservation and fenced durable completion", () => {
   const sync = fs.readFileSync(path.join(root, "src/lib/ifood/order-sync.ts"), "utf8");
-  assert.match(sync, /acknowledgementWriteError/);
-  assert.match(sync, /if \(acknowledgementWriteError \|\| persistedIds\.length !== ackEventIds\.length/);
-  assert.match(sync, /acknowledgedCount = persistedIds\.length/);
+  const legacy = fs.readFileSync(path.join(root, "src/lib/ifood/legacy-ack-lease.ts"), "utf8");
+  assert.match(sync, /acknowledgedCount = await deliverLegacyIfoodAcks/);
+  assert.match(legacy, /processing_lease_until\.is\.null/);
+  assert.match(legacy, /processing_lease_token", token/);
+  assert.match(legacy, /persistedIds\.length !== claimedIds\.length/);
 });
 test("migration audit exposes missing entries, db-only history and timestamp drift", () => {
   const { auditMigrationHistory } = require("../scripts/audit-migration-history.cjs");

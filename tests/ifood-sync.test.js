@@ -25,6 +25,7 @@ class QueryBuilder {
     this.state = state;
     this.operation = null;
     this.payload = null;
+    this.filters = {};
   }
 
   select() {
@@ -44,9 +45,10 @@ class QueryBuilder {
     return this;
   }
 
-  eq() {
-    return this;
-  }
+  eq(field, value) { this.filters[field] = value; return this; }
+  not() { return this; }
+  or() { return this; }
+  gt() { return this; }
 
   in(field, ids) {
     if (field === "ifood_event_id") this.eventIds = ids;
@@ -89,16 +91,29 @@ class QueryBuilder {
       if (this.state.failProcessedUpdate && this.payload?.processed_at) {
         return Promise.resolve({ data: null, error: { message: "database error" } });
       }
+      const all = [...this.state.existingEvents, ...this.state.insertedEvents];
+      if (this.payload?.processed_at) {
+        for (const row of all.filter(x => x.ifood_event_id === this.filters.ifood_event_id))
+          row.processed_at = this.payload.processed_at;
+      }
+      if (this.payload?.processing_lease_token) {
+        const rows = all.filter(x => this.eventIds?.includes(x.ifood_event_id) &&
+          x.processed_at && !x.acknowledged_at &&
+          (!x.processing_lease_until || Date.parse(x.processing_lease_until) <= Date.now()));
+        rows.forEach(x => Object.assign(x, this.payload));
+        return Promise.resolve({ data: rows.map(x => ({
+          ifood_event_id:x.ifood_event_id, processing_lease_token:x.processing_lease_token
+        })), error:null });
+      }
       if (this.payload?.acknowledged_at) {
-        if (this.state.failAckUpdate) {
-          return Promise.resolve({ data: null, error: { message: "lost database response" } });
-        }
-        const all = [...this.state.existingEvents, ...this.state.insertedEvents];
-        const selected = all.filter((x) => this.eventIds?.includes(x.ifood_event_id) &&
-          !x.acknowledged_at);
+        const selected = all.filter(x => this.eventIds?.includes(x.ifood_event_id) &&
+          !x.acknowledged_at && x.processing_lease_token === this.filters.processing_lease_token);
         const rows = this.state.zeroAckRows ? [] :
           this.state.partialAckRows ? selected.slice(0, 1) : selected;
-        return Promise.resolve({ data: rows.map((x) => ({ ifood_event_id: x.ifood_event_id })), error: null });
+        if (!this.state.failAckUpdate) rows.forEach(x => Object.assign(x, this.payload));
+        return Promise.resolve({ data: this.state.failAckUpdate ? null :
+          rows.map(x => ({ ifood_event_id:x.ifood_event_id })),
+          error:this.state.failAckUpdate ? {message:"lost database response"} : null });
       }
     }
 
@@ -165,10 +180,15 @@ function loadOrderSync(state, ifoodMock) {
       return { createAdminClient: () => createAdminMock(state) };
     }
 
-    if (request === "@/lib/ifood/orders") {
-      return ifoodMock;
+    if (request === "@/lib/ifood/orders") return ifoodMock;
+    if (request === "@/lib/ifood/legacy-ack-lease") {
+      const file = path.join(__dirname,"..","src","lib","ifood","legacy-ack-lease.ts");
+      const child = new Module(file, module.parent);
+      child.filename = file;
+      child.paths = Module._nodeModulePaths(path.dirname(file));
+      child._compile(compileTs(file), file);
+      return child.exports;
     }
-
     return originalLoad.call(this, request, parent, isMain);
   };
 
@@ -361,7 +381,7 @@ test("legacy ACK: update of zero rows fails closed after an accepted provider re
   const { syncIfoodOrdersForRestaurant } = loadOrderSync(state, mock);
   await assert.rejects(syncIfoodOrdersForRestaurant({
     restaurantId:"restaurant-1",merchantId:"merchant-1",source:"manual"
-  }), /confirmação local incompleta ou ambígua/);
+  }), /confirmação local ambígua sob lease/);
   assert.equal(sends, 1);
   assert.equal(state.syncRunUpdates.at(-1).events_acknowledged, undefined);
 });
@@ -377,7 +397,7 @@ test("legacy ACK: lost database response is never counted as successful", async 
     mapIfoodEventCodeToStatus: () => "pending" };
   await assert.rejects(loadOrderSync(state, mock).syncIfoodOrdersForRestaurant({
     restaurantId:"restaurant-1",merchantId:"merchant-1",source:"manual"
-  }), /confirmação local incompleta ou ambígua/);
+  }), /confirmação local ambígua sob lease/);
   assert.equal(sends, 1);
 });
 

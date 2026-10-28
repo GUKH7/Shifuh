@@ -22,8 +22,8 @@ test("fila persistente agenda retentativas e envia eventos excedidos para dead l
 test("ACKs pendentes são recuperados em lotes e registrados no banco", () => {
   assert.match(resilience, /recoverPendingAcknowledgements/);
   assert.match(resilience, /ACK_BATCH_SIZE = 100/);
-  assert.match(resilience, /acknowledgeIfoodOrderEvents\(ids, signal\)/);
-  assert.match(resilience, /acknowledged_at: acknowledgedAt/);
+  assert.match(resilience, /return deliverLegacyIfoodAcks\(/);
+  assert.match(fs.readFileSync("src/lib/ifood/legacy-ack-lease.ts","utf8"), /acknowledged_at: new Date\(\)\.toISOString\(\)/);
 });
 
 test("cron resiliente isola restaurantes e limita concorrência", () => {
