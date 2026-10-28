@@ -1,11 +1,14 @@
 import { createAdminClient } from "@/lib/supabase/server";
 // PostgREST can abort its HTTP request, but an already committed write is
 // still ambiguous and must never be counted without reconciliation.
-function withIfoodSqlSignal<T extends { abortSignal(signal: AbortSignal): T }>(
+function withIfoodSqlSignal<T>(
   query: T, signal?: AbortSignal,
 ): T {
   signal?.throwIfAborted();
-  return signal ? query.abortSignal(signal) : query;
+  // PostgREST abortSignal mutates the query builder but returns a less specific
+  // base type. Preserve T so .single(), .select() and typed data stay intact.
+  if (signal) (query as T & { abortSignal(signal: AbortSignal): unknown }).abortSignal(signal);
+  return query;
 }
 import { acknowledgeIfoodOrderEvents, IfoodApiError } from "@/lib/ifood/orders";
 import { syncIfoodOrdersForRestaurant } from "@/lib/ifood/order-sync";
@@ -276,7 +279,7 @@ async function recoverPendingAcknowledgements(restaurantId: string, merchantId: 
     signal?.throwIfAborted();
     const confirmed = (persisted || []).map((row: { ifood_event_id: string }) => row.ifood_event_id);
     if (updateError || confirmed.length !== ids.length ||
-        new Set(confirmed).size !== ids.length || ids.some((id) => !confirmed.includes(id))) {
+        new Set(confirmed).size !== ids.length || ids.some((id: string) => !confirmed.includes(id))) {
       throw new Error("ACK enviado, mas persistência local está ambígua; não contabilizar sucesso.");
     }
     recovered += confirmed.length;

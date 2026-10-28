@@ -1,8 +1,11 @@
 // PostgREST cancellation aborts the HTTP request, NOT a committed transaction.
 // Callers must treat aborted writes and lost responses as ambiguous.
-export function withIfoodSqlSignal<T extends { abortSignal(signal: AbortSignal): T }>(
+export function withIfoodSqlSignal<T>(
   query: T, signal?: AbortSignal,
 ): T {
   signal?.throwIfAborted();
-  return signal ? query.abortSignal(signal) : query;
+  // PostgREST abortSignal mutates the query builder but returns a less specific
+  // base type. Preserve T so .single(), .select() and typed data stay intact.
+  if (signal) (query as T & { abortSignal(signal: AbortSignal): unknown }).abortSignal(signal);
+  return query;
 }

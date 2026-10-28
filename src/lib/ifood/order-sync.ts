@@ -2,11 +2,14 @@ import { createAdminClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/database.types";
 // PostgREST can abort its HTTP request, but an already committed write is
 // still ambiguous and must never be counted without reconciliation.
-function withIfoodSqlSignal<T extends { abortSignal(signal: AbortSignal): T }>(
+function withIfoodSqlSignal<T>(
   query: T, signal?: AbortSignal,
 ): T {
   signal?.throwIfAborted();
-  return signal ? query.abortSignal(signal) : query;
+  // PostgREST abortSignal mutates the query builder but returns a less specific
+  // base type. Preserve T so .single(), .select() and typed data stay intact.
+  if (signal) (query as T & { abortSignal(signal: AbortSignal): unknown }).abortSignal(signal);
+  return query;
 }
 import {
   acknowledgeIfoodOrderEvents,
