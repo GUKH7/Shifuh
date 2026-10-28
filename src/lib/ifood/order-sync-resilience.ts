@@ -12,6 +12,7 @@ function withIfoodSqlSignal<T>(
 }
 import { acknowledgeIfoodOrderEvents, IfoodApiError } from "@/lib/ifood/orders";
 import { syncIfoodOrdersForRestaurant } from "@/lib/ifood/order-sync";
+import { deliverLegacyIfoodAcks } from "@/lib/ifood/legacy-ack-lease";
 import { inspectIfoodQueue, isIfoodReplayEnabled, replayStoredIfoodEvents, type IfoodReplaySummary } from "@/lib/ifood/event-replay";
 
 type SyncSource = "manual" | "cron";
@@ -257,35 +258,8 @@ async function recoverPendingAcknowledgements(restaurantId: string, merchantId: 
 
   if (error || !data?.length) return 0;
 
-  let recovered = 0;
-  for (let index = 0; index < data.length; index += ACK_BATCH_SIZE) {
-    signal?.throwIfAborted();
-    const ids = data
-      .slice(index, index + ACK_BATCH_SIZE)
-      .map((row: { ifood_event_id: string }) => row.ifood_event_id)
-      .filter(Boolean);
-    if (!ids.length) continue;
-
-    await acknowledgeIfoodOrderEvents(ids, signal);
-    signal?.throwIfAborted();
-    const acknowledgedAt = new Date().toISOString();
-    const { data: persisted, error: updateError } = await withIfoodSqlSignal(admin
-      .from("ifood_order_events")
-      .update({ acknowledged_at: acknowledgedAt, last_error: null })
-      .eq("restaurant_id", restaurantId)
-      .in("ifood_event_id", ids)
-      .is("acknowledged_at", null)
-      .select("ifood_event_id"), signal);
-    signal?.throwIfAborted();
-    const confirmed = (persisted || []).map((row: { ifood_event_id: string }) => row.ifood_event_id);
-    if (updateError || confirmed.length !== ids.length ||
-        new Set(confirmed).size !== ids.length || ids.some((id: string) => !confirmed.includes(id))) {
-      throw new Error("ACK enviado, mas persistência local está ambígua; não contabilizar sucesso.");
-    }
-    recovered += confirmed.length;
-  }
-
-  return recovered;
+  const ids = (data as Array<{ ifood_event_id: string }>).map(row => row.ifood_event_id).filter(Boolean);
+  return deliverLegacyIfoodAcks(admin, restaurantId, merchantId, ids, acknowledgeIfoodOrderEvents, signal);
 }
 
 async function schedulePendingEventRetries(restaurantId: string, reason: string, attemptedFailedEventIds: string[], signal?: AbortSignal) {

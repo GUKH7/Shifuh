@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/database.types";
+import { deliverLegacyIfoodAcks } from "@/lib/ifood/legacy-ack-lease";
 // PostgREST can abort its HTTP request, but an already committed write is
 // still ambiguous and must never be counted without reconciliation.
 function withIfoodSqlSignal<T>(
@@ -636,24 +637,9 @@ export async function syncIfoodOrdersForRestaurant({
     // may call iFood. Direct polling ACKs would bypass distributed leases
     // and allow independent workers to send duplicate acknowledgements.
     if (ackEventIds.length > 0 && process.env.IFOOD_PERSISTED_REPLAY_ENABLED !== "true") {
-      signal?.throwIfAborted();
-      await acknowledgeIfoodOrderEvents(ackEventIds, signal);
-      signal?.throwIfAborted();
-      const { data: persistedAckRows, error: acknowledgementWriteError } = await withIfoodSqlSignal(admin
-        .from("ifood_order_events")
-        .update({ acknowledged_at: new Date().toISOString() })
-        .eq("restaurant_id", restaurantId)
-        .in("ifood_event_id", ackEventIds)
-        .is("acknowledged_at", null)
-        .select("ifood_event_id"), signal);
-      signal?.throwIfAborted();
-      const persistedIds = (persistedAckRows || []).map((row) => row.ifood_event_id);
-      if (acknowledgementWriteError || persistedIds.length !== ackEventIds.length ||
-          new Set(persistedIds).size !== ackEventIds.length ||
-          ackEventIds.some((id) => !persistedIds.includes(id))) {
-        throw new Error("ACK iFood possivelmente enviado; confirmação local incompleta ou ambígua.");
-      }
-      acknowledgedCount = persistedIds.length;
+      acknowledgedCount = await deliverLegacyIfoodAcks(
+        admin, restaurantId, merchantId, ackEventIds, acknowledgeIfoodOrderEvents, signal,
+      );
     }
 
     await withIfoodSqlSignal(admin
