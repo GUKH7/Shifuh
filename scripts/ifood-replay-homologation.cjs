@@ -80,6 +80,9 @@ async function main() {
     const originalLoad = Module._load;
     Module._load = function(request, parent, isMain) {
       if (Object.hasOwn(moduleMocks, request)) return moduleMocks[request];
+    if (request === "@/lib/ifood/legacy-ack-lease") {
+      return loadTs("src/lib/ifood/legacy-ack-lease.ts", {});
+    }
       return originalLoad.call(this, request, parent, isMain);
     };
     try {

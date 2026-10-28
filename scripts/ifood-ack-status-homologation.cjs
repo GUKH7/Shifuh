@@ -34,6 +34,9 @@ function loadTs(relative,mocks) {
   const previous=Module._load;
   Module._load=function(request,parent,isMain){
     if(Object.hasOwn(mocks,request)) return mocks[request];
+    if (request === "@/lib/ifood/legacy-ack-lease") {
+      return loadTs("src/lib/ifood/legacy-ack-lease.ts", {});
+    }
     return previous.call(this,request,parent,isMain);
   };
   try {
