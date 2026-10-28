@@ -185,6 +185,12 @@ jobs:
           IFOOD_PERSISTED_REPLAY_ENABLED: "true"
         run: node scripts/ifood-ack-multiworker-homologation.cjs
 
+      - name: Validate legacy iFood ACK leases, ambiguous SQL and deadline on local Postgres
+        env:
+          IFOOD_LEGACY_ACK_E2E: "1"
+          IFOOD_PERSISTED_REPLAY_ENABLED: "false"
+        run: node scripts/ifood-legacy-ack-homologation.cjs
+
       - name: Install Playwright Chromium
         shell: bash
         run: |
