@@ -22,6 +22,7 @@ const ADMIN_SEARCH_ITEMS = [
   },
   { label: "Pagamentos", href: "/admin/payments", keywords: ["pagamentos", "pix", "cartao", "dinheiro"] },
   { label: "Avaliações", href: "/admin/reviews", keywords: ["reviews", "avaliacoes", "notas"] },
+  { label: "Preparar loja", href: "/admin/onboarding", keywords: ["onboarding", "checklist", "primeira configuracao", "preparar"] },
   { label: "Configurações", href: "/admin/settings", keywords: ["configuracoes", "ajustes", "loja"] },
   { label: "Admin da plataforma", href: "/admin/platform", keywords: ["plataforma", "lojas", "rbac", "auditoria"] },
 ];

@@ -5,7 +5,8 @@
   ],
   "git": {
     "deploymentEnabled": {
-      "main": false
+      "main": false,
+      "feature/onboarding-pr-a-20261029": false
     }
   }
 }
