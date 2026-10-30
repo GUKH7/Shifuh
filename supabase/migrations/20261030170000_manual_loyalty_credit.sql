@@ -27,8 +27,9 @@ declare
 begin
   if v_actor is null then raise exception 'Authentication required' using errcode = '42501'; end if;
   if p_customer_id is null or p_request_id is null
-     or p_mode not in ('spend','points')
+     or p_mode is null or p_mode not in ('spend','points')
      or p_amount is null or p_amount <= 0 or p_amount > 1000000
+     or (p_mode = 'spend' and p_amount <> round(p_amount, 2))
      or length(btrim(coalesce(p_reason,''))) not between 5 and 200 then
     raise exception 'Invalid manual credit inputs' using errcode = '22023';
   end if;
