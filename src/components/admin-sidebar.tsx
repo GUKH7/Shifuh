@@ -10,6 +10,7 @@ import {
   ExternalLink,
   History,
   LayoutDashboard,
+  Lightbulb,
   ListChecks,
   LogOut,
   Percent,
@@ -24,6 +25,7 @@ import {
 
 const MENU_ITEMS = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
+  { name: "Ações comerciais", href: "/admin/commercial-actions", icon: Lightbulb },
   { name: "Pedidos", href: "/admin/orders", icon: ShoppingBag },
   { name: "Histórico", href: "/admin/history", icon: History },
   { name: "Cardápios", href: "/admin/menu", icon: UtensilsCrossed },
