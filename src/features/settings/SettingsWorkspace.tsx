@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { createBrowserClient } from "@supabase/ssr";
 import { useRouter } from "next/navigation";
 import {
@@ -1099,6 +1100,15 @@ export default function SettingsPage() {
 
   return (
     <AdminPageShell className="space-y-6 pb-20">
+      <nav aria-label="Configuração inicial da loja" className="surface-card flex flex-col gap-3 rounded-2xl p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-bold text-gray-950">Configuração completa da loja</p>
+          <p className="text-xs text-gray-500">Salve suas alterações nesta página e confira a prontidão no checklist.</p>
+        </div>
+        <Link href="/admin/onboarding" className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-[var(--line)] px-4 text-sm font-bold text-[var(--brand)]">
+          Voltar ao checklist
+        </Link>
+      </nav>
       <AdminPageHeader
         title="Configurações"
         description="Atualize dados da loja, identidade visual e regras de entrega."
