@@ -6,7 +6,8 @@
   "git": {
     "deploymentEnabled": {
       "main": false,
-      "feature/onboarding-pr-a-20261029": false
+      "feature/onboarding-pr-a-20261029": false,
+      "feat/store-setup-onboarding-20261030": false
     }
   }
 }

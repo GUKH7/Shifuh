@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { createBrowserClient } from "@supabase/ssr";
 import { CheckCircle2, CreditCard, Loader2, Save, WalletCards } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -130,6 +131,10 @@ export default function PaymentMethodsSettingsPage() {
 
   return (
     <AdminPageShell className="space-y-6 pb-20">
+      <nav aria-label="Configuração inicial" className="surface-card flex flex-col gap-2 rounded-2xl p-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-gray-600">Depois de salvar, confira a atualização do checklist.</p>
+        <Link href="/admin/onboarding" className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-[var(--line)] px-4 text-sm font-bold text-[var(--brand)]">Voltar ao checklist</Link>
+      </nav>
       <AdminPageHeader
         title="Formas de pagamento"
         description="Defina quais opções o cliente poderá selecionar ao finalizar o pedido."

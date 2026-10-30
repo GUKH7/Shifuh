@@ -118,3 +118,19 @@ test("preview is disabled for this branch without changing the main deployment g
   assert.equal(config.git.deploymentEnabled.main,false);
   assert.equal(config.git.deploymentEnabled["feature/onboarding-pr-a-20261029"],false);
 });
+
+test("onboarding links to the exact existing configuration editors",()=>{
+  const valid=input();
+  const incompleteIdentity=evaluateOnboardingReadiness(input({restaurant:{name:""}}));
+  assert.equal(section(incompleteIdentity,"identity").href,"/admin/settings?setup=identity");
+  const missingHours=evaluateOnboardingReadiness(input({restaurant:{work_hours:[]}}));
+  assert.equal(section(missingHours,"operations").href,"/admin/settings?setup=hours");
+  const missingDelivery=evaluateOnboardingReadiness(input({restaurant:{pickup_enabled:false,delivery_tiers:[]}}));
+  assert.equal(section(missingDelivery,"operations").href,"/admin/settings?setup=delivery");
+  assert.equal(section(evaluateOnboardingReadiness(valid),"payments").href,"/admin/settings/payments");
+});
+test("the current feature branch and main are explicitly denied Vercel deployments",()=>{
+  const config=JSON.parse(fs.readFileSync(path.join(root,"vercel.json"),"utf8"));
+  assert.equal(config.git.deploymentEnabled.main,false);
+  assert.equal(config.git.deploymentEnabled["feat/store-setup-onboarding-20261030"],false);
+});

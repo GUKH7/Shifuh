@@ -9,6 +9,7 @@ import { AdminPageHeader, AdminPageShell } from "@/components/ui/admin-primitive
 import { AdminErrorState, AdminPageSkeleton } from "@/components/ui/admin-page-states";
 import { getCurrentRestaurant } from "@/lib/supabase/restaurant";
 import { evaluateOnboardingReadiness, type OnboardingReadiness } from "./readiness";
+import { getNextSetupStep, shouldRefreshSetupOnFocus } from "./navigation";
 
 const ICONS = [Store, Truck, ShoppingBag, CreditCard];
 
@@ -58,12 +59,27 @@ export default function OnboardingWorkspace() {
 
   useEffect(() => { void reload(); }, [reload]);
 
+  // Existing settings forms persist independently. Re-check their saved data
+  // when the merchant returns to this tab, without guessing save success.
+  useEffect(() => {
+    const onFocus = () => { if (shouldRefreshSetupOnFocus(document.visibilityState)) void reload(); };
+    const onVisibility = () => { if (shouldRefreshSetupOnFocus(document.visibilityState)) void reload(); };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [reload]);
+
   if (loading) return <AdminPageSkeleton ariaLabel="Conferindo a configuração da loja" metrics={4} />;
   if (error) return <AdminErrorState title="Não foi possível conferir sua loja" description={error} onRetry={() => void reload()} />;
   if (!readiness) return null;
 
+  const nextStep = getNextSetupStep(readiness);
+
   return (
-    <AdminPageShell className="space-y-6 pb-24">
+    <AdminPageShell className="space-y-6 pb-32 sm:pb-24">
       <AdminPageHeader
         title="Preparar minha loja"
         description="Veja o que está pronto e avance pelas configurações já existentes."
@@ -99,6 +115,21 @@ export default function OnboardingWorkspace() {
             style={{ width: readiness.percent + "%" }} />
         </div>
       </section>
+      {nextStep ? (
+        <section aria-label="Próximo passo recomendado" className="surface-card rounded-[24px] p-4 sm:p-5">
+          <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--brand)]">Continue de onde parou</p>
+          <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <h2 className="font-black text-gray-950">{nextStep.title}</h2>
+              <p className="mt-1 text-sm text-gray-600">{nextStep.issues[0]}</p>
+            </div>
+            <Link href={nextStep.href}
+              className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-2xl bg-[var(--brand)] px-5 py-3 text-sm font-bold text-white">
+              Abrir configuração <ArrowRight size={16} />
+            </Link>
+          </div>
+        </section>
+      ) : null}
       <section aria-label="Checklist de preparação" className="grid gap-3 lg:grid-cols-2">
         {readiness.steps.map((step,index) => {
           const Icon = ICONS[index];
@@ -166,6 +197,13 @@ export default function OnboardingWorkspace() {
           </Link>
         </div>
       </section>
+      {nextStep ? (
+        <nav aria-label="Próxima configuração" className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--line)] bg-white/95 px-4 py-3 shadow-lg backdrop-blur sm:hidden">
+          <Link href={nextStep.href} className="mx-auto flex min-h-12 max-w-lg items-center justify-center gap-2 rounded-2xl bg-[var(--brand)] px-4 text-sm font-bold text-white">
+            Continuar: {nextStep.title} <ChevronRight size={17} />
+          </Link>
+        </nav>
+      ) : null}
       <p className="px-1 text-xs leading-5 text-gray-500">
         Este checklist é somente de leitura: não cria pedidos, altera produtos, confirma pagamentos ou ativa integrações.
         Dados válidos não comprovam revisão manual de configurações padrão.

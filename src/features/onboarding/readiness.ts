@@ -74,8 +74,8 @@ export function evaluateOnboardingReadiness(input: ReadinessInput): OnboardingRe
   const payments = configuredPayments.length ? [] : ["Confira e salve pelo menos uma forma de pagamento."];
 
   const steps = [
-    buildStep("identity", "Minha loja", "Nome, link e telefone de contato.", "/admin/settings", identity),
-    buildStep("operations", "Atendimento", "Horários e entrega ou retirada.", "/admin/settings", operations),
+    buildStep("identity", "Minha loja", "Nome, link e telefone de contato.", "/admin/settings?setup=identity", identity),
+    buildStep("operations", "Atendimento", "Horários e entrega ou retirada.", operations.some(issue => issue.includes("horários")) ? "/admin/settings?setup=hours" : "/admin/settings?setup=delivery", operations),
     buildStep("catalog", "Cardápio", "Uma categoria ativa e um produto disponível.", "/admin/menu", catalog),
     buildStep("payments", "Pagamentos", "Meios aceitos diretamente pela loja.", "/admin/settings/payments", payments)
   ];

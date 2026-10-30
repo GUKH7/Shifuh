@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { ChevronDown, ChevronRight, CircleHelp, WalletCards } from "lucide-react";
 import { DeliveryRulesEnhancer } from "./DeliveryRulesEnhancer";
 
@@ -77,6 +77,14 @@ export function CollapsibleSection({
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const copy = resolveCopy(title, description, sectionCopyOverrides);
   const showDeliveryRules = title === "Taxas de entrega";
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get("setup");
+    const target = requested === "identity" ? "Dados da loja"
+      : requested === "hours" ? "Horários de funcionamento"
+      : requested === "delivery" ? "Taxas de entrega"
+      : null;
+    if (target === title) setIsOpen(true);
+  }, [title]);
 
   return (
     <section className={`surface-card rounded-[28px] p-4 sm:p-6 ${className}`}>
