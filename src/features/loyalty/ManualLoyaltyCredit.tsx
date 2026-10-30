@@ -23,6 +23,8 @@ export default function ManualLoyaltyCredit() {
   const [error, setError] = useState("");
   const [confirmation, setConfirmation] = useState(false);
   const [requestId, setRequestId] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [success, setSuccess] = useState("");
 
   const reload = useCallback(async () => {
     setLoading(true); setError("");
@@ -56,12 +58,37 @@ export default function ManualLoyaltyCredit() {
     else if (reason.trim().length < 5) throw new Error("Informe o motivo do crédito.");
   } catch (cause) { validationError = cause instanceof Error ? cause.message : "Dados inválidos."; }
 
+  const submitCredit = async () => {
+    if (!confirmation || !program || !customerId || saving) return;
+    try {
+      const verified = validateManualCredit({customerId,requestId,reason,points});
+      setSaving(true); setError(""); setSuccess("");
+      // Single database transaction: authorization, points calculation, wallet update and audit log.
+      const {data,error: rpcError} = await client.rpc("credit_loyalty_points_manual", {
+        p_customer_id: verified.customerId,
+        p_request_id: verified.requestId,
+        p_mode: mode,
+        p_amount: Number(amount.replace(",", ".")),
+        p_reason: verified.reason,
+      });
+      if (rpcError) throw rpcError;
+      const result = Array.isArray(data) ? data[0] : data;
+      if (!result) throw new Error("O banco não confirmou o crédito.");
+      setSuccess(result.was_duplicate ? "Este crédito já havia sido registrado. Nenhum ponto duplicado." : "Crédito confirmado e registrado no extrato.");
+      setConfirmation(false); setRequestId(""); setAmount("");
+      await reload();
+    } catch (cause) {
+      // Preserve requestId on timeout or ambiguous responses: retry must not duplicate.
+      setError(cause instanceof Error ? cause.message : "Não foi possível confirmar o crédito.");
+    } finally { setSaving(false); }
+  };
   return <section className="surface-card space-y-4 rounded-3xl p-4 sm:p-6" aria-labelledby="manual-credit-title">
     <div className="flex items-start gap-3">
       <span className="rounded-2xl bg-orange-50 p-3 text-[var(--brand)]"><Coins size={21}/></span>
       <div><h2 id="manual-credit-title" className="text-xl font-black text-gray-950">Crédito por compra presencial</h2>
         <p className="mt-1 text-sm text-gray-600">Prepare o lançamento de pontos para clientes que compraram diretamente no restaurante.</p></div>
     </div>
+    {success ? <p role="status" className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">{success}</p> : null}
     {loading ? <p role="status" className="text-sm text-gray-600">Carregando clientes...</p> : error ? <div role="alert" className="text-sm text-red-700">{error}<button type="button" onClick={() => void reload()} className="ml-3 underline">Tentar novamente</button></div> : <>
       {customers.length === 0 ? <p role="status" className="rounded-2xl bg-gray-50 p-4 text-sm">Ainda não há clientes cadastrados nesta loja.</p> : null}
       <div className="grid gap-3 sm:grid-cols-2">
@@ -91,10 +118,11 @@ export default function ManualLoyaltyCredit() {
       {!confirmation ? <button type="button" disabled={!!validationError || !selected} onClick={()=>{setRequestId(crypto.randomUUID());setConfirmation(true);}} className="min-h-12 w-full rounded-2xl bg-[var(--brand)] px-4 font-bold text-white disabled:cursor-not-allowed disabled:opacity-40">Revisar crédito</button> :
         <div role="status" className="space-y-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
           <p className="text-sm font-bold">Confirmação: {selected?.phone ?? "Cliente"} receberia {points} pontos por {reason.trim()}.</p>
-          <p className="text-sm text-amber-900">Crédito ainda não habilitado: falta validar a operação atômica com histórico e proteção contra duplicações no servidor.</p>
+          <p className="text-sm text-amber-900">Confirme somente uma compra presencial legítima. Esta ação altera o saldo e registra quem realizou o crédito.</p>
+          <button type="button" disabled={saving || !!validationError} onClick={() => void submitCredit()} className="min-h-11 w-full rounded-xl bg-[var(--brand)] px-4 text-sm font-bold text-white disabled:opacity-50">{saving ? "Registrando..." : "Confirmar crédito"}</button>
           <button type="button" onClick={()=>setConfirmation(false)} className="min-h-11 rounded-xl border border-amber-300 bg-white px-4 text-sm font-bold">Voltar e editar</button>
         </div>}
     </>}
-    <p className="flex items-start gap-2 text-xs leading-5 text-gray-500"><ShieldAlert size={16} className="shrink-0"/> Prévia somente leitura. Nenhum ponto será creditado até o backend transacional ser implementado e homologado.</p>
+    <p className="flex items-start gap-2 text-xs leading-5 text-gray-500"><ShieldAlert size={16} className="shrink-0"/> O crédito depende da migração transacional homologada no banco. Nunca repita o lançamento com um identificador novo se o resultado anterior estiver incerto.</p>
   </section>;
 }
