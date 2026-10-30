@@ -10,6 +10,7 @@ import {
   ExternalLink,
   History,
   LayoutDashboard,
+  ListChecks,
   LogOut,
   Percent,
   Settings,
@@ -29,6 +30,7 @@ const MENU_ITEMS = [
   { name: "Clientes", href: "/admin/clients", icon: Users },
   { name: "Promoções", href: "/admin/promotions", icon: Percent },
   { name: "Avaliações", href: "/admin/reviews", icon: Star },
+  { name: "Preparar loja", href: "/admin/onboarding", icon: ListChecks },
   { name: "Configurações", href: "/admin/settings", icon: Settings },
 ];
 

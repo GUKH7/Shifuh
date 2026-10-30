@@ -44,7 +44,10 @@ test("deployment guard fails closed for unsuccessful, missing or unrelated CI co
 
 test("Vercel keeps Git auto-deploy of main disabled independently of preview project settings", () => {
   const config = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "vercel.json"), "utf8"));
-  assert.deepEqual(config.git.deploymentEnabled, { main: false });
+  assert.deepEqual(config.git.deploymentEnabled, {
+    main: false,
+    "feature/onboarding-pr-a-20261029": false,
+  });
   assert.deepEqual(config.regions, ["pdx1"]);
 });
 
