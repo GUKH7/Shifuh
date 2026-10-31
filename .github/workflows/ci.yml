@@ -204,6 +204,14 @@ jobs:
       - name: Run commercial E2E
         run: npm run test:e2e:commercial
 
+      - name: Validate manual loyalty points against isolated local Supabase
+        env:
+          MANUAL_LOYALTY_LOCAL_E2E: "1"
+        run: node scripts/manual-loyalty-credit-homologation.mjs
+
+      - name: Validate manual credit mobile confirmation
+        run: NEXT_DIST_DIR=.next-e2e npx playwright test tests/e2e/manual-credit-mobile.spec.ts --project=mobile-chrome --workers=1
+
       - name: Upload E2E diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
