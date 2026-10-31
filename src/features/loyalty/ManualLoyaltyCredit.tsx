@@ -21,6 +21,7 @@ export default function ManualLoyaltyCredit() {
   const [reason, setReason] = useState("Compra presencial");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [creditError, setCreditError] = useState("");
   const [confirmation, setConfirmation] = useState(false);
   const [requestId, setRequestId] = useState("");
   const [saving, setSaving] = useState(false);
@@ -62,7 +63,7 @@ export default function ManualLoyaltyCredit() {
     if (!confirmation || !program || !customerId || saving) return;
     try {
       const verified = validateManualCredit({customerId,requestId,reason,points});
-      setSaving(true); setError(""); setSuccess("");
+      setSaving(true); setCreditError(""); setSuccess("");
       // Single database transaction: authorization, points calculation, wallet update and audit log.
       const {data,error: rpcError} = await client.rpc("credit_loyalty_points_manual", {
         p_customer_id: verified.customerId,
@@ -79,7 +80,7 @@ export default function ManualLoyaltyCredit() {
       await reload();
     } catch (cause) {
       // Preserve requestId on timeout or ambiguous responses: retry must not duplicate.
-      setError(cause instanceof Error ? cause.message : "Não foi possível confirmar o crédito.");
+      setCreditError(cause instanceof Error ? cause.message : "Não foi possível confirmar o crédito.");
     } finally { setSaving(false); }
   };
   return <section className="surface-card space-y-4 rounded-3xl p-4 sm:p-6" aria-labelledby="manual-credit-title">
@@ -93,34 +94,35 @@ export default function ManualLoyaltyCredit() {
       {customers.length === 0 ? <p role="status" className="rounded-2xl bg-gray-50 p-4 text-sm">Ainda não há clientes cadastrados nesta loja.</p> : null}
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="space-y-1 text-sm font-bold text-gray-700">Cliente
-          <select value={customerId} onChange={event=>{setCustomerId(event.target.value);setConfirmation(false);}} className="min-h-12 w-full rounded-2xl border border-[var(--line)] bg-white px-3 text-base">
+          <select value={customerId} disabled={saving || !!creditError} onChange={event=>{setCustomerId(event.target.value);setConfirmation(false);}} className="min-h-12 w-full rounded-2xl border border-[var(--line)] bg-white px-3 text-base">
             <option value="">Selecione o cliente</option>{customers.map(c=><option key={c.id} value={c.id}>{c.phone || "Cliente sem telefone"} — {c.id.slice(0,8)}</option>)}
           </select>
         </label>
         <div className="rounded-2xl bg-orange-50 p-3"><p className="text-xs font-bold text-gray-600">Saldo atual</p><p className="text-xl font-black">{balance} pontos</p></div>
       </div>
       <div role="group" aria-label="Forma de calcular os pontos" className="flex flex-col gap-2 sm:flex-row">
-        <button type="button" aria-pressed={mode==="spend"} onClick={()=>{setMode("spend");setConfirmation(false);}} className={`min-h-11 flex-1 rounded-xl border px-4 text-sm font-bold ${mode==="spend"?"border-[var(--brand)] bg-orange-50":"border-[var(--line)]"}`}>Valor da compra</button>
-        <button type="button" aria-pressed={mode==="points"} onClick={()=>{setMode("points");setConfirmation(false);}} className={`min-h-11 flex-1 rounded-xl border px-4 text-sm font-bold ${mode==="points"?"border-[var(--brand)] bg-orange-50":"border-[var(--line)]"}`}>Pontos diretos</button>
+        <button type="button" aria-pressed={mode==="spend"} disabled={saving || !!creditError} onClick={()=>{setMode("spend");setConfirmation(false);}} className={`min-h-11 flex-1 rounded-xl border px-4 text-sm font-bold ${mode==="spend"?"border-[var(--brand)] bg-orange-50":"border-[var(--line)]"}`}>Valor da compra</button>
+        <button type="button" aria-pressed={mode==="points"} disabled={saving || !!creditError} onClick={()=>{setMode("points");setConfirmation(false);}} className={`min-h-11 flex-1 rounded-xl border px-4 text-sm font-bold ${mode==="points"?"border-[var(--brand)] bg-orange-50":"border-[var(--line)]"}`}>Pontos diretos</button>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="space-y-1 text-sm font-bold text-gray-700">{mode==="spend"?"Valor da compra (R$)":"Quantidade de pontos"}
-          <input inputMode="decimal" value={amount} onChange={event=>{setAmount(event.target.value);setConfirmation(false);}} placeholder={mode==="spend"?"35,00":"35"} className="min-h-12 w-full rounded-2xl border border-[var(--line)] px-3 text-base"/>
+          <input inputMode="decimal" value={amount} disabled={saving || !!creditError} onChange={event=>{setAmount(event.target.value);setConfirmation(false);}} placeholder={mode==="spend"?"35,00":"35"} className="min-h-12 w-full rounded-2xl border border-[var(--line)] px-3 text-base"/>
         </label>
         <label className="space-y-1 text-sm font-bold text-gray-700">Motivo
-          <input value={reason} maxLength={200} onChange={event=>{setReason(event.target.value);setConfirmation(false);}} className="min-h-12 w-full rounded-2xl border border-[var(--line)] px-3 text-base"/>
+          <input value={reason} maxLength={200} disabled={saving || !!creditError} onChange={event=>{setReason(event.target.value);setConfirmation(false);}} className="min-h-12 w-full rounded-2xl border border-[var(--line)] px-3 text-base"/>
         </label>
       </div>
       <div className="rounded-2xl bg-gray-50 p-4" aria-live="polite"><p className="text-xs font-bold text-gray-500">Simulação do crédito</p>
         <p className="text-2xl font-black text-gray-950">+{points} pontos</p>
         {validationError && amount ? <p className="mt-2 text-xs text-amber-800">{validationError}</p> : null}
       </div>
+      {creditError ? <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{creditError} Tente novamente com o mesmo identificador de operação, sem criar outro lançamento.</p> : null}
       {!confirmation ? <button type="button" disabled={!!validationError || !selected} onClick={()=>{setRequestId(crypto.randomUUID());setConfirmation(true);}} className="min-h-12 w-full rounded-2xl bg-[var(--brand)] px-4 font-bold text-white disabled:cursor-not-allowed disabled:opacity-40">Revisar crédito</button> :
         <div role="status" className="space-y-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
           <p className="text-sm font-bold">Confirmação: {selected?.phone ?? "Cliente"} receberia {points} pontos por {reason.trim()}.</p>
           <p className="text-sm text-amber-900">Confirme somente uma compra presencial legítima. Esta ação altera o saldo e registra quem realizou o crédito.</p>
           <button type="button" disabled={saving || !!validationError} onClick={() => void submitCredit()} className="min-h-11 w-full rounded-xl bg-[var(--brand)] px-4 text-sm font-bold text-white disabled:opacity-50">{saving ? "Registrando..." : "Confirmar crédito"}</button>
-          <button type="button" onClick={()=>setConfirmation(false)} className="min-h-11 rounded-xl border border-amber-300 bg-white px-4 text-sm font-bold">Voltar e editar</button>
+          <button type="button" disabled={saving || !!creditError} onClick={()=>setConfirmation(false)} className="min-h-11 rounded-xl border border-amber-300 bg-white px-4 text-sm font-bold disabled:opacity-50">Voltar e editar</button>
         </div>}
     </>}
     <p className="flex items-start gap-2 text-xs leading-5 text-gray-500"><ShieldAlert size={16} className="shrink-0"/> O crédito depende da migração transacional homologada no banco. Nunca repita o lançamento com um identificador novo se o resultado anterior estiver incerto.</p>
