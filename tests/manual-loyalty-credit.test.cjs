@@ -1,0 +1,22 @@
+"use strict";
+const assert = require("node:assert/strict");
+const test = require("node:test");
+const fs = require("node:fs");
+const path = require("node:path");
+const Module = require("node:module");
+const ts = require("typescript");
+const sourcePath = path.join(__dirname,"../src/features/loyalty/manual-credit.ts");
+const compiled = ts.transpileModule(fs.readFileSync(sourcePath,"utf8"),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+const mod = new Module(sourcePath,module);
+mod.filename=sourcePath;mod.paths=Module._nodeModulePaths(path.dirname(sourcePath));mod._compile(compiled,sourcePath);
+const {calculateManualPoints,validateManualCredit}=mod.exports;
+const program={status:"active",earning_mode:"spend",spend_amount:1,points_per_spend:1,points_per_order:10,minimum_order_amount:0};
+test("purchase amount uses the saved program, never an arbitrary preview rate",()=>assert.equal(calculateManualPoints("spend","35,90",program),35));
+test("per-order program respects configured points",()=>assert.equal(calculateManualPoints("spend","40",{...program,earning_mode:"order"}),10));
+test("inactive programs cannot earn points",()=>assert.throws(()=>calculateManualPoints("spend","40",{...program,status:"paused"}),/Ative/));
+test("minimum spend and invalid fractional points are rejected",()=>{assert.throws(()=>calculateManualPoints("spend","5",{...program,minimum_order_amount:10}),/mínimo/);assert.throws(()=>calculateManualPoints("points","2,5",program),/inteiros/);});
+test("large and negative credits rejected",()=>{assert.throws(()=>calculateManualPoints("points","10001",program));assert.throws(()=>calculateManualPoints("spend","-3",program));});
+test("audit input requires valid client, request id and reason",()=>{assert.throws(()=>validateManualCredit({customerId:"other-tenant",requestId:"x",reason:"a",points:20}));});
+test("UI calls atomic credit RPC, not direct wallet writes",()=>{const ui=fs.readFileSync(path.join(__dirname,"../src/features/loyalty/ManualLoyaltyCredit.tsx"),"utf8");assert.doesNotMatch(ui,/\.insert\(|\.upsert\(|\.update\(|\.delete\(/);assert.match(ui,/\.rpc\("credit_loyalty_points_manual"/);});
+
+test("SQL has tenant authorization, locks and idempotency",()=>{const sql=fs.readFileSync(path.join(__dirname,"../supabase/migrations/20261030170000_manual_loyalty_credit.sql"),"utf8");assert.match(sql,/auth\.uid\(\)/);assert.match(sql,/for update/);assert.match(sql,/idempotency_key/);assert.match(sql,/revoke all on function/);});
