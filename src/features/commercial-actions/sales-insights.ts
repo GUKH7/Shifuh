@@ -4,6 +4,7 @@ export type SalesOrder = {
   id: string;
   created_at: string;
   status: string | null;
+  is_test: boolean | null;
   total: number | string | null;
 };
 
@@ -39,7 +40,7 @@ export function getSalesInsights(orders: SalesOrder[], nowMs: number, complete =
   for (const order of orders) {
     const timestamp = Date.parse(order.created_at);
     if (!Number.isFinite(timestamp) || timestamp < cutoff || timestamp > nowMs) continue;
-    if (order.status !== "done" && order.status !== "canceled") continue;
+    if (order.is_test === true || (order.status !== "done" && order.status !== "canceled")) continue;
     const target = windows[timestamp >= split ? 0 : 1];
     if (order.status === "canceled") { target.canceled++; continue; }
     target.completed++;
