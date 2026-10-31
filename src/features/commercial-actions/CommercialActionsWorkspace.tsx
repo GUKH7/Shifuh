@@ -50,7 +50,7 @@ export default function CommercialActionsWorkspace() {
       let expectedCount: number | null = null;
       for (let offset = 0; offset < maxOrders; offset += pageSize) {
         const page = await client.from("orders")
-          .select("id,created_at,status,total", {count:"exact"})
+          .select("id,created_at,status,total,is_test", {count:"exact"})
           .eq("restaurant_id", restaurant.id)
           .gte("created_at", cutoff)
           .lte("created_at", new Date(now).toISOString())
