@@ -18,8 +18,8 @@ const {getSalesInsights} = mod.exports;
 const now = Date.parse("2026-10-31T12:00:00.000Z");
 const day = 86400000;
 let sequence = 0;
-function order(daysAgo, status = "done", total = 20) {
-  return {id: String(++sequence), created_at: new Date(now - daysAgo * day).toISOString(), status, total};
+function order(daysAgo, status = "done", total = 20, is_test = false) {
+  return {id: String(++sequence), created_at: new Date(now - daysAgo * day).toISOString(), status, total, is_test};
 }
 const repeat = (count, daysAgo, status = "done", amount = 20) =>
   Array.from({length:count}, () => order(daysAgo,status,amount));
@@ -29,7 +29,7 @@ test("30-day dashboard excludes pending, future, old and canceled orders from re
     order(1, "done", 32), order(29.9, "done", "8"),
     order(5, "canceled", 100), order(2, "pending", 100),
     order(31, "done", 50), order(61, "done", 999),
-    order(-1, "done", 1000),
+    order(-1, "done", 1000), order(1, "done", 999, true),
   ], now);
   assert.equal(result.coverage,"complete");
   assert.equal(result.current.completed,2);
@@ -78,7 +78,7 @@ test("workspace paginates tenant-scoped order reads without customer PII or muta
   const source=fs.readFileSync(path.join(__dirname,"../src/features/commercial-actions/CommercialActionsWorkspace.tsx"),"utf8");
   assert.match(source,/\.from\("orders"\)/);
   assert.match(source,/\.eq\("restaurant_id", restaurant\.id\)/);
-  assert.match(source,/\.select\("id,created_at,status,total"/);
+  assert.match(source,/\.select\("id,created_at,status,total,is_test"/);
   assert.match(source,/\.range\(offset, offset \+ pageSize - 1\)/);
   assert.doesNotMatch(source,/\.insert\(|\.upsert\(|\.update\(|\.delete\(/);
   assert.match(source,/grid-cols-2/);
