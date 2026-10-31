@@ -70,8 +70,11 @@ export function getSalesInsights(orders: SalesOrder[], nowMs: number, complete =
   };
   const current = summary(windows[0]);
   const previous = summary(windows[1]);
-  const completedChangePercent = previous.completed > 0
-    ? Math.round(100 * (current.completed - previous.completed) / previous.completed) : null;
+  const completedChange = previous.completed > 0
+    ? 100 * (current.completed - previous.completed) / previous.completed : null;
+  // Round gains and declines symmetrically (JS Math.round(-62.5) would otherwise yield -62).
+  const completedChangePercent = completedChange === null ? null
+    : Math.sign(completedChange) * Math.round(Math.abs(completedChange));
   const actions: CommercialAction[] = [];
   if (current.completed === 0 && previous.completed === 0) {
     actions.push({
