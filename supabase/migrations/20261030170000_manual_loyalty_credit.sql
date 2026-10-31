@@ -78,20 +78,19 @@ begin
   select * into strict v_account from public.loyalty_accounts a
     where a.restaurant_id = v_restaurant and a.program_id = v_program.id
       and a.customer_id = p_customer_id for update;
-  update public.loyalty_accounts a
-     set points_balance = a.points_balance + v_points,
-         lifetime_earned = a.lifetime_earned + v_points,
-         updated_at = now()
-   where a.id = v_account.id
-   returning a.points_balance into v_balance;
+  -- Existing loyalty ledger insert trigger materializes account balances and lifetime metrics.
+  -- Do not update the wallet here: doing so would credit points a second time.
   insert into public.loyalty_point_transactions (
     account_id,restaurant_id,program_id,customer_id,transaction_type,
     points_delta,balance_after,idempotency_key,description,metadata
   ) values (
     v_account.id,v_restaurant,v_program.id,p_customer_id,'adjustment_credit',
-    v_points,v_balance,v_key,btrim(p_reason),
+    v_points,0,v_key,btrim(p_reason),
     jsonb_build_object('source','in_person_manual','actor_user_id',v_actor,'mode',p_mode,'amount',p_amount)
   ) returning id into v_tx;
+  -- Re-read the final balance after the existing ledger trigger completes.
+  select a.points_balance into strict v_balance
+    from public.loyalty_accounts a where a.id = v_account.id;
   return query select v_points,v_balance,v_tx,false;
 end;
 $$;
