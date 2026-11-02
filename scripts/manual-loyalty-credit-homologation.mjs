@@ -32,4 +32,28 @@ assert.equal(Number(end.data.points_balance),Number(before.data.points_balance)+
 const audit=await a.c.from("loyalty_point_transactions").select("points_delta,metadata,idempotency_key").eq("customer_id",customer).eq("idempotency_key","manual:"+key1);
 assert.ifError(audit.error);assert.equal(audit.data.length,1);
 assert.equal(audit.data[0].metadata.actor_user_id,a.user.id);
+// Same request UUID used for different customers must never report a phantom success.
+const service=createClient(url,process.env.SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
+const newCustomer=async ()=>{
+  const id=randomUUID();
+  const {error}=await service.from("customers").insert({id,restaurant_id:"11111111-1111-4111-8111-111111111111",phone:"119"+String(Math.floor(Math.random()*1e8)).padStart(8,"0"),name:"Local idempotency test"});
+  assert.ifError(error);
+  return id;
+};
+const customerA=await newCustomer();
+const customerB=await newCustomer();
+const sharedKey=randomUUID();
+const sameKeyRace=await Promise.all([rpc(a.c,sharedKey,customerA,6),rpc(b.c,sharedKey,customerB,6)]);
+assert.equal(sameKeyRace.filter(x=>!x.error).length,1,"exactly one customer may receive a shared request ID");
+assert.equal(sameKeyRace.filter(x=>x.error).length,1,"other customer must see an explicit conflict");
+const confirmedCustomer=sameKeyRace[0].error?customerB:customerA;
+const deniedCustomer=sameKeyRace[0].error?customerA:customerB;
+const {data:credited,error:creditedError}=await service.from("loyalty_point_transactions").select("id,customer_id")
+  .eq("idempotency_key","manual:"+sharedKey);
+assert.ifError(creditedError);
+assert.equal(credited.length,1);
+assert.equal(credited[0].customer_id,confirmedCustomer);
+const {data:deniedWallet,error:deniedWalletError}=await service.from("loyalty_accounts").select("points_balance").eq("customer_id",deniedCustomer).maybeSingle();
+assert.ifError(deniedWalletError);
+assert.equal(Number(deniedWallet?.points_balance??0),0);
 console.log("Manual loyalty credit local homologation passed");
