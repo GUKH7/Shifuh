@@ -37,6 +37,11 @@ begin
   select m.restaurant_id into strict v_restaurant
     from public.restaurant_members m
    where m.user_id = v_actor and m.role = 'owner' and m.is_default = true;
+  -- Serialize the request key across ALL customers in this restaurant.
+  -- The customer-row lock alone does not protect concurrent reuse for different customers.
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended(v_restaurant::text || ':' || v_key, 0)
+  );
   -- Acquire the same customer lock before idempotency and balance operations.
   perform 1 from public.customers c
    where c.id = p_customer_id and c.restaurant_id = v_restaurant for update;
@@ -88,6 +93,11 @@ begin
     v_points,0,v_key,btrim(p_reason),
     jsonb_build_object('source','in_person_manual','actor_user_id',v_actor,'mode',p_mode,'amount',p_amount)
   ) returning id into v_tx;
+  -- The existing BEFORE INSERT trigger may suppress duplicate keys with RETURN NULL.
+  -- Never report a successful credit unless a transaction row was actually inserted.
+  if v_tx is null then
+    raise exception 'Manual credit was not inserted' using errcode = '23505';
+  end if;
   -- Re-read the final balance after the existing ledger trigger completes.
   select a.points_balance into strict v_balance
     from public.loyalty_accounts a where a.id = v_account.id;
