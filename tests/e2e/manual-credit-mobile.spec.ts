@@ -11,10 +11,17 @@ test("manual loyalty credit can be reviewed and credited on mobile", async ({ pa
   const section = page.getByRole("region", { name: "Crédito por compra presencial" });
   await expect(section).toBeVisible();
   const search = section.getByRole("searchbox", { name: "Buscar cliente" });
-  await search.fill("roleta");
+  // Other commercial tests may update the fixture's name; use its stable phone to
+  // discover the real rendered name, then validate searching by that name.
+  await search.fill("988887777");
   const customerCard = section.locator('[data-customer-id="44444444-4444-4444-8444-444444444444"]');
-  await expect(customerCard).toContainText("Cliente Roleta E2E");
   await expect(customerCard).toContainText("(11) 98888-7777");
+  const shownName = (await customerCard.getByTestId("manual-credit-customer-name").textContent())?.trim();
+  expect(shownName).toBeTruthy();
+  await search.fill(shownName!);
+  await expect(customerCard).toBeVisible();
+  await search.fill("988887777");
+  await expect(customerCard).toBeVisible();
   await customerCard.click();
   await expect(customerCard).toHaveAttribute("aria-pressed", "true");
   await expect(section.getByText("Cliente selecionado")).toBeVisible();
