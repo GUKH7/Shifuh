@@ -7,6 +7,7 @@ import { createBrowserClient } from "@supabase/ssr";
 import {
   ChevronLeft,
   ChevronRight,
+  Coins,
   ExternalLink,
   History,
   LayoutDashboard,
@@ -30,6 +31,7 @@ const MENU_ITEMS = [
   { name: "Histórico", href: "/admin/history", icon: History },
   { name: "Cardápios", href: "/admin/menu", icon: UtensilsCrossed },
   { name: "Clientes", href: "/admin/clients", icon: Users },
+  { name: "Adicionar pontos", href: "/admin/pontos", icon: Coins },
   { name: "Promoções", href: "/admin/promotions", icon: Percent },
   { name: "Avaliações", href: "/admin/reviews", icon: Star },
   { name: "Preparar loja", href: "/admin/onboarding", icon: ListChecks },
