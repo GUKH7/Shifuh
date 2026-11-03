@@ -11,6 +11,8 @@ import {
   Bike,
   CheckCircle2,
   CircleDollarSign,
+  Coins,
+  ArrowRight,
   Clock3,
   ExternalLink,
   MoreVertical,
@@ -696,6 +698,20 @@ export default function DashboardPeriodWorkspace() {
           </div>
         }
       />
+
+      <Link href="/admin/pontos" aria-label="Adicionar pontos de fidelidade"
+        className="group flex min-h-[76px] flex-wrap items-center gap-3 rounded-3xl border border-orange-200 bg-[#fff4e9] px-4 py-3 transition-colors hover:border-orange-400 hover:bg-orange-100 sm:px-5">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-[var(--brand)]">
+          <Coins size={21} aria-hidden="true" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-black text-gray-950">Adicionar pontos</span>
+          <span className="mt-0.5 block text-xs text-gray-600">Crédito rápido para compras presenciais</span>
+        </span>
+        <span className="flex min-h-10 shrink-0 items-center gap-1 rounded-xl bg-[var(--brand)] px-4 text-xs font-bold text-white">
+          Abrir <ArrowRight size={15} aria-hidden="true" />
+        </span>
+      </Link>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="inline-flex w-fit items-center gap-2 rounded-full bg-[var(--brand-soft)] px-3 py-2 text-xs font-bold text-[var(--brand)]">

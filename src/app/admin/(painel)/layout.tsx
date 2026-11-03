@@ -15,6 +15,7 @@ const ADMIN_SEARCH_ITEMS = [
   { label: "Histórico", href: "/admin/history", keywords: ["historico", "vendas", "concluidos"] },
   { label: "Cardápios", href: "/admin/menu", keywords: ["cardapio", "menu", "produtos", "categorias"] },
   { label: "Clientes", href: "/admin/clients", keywords: ["clientes", "crm", "contatos"] },
+  { label: "Adicionar pontos", href: "/admin/pontos", keywords: ["pontos", "credito", "crédito", "fidelidade", "presencial", "cliente"] },
   {
     label: "Promoções",
     href: "/admin/promotions",

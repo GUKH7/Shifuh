@@ -3,12 +3,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   Bell,
   BookOpen,
   ChevronRight,
   CircleHelp,
   Clock3,
+  Coins,
   Loader2,
   RefreshCw,
   Settings,
@@ -253,6 +255,11 @@ export function AdminHeaderActions() {
 
   return (
     <div ref={containerRef} className="relative col-start-3 flex shrink-0 items-center justify-end gap-2 sm:gap-2.5">
+      <Link href="/admin/pontos" aria-label="Adicionar pontos" title="Adicionar pontos"
+        className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-[var(--brand)] px-3 text-sm font-black text-white shadow-sm transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500 sm:px-4">
+        <Coins size={18} aria-hidden="true" />
+        <span className="hidden sm:inline">Pontos</span>
+      </Link>
       <button
         type="button"
         aria-label="Ajuda"
