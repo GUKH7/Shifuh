@@ -59,7 +59,7 @@ test("recent list stores only ids, is unique and favors the latest credited clie
 
 test("manual credit customer selector remains tenant-scoped and only writes through credit RPC", () => {
   const source = fs.readFileSync(path.join(root,"src/features/loyalty/ManualLoyaltyCredit.tsx"),"utf8");
-  assert.match(source,/\.select\("id,name,phone"\)/);
+  assert.match(source,/"customers", "id,name,phone"/);
   assert.match(source,/\.eq\("restaurant_id", restaurant\.id\)/);
   assert.match(source,/\.rpc\("credit_loyalty_points_manual"/);
   assert.doesNotMatch(source,/\.insert\(|\.upsert\(|\.update\(|\.delete\(/);
