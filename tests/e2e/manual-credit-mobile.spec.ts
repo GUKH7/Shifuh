@@ -7,7 +7,12 @@ test("manual loyalty credit can be reviewed and credited on mobile", async ({ pa
   await page.getByPlaceholder("••••••••").fill(process.env.E2E_ADMIN_PASSWORD!);
   await page.getByRole("button", { name: "Entrar agora" }).click();
   await page.waitForURL(url => url.pathname === "/admin", { timeout: 20_000 });
-  await page.goto("/admin/promotions/loyalty");
+  // A cashier should reach the credit form from the dashboard in one tap.
+  await expect(page.getByRole("link", { name: "Adicionar pontos de fidelidade" })).toBeVisible();
+  await page.locator("header.admin-panel-header").getByRole("link", { name: "Adicionar pontos" }).click();
+  await expect(page).toHaveURL(/\/admin\/pontos$/);
+  await expect(page.getByRole("heading", { name: "Adicionar pontos" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Gerenciar fidelidade" })).toBeVisible();
   const section = page.getByRole("region", { name: "Crédito por compra presencial" });
   await expect(section).toBeVisible();
   const search = section.getByRole("searchbox", { name: "Buscar cliente" });
