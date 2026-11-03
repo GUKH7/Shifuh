@@ -35,7 +35,7 @@ test("client labels prioritize saved name, and missing names receive an explicit
 test("search is accent and case insensitive", () => {
   assert.deepEqual(searchManualCreditCustomers(customers, "JOAO").map(c => c.id), ["1"]);
   assert.deepEqual(searchManualCreditCustomers(customers, "jose").map(c => c.id), ["4"]);
-  assert.deepEqual(searchManualCreditCustomers(customers, "maria").map(c => c.id), ["2"]);
+  assert.deepEqual(searchManualCreditCustomers(customers, "maria").map(c => c.id), ["2","5"]);
 });
 
 test("phone search ignores punctuation and country prefix", () => {
