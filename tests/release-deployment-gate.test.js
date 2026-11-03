@@ -51,6 +51,7 @@ test("Vercel keeps Git auto-deploy of main disabled independently of preview pro
     "feat/commercial-actions-20261030": false,
     "feat/manual-loyalty-credit-20261030": false,
     "fix/manual-credit-release-safety-20261102": false,
+    "feat/manual-credit-client-picker-20261103": false,
   });
   assert.deepEqual(config.regions, ["pdx1"]);
 });
