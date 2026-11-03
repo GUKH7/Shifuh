@@ -37,7 +37,7 @@ function CustomerOption({customer, balance, selected, disabled, onSelect}: {
         {customerInitials(customer)}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-black text-gray-950 sm:text-base">{customerLabel(customer)}</span>
+        <span data-testid="manual-credit-customer-name" className="block truncate text-sm font-black text-gray-950 sm:text-base">{customerLabel(customer)}</span>
         <span className="block truncate text-xs text-gray-600">{formatCustomerPhone(customer.phone)}</span>
       </span>
       <span className="flex shrink-0 flex-col items-end gap-1">
