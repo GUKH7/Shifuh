@@ -212,6 +212,14 @@ jobs:
       - name: Validate manual credit mobile confirmation
         run: NEXT_DIST_DIR=.next-e2e npx playwright test tests/e2e/manual-credit-mobile.spec.ts --project=mobile-chrome --workers=1
 
+      - name: Validate quick customer registration using isolated local Supabase
+        env:
+          MANUAL_CUSTOMER_LOCAL_E2E: "1"
+        run: node scripts/manual-customer-registration-homologation.mjs
+
+      - name: Validate quick customer registration on mobile
+        run: NEXT_DIST_DIR=.next-e2e npx playwright test tests/e2e/manual-customer-registration.spec.ts --project=mobile-chrome --workers=1
+
       - name: Upload E2E diagnostics
         if: failure()
         uses: actions/upload-artifact@v4

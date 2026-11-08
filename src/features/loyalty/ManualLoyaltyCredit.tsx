@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Check, Clock3, Coins, Search, ShieldAlert, UserRound } from "lucide-react";
 import { getCurrentRestaurant } from "@/lib/supabase/restaurant";
+import QuickCustomerRegistration from "./QuickCustomerRegistration";
 import { calculateManualPoints, validateManualCredit, type CreditMode, type EarningConfig } from "./manual-credit";
 import {
   customerInitials, customerLabel, formatCustomerPhone, rememberManualCreditCustomer,
@@ -204,6 +205,18 @@ export default function ManualLoyaltyCredit() {
       {loading ? <p role="status" className="text-sm text-gray-600">Carregando clientes...</p> :
         error ? <div role="alert" className="text-sm text-red-700">{error}<button type="button" onClick={() => void reload()} className="ml-3 underline">Tentar novamente</button></div> : <>
           <div className="space-y-3">
+            <QuickCustomerRegistration
+              disabled={saving || !!creditError || !restaurantId}
+              onRegistered={(customer) => {
+                setCustomers(existing => [customer, ...existing.filter(item => item.id !== customer.id)]);
+                setCustomerId(customer.id);
+                setSearch("");
+                setAmount("");
+                setConfirmation(false);
+                setRequestId("");
+                setSuccess("");
+              }}
+            />
             <label htmlFor="manual-customer-search" className="block text-sm font-black text-gray-900">Buscar cliente</label>
             <div className="flex min-h-12 items-center gap-2 rounded-2xl border border-gray-200 bg-white px-3 focus-within:border-orange-400 focus-within:ring-2 focus-within:ring-orange-100">
               <Search size={19} className="shrink-0 text-gray-500" aria-hidden="true"/>
