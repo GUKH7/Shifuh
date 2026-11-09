@@ -39,7 +39,7 @@ test("customer categories, search, featured banners and counts ignore paused pro
   assert.match(ui, /availableProducts\.some\(\(product\) => product\.category_id === category\.id\)/);
   assert.match(ui, /const customerProducts = availableProducts\.filter/);
   assert.match(ui, /visibleProducts\.some\(\(product\) => product\.category_id === category\.id\)/);
-  assert.match(ui, /visibleProducts\.filter\(\(product\) => productMatchesSearch\(product, menuSearch\)\)/);
+  assert.match(ui, /customerProducts\.filter\(\(product\) => productMatchesSearch\(product, menuSearch\)\)/);
   assert.match(ui, /\{categoryProducts\.length\} \{categoryProducts\.length === 1 \? "item" : "itens"\}/);
 });
 
