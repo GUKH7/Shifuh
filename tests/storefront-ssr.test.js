@@ -28,7 +28,7 @@ test("vitrine carrega restaurante e catalogo no servidor com ISR em uma RPC", ()
 test("HTML inicial usa dados do servidor em vez de esperar fetch client-side", () => {
   assert.match(hook, /useStorefrontInitialData\(\)/);
   assert.match(hook, /useState<any>\(initialStorefront\?\.restaurant \?\? null\)/);
-  assert.match(hook, /useState<Product\[]>\(initialStorefront\?\.products \?\? \[]\)/);
+  assert.match(hook, /useState<Product\[]>\(\s*filterAvailableStorefrontProducts\(initialStorefront\?\.products \?\? \[]\)/);
   assert.match(hook, /if \(!initialStorefront\) \{\s*fetchStoreData\(\);\s*\}/s);
 });
 
