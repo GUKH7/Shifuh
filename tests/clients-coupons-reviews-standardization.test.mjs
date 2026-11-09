@@ -31,30 +31,29 @@ const reviewsLayout = fs.readFileSync(
   "utf8",
 );
 
-test("Clientes usa workspace padronizado com busca, paginação e cinco colunas ordenáveis", () => {
+test("Clientes mantém workspace padronizado com busca, filtros e paginação", () => {
   assert.match(clientsLayout, /ClientsWorkspace/);
   assert.match(clients, /AdminPageShell/);
   assert.match(clients, /AdminPageHeader/);
   assert.match(clients, /AdminInput/);
   assert.match(clients, /AdminSelect/);
-  assert.equal((clients.match(/<SortableTableHeader/g) || []).length, 5);
-  assert.match(clients, /toggleSort\("name"\)/);
-  assert.match(clients, /toggleSort\("totalSpent"\)/);
-  assert.match(clients, /toggleSort\("lastOrderDate"\)/);
-  assert.match(clients, /PAGE_SIZE = 10/);
-  assert.match(clients, /xl:hidden/);
+  assert.match(clients, /Filtrar atividade dos clientes/);
+  assert.match(clients, /sort === "orders"/);
+  assert.match(clients, /sort === "spent"/);
+  assert.match(clients, /sort === "name"/);
+  assert.match(clients, /PER_PAGE = 10/);
 });
 
-test("Clientes permite expandir os cinco pedidos mais recentes de cada contato", () => {
-  assert.match(clients, /recentOrders: RecentOrder\[\]/);
-  assert.match(clients, /client\.recentOrders\.length >= 5/);
-  assert.match(clients, /if \(order\.status === "canceled"\) return/);
-  assert.match(clients, /id, display_number, customer_name, customer_phone, total, created_at, address, status, payment_method/);
-  assert.match(clients, /expandedClientPhone === client\.phone/);
-  assert.match(clients, /<RecentOrdersPanel client=\{client\} \/>/);
+test("Central expande pedidos recentes e histórico de fidelidade", () => {
+  const hub = fs.readFileSync("src/features/clients/customer-hub.ts", "utf8");
+  assert.match(hub, /recentOrders\.length < 5/);
+  assert.match(hub, /recentTransactions\.length >= 5/);
+  assert.match(hub, /order\.status === "canceled"/);
+  assert.match(clients, /aria-expanded=\{opened\}/);
   assert.match(clients, /Últimos pedidos/);
-  assert.match(clients, /<OrderStatusBadge status=\{order\.status\}/);
-  assert.match(clients, /formatPaymentMethod\(order\.paymentMethod\)/);
+  assert.match(clients, /Histórico de fidelidade/);
+  assert.match(clients, /order\.displayNumber/);
+  assert.match(clients, /formatMoney\(order\.total\)/);
 });
 
 test("Cupons ganha busca, filtro por status e oito critérios de ordenação", () => {
@@ -84,11 +83,12 @@ test("Avaliações ganha busca, filtros e cinco colunas ordenáveis", () => {
   assert.match(reviews, /xl:hidden/);
 });
 
-test("As três páginas preservam visual específico para mobile sem tabelas largas", () => {
-  assert.match(clients, /hidden grid-cols-[\s\S]*xl:grid/);
-  assert.match(coupons, /hidden grid-cols-[\s\S]*xl:grid/);
-  assert.match(reviews, /hidden grid-cols-[\s\S]*xl:grid/);
-  assert.match(clients, /p-4 xl:hidden/);
+test("Central e demais páginas usam interfaces mobile sem tabelas largas", () => {
+  assert.match(clients, /grid grid-cols-2 gap-3 xl:grid-cols-4/);
+  assert.match(clients, /grid grid-cols-3 gap-2/);
+  assert.match(clients, /min-w-0/);
+  assert.match(coupons, /hidden grid-cols[\s\S]*xl:grid/);
+  assert.match(reviews, /hidden grid-cols[\s\S]*xl:grid/);
   assert.match(coupons, /p-4 xl:hidden/);
   assert.match(reviews, /p-4 xl:hidden/);
 });
