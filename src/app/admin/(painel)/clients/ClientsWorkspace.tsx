@@ -1,583 +1,398 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useRouter } from "next/navigation";
 import {
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  Download,
-  MessageCircle,
-  Phone,
-  ReceiptText,
-  Search,
-  ShoppingBag,
-  Users,
-  Wallet,
+  ArrowUpRight, CalendarClock, ChevronDown, ChevronLeft, ChevronRight,
+  Coins, Download, MessageCircle, ReceiptText, RefreshCw, Search,
+  ShoppingBag, UserRound, Users, Wallet,
 } from "lucide-react";
 import { getCurrentRestaurant } from "@/lib/supabase/restaurant";
-import { OrderStatusBadge } from "@/components/ui/order-status-badge";
-import type { OrderStatus } from "@/lib/order-status";
-import {
-  AdminButton,
-  AdminInput,
-  AdminPageHeader,
-  AdminPageShell,
-  AdminSelect,
-  SortableTableHeader,
-  type SortDirection,
-} from "@/components/ui/admin-primitives";
+import { formatCustomerPhone } from "@/features/loyalty/manual-credit-customers";
+import { AdminButton, AdminInput, AdminPageHeader, AdminPageShell, AdminSelect } from "@/components/ui/admin-primitives";
 import { AdminEmptyState, AdminErrorState, AdminPageSkeleton } from "@/components/ui/admin-page-states";
+import {
+  buildCustomerProfiles, normalizeCustomerPhone, segmentCustomer,
+  type AccountRecord, type CustomerProfile, type CustomerRecord, type CustomerSegment,
+  type PurchaseRecord, type TransactionRecord,
+} from "@/features/clients/customer-hub";
 
-type Client = {
-  phone: string;
-  name: string;
-  totalSpent: number;
-  orderCount: number;
-  lastOrderDate: string;
-  addresses: string[];
-  recentOrders: RecentOrder[];
-};
-
-type RecentOrder = {
-  id: string;
-  displayNumber?: number | null;
-  total: number;
-  status: OrderStatus;
-  paymentMethod?: string | null;
-  createdAt: string;
-};
-
-type ClientSortKey = "name" | "phone" | "orderCount" | "totalSpent" | "lastOrderDate";
-
-const PAGE_SIZE = 10;
-
-const SORT_OPTIONS: Array<{ value: ClientSortKey; label: string }> = [
-  { value: "name", label: "Cliente" },
-  { value: "phone", label: "Contato" },
-  { value: "orderCount", label: "Pedidos" },
-  { value: "totalSpent", label: "Total gasto" },
-  { value: "lastOrderDate", label: "Última compra" },
-];
+const PER_PAGE = 10;
+const DB_PAGE_SIZE = 1000;
+const MAX_ROWS_PER_TABLE = 15000;
+type Filter = "all" | "active" | "inactive" | "never";
+type Sort = "last" | "spent" | "orders" | "name";
+type Truncation = { customers: boolean; orders: boolean; accounts: boolean; transactions: boolean };
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 }
-
-function formatDate(date: string) {
-  return new Date(date).toLocaleDateString("pt-BR");
+function formatDate(value: string | null) {
+  return value ? new Date(value).toLocaleDateString("pt-BR") : "Sem compras";
+}
+function formatDateTime(value: string) {
+  return new Date(value).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+function normalizeSearch(value: string) {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR").trim();
 }
 
-function formatDateTime(date: string) {
-  return new Date(date).toLocaleString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
+async function fetchPaged<T>(
+  loadPage: (from: number, to: number) => Promise<{ data: T[] | null; error: { message: string } | null }>,
+): Promise<{ rows: T[]; truncated: boolean }> {
+  const rows: T[] = [];
+  while (rows.length < MAX_ROWS_PER_TABLE) {
+    const from = rows.length;
+    const size = Math.min(DB_PAGE_SIZE, MAX_ROWS_PER_TABLE - from);
+    const response = await loadPage(from, from + size - 1);
+    if (response.error) throw new Error(response.error.message);
+    const batch = response.data || [];
+    rows.push(...batch);
+    if (batch.length < size) return { rows, truncated: false };
+  }
+  return { rows, truncated: true };
+}
+
+function csvCell(value: string | number) {
+  const raw = String(value);
+  // Prevent spreadsheet formula injection in fields supplied by customers.
+  const safe = /^[=+\-@\t\r]/.test(raw.trimStart()) ? "'" + raw : raw;
+  return '"' + safe.replace(/"/g, '""') + '"';
+}
+function exportClients(rows: CustomerProfile[], completeOrders: boolean) {
+  const headers = ["Cliente", "Telefone", "Compras concluídas", "Total gasto (R$)", "Última compra", "Saldo de pontos", "Segmento"];
+  const columns = rows.map(client => {
+    const segment = segmentCustomer(client, completeOrders);
+    const segmentLabel = segment === "active" ? "Ativo" : segment === "inactive" ? "Inativo 30+ dias" : segment === "never" ? "Sem compras" : "Histórico parcial";
+    return [
+      client.name, client.phone, client.orderCount, client.totalSpent.toFixed(2).replace(".", ","),
+      formatDate(client.lastOrderDate), client.pointsBalance, segmentLabel,
+    ];
   });
-}
-
-const PAYMENT_METHOD_LABELS: Record<string, string> = {
-  CASH: "Dinheiro",
-  CREDIT: "CRÉDITO",
-  CREDIT_CARD: "CRÉDITO",
-  CARD_CREDIT: "CRÉDITO",
-  DEBIT: "DÉBITO",
-  DEBIT_CARD: "DÉBITO",
-  CARD_DEBIT: "DÉBITO",
-  PIX: "Pix",
-  CARD: "Cartão",
-  ONLINE: "Online",
-};
-
-function formatPaymentMethod(value?: string | null) {
-  const rawValue = value?.trim() || "";
-  if (!rawValue) return "Não informado";
-  const normalizedValue = rawValue.toUpperCase().replace(/[\s-]+/g, "_");
-  return PAYMENT_METHOD_LABELS[normalizedValue] || rawValue;
-}
-
-function getOrderNumber(order: RecentOrder) {
-  return order.displayNumber ? String(order.displayNumber) : order.id.slice(0, 5);
-}
-
-function formatClientAddress(address: any) {
-  if (!address?.street) return null;
-  const street = `${address.street}, ${address.number || "S/N"}`;
-  const district = address.neighborhood || "Bairro não informado";
-  const city = [address.city, address.state].filter(Boolean).join("/");
-  const complement = address.complement ? ` · ${address.complement}` : "";
-  const cep = address.cep ? ` · CEP ${address.cep}` : "";
-  return `${street} - ${district}${city ? ` - ${city}` : ""}${complement}${cep}`;
-}
-
-function getSortValue(client: Client, key: ClientSortKey) {
-  if (key === "name") return client.name.toLocaleLowerCase("pt-BR");
-  if (key === "phone") return client.phone;
-  if (key === "orderCount") return client.orderCount;
-  if (key === "totalSpent") return client.totalSpent;
-  return new Date(client.lastOrderDate).getTime();
-}
-
-function exportClients(rows: Client[]) {
-  const header = ["Cliente", "Telefone", "Pedidos", "Total gasto", "Última compra", "Endereço"];
-  const lines = rows.map((client) => [
-    client.name,
-    client.phone,
-    client.orderCount,
-    client.totalSpent.toFixed(2),
-    formatDate(client.lastOrderDate),
-    client.addresses.join(" | "),
-  ]);
-  const worksheet = [header, ...lines]
-    .map((line) => line.map((value) => String(value)).join("\t"))
-    .join("\n");
-  const blob = new Blob([`\uFEFF${worksheet}`], {
-    type: "application/vnd.ms-excel;charset=utf-8;",
-  });
+  const content = [headers, ...columns].map(row => row.map(csvCell).join(";")).join("\r\n");
+  const blob = new Blob(["\uFEFF", content], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = "clientes.xls";
+  anchor.download = "shifuh-central-clientes.csv";
   anchor.click();
   URL.revokeObjectURL(url);
 }
 
-function ClientsWorkspaceSkeleton() {
-  return <AdminPageSkeleton ariaLabel="Carregando clientes" metrics={3} />;
+function segmentInfo(segment: CustomerSegment) {
+  if (segment === "active") return { label: "Ativo · últimos 30 dias", classes: "bg-emerald-50 text-emerald-800" };
+  if (segment === "inactive") return { label: "Sem comprar há 30+ dias", classes: "bg-amber-50 text-amber-800" };
+  if (segment === "never") return { label: "Sem compras concluídas", classes: "bg-blue-50 text-blue-800" };
+  return { label: "Histórico incompleto", classes: "bg-gray-100 text-gray-700" };
 }
 
 export default function ClientsWorkspace() {
   const router = useRouter();
-  const supabase = useMemo(
-    () =>
-      createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      ),
-    [],
-  );
-
+  const supabase = useMemo(() => createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  ), []);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
-  const [clients, setClients] = useState<Client[]>([]);
+  const [reload, setReload] = useState(0);
+  const [clients, setClients] = useState<CustomerProfile[]>([]);
+  const [partial, setPartial] = useState<Truncation>({ customers: false, orders: false, accounts: false, transactions: false });
   const [search, setSearch] = useState("");
-  const [sortKey, setSortKey] = useState<ClientSortKey>("totalSpent");
-  const [sortDirection, setSortDirection] = useState<Exclude<SortDirection, null>>("desc");
+  const [filter, setFilter] = useState<Filter>("all");
+  const [sort, setSort] = useState<Sort>("last");
   const [page, setPage] = useState(1);
-  const [expandedClientPhone, setExpandedClientPhone] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchClients = async () => {
+    let active = true;
+    async function load() {
+      setLoading(true);
+      setErrorMsg("");
       try {
-        const { restaurant, user } = await getCurrentRestaurant(supabase);
-        if (!user) {
-          router.push("/admin/login");
-          return;
-        }
-        if (!restaurant) {
-          setErrorMsg("Não foi possível localizar a loja.");
-          return;
-        }
+        const { restaurant, user, error } = await getCurrentRestaurant(supabase);
+        if (!active) return;
+        if (!user) { router.replace("/admin/login"); return; }
+        if (error || !restaurant) throw new Error("Não foi possível confirmar a loja.");
 
-        const { data, error } = await supabase
-          .from("orders")
-          .select("id, display_number, customer_name, customer_phone, total, created_at, address, status, payment_method")
-          .eq("restaurant_id", restaurant.id)
-          .order("created_at", { ascending: false });
+        const restaurantId: string = restaurant.id;
+        // Every read is restricted to the authenticated restaurant; RLS also applies.
+        // The PostgREST default row limit is avoided using explicit pagination.
+        const [customersResult, ordersResult, accountsResult, transactionsResult] = await Promise.all([
+          fetchPaged<CustomerRecord>(async (from, to) => {
+            const { data, error } = await supabase.from("customers")
+              .select("id,name,phone,created_at").eq("restaurant_id", restaurantId)
+              .order("created_at", { ascending: false }).range(from, to);
+            return { data: data as CustomerRecord[] | null, error };
+          }),
+          fetchPaged<PurchaseRecord>(async (from, to) => {
+            const { data, error } = await supabase.from("orders")
+              .select("id,customer_phone,customer_name,total,created_at,status,display_number,payment_method,is_test")
+              .eq("restaurant_id", restaurantId).neq("status", "canceled").eq("is_test", false)
+              .order("created_at", { ascending: false }).range(from, to);
+            return { data: data as PurchaseRecord[] | null, error };
+          }),
+          fetchPaged<AccountRecord>(async (from, to) => {
+            const { data, error } = await supabase.from("loyalty_accounts")
+              .select("customer_id,points_balance,lifetime_earned").eq("restaurant_id", restaurantId)
+              .order("created_at", { ascending: false }).range(from, to);
+            return { data: data as AccountRecord[] | null, error };
+          }),
+          fetchPaged<TransactionRecord>(async (from, to) => {
+            const { data, error } = await supabase.from("loyalty_point_transactions")
+              .select("id,customer_id,points_delta,transaction_type,description,created_at")
+              .eq("restaurant_id", restaurantId).order("created_at", { ascending: false }).range(from, to);
+            return { data: data as TransactionRecord[] | null, error };
+          }),
+        ]);
 
-        if (error) throw error;
-
-        const grouped = new Map<string, Client>();
-        (data || []).forEach((order: any) => {
-          if (order.status === "canceled") return;
-
-          const phone = order.customer_phone;
-          if (!phone) return;
-          const address = formatClientAddress(order.address);
-          const current = grouped.get(phone);
-
-          if (!current) {
-            grouped.set(phone, {
-              phone,
-              name: order.customer_name || "Cliente",
-              totalSpent: Number(order.total || 0),
-              orderCount: 1,
-              lastOrderDate: order.created_at,
-              addresses: address ? [address] : [],
-              recentOrders: [],
-            });
-            return;
-          }
-
-          grouped.set(phone, {
-            ...current,
-            totalSpent: current.totalSpent + Number(order.total || 0),
-            orderCount: current.orderCount + 1,
-            addresses:
-              address && !current.addresses.includes(address)
-                ? [...current.addresses, address]
-                : current.addresses,
-          });
-        });
-
-        (data || []).forEach((order: any) => {
-          const client = grouped.get(order.customer_phone);
-          if (!client || client.recentOrders.length >= 5) return;
-
-          client.recentOrders.push({
-            id: order.id,
-            displayNumber: order.display_number,
-            total: Number(order.total || 0),
-            status: order.status,
-            paymentMethod: order.payment_method,
-            createdAt: order.created_at,
-          });
-        });
-
-        setClients(Array.from(grouped.values()));
-      } catch (error) {
-        console.error(error);
-        setErrorMsg("Erro ao carregar os clientes.");
+        if (!active) return;
+        setClients(buildCustomerProfiles(customersResult.rows, ordersResult.rows, accountsResult.rows, transactionsResult.rows));
+        setPartial({ customers: customersResult.truncated, orders: ordersResult.truncated, accounts: accountsResult.truncated, transactions: transactionsResult.truncated });
+      } catch (caught) {
+        if (active) setErrorMsg(caught instanceof Error ? caught.message : "Erro ao carregar clientes.");
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
-    };
-
-    void fetchClients();
-  }, [router, supabase]);
-
-  const visibleClients = useMemo(() => {
-    const term = search.trim().toLocaleLowerCase("pt-BR");
-    const direction = sortDirection === "asc" ? 1 : -1;
-
-    return clients
-      .filter(
-        (client) =>
-          !term ||
-          client.name.toLocaleLowerCase("pt-BR").includes(term) ||
-          client.phone.toLocaleLowerCase("pt-BR").includes(term) ||
-          client.addresses.some((address) => address.toLocaleLowerCase("pt-BR").includes(term)),
-      )
-      .sort((left, right) => {
-        const leftValue = getSortValue(left, sortKey);
-        const rightValue = getSortValue(right, sortKey);
-        if (typeof leftValue === "number" && typeof rightValue === "number") {
-          return (leftValue - rightValue) * direction;
-        }
-        return (
-          String(leftValue).localeCompare(String(rightValue), "pt-BR", {
-            numeric: true,
-            sensitivity: "base",
-          }) * direction
-        );
-      });
-  }, [clients, search, sortDirection, sortKey]);
-
-  const totalPages = Math.max(1, Math.ceil(visibleClients.length / PAGE_SIZE));
-  const paginatedClients = visibleClients.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-  const summary = useMemo(
-    () => ({
-      totalRevenue: clients.reduce((sum, client) => sum + client.totalSpent, 0),
-      totalOrders: clients.reduce((sum, client) => sum + client.orderCount, 0),
-    }),
-    [clients],
-  );
-
-  useEffect(() => {
-    setPage(1);
-    setExpandedClientPhone(null);
-  }, [search, sortDirection, sortKey]);
-
-  const toggleSort = (key: ClientSortKey) => {
-    if (sortKey === key) {
-      setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
-      return;
     }
-    setSortKey(key);
-    setSortDirection(key === "totalSpent" || key === "orderCount" || key === "lastOrderDate" ? "desc" : "asc");
-  };
+    void load();
+    return () => { active = false; };
+  }, [reload, router, supabase]);
 
-  if (loading) return <ClientsWorkspaceSkeleton />;
+  const completeOrders = !partial.orders;
+  const summary = useMemo(() => {
+    const active = clients.filter(client => segmentCustomer(client, completeOrders) === "active").length;
+    const inactive = clients.filter(client => segmentCustomer(client, completeOrders) === "inactive").length;
+    const never = clients.filter(client => segmentCustomer(client, completeOrders) === "never").length;
+    return { active, inactive, never, points: clients.reduce((sum, client) => sum + client.pointsBalance, 0) };
+  }, [clients, completeOrders]);
 
-  if (errorMsg) return <AdminErrorState description={errorMsg} />;
+  const visible = useMemo(() => {
+    const nameTerm = normalizeSearch(search);
+    const phoneTerm = search.replace(/\D/g, "");
+    const result = clients.filter(client => {
+      if (filter !== "all" && segmentCustomer(client, completeOrders) !== filter) return false;
+      return !nameTerm || normalizeSearch(client.name).includes(nameTerm) ||
+        (phoneTerm.length > 0 && client.phone.includes(phoneTerm));
+    });
+    result.sort((a, b) => {
+      if (sort === "name") return a.name.localeCompare(b.name, "pt-BR");
+      if (sort === "spent") return b.totalSpent - a.totalSpent;
+      if (sort === "orders") return b.orderCount - a.orderCount;
+      return (b.lastOrderDate || "").localeCompare(a.lastOrderDate || "");
+    });
+    return result;
+  }, [clients, search, filter, sort, completeOrders]);
+
+  useEffect(() => { setPage(1); setExpanded(null); }, [search, filter, sort]);
+  const pages = Math.max(1, Math.ceil(visible.length / PER_PAGE));
+  const rows = visible.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  const isPartial = Object.values(partial).some(Boolean);
+
+  if (loading) return <AdminPageSkeleton ariaLabel="Carregando Central de Clientes" metrics={4} />;
+  if (errorMsg) return <AdminErrorState description={errorMsg} onRetry={() => setReload(value => value + 1)} />;
+
+  const filters: Array<{ id: Filter; label: string; count: number }> = [
+    { id: "all", label: "Todos", count: clients.length },
+    { id: "active", label: "Ativos", count: summary.active },
+    { id: "inactive", label: "Inativos 30+ dias", count: summary.inactive },
+    { id: "never", label: "Sem compras", count: summary.never },
+  ];
 
   return (
-    <AdminPageShell className="space-y-6 pb-12">
+    <AdminPageShell className="space-y-5 pb-12">
       <AdminPageHeader
-        title="Clientes"
-        description="Veja quem mais compra, quanto gastou e acione o WhatsApp em um clique."
+        title="Central de Clientes"
+        description="Compras, fidelidade e oportunidades para reativar clientes em um só lugar."
         icon={<Users size={24} />}
         action={
-          <AdminButton variant="secondary" onClick={() => exportClients(visibleClients)}>
-            <Download size={16} />
-            Exportar
-          </AdminButton>
+          <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+            <AdminButton variant="secondary" onClick={() => setReload(value => value + 1)}><RefreshCw size={16} /> Atualizar</AdminButton>
+            <AdminButton variant="secondary" onClick={() => exportClients(visible, completeOrders)}><Download size={16} /> Exportar CSV</AdminButton>
+          </div>
         }
       />
 
-      <section className="grid gap-4 md:grid-cols-3">
+      {isPartial ? (
+        <div role="status" className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Volume elevado de registros: esta visualização está parcial (até {MAX_ROWS_PER_TABLE.toLocaleString("pt-BR")} linhas por conjunto).
+          {partial.orders ? " Clientes sem compras identificadas podem ter histórico mais antigo; não são classificados como novos." : ""}
+          {partial.accounts ? " O saldo total de pontos pode estar incompleto." : ""}
+        </div>
+      ) : null}
+
+      <section aria-label="Indicadores de clientes" className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         {[
-          ["Base ativa", String(clients.length)],
-          ["Pedidos associados", String(summary.totalOrders)],
-          ["Faturamento da base", formatMoney(summary.totalRevenue)],
-        ].map(([label, value]) => (
-          <div key={label} className="surface-card rounded-[24px] border-orange-100 bg-[linear-gradient(145deg,#ffffff_0%,#fff8f3_100%)] p-5">
-            <p className="text-sm font-medium text-gray-500">{label}</p>
-            <p className="mt-3 text-3xl font-black text-gray-950">{value}</p>
+          { label: "Clientes identificados", value: clients.length.toLocaleString("pt-BR"), icon: <Users size={18} /> },
+          { label: "Ativos · 30 dias", value: String(summary.active), icon: <ShoppingBag size={18} /> },
+          { label: "Inativos · 30+ dias", value: String(summary.inactive), icon: <CalendarClock size={18} /> },
+          { label: "Pontos disponíveis", value: summary.points.toLocaleString("pt-BR"), icon: <Coins size={18} /> },
+        ].map(item => (
+          <div key={item.label} className="surface-card min-w-0 rounded-2xl border border-orange-100 bg-white p-4 sm:rounded-[24px] sm:p-5">
+            <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 sm:text-sm">
+              <span className="text-[var(--brand)]">{item.icon}</span>{item.label}
+            </div>
+            <p className="mt-3 break-words text-2xl font-black tabular-nums text-gray-950 sm:text-3xl">{item.value}</p>
           </div>
         ))}
       </section>
 
-      <section className="surface-card rounded-[28px] p-4 sm:p-5 md:p-6">
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px_auto]">
+      <section aria-label="Explorar clientes" className="surface-card space-y-4 rounded-[24px] p-4 sm:p-5">
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_210px]">
           <label className="relative min-w-0">
             <span className="sr-only">Buscar clientes</span>
             <Search size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-            <AdminInput
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Buscar por nome, telefone ou endereço"
-              className="pl-11"
-            />
+            <AdminInput value={search} onChange={event => setSearch(event.target.value)}
+              placeholder="Buscar por nome ou telefone" className="w-full pl-11" />
           </label>
-          <AdminSelect value={sortKey} onChange={(event) => setSortKey(event.target.value as ClientSortKey)} className="admin-filter-control xl:hidden">
-            {SORT_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                Ordenar por {option.label}
-              </option>
-            ))}
-          </AdminSelect>
-          <AdminButton
-            variant="filter"
-            className="xl:hidden"
-            onClick={() => setSortDirection((current) => (current === "asc" ? "desc" : "asc"))}
-          >
-            {sortDirection === "asc" ? "Crescente" : "Decrescente"}
-          </AdminButton>
+          <label>
+            <span className="sr-only">Ordenar clientes</span>
+            <AdminSelect className="w-full" value={sort} onChange={event => setSort(event.target.value as Sort)}>
+              <option value="last">Compra mais recente</option>
+              <option value="spent">Maior valor gasto</option>
+              <option value="orders">Mais compras</option>
+              <option value="name">Nome A-Z</option>
+            </AdminSelect>
+          </label>
         </div>
 
-        <div className="mt-5 overflow-hidden rounded-[24px] border border-[var(--line)] bg-white">
-          <div className="admin-table-header hidden grid-cols-[minmax(220px,1.3fr)_minmax(160px,1fr)_120px_160px_150px_168px] items-center gap-4 border-b border-[var(--line)] bg-[#fffdfa] px-6 py-4 xl:grid">
-            <SortableTableHeader label="Cliente" active={sortKey === "name"} direction={sortKey === "name" ? sortDirection : null} onClick={() => toggleSort("name")} />
-            <SortableTableHeader label="Contato" active={sortKey === "phone"} direction={sortKey === "phone" ? sortDirection : null} onClick={() => toggleSort("phone")} />
-            <SortableTableHeader label="Pedidos" active={sortKey === "orderCount"} direction={sortKey === "orderCount" ? sortDirection : null} onClick={() => toggleSort("orderCount")} />
-            <SortableTableHeader label="Total gasto" active={sortKey === "totalSpent"} direction={sortKey === "totalSpent" ? sortDirection : null} onClick={() => toggleSort("totalSpent")} />
-            <SortableTableHeader label="Última compra" active={sortKey === "lastOrderDate"} direction={sortKey === "lastOrderDate" ? sortDirection : null} onClick={() => toggleSort("lastOrderDate")} className="justify-center" />
-            <span className="text-right font-bold text-gray-400">Ações</span>
-          </div>
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar atividade dos clientes">
+          {filters.map(item => (
+            <button key={item.id} type="button" disabled={partial.orders && item.id === "never"}
+              aria-pressed={filter === item.id} onClick={() => setFilter(item.id)}
+              className={"min-h-10 rounded-xl border px-3 py-2 text-xs font-bold transition-colors disabled:opacity-40 sm:text-sm " +
+                (filter === item.id ? "border-orange-500 bg-orange-50 text-orange-800" : "border-[var(--line)] bg-white text-gray-600 hover:border-orange-200")}>
+              {item.label} <span className="ml-1 tabular-nums">{item.count}</span>
+            </button>
+          ))}
+        </div>
 
-          {paginatedClients.length === 0 ? (
-            <AdminEmptyState title="Nenhum cliente encontrado" description="Revise a busca e os filtros selecionados." />
-          ) : (
-            <div className="divide-y divide-[var(--line)]">
-              {paginatedClients.map((client) => (
-                <article key={client.phone}>
-                  <div className="hidden grid-cols-[minmax(220px,1.3fr)_minmax(160px,1fr)_120px_160px_150px_168px] items-center gap-4 px-6 py-5 text-sm text-gray-700 xl:grid">
-                    <ClientIdentity client={client} />
-                    <PhoneBadge phone={client.phone} />
-                    <OrderBadge count={client.orderCount} />
-                    <SpentBadge value={client.totalSpent} />
-                    <div className="text-center font-semibold text-gray-600">{formatDate(client.lastOrderDate)}</div>
-                    <ClientActions
-                      client={client}
-                      expanded={expandedClientPhone === client.phone}
-                      onToggle={() =>
-                        setExpandedClientPhone((current) =>
-                          current === client.phone ? null : client.phone,
-                        )
-                      }
-                    />
-                  </div>
-
-                  <div className="p-4 xl:hidden">
-                    <div className="flex items-start justify-between gap-3">
-                      <ClientIdentity client={client} />
-                      <SpentBadge value={client.totalSpent} />
-                    </div>
-                    <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                      <PhoneBadge phone={client.phone} />
-                      <OrderBadge count={client.orderCount} />
-                      <div className="rounded-xl bg-[#fcfaf7] px-3 py-2 text-sm font-semibold text-gray-600">
-                        Última compra: {formatDate(client.lastOrderDate)}
+        {rows.length === 0 ? (
+          <AdminEmptyState compact title="Nenhum cliente encontrado" description="Tente outro filtro ou busque pelo telefone." />
+        ) : (
+          <div className="space-y-3">
+            {rows.map(client => {
+              const segment = segmentInfo(segmentCustomer(client, completeOrders));
+              const opened = expanded === client.key;
+              const panelId = "customer-hub-detail-" + client.key;
+              return (
+                <article key={client.key} data-customer-phone={client.phone}
+                  className="overflow-hidden rounded-2xl border border-[var(--line)] bg-white">
+                  <div className="p-4 sm:p-5">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="flex min-w-0 flex-1 items-start gap-3">
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-orange-100 text-orange-700">
+                          <UserRound size={20} />
+                        </span>
+                        <div className="min-w-0">
+                          <h2 className="truncate text-base font-black text-gray-950">{client.name}</h2>
+                          <p className="mt-1 text-sm text-gray-600">{formatCustomerPhone(client.phone)}</p>
+                          <span className={"mt-2 inline-flex rounded-lg px-2.5 py-1 text-xs font-bold " + segment.classes}>{segment.label}</span>
+                        </div>
+                      </div>
+                      <div className="shrink-0 rounded-xl bg-orange-50 px-3 py-2 text-right">
+                        <p className="text-[11px] font-semibold text-orange-700">Saldo de pontos</p>
+                        <p className="text-lg font-black tabular-nums text-orange-800">{client.pointsBalance}</p>
                       </div>
                     </div>
-                    <div className="mt-4">
-                      <ClientActions
-                        client={client}
-                        expanded={expandedClientPhone === client.phone}
-                        onToggle={() =>
-                          setExpandedClientPhone((current) =>
-                            current === client.phone ? null : client.phone,
-                          )
-                        }
-                        full
-                      />
+
+                    <div className="mt-4 grid grid-cols-3 gap-2">
+                      <div className="min-w-0 rounded-xl bg-[#fcfaf7] p-3">
+                        <p className="text-[11px] text-gray-500">Compras</p>
+                        <p className="mt-1 text-sm font-black tabular-nums text-gray-900">{client.orderCount}</p>
+                      </div>
+                      <div className="min-w-0 rounded-xl bg-[#fcfaf7] p-3">
+                        <p className="text-[11px] text-gray-500">Total gasto</p>
+                        <p className="mt-1 break-words text-sm font-black tabular-nums text-gray-900">{formatMoney(client.totalSpent)}</p>
+                      </div>
+                      <div className="min-w-0 rounded-xl bg-[#fcfaf7] p-3">
+                        <p className="text-[11px] text-gray-500">Última compra</p>
+                        <p className="mt-1 text-sm font-black text-gray-900">{formatDate(client.lastOrderDate)}</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <AdminButton variant="filter" aria-expanded={opened} aria-controls={panelId}
+                        onClick={() => setExpanded(current => current === client.key ? null : client.key)}>
+                        <ReceiptText size={16} /> {opened ? "Fechar histórico" : "Ver histórico"} <ChevronDown size={15} className={opened ? "rotate-180" : ""} />
+                      </AdminButton>
+                      <Link href="/admin/pontos"
+                        className="admin-button inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-orange-200 bg-orange-50 px-4 py-2 text-sm font-bold text-orange-800 hover:bg-orange-100">
+                        <Coins size={16} /> Adicionar pontos <ArrowUpRight size={14} />
+                      </Link>
+                      <button type="button"
+                        className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-800 hover:bg-emerald-100"
+                        onClick={() => window.open("https://wa.me/55" + normalizeCustomerPhone(client.phone), "_blank", "noopener,noreferrer")}>
+                        <MessageCircle size={16} /> Abrir WhatsApp
+                      </button>
                     </div>
                   </div>
 
-                  {expandedClientPhone === client.phone && (
-                    <RecentOrdersPanel client={client} />
-                  )}
+                  {opened ? (
+                    <section id={panelId} aria-label={"Histórico de " + client.name}
+                      className="grid gap-4 border-t border-[var(--line)] bg-[#fcfaf7] p-4 lg:grid-cols-2 lg:p-5">
+                      <div className="min-w-0">
+                        <h3 className="flex items-center gap-2 text-sm font-black text-gray-950"><ShoppingBag size={17} /> Últimos pedidos</h3>
+                        <p className="mt-1 text-xs text-gray-500">Até cinco pedidos mais recentes, sem cancelados ou testes.</p>
+                        {client.recentOrders.length === 0 ? <p className="mt-4 text-sm text-gray-500">Ainda não há pedidos associados a este telefone.</p> : (
+                          <div className="mt-3 space-y-2">
+                            {client.recentOrders.map(order => (
+                              <div key={order.id} className="rounded-xl border border-[var(--line)] bg-white p-3 text-sm">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                  <strong className="text-gray-950">Pedido #{order.displayNumber || order.id.slice(0, 6)}</strong>
+                                  <span className="font-black text-gray-900">{formatMoney(order.total)}</span>
+                                </div>
+                                <p className="mt-1 text-xs text-gray-500">{formatDateTime(order.createdAt)} · {order.status === "done" ? "Concluído" : "Em andamento"}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="flex items-center gap-2 text-sm font-black text-gray-950"><Wallet size={17} /> Histórico de fidelidade</h3>
+                        <p className="mt-1 text-xs text-gray-500">Pontos acumulados: {client.lifetimeEarned.toLocaleString("pt-BR")}. Até cinco movimentações recentes.</p>
+                        {client.recentTransactions.length === 0 ? <p className="mt-4 text-sm text-gray-500">Ainda não há movimentações de pontos.</p> : (
+                          <div className="mt-3 space-y-2">
+                            {client.recentTransactions.map(tx => (
+                              <div key={tx.id} className="rounded-xl border border-[var(--line)] bg-white p-3 text-sm">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                  <strong className="min-w-0 break-words text-gray-900">{tx.description || (tx.points >= 0 ? "Pontos recebidos" : "Pontos utilizados")}</strong>
+                                  <span className={"font-black tabular-nums " + (tx.points >= 0 ? "text-emerald-700" : "text-red-700")}>
+                                    {tx.points >= 0 ? "+" : ""}{tx.points} pts
+                                  </span>
+                                </div>
+                                <p className="mt-1 text-xs text-gray-500">{formatDateTime(tx.createdAt)}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </section>
+                  ) : null}
                 </article>
-              ))}
-            </div>
-          )}
+              );
+            })}
+          </div>
+        )}
 
-          {visibleClients.length > PAGE_SIZE && (
-            <div className="flex flex-col gap-3 border-t border-[var(--line)] px-4 py-4 text-sm text-gray-500 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-              <p>Página {page} de {totalPages}</p>
-              <div className="grid grid-cols-2 gap-2 sm:flex">
-                <AdminButton variant="secondary" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page === 1}>
-                  <ChevronLeft size={16} /> Anterior
-                </AdminButton>
-                <AdminButton variant="secondary" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={page === totalPages}>
-                  Próxima <ChevronRight size={16} />
-                </AdminButton>
-              </div>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--line)] pt-4 text-sm text-gray-600">
+          <p>{visible.length.toLocaleString("pt-BR")} clientes · Página {page} de {pages}</p>
+          {visible.length > PER_PAGE ? (
+            <div className="flex gap-2">
+              <AdminButton variant="secondary" disabled={page <= 1} onClick={() => { setPage(n => Math.max(1, n - 1)); setExpanded(null); }}>
+                <ChevronLeft size={16} /> Anterior
+              </AdminButton>
+              <AdminButton variant="secondary" disabled={page >= pages} onClick={() => { setPage(n => Math.min(pages, n + 1)); setExpanded(null); }}>
+                Próxima <ChevronRight size={16} />
+              </AdminButton>
             </div>
-          )}
+          ) : null}
         </div>
       </section>
+      <p className="text-xs leading-5 text-gray-500">
+        Inatividade considera 30 dias desde a última compra concluída. Pedidos cancelados e de teste não entram na contagem.
+        Mensagens ao cliente só são abertas pelo operador; não há disparo automático.
+      </p>
     </AdminPageShell>
-  );
-}
-
-function ClientIdentity({ client }: { client: Client }) {
-  return (
-    <div className="min-w-0">
-      <p className="font-bold text-gray-950">{client.name}</p>
-      {client.addresses.length ? (
-        <div className="mt-1 text-xs text-gray-500">
-          <p className="line-clamp-2">{client.addresses[0]}</p>
-          {client.addresses.length > 1 && (
-            <details className="mt-2">
-              <summary className="cursor-pointer font-bold text-[var(--brand)]">
-                Ver mais {client.addresses.length - 1} {client.addresses.length === 2 ? "endereço" : "endereços"}
-              </summary>
-              <ul className="mt-2 space-y-2 border-l-2 border-orange-100 pl-3 text-gray-500">
-                {client.addresses.slice(1).map((address) => <li key={address}>{address}</li>)}
-              </ul>
-            </details>
-          )}
-        </div>
-      ) : (
-        <p className="mt-1 text-xs text-gray-400">Pedido para retirada</p>
-      )}
-    </div>
-  );
-}
-
-function PhoneBadge({ phone }: { phone: string }) {
-  return <div className="inline-flex w-fit items-center gap-2 rounded-xl bg-[#f8f3ec] px-3 py-2 text-sm font-semibold text-gray-700"><Phone size={14} />{phone}</div>;
-}
-
-function OrderBadge({ count }: { count: number }) {
-  return <div className="inline-flex w-fit items-center gap-2 rounded-xl bg-[#f2f7ff] px-3 py-2 font-bold text-blue-700"><ShoppingBag size={14} />{count}</div>;
-}
-
-function SpentBadge({ value }: { value: number }) {
-  return <div className="inline-flex w-fit items-center gap-2 rounded-xl bg-[#eefaf2] px-3 py-2 font-bold text-emerald-700"><Wallet size={14} />{formatMoney(value)}</div>;
-}
-
-function ClientActions({
-  client,
-  expanded,
-  onToggle,
-  full = false,
-}: {
-  client: Client;
-  expanded: boolean;
-  onToggle: () => void;
-  full?: boolean;
-}) {
-  const panelId = `client-orders-${client.phone.replace(/\D/g, "") || "unknown"}`;
-
-  return (
-    <div className={`grid gap-2 ${full ? "grid-cols-2" : "justify-items-end"}`}>
-      <AdminButton
-        variant="filter"
-        className={full ? "w-full" : "w-fit"}
-        onClick={onToggle}
-        aria-expanded={expanded}
-        aria-controls={panelId}
-      >
-        <ReceiptText size={14} />
-        Pedidos
-        <ChevronDown
-          size={14}
-          className={`transition-transform ${expanded ? "rotate-180" : ""}`}
-        />
-      </AdminButton>
-      <WhatsAppButton phone={client.phone} full={full} />
-    </div>
-  );
-}
-
-function RecentOrdersPanel({ client }: { client: Client }) {
-  const panelId = `client-orders-${client.phone.replace(/\D/g, "") || "unknown"}`;
-
-  return (
-    <section id={panelId} className="border-t border-[var(--line)] bg-[#fcfaf7] px-4 py-5 sm:px-6">
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
-        <div>
-          <h3 className="flex items-center gap-2 text-sm font-black text-gray-950">
-            <ReceiptText size={17} className="text-[var(--brand)]" />
-            Últimos pedidos
-          </h3>
-          <p className="mt-1 text-xs text-gray-500">
-            Histórico recente de {client.name}, do mais novo para o mais antigo.
-          </p>
-        </div>
-        <p className="text-xs font-bold uppercase tracking-[0.08em] text-gray-400">
-          {client.recentOrders.length} de até 5 pedidos
-        </p>
-      </div>
-
-      <div className="mt-4 grid gap-2">
-        {client.recentOrders.map((order) => (
-          <article
-            key={order.id}
-            className="grid gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-3 lg:grid-cols-[minmax(100px,0.7fr)_minmax(160px,1fr)_minmax(120px,0.8fr)_140px_minmax(100px,0.65fr)] lg:items-center"
-          >
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-gray-400 lg:hidden">Pedido</p>
-              <p className="mt-1 font-black text-gray-950 lg:mt-0">#{getOrderNumber(order)}</p>
-            </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-gray-400 lg:hidden">Data</p>
-              <p className="mt-1 text-sm font-semibold text-gray-600 lg:mt-0">{formatDateTime(order.createdAt)}</p>
-            </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-gray-400 lg:hidden">Pagamento</p>
-              <p className="mt-1 truncate text-sm font-semibold text-gray-600 lg:mt-0">{formatPaymentMethod(order.paymentMethod)}</p>
-            </div>
-            <div>
-              <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.1em] text-gray-400 lg:hidden">Situação</p>
-              <OrderStatusBadge status={order.status} className="whitespace-nowrap" />
-            </div>
-            <div className="lg:text-right">
-              <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-gray-400 lg:hidden">Valor</p>
-              <p className="mt-1 text-sm font-black text-gray-950 lg:mt-0">{formatMoney(order.total)}</p>
-            </div>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function WhatsAppButton({ phone, full = false }: { phone: string; full?: boolean }) {
-  return (
-    <AdminButton
-      variant="secondary"
-      className={`${full ? "w-full" : "w-fit"} border-emerald-200 !bg-emerald-50 text-emerald-700 shadow-sm hover:!bg-emerald-100`}
-      onClick={() => window.open(`https://wa.me/${phone.replace(/\D/g, "")}`, "_blank", "noopener,noreferrer")}
-    >
-      <MessageCircle size={14} /> WhatsApp
-    </AdminButton>
   );
 }
