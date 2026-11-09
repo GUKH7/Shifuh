@@ -3,6 +3,7 @@ import "server-only";
 import { unstable_cache } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
 import { DEFAULT_STOREFRONT_THEME } from "./constants";
+import { filterAvailableStorefrontProducts } from "./catalog-navigation";
 import type { InitialStorefrontData } from "./initial-data";
 import type { Product, StorefrontTheme } from "./types";
 
@@ -54,7 +55,9 @@ async function loadPublicStorefront(slug: string): Promise<InitialStorefrontData
     ...((restaurant.storefront_theme || {}) as Partial<StorefrontTheme>),
   };
   const categories = Array.isArray(bundle?.categories) ? bundle.categories : [];
-  const products = (Array.isArray(bundle?.products) ? bundle.products : []) as Product[];
+  const products = filterAvailableStorefrontProducts(
+    (Array.isArray(bundle?.products) ? bundle.products : []) as Product[],
+  );
 
   return {
     restaurant,

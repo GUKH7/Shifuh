@@ -29,6 +29,7 @@ import { ProductImage } from "@/features/storefront/ProductImage";
 import { EMPTY_ADDRESS } from "@/features/storefront/constants";
 import { formatMoney, getContrastTextColor, hexToRgba } from "@/features/storefront/format";
 import {
+  filterAvailableStorefrontProducts,
   getBestSellerProductId,
   isHomologationCategory,
   productMatchesSearch,
@@ -644,8 +645,9 @@ export default function StorePage() {
   const currentBannerProductId = currentBannerUrl
     ? storefrontTheme.banner_product_links?.[currentBannerUrl] || ""
     : "";
+  const availableProducts = filterAvailableStorefrontProducts(products);
   const currentBannerProduct = currentBannerProductId
-    ? products.find((product) => product.id === currentBannerProductId && product.is_active) || null
+    ? availableProducts.find((product) => product.id === currentBannerProductId) || null
     : null;
   const hasBannerCarousel = usesHeroBanner && banners.length > 1;
   const moveBanner = (direction: number) => {
@@ -664,11 +666,11 @@ export default function StorePage() {
     const deltaX = endX - startX;
     if (Math.abs(deltaX) < 45) return;
 
-    bannerIgnoreClickUntilRef.current = Date.now() + 500;
+    bannerIgnoreClickUntilRef.current = event.timeStamp + 500;
     moveBanner(deltaX < 0 ? 1 : -1);
   };
-  const handleBannerProductClick = () => {
-    if (!currentBannerProduct || Date.now() < bannerIgnoreClickUntilRef.current) return;
+  const handleBannerProductClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    if (!currentBannerProduct || event.timeStamp < bannerIgnoreClickUntilRef.current) return;
     openProduct(currentBannerProduct);
   };
   const heroHeightClass =
@@ -677,8 +679,8 @@ export default function StorePage() {
       : storefrontTheme.hero_style === "split"
         ? "h-[116px] sm:h-[220px]"
         : "h-[108px] sm:h-[200px]";
-  const totalProducts = products.length;
-  const featuredProduct = products[0] || null;
+  const totalProducts = availableProducts.length;
+  const featuredProduct = availableProducts[0] || null;
   const hasFreeDelivery = deliveryTiers.some((tier: any) => Number(tier.price || 0) === 0);
   const startingDeliveryFee = deliveryTiers.length > 0
     ? Math.min(...deliveryTiers.map((tier: any) => Math.max(0, Number(tier.price) || 0)))
@@ -716,10 +718,10 @@ export default function StorePage() {
   const customerCategories = categories.filter(
     (category) =>
       !isHomologationCategory(category.name) &&
-      products.some((product) => product.category_id === category.id),
+      availableProducts.some((product) => product.category_id === category.id),
   );
   const customerCategoryIds = new Set(customerCategories.map((category) => category.id));
-  const customerProducts = products.filter((product) => customerCategoryIds.has(product.category_id));
+  const customerProducts = availableProducts.filter((product) => customerCategoryIds.has(product.category_id));
   const bestSellerProductId = getBestSellerProductId(customerProducts);
   const visibleProducts = customerProducts.filter((product) => productMatchesSearch(product, menuSearch));
   const displayedCategories = customerCategories.filter((category) =>

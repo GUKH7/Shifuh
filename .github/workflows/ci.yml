@@ -204,6 +204,9 @@ jobs:
       - name: Run commercial E2E
         run: npm run test:e2e:commercial
 
+      - name: Validate unavailable products are hidden on public desktop and mobile
+        run: NEXT_DIST_DIR=.next-e2e npx playwright test tests/e2e/storefront-paused-visibility.spec.ts --project=desktop-chrome --project=mobile-chrome --workers=1
+
       - name: Validate manual loyalty points against isolated local Supabase
         env:
           MANUAL_LOYALTY_LOCAL_E2E: "1"

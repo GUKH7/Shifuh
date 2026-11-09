@@ -10,6 +10,15 @@ type SellableProduct = {
   sold_quantity?: number | null;
 };
 
+
+// Only published/active products belong in the customer-facing menu.
+// Keep paused products in the admin catalog so they can be reactivated.
+export function filterAvailableStorefrontProducts<T extends { is_active?: boolean | null }>(
+  products: T[],
+): T[] {
+  return products.filter((product) => product?.is_active === true);
+}
+
 export function normalizeCatalogText(value: unknown) {
   return String(value || "")
     .normalize("NFD")

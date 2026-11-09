@@ -12,6 +12,9 @@ if (!supabaseUrl || !serviceRoleKey) {
 const RESTAURANT_ID = "11111111-1111-4111-8111-111111111111";
 const CATEGORY_ID = "22222222-2222-4222-8222-222222222222";
 const PRODUCT_ID = "33333333-3333-4333-8333-333333333333";
+const PAUSED_ONLY_CATEGORY_ID = "24242424-2424-4242-8242-242424242424";
+const PAUSED_PRODUCT_ID = "25252525-2525-4252-8252-252525252525";
+const PAUSED_ONLY_PRODUCT_ID = "26262626-2626-4262-8262-262626262626";
 const CUSTOMER_ID = "44444444-4444-4444-8444-444444444444";
 const WHEEL_CAMPAIGN_ID = "55555555-5555-4555-8555-555555555555";
 const WHEEL_RULE_ID = "66666666-6666-4666-8666-666666666666";
@@ -180,6 +183,15 @@ async function seed() {
   });
   assertNoError(categoryError, "Falha ao criar categoria E2E");
 
+  const { error: pausedOnlyCategoryError } = await supabase.from("categories").insert({
+    id: PAUSED_ONLY_CATEGORY_ID,
+    restaurant_id: RESTAURANT_ID,
+    name: "Categoria Pausada E2E",
+    order: 2,
+    is_active: true,
+  });
+  assertNoError(pausedOnlyCategoryError, "Falha ao criar categoria só com itens pausados E2E");
+
   const { error: productError } = await supabase.from("products").insert({
     id: PRODUCT_ID,
     restaurant_id: RESTAURANT_ID,
@@ -192,6 +204,34 @@ async function seed() {
     addons: [],
   });
   assertNoError(productError, "Falha ao criar produto E2E");
+
+  // Local fixture only: a paused item in an active category, and a category
+  // containing only paused items. Neither should appear on the public menu.
+  const { error: pausedProductsError } = await supabase.from("products").insert([
+    {
+      id: PAUSED_PRODUCT_ID,
+      restaurant_id: RESTAURANT_ID,
+      category_id: CATEGORY_ID,
+      name: "Prato Pausado E2E",
+      description: "Este item não deve aparecer na vitrine",
+      price: 29.9,
+      image_url: null,
+      is_active: false,
+      addons: [],
+    },
+    {
+      id: PAUSED_ONLY_PRODUCT_ID,
+      restaurant_id: RESTAURANT_ID,
+      category_id: PAUSED_ONLY_CATEGORY_ID,
+      name: "Produto Exclusivo Pausado E2E",
+      description: "Categoria inteira deve ser omitida na vitrine",
+      price: 39.9,
+      image_url: null,
+      is_active: false,
+      addons: [],
+    },
+  ]);
+  assertNoError(pausedProductsError, "Falha ao criar produtos pausados E2E");
 
   const { error: customerError } = await supabase.from("customers").insert({
     id: CUSTOMER_ID,
