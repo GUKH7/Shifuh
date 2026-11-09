@@ -15,7 +15,7 @@ test("AdminInput preserva espaço para ícones à esquerda", () => {
 
 test("todas as buscas com ícone usam o espaçamento global", () => {
   for (const workspace of [clients, coupons, reviews]) {
-    assert.match(workspace, /<Search[\s\S]*<AdminInput[\s\S]*className="pl-11"/);
+    assert.match(workspace, /<Search[\s\S]*<AdminInput[\s\S]*className="[^"]*pl-11"/);
   }
 });
 
