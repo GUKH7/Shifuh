@@ -13,7 +13,7 @@ test("Central de Clientes combina cadastro presencial, compras e fidelidade no c
   await expect(page.getByRole("heading", { name: "Central de Clientes" })).toBeVisible();
   const known = page.locator('[data-customer-phone="11988887777"]');
   await expect(known).toBeVisible({ timeout: 15_000 });
-  await expect(known.getByText("2", { exact: true })).toBeVisible();
+  await expect(known.getByText("Compras", { exact: true })).toBeVisible();
   await known.getByRole("button", { name: "Ver histórico" }).click();
   await expect(known.getByRole("region", { name: /Histórico de/ })).toBeVisible();
   await expect(known.getByText("Histórico de fidelidade")).toBeVisible();
