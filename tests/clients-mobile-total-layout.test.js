@@ -5,14 +5,13 @@ const test = require("node:test");
 const clients = fs.readFileSync("src/app/admin/(painel)/clients/page.tsx", "utf8");
 const responsive = fs.readFileSync("src/app/admin/(painel)/admin-responsive.css", "utf8");
 
-test("total gasto do cliente não quebra no cartão mobile", () => {
-  assert.match(clients, /client-total-spent/);
-  assert.match(clients, /Wallet size=\{14\} className="shrink-0"/);
-  assert.match(responsive, /\.client-total-spent[\s\S]*grid-template-columns: auto max-content/);
-  assert.match(responsive, /min-width: 8\.75rem !important/);
-  assert.match(responsive, /\.client-total-spent > span[\s\S]*white-space: nowrap !important/);
-  assert.match(responsive, /overflow-wrap: normal !important/);
-  assert.match(responsive, /word-break: keep-all !important/);
+test("total gasto do cliente não estoura o cartão mobile", () => {
+  const workspace = fs.readFileSync("src/app/admin/(painel)/clients/ClientsWorkspace.tsx", "utf8");
+  assert.match(clients, /<ClientsWorkspace/);
+  assert.match(workspace, /grid grid-cols-3 gap-2/);
+  assert.match(workspace, /min-w-0 rounded-xl/);
+  assert.match(workspace, /break-words text-sm font-black tabular-nums/);
+  assert.match(workspace, /formatMoney\(client\.totalSpent\)/);
 });
 
 test("quebra global de texto no mobile não é aplicada ao container inteiro", () => {

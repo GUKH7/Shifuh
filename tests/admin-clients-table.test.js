@@ -1,30 +1,35 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
-const path = require("node:path");
 const test = require("node:test");
+const page = fs.readFileSync("src/app/admin/(painel)/clients/page.tsx", "utf8");
+const clients = fs.readFileSync("src/app/admin/(painel)/clients/ClientsWorkspace.tsx", "utf8");
+const hub = fs.readFileSync("src/features/clients/customer-hub.ts", "utf8");
 
-const clients = fs.readFileSync(
-  path.join(__dirname, "..", "src", "app", "admin", "(painel)", "clients", "page.tsx"),
-  "utf8",
-);
-
-test("last purchase header and values share centered alignment", () => {
-  assert.match(clients, /justify-self-center whitespace-nowrap text-center">Última compra/);
-  assert.match(clients, /justify-self-center text-center font-semibold text-gray-600">\{formatDate\(client\.lastOrderDate\)\}/);
+test("Central shows last purchase, spending and points on mobile cards", () => {
+  assert.match(page, /<ClientsWorkspace/);
+  assert.match(clients, /Central de Clientes/);
+  assert.match(clients, /Última compra/);
+  assert.match(clients, /formatDate\(client\.lastOrderDate\)/);
+  assert.match(clients, /Saldo de pontos/);
+  assert.match(clients, /grid grid-cols-3 gap-2/);
+  assert.match(clients, /formatMoney\(client\.totalSpent\)/);
 });
 
-test("client table header and rows remain vertically aligned", () => {
-  const grid = "grid-cols-[1.3fr_1fr_120px_160px_140px_110px] items-center";
-  const escaped = grid.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  assert.equal((clients.match(new RegExp(escaped, "g")) || []).length, 2);
+test("customer cards retain search, sorting, pagination and expanded history", () => {
+  assert.match(clients, /Buscar por nome ou telefone/);
+  assert.match(clients, /sort === "spent"/);
+  assert.match(clients, /sort === "orders"/);
+  assert.match(clients, /PER_PAGE = 10/);
+  assert.match(clients, /aria-expanded=\{opened\}/);
+  assert.match(clients, /Histórico de fidelidade/);
 });
 
-test("client history preserves, searches and exports unique addresses", () => {
-  assert.match(clients, /addresses: string\[\]/);
-  assert.match(clients, /addresses: address \? \[address\] : \[\]/);
-  assert.match(clients, /!current\.addresses\.includes\(address\)/);
-  assert.match(clients, /client\.addresses\.some\(\(address\) => address\.toLowerCase\(\)\.includes\(term\)\)/);
+test("customer address history is deduplicated and available for safe CSV exports", () => {
+  assert.match(hub, /addresses: string\[\]/);
+  assert.match(hub, /formatClientAddress\(order\.address\)/);
+  assert.match(hub, /!profile\.addresses\.includes\(address\)/);
+  assert.match(clients, /Endereços utilizados/);
+  assert.match(clients, /client\.addresses\.map\(/);
   assert.match(clients, /client\.addresses\.join\(" \| "\)/);
-  assert.match(clients, /Ver mais \{client\.addresses\.length - 1\}/);
-  assert.match(clients, /client\.addresses\.slice\(1\)\.map/);
+  assert.match(clients, /csvCell/);
 });
