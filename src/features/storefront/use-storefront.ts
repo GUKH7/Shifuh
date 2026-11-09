@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { getCoordinates } from "@/lib/geo";
 import { DEFAULT_STOREFRONT_THEME } from "./constants";
+import { filterAvailableStorefrontProducts } from "./catalog-navigation";
 import { useStorefrontInitialData } from "./StorefrontInitialDataProvider";
 import type { Product, StorefrontTheme } from "./types";
 
@@ -41,7 +42,9 @@ export function useStorefront({ slug, onCustomerLoaded, onMissingStore }: UseSto
     ...(initialStorefront?.storefrontTheme ?? {}),
   });
   const [categories, setCategories] = useState<any[]>(initialStorefront?.categories ?? []);
-  const [products, setProducts] = useState<Product[]>(initialStorefront?.products ?? []);
+  const [products, setProducts] = useState<Product[]>(
+    filterAvailableStorefrontProducts(initialStorefront?.products ?? []),
+  );
   const [deliveryTiers, setDeliveryTiers] = useState<any[]>(initialStorefront?.deliveryTiers ?? []);
   const [loading, setLoading] = useState(!initialStorefront);
   const [restoCoords, setRestoCoords] = useState<{ lat: number; lon: number } | null>(null);
@@ -185,7 +188,7 @@ export function useStorefront({ slug, onCustomerLoaded, onMissingStore }: UseSto
         prods = fallbackProductsResult.data;
       }
 
-      if (prods && mounted) setProducts(prods as Product[]);
+      if (prods && mounted) setProducts(filterAvailableStorefrontProducts(prods as Product[]));
       if (mounted) setLoading(false);
     };
 
