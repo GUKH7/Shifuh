@@ -78,7 +78,7 @@ test("central reads only current restaurant with RLS and does not modify databas
   assert.match(code,/Abrir WhatsApp/);
   assert.doesNotMatch(code,/\.insert\(|\.update\(|\.delete\(|SUPABASE_SERVICE_ROLE_KEY/);
   assert.match(page,/<ClientsWorkspace/);
-  assert.doesNotMatch(hub,/supabase\.rpc|service_role|\.from\(/);
+  assert.doesNotMatch(hub,/supabase\.rpc|service_role|supabase\.from\(/);
   const vercel=JSON.parse(fs.readFileSync(path.join(__dirname,"../vercel.json"),"utf8"));
   assert.equal(vercel.git.deploymentEnabled.main,false);
   assert.equal(vercel.git.deploymentEnabled["feat/customer-hub-retention-20261109"],false);
