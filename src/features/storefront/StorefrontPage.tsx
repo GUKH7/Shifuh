@@ -666,11 +666,11 @@ export default function StorePage() {
     const deltaX = endX - startX;
     if (Math.abs(deltaX) < 45) return;
 
-    bannerIgnoreClickUntilRef.current = Date.now() + 500;
+    bannerIgnoreClickUntilRef.current = event.timeStamp + 500;
     moveBanner(deltaX < 0 ? 1 : -1);
   };
-  const handleBannerProductClick = () => {
-    if (!currentBannerProduct || Date.now() < bannerIgnoreClickUntilRef.current) return;
+  const handleBannerProductClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    if (!currentBannerProduct || event.timeStamp < bannerIgnoreClickUntilRef.current) return;
     openProduct(currentBannerProduct);
   };
   const heroHeightClass =
