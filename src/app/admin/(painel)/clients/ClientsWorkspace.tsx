@@ -62,13 +62,13 @@ function csvCell(value: string | number) {
   return '"' + safe.replace(/"/g, '""') + '"';
 }
 function exportClients(rows: CustomerProfile[], completeOrders: boolean) {
-  const headers = ["Cliente", "Telefone", "Compras concluídas", "Total gasto (R$)", "Última compra", "Saldo de pontos", "Segmento"];
+  const headers = ["Cliente", "Telefone", "Compras concluídas", "Total gasto (R$)", "Última compra", "Saldo de pontos", "Segmento", "Endereços"];
   const columns = rows.map(client => {
     const segment = segmentCustomer(client, completeOrders);
     const segmentLabel = segment === "active" ? "Ativo" : segment === "inactive" ? "Inativo 30+ dias" : segment === "never" ? "Sem compras" : "Histórico parcial";
     return [
       client.name, client.phone, client.orderCount, client.totalSpent.toFixed(2).replace(".", ","),
-      formatDate(client.lastOrderDate), client.pointsBalance, segmentLabel,
+      formatDate(client.lastOrderDate), client.pointsBalance, segmentLabel, client.addresses.join(" | "),
     ];
   });
   const content = [headers, ...columns].map(row => row.map(csvCell).join(";")).join("\r\n");
@@ -127,7 +127,7 @@ export default function ClientsWorkspace() {
           }),
           fetchPaged<PurchaseRecord>(async (from, to) => {
             const { data, error } = await supabase.from("orders")
-              .select("id,customer_phone,customer_name,total,created_at,status,display_number,payment_method,is_test")
+              .select("id,customer_phone,customer_name,total,created_at,status,display_number,payment_method,is_test,address")
               .eq("restaurant_id", restaurantId).neq("status", "canceled").eq("is_test", false)
               .order("created_at", { ascending: false }).range(from, to);
             return { data: data as PurchaseRecord[] | null, error };
@@ -367,6 +367,16 @@ export default function ClientsWorkspace() {
                           </div>
                         )}
                       </div>
+                      {client.addresses.length > 0 ? (
+                        <div className="min-w-0 lg:col-span-2">
+                          <h3 className="text-sm font-black text-gray-950">Endereços utilizados</h3>
+                          <ul className="mt-2 grid gap-2 sm:grid-cols-2">
+                            {client.addresses.map(address => (
+                              <li key={address} className="min-w-0 break-words rounded-xl border border-[var(--line)] bg-white p-3 text-sm text-gray-700">{address}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
                     </section>
                   ) : null}
                 </article>
