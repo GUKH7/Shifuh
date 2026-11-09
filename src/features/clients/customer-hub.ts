@@ -9,6 +9,7 @@ export type PurchaseRecord = {
   display_number: number | null;
   payment_method: string | null;
   is_test: boolean | null;
+  address?: Record<string, string | null | undefined> | null;
 };
 export type AccountRecord = { customer_id: string; points_balance: number; lifetime_earned: number };
 export type TransactionRecord = {
@@ -31,6 +32,7 @@ export type CustomerProfile = {
   key: string; id: string | null; phone: string; name: string;
   registered: boolean; createdAt: string | null;
   orderCount: number; totalSpent: number; lastOrderDate: string | null;
+  addresses: string[];
   recentOrders: CustomerOrder[];
   pointsBalance: number; lifetimeEarned: number;
   recentTransactions: CustomerTransaction[];
@@ -50,6 +52,17 @@ export function segmentCustomer(profile: Pick<CustomerProfile, "lastOrderDate">,
   return Math.max(0, now - last) >= 30 * 24 * 60 * 60 * 1000 ? "inactive" : "active";
 }
 
+export function formatClientAddress(address: PurchaseRecord["address"]): string | null {
+  if (!address || typeof address.street !== "string" || !address.street.trim()) return null;
+  const street = address.street.trim() + ", " + (address.number || "S/N");
+  const district = address.neighborhood || "Bairro não informado";
+  const city = [address.city, address.state].filter(Boolean).join("/");
+  return street + " - " + district +
+    (city ? " - " + city : "") +
+    (address.complement ? " · " + address.complement : "") +
+    (address.cep ? " · CEP " + address.cep : "");
+}
+
 export function buildCustomerProfiles(
   customers: CustomerRecord[],
   orders: PurchaseRecord[],
@@ -61,7 +74,7 @@ export function buildCustomerProfiles(
   const empty = (phone: string): CustomerProfile => ({
     key: phone, id: null, phone, name: "Cliente", registered: false, createdAt: null,
     orderCount: 0, totalSpent: 0, lastOrderDate: null,
-    recentOrders: [], pointsBalance: 0, lifetimeEarned: 0, recentTransactions: [],
+    addresses: [], recentOrders: [], pointsBalance: 0, lifetimeEarned: 0, recentTransactions: [],
   });
 
   for (const row of customers) {
@@ -93,6 +106,8 @@ export function buildCustomerProfiles(
       result.set(phone, profile);
     }
     if (profile.name === "Cliente" && order.customer_name?.trim()) profile.name = order.customer_name.trim();
+    const address = formatClientAddress(order.address);
+    if (address && !profile.addresses.includes(address)) profile.addresses.push(address);
     if (profile.recentOrders.length < 5) {
       profile.recentOrders.push({
         id: order.id, displayNumber: order.display_number, total: Number(order.total) || 0,
