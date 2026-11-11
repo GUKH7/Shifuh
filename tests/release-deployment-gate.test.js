@@ -46,7 +46,7 @@ test("Vercel keeps Git auto-deploy of main disabled independently of preview pro
   const config = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "vercel.json"), "utf8"));
   const disabledDeployments = config.git.deploymentEnabled;
   const requiredDisabledBranches = {
-    main: false;
+    main: false,
     "feature/onboarding-pr-a-20261029": false,
     "feat/store-setup-onboarding-20261030": false,
     "feat/commercial-actions-20261030": false,
