@@ -1010,22 +1010,25 @@ export default function StorePage() {
               value={menuSearch}
               onChange={(e) => setMenuSearch(e.target.value)}
               placeholder="Buscar no cardápio"
-              className="min-w-0 flex-1 bg-transparent text-[12px] font-medium outline-none placeholder:text-gray-400 sm:text-sm"
+              type="search"
+              aria-label="Buscar produtos no cardápio"
+              aria-controls="storefront-catalog"
+              className="min-w-0 flex-1 bg-transparent text-base font-medium outline-none placeholder:text-gray-400 sm:text-sm"
             />
             {menuSearch && (
-              <button onClick={() => setMenuSearch("")} className="text-gray-400">
+              <button type="button" aria-label="Limpar busca no cardápio" onClick={() => setMenuSearch("")} className="flex h-11 w-11 shrink-0 items-center justify-center text-gray-500">
                 <X size={16} />
               </button>
             )}
           </div>
-          <div ref={categoryNavRef} className="flex w-full min-w-0 gap-2 overflow-x-auto overscroll-x-contain pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <nav aria-label="Categorias do cardápio" ref={categoryNavRef} className="flex w-full min-w-0 gap-2 overflow-x-auto overscroll-x-contain pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {displayedCategories.map((category) => (
               <button
                 key={category.id}
                 data-category-tab={category.id}
                 aria-current={activeCategory === category.id ? "true" : undefined}
                 onClick={() => navigateToCategory(category.id)}
-                className={`max-w-[75vw] shrink-0 truncate whitespace-nowrap rounded-full border px-3.5 text-xs font-bold transition-all duration-200 sm:max-w-none sm:text-sm ${isCatalogNavCompact ? "min-h-8 py-1.5" : "min-h-10 py-2"} ${
+                className={`max-w-[75vw] shrink-0 truncate whitespace-nowrap rounded-full border px-3.5 text-xs font-bold transition-all duration-200 sm:max-w-none sm:text-sm ${isCatalogNavCompact ? "min-h-11 py-2" : "min-h-11 py-2"} ${
                   activeCategory === category.id
                     ? "border-transparent text-gray-950"
                     : "border-gray-200 bg-white text-gray-600"
@@ -1039,16 +1042,16 @@ export default function StorePage() {
                 {category.name}
               </button>
             ))}
-          </div>
+          </nav>
         </div>
       </div>
 
-      <main className="mx-auto w-full min-w-0 max-w-5xl px-2.5 py-3 sm:px-6 sm:py-5">
+      <main id="storefront-catalog" className="mx-auto w-full min-w-0 max-w-5xl px-2.5 py-3 pb-32 sm:px-6 sm:py-5 lg:pb-5">
         <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
           <div className="min-w-0 space-y-4">
             {menuSearch && (
               <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-700">
-                {visibleProducts.length} resultado(s) para &quot;{menuSearch}&quot;
+                <span role="status" aria-live="polite">{visibleProducts.length} {visibleProducts.length === 1 ? "resultado" : "resultados"} para &quot;{menuSearch}&quot;</span>
               </div>
             )}
 
@@ -1203,14 +1206,15 @@ export default function StorePage() {
       </main>
 
       {cart.length > 0 && !isCartOpen && (
-        <div className="fixed bottom-3 left-0 right-0 z-40 px-3 sm:bottom-4 sm:px-6 lg:hidden">
+        <div className="fixed bottom-0 left-0 right-0 z-40 px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-2 sm:bottom-4 sm:px-6 sm:pb-0 lg:hidden">
           <div className="mx-auto max-w-3xl">
             <button
               onClick={() => {
                 setStep("cart");
                 setIsCartOpen(true);
               }}
-              className="w-full rounded-2xl border border-white/80 bg-[#fffdfa] p-2.5 text-gray-950 shadow-[0_14px_36px_rgba(17,16,15,0.16)]"
+              aria-label={`Abrir sacola com ${cartQuantity} ${cartQuantity === 1 ? "item" : "itens"}, subtotal ${formatMoney(cartSubtotal)}`}
+              className="w-full min-h-14 rounded-2xl border border-white/80 bg-[#fffdfa] p-2.5 text-gray-950 shadow-[0_14px_36px_rgba(17,16,15,0.16)]"
             >
               <div className="flex items-center justify-between gap-4">
                 <div className="flex min-w-0 items-center gap-3">
@@ -1289,6 +1293,7 @@ export default function StorePage() {
         scheduledFor={scheduledFor}
         onClose={() => setIsCartOpen(false)}
         onBackToCart={() => setStep("cart")}
+        onContinueShopping={() => setIsCartOpen(false)}
         onBackToAddress={() => setStep("address")}
         onStepChange={setStep}
         onRemoveFromCart={removeFromCart}
