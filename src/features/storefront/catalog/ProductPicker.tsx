@@ -40,6 +40,7 @@ export function ProductPicker({
   const { dialogRef, initialFocusRef } = useAccessibleDialog(Boolean(product), onClose);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => new Set());
   const observationRef = useRef<HTMLTextAreaElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setCollapsedGroups(new Set());
@@ -51,6 +52,20 @@ export function ProductPicker({
     const minimum = Number(group.min_options ?? (group.required ? 1 : 0));
     return (addonSelections[group.id]?.length || 0) < minimum;
   }) || [];
+
+  const handlePrimaryAction = () => {
+    if (missingRequiredGroups.length === 0) {
+      onAddToCart();
+      return;
+    }
+
+    const firstMissing = missingRequiredGroups[0];
+    const target = Array.from(
+      contentRef.current?.querySelectorAll<HTMLElement>("[data-addon-group]") || [],
+    ).find((element) => element.dataset.addonGroup === String(firstMissing.id));
+    target?.scrollIntoView({ behavior: "smooth", block: "start" });
+    target?.focus({ preventScroll: true });
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-0 backdrop-blur-sm sm:items-center sm:p-4">
@@ -72,7 +87,7 @@ export function ProductPicker({
           <X size={20} />
         </button>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <div ref={contentRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain scroll-smooth">
           <div className={`relative flex items-center justify-center bg-white px-4 py-3 sm:h-72 sm:px-6 sm:py-4 ${product.image_url ? "h-48" : "h-28"}`}>
             {product.image_url ? (
               <div className="relative size-40 shrink-0 overflow-hidden rounded-2xl sm:size-64">
@@ -109,7 +124,12 @@ export function ProductPicker({
               const isCollapsed = collapsedGroups.has(group.id);
 
               return (
-                <div key={group.id} className="mt-5 border-t border-[var(--line)] pt-5">
+                <div
+                  key={group.id}
+                  data-addon-group={group.id}
+                  tabIndex={-1}
+                  className="mt-5 scroll-mt-5 border-t border-[var(--line)] pt-5 outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
@@ -201,7 +221,7 @@ export function ProductPicker({
                 onChange={(event) => onObservationChange(event.target.value)}
                 rows={3}
                 placeholder="Ex: sem cebola, bem passado, sem molho..."
-                className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none"
+                className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-base outline-none sm:text-sm"
               />
             </div>
           </div>
@@ -210,13 +230,14 @@ export function ProductPicker({
         <div className="border-t border-[var(--line)] bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
           {missingRequiredGroups.length > 0 && (
             <p role="status" aria-live="polite" className="mb-3 text-center text-xs font-bold text-rose-600">
-              Complete as escolhas obrigatórias para continuar.
+              Falta escolher: {missingRequiredGroups.map((group: any) => getAddonGroupDisplayTitle(group.title)).join(", ")}.
             </p>
           )}
           <div className="flex items-center gap-3 sm:gap-4">
             <div className="flex min-h-11 items-center gap-2 rounded-2xl border border-[var(--line)] px-2 sm:gap-4 sm:px-4 sm:py-3">
               <button
                 onClick={() => onQuantityChange(Math.max(1, quantity - 1))}
+                disabled={quantity <= 1}
                 className="flex h-11 w-11 items-center justify-center"
                 style={{ color: primaryColor }}
                 aria-label={`Diminuir quantidade de ${product.name}`}
@@ -235,13 +256,12 @@ export function ProductPicker({
             </div>
 
             <button
-              onClick={onAddToCart}
-              disabled={missingRequiredGroups.length > 0}
-              className="min-h-14 flex-1 rounded-2xl px-4 py-3 font-black text-white disabled:cursor-not-allowed disabled:opacity-50 sm:px-5 sm:py-4"
+              onClick={handlePrimaryAction}
+              className="min-h-14 min-w-0 flex-1 rounded-2xl px-3 py-3 font-black text-white sm:px-5 sm:py-4"
               style={{ backgroundColor: primaryColor }}
             >
-              <span className="flex items-center justify-between gap-3">
-                <span>{missingRequiredGroups.length > 0 ? "Continuar" : isEditing ? "Salvar alterações" : "Adicionar"}</span>
+              <span className="flex items-center justify-between gap-2 text-sm sm:text-base">
+                <span>{missingRequiredGroups.length > 0 ? "Escolher opções" : isEditing ? "Salvar alterações" : "Adicionar"}</span>
                 <span>{formatMoney(calculateProductTotal())}</span>
               </span>
             </button>
