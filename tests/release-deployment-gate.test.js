@@ -44,7 +44,8 @@ test("deployment guard fails closed for unsuccessful, missing or unrelated CI co
 
 test("Vercel keeps Git auto-deploy of main disabled independently of preview project settings", () => {
   const config = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "vercel.json"), "utf8"));
-  assert.deepEqual(config.git.deploymentEnabled, {
+  const disabledDeployments = config.git.deploymentEnabled;
+  const requiredDisabledBranches = {
     main: false,
     "feature/onboarding-pr-a-20261029": false,
     "feat/store-setup-onboarding-20261030": false,
@@ -56,7 +57,16 @@ test("Vercel keeps Git auto-deploy of main disabled independently of preview pro
     "feat/manual-customer-quick-registration-20261108": false,
     "feat/customer-hub-retention-20261109": false,
     "fix/hide-paused-storefront-products-20261109": false,
-  });
+    "feat/mobile-purchase-ux-20261111": false,
+  };
+  // Never remove an existing protection when adding a new feature branch.
+  for (const [branch, expected] of Object.entries(requiredDisabledBranches)) {
+    assert.equal(disabledDeployments[branch], expected, `Missing deployment block for ${branch}`);
+  }
+  // Future feature branches may be added, but none may silently enable a Preview.
+  for (const [branch, enabled] of Object.entries(disabledDeployments)) {
+    assert.equal(enabled, false, `Git auto-deploy must remain disabled for ${branch}`);
+  }
   assert.deepEqual(config.regions, ["pdx1"]);
 });
 

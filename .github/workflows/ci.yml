@@ -199,7 +199,7 @@ jobs:
           # APT source on hosted runners is unrelated and can transiently publish
           # mismatched Release/Packages metadata, blocking `--with-deps` entirely.
           sudo rm -f /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome.sources
-          npx playwright install --with-deps chromium
+          npx playwright install chromium
 
       - name: Run commercial E2E
         run: npm run test:e2e:commercial
