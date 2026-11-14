@@ -11,9 +11,9 @@ const compiled = ts.transpileModule(source, {
 }).outputText;
 
 function load(windowValue) {
-  const module = { exports: {} };
-  vm.runInNewContext(compiled, { module, exports: module.exports, window: windowValue });
-  return module.exports;
+  const moduleRecord = { exports: {} };
+  vm.runInNewContext(compiled, { module: moduleRecord, exports: moduleRecord.exports, window: windowValue });
+  return moduleRecord.exports;
 }
 
 function mockAudio() {

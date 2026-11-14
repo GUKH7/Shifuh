@@ -33,6 +33,11 @@ function loadUtils() {
     if (request === "@/lib/order-status") {
       return loadTsModule(orderStatusPath);
     }
+    // Legacy unit tests compile the moved feature utils under the original
+    // filename; resolve its new pure audio helper from the feature directory.
+    if (request === "./new-order-chime" && parent?.filename === utilsPath) {
+      return loadTsModule(path.join(projectRoot, "src", "features", "orders", "new-order-chime.ts"));
+    }
 
     return originalLoad.call(this, request, parent, isMain);
   };
