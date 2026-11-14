@@ -529,7 +529,7 @@ export default function OrdersPage() {
     setIsChimeEnabled(true);
     showToast({
       title: "Campainha ativada",
-      description: "Novos pedidos vão tocar um aviso sonoro nesta tela.",
+      description: "Novos pedidos vão tocar um alerta mais forte em dois pares nesta tela.",
       tone: "success",
     });
   };
@@ -1060,6 +1060,7 @@ export default function OrdersPage() {
                 <button
                   type="button"
                   onClick={enableChime}
+                  title={isChimeEnabled ? "Clique para testar o som da campainha" : "Ativar e testar a campainha"}
                   className={`inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border px-3.5 py-2.5 text-sm font-black shadow-sm transition sm:flex-none ${
                     isChimeEnabled
                       ? "border-emerald-200 bg-emerald-50 text-emerald-700"

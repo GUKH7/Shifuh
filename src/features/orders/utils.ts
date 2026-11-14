@@ -48,51 +48,7 @@ export function formatDisplayNumber(order: Pick<Order, "display_number" | "id">)
   return order.id.slice(0, 4).toUpperCase();
 }
 
-export function playNewOrderChime() {
-  if (typeof window === "undefined") return false;
-
-  try {
-    const AudioContextCtor =
-      window.AudioContext ||
-      (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-
-    if (!AudioContextCtor) return false;
-
-    const audioContext = new AudioContextCtor();
-    const now = audioContext.currentTime;
-    const notes = [
-      { frequency: 880, start: 0, duration: 0.18 },
-      { frequency: 1174.66, start: 0.16, duration: 0.22 },
-    ];
-
-    notes.forEach((note) => {
-      const oscillator = audioContext.createOscillator();
-      const gain = audioContext.createGain();
-      const startAt = now + note.start;
-      const endAt = startAt + note.duration;
-
-      oscillator.type = "sine";
-      oscillator.frequency.setValueAtTime(note.frequency, startAt);
-      gain.gain.setValueAtTime(0.0001, startAt);
-      gain.gain.exponentialRampToValueAtTime(0.12, startAt + 0.025);
-      gain.gain.exponentialRampToValueAtTime(0.0001, endAt);
-
-      oscillator.connect(gain);
-      gain.connect(audioContext.destination);
-      oscillator.start(startAt);
-      oscillator.stop(endAt);
-    });
-
-    window.setTimeout(() => {
-      void audioContext.close();
-    }, 700);
-
-    return true;
-  } catch {
-    // Some browsers block audio before the first user interaction.
-    return false;
-  }
-}
+export { playNewOrderChime } from "./new-order-chime";
 
 export function getStatusLabel(status: Order["status"]) {
   return getOrderStatusLabel(status);
