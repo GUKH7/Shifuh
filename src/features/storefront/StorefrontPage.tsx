@@ -68,7 +68,7 @@ export default function StorePage() {
   const [menuSearch, setMenuSearch] = useState("");
   const [isCatalogNavCompact, setIsCatalogNavCompact] = useState(false);
   const [storeClock, setStoreClock] = useState(() => new Date());
-  const categoryNavRef = useRef<HTMLDivElement>(null);
+  const categoryNavRef = useRef<HTMLElement>(null);
   const bannerTouchStartXRef = useRef<number | null>(null);
   const bannerIgnoreClickUntilRef = useRef(0);
 
@@ -137,6 +137,7 @@ export default function StorePage() {
     products,
     deliveryTiers,
     loading,
+    catalogReady,
     activeCategory,
     setActiveCategory,
   } = useStorefront({
@@ -176,6 +177,8 @@ export default function StorePage() {
     observation,
     editingCartItemId,
     cart,
+    cartNotice,
+    dismissCartNotice,
     cartSubtotal,
     setQuantity,
     setObservation,
@@ -190,7 +193,7 @@ export default function StorePage() {
     clearCart,
     cartQuantity,
     updateCartItemQuantity,
-  } = useCart(`gestor-delivery:cart:${slug || "store"}`);
+  } = useCart(`gestor-delivery:cart:${slug || "store"}`, catalogReady ? products : null);
   const { markCompleted, trackError } = useCheckoutAnalytics({
     restaurantId: restaurant?.id,
     isOpen: isCartOpen,
@@ -735,6 +738,42 @@ export default function StorePage() {
     }
   }, [activeCategory, displayedCategories, setActiveCategory]);
 
+  // The visible section, rather than a fixed global pixel offset, controls
+  // the highlighted tab. This remains accurate as the sticky bar changes size.
+  const visibleCategoryIds = displayedCategories.map((category) => category.id).join("|");
+  useEffect(() => {
+    if (!visibleCategoryIds) return;
+    const ids = visibleCategoryIds.split("|");
+    let frame = 0;
+    const syncCategory = () => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = 0;
+        const navBottom = categoryNavRef.current?.closest("[data-catalog-nav]")
+          ?.getBoundingClientRect().bottom ?? 0;
+        let currentId = ids[0];
+        for (const id of ids) {
+          const top = document.getElementById(`cat-${id}`)?.getBoundingClientRect().top;
+          if (top !== undefined && top <= navBottom + 32) currentId = id;
+        }
+        // On very short categories the final section may not reach the sticky
+        // bar even when the customer has scrolled to the end of the document.
+        if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 8) {
+          currentId = ids[ids.length - 1];
+        }
+        setActiveCategory((previous: string) => previous === currentId ? previous : currentId);
+      });
+    };
+    window.addEventListener("scroll", syncCategory, { passive: true });
+    window.addEventListener("resize", syncCategory);
+    syncCategory();
+    return () => {
+      window.removeEventListener("scroll", syncCategory);
+      window.removeEventListener("resize", syncCategory);
+      if (frame) window.cancelAnimationFrame(frame);
+    };
+  }, [visibleCategoryIds, setActiveCategory]);
+
   if (loading) {
     return (
       <div className="min-h-screen animate-pulse bg-[#f6f1ea]">
@@ -1004,7 +1043,7 @@ export default function StorePage() {
 
       <div data-catalog-nav className="sticky top-0 z-30 w-full min-w-0 overflow-hidden border-b border-gray-200 bg-white transition-[padding,box-shadow] duration-200">
         <div className={`mx-auto w-full min-w-0 max-w-5xl px-2.5 transition-all duration-200 sm:px-6 ${isCatalogNavCompact ? "py-1 shadow-[0_5px_16px_rgba(17,16,15,0.05)]" : "py-2"}`}>
-          <div className={`flex items-center gap-2 rounded-xl border border-gray-200 bg-[#f7f7f7] px-3 transition-all duration-200 sm:gap-2.5 sm:px-3.5 ${isCatalogNavCompact ? "mb-1 h-8" : "mb-2 h-9 sm:mb-2.5 sm:h-10"}`}>
+          <div className={`flex items-center gap-2 rounded-xl border border-gray-200 bg-[#f7f7f7] px-3 transition-all duration-200 sm:gap-2.5 sm:px-3.5 ${isCatalogNavCompact ? "mb-1 h-11" : "mb-2 h-11 sm:mb-2.5"}`}>
             <Search size={16} className="text-gray-400" />
             <input
               value={menuSearch}
@@ -1047,6 +1086,12 @@ export default function StorePage() {
       </div>
 
       <main id="storefront-catalog" className="mx-auto w-full min-w-0 max-w-5xl px-2.5 py-3 pb-32 sm:px-6 sm:py-5 lg:pb-5">
+        {cartNotice && (
+          <div role="status" aria-live="polite" className="mb-3 flex items-start justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-950">
+            <span>{cartNotice}</span>
+            <button type="button" className="min-h-11 shrink-0 underline" onClick={dismissCartNotice} aria-label="Dispensar aviso da sacola">Entendi</button>
+          </div>
+        )}
         <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
           <div className="min-w-0 space-y-4">
             {menuSearch && (

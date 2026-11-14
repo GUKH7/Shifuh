@@ -47,6 +47,9 @@ export function useStorefront({ slug, onCustomerLoaded, onMissingStore }: UseSto
   );
   const [deliveryTiers, setDeliveryTiers] = useState<any[]>(initialStorefront?.deliveryTiers ?? []);
   const [loading, setLoading] = useState(!initialStorefront);
+  // Reconcile a saved cart only after a successful catalog load. A transient
+  // network error must not silently erase items from local storage.
+  const [catalogReady, setCatalogReady] = useState(Boolean(initialStorefront));
   const [restoCoords, setRestoCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [activeCategory, setActiveCategory] = useState(
     initialStorefront?.categories?.[0]?.id ?? "",
@@ -188,7 +191,10 @@ export function useStorefront({ slug, onCustomerLoaded, onMissingStore }: UseSto
         prods = fallbackProductsResult.data;
       }
 
-      if (prods && mounted) setProducts(filterAvailableStorefrontProducts(prods as Product[]));
+      if (prods && mounted) {
+        setProducts(filterAvailableStorefrontProducts(prods as Product[]));
+        setCatalogReady(true);
+      }
       if (mounted) setLoading(false);
     };
 
@@ -221,20 +227,6 @@ export function useStorefront({ slug, onCustomerLoaded, onMissingStore }: UseSto
     return () => window.clearInterval(timer);
   }, [banners.length]);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      const offsets = categories.flatMap((cat) => {
-        const element = document.getElementById(`cat-${cat.id}`);
-        return element ? [{ id: cat.id, offset: element.offsetTop }] : [];
-      });
-      const current = offsets.findLast((item) => window.scrollY + 240 >= item.offset);
-      if (current) setActiveCategory(current.id);
-    };
-
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [categories]);
-
   return {
     supabase,
     currentUser,
@@ -251,6 +243,7 @@ export function useStorefront({ slug, onCustomerLoaded, onMissingStore }: UseSto
     products,
     deliveryTiers,
     loading,
+    catalogReady,
     restoCoords,
     activeCategory,
     setActiveCategory,

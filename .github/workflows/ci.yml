@@ -207,6 +207,9 @@ jobs:
       - name: Validate unavailable products are hidden on public desktop and mobile
         run: NEXT_DIST_DIR=.next-e2e npx playwright test tests/e2e/storefront-paused-visibility.spec.ts --project=desktop-chrome --project=mobile-chrome --workers=1
 
+      - name: Validate persisted cart and mobile purchase flow on isolated fixture
+        run: NEXT_DIST_DIR=.next-e2e npx playwright test tests/e2e/storefront-mobile-purchase.spec.ts --project=mobile-chrome --workers=1
+
       - name: Validate manual loyalty points against isolated local Supabase
         env:
           MANUAL_LOYALTY_LOCAL_E2E: "1"
