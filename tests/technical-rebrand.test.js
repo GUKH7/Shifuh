@@ -27,12 +27,13 @@ test("migrates legacy cart storage only after writing the Shifuh key", () => {
 
   assert.match(cart, /LEGACY_CART_STORAGE_PREFIX = "gestor-delivery:"/);
   assert.match(cart, /SHIFUH_CART_STORAGE_PREFIX = "shifuh:"/);
-  assert.match(cart, /localStorage\.setItem\(currentStorageKey, savedCart\)/);
+  assert.match(cart, /reconcilePersistedCart\(parsed, catalogProducts\)/);
+  assert.match(cart, /localStorage\.setItem\(currentStorageKey, JSON\.stringify\(result\.items\)\)/);
   assert.match(cart, /localStorage\.removeItem\(legacyStorageKey\)/);
   assert.ok(
-    cart.indexOf("localStorage.setItem(currentStorageKey, savedCart)") <
+    cart.indexOf("localStorage.setItem(currentStorageKey, JSON.stringify(result.items))") <
       cart.indexOf("localStorage.removeItem(legacyStorageKey)"),
-    "legacy cart must only be removed after the Shifuh copy is written",
+    "legacy cart must only be removed after the revalidated Shifuh copy is written",
   );
   assert.match(cart, /CART_SUBTOTAL_COOKIE = "shifuh_cart_subtotal"/);
   assert.match(cart, /LEGACY_CART_SUBTOTAL_COOKIE = "gestor_cart_subtotal"/);

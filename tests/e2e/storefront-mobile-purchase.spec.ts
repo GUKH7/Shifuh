@@ -29,8 +29,9 @@ test("mobile: busca, categorias, complementos, sacola e checkout até antes de e
   await page.getByRole("radio", { name: "Arroz E2E" }).check();
   await page.getByRole("button", { name: /^Adicionar R\$/ }).click();
   await page.getByRole("button", { name: /Abrir sacola com 1 item/ }).click();
-  await expect(page.getByText("Combo Mobile E2E", { exact: true })).toBeVisible();
-  await expect(page.getByText("Arroz E2E", { exact: false })).toBeVisible();
+  const checkout = page.getByRole("dialog");
+  await expect(checkout.getByText("Combo Mobile E2E", { exact: true })).toBeVisible();
+  await expect(checkout.getByText("Arroz E2E", { exact: false })).toBeVisible();
 
   await page.getByRole("button", { name: "Adicionar mais itens" }).click();
   await expect(search).toBeVisible();
@@ -67,10 +68,11 @@ test("mobile: reconcilia sacola antiga sem enviar pedidos ou reutilizar preços 
   await page.goto("/loja-e2e");
   await expect(page.getByText(/Sacola atualizada:/)).toBeVisible();
   await page.getByRole("button", { name: /Abrir sacola com 2 itens/ }).click();
-  await expect(page.getByText("Prato E2E CI", { exact: true })).toBeVisible();
-  await expect(page.getByText("Prato Pausado E2E", { exact: true })).toHaveCount(0);
-  await expect(page.getByText("Combo Mobile E2E", { exact: true })).toHaveCount(0);
-  await expect(page.getByText("R$ 39,80").first()).toBeVisible();
+  const checkout = page.getByRole("dialog");
+  await expect(checkout.getByText("Prato E2E CI", { exact: true })).toBeVisible();
+  await expect(checkout.getByText("Prato Pausado E2E", { exact: true })).toHaveCount(0);
+  await expect(checkout.getByText("Combo Mobile E2E", { exact: true })).toHaveCount(0);
+  await expect(checkout.getByText("R$ 39,80").first()).toBeVisible();
   const storedAfter = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) || "[]"), CART_KEY);
   expect(storedAfter).toHaveLength(1);
   expect(storedAfter[0].product.price).toBe(19.9);
