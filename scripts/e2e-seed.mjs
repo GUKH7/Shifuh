@@ -12,6 +12,8 @@ if (!supabaseUrl || !serviceRoleKey) {
 const RESTAURANT_ID = "11111111-1111-4111-8111-111111111111";
 const CATEGORY_ID = "22222222-2222-4222-8222-222222222222";
 const PRODUCT_ID = "33333333-3333-4333-8333-333333333333";
+const MOBILE_CATEGORY_ID = "2b2b2b2b-2b2b-42b2-82b2-2b2b2b2b2b2b";
+const MOBILE_PRODUCT_ID = "2a2a2a2a-2a2a-42a2-82a2-2a2a2a2a2a2a";
 const PAUSED_ONLY_CATEGORY_ID = "24242424-2424-4242-8242-242424242424";
 const PAUSED_PRODUCT_ID = "25252525-2525-4252-8252-252525252525";
 const PAUSED_ONLY_PRODUCT_ID = "26262626-2626-4262-8262-262626262626";
@@ -183,6 +185,16 @@ async function seed() {
   });
   assertNoError(categoryError, "Falha ao criar categoria E2E");
 
+  // Additional local-only fixture for the mobile purchase journey.
+  const { error: mobileCategoryError } = await supabase.from("categories").insert({
+    id: MOBILE_CATEGORY_ID,
+    restaurant_id: RESTAURANT_ID,
+    name: "Combos E2E",
+    order: 2,
+    is_active: true,
+  });
+  assertNoError(mobileCategoryError, "Falha ao criar categoria mobile E2E");
+
   const { error: pausedOnlyCategoryError } = await supabase.from("categories").insert({
     id: PAUSED_ONLY_CATEGORY_ID,
     restaurant_id: RESTAURANT_ID,
@@ -204,6 +216,29 @@ async function seed() {
     addons: [],
   });
   assertNoError(productError, "Falha ao criar produto E2E");
+
+  const { error: mobileProductError } = await supabase.from("products").insert({
+    id: MOBILE_PRODUCT_ID,
+    restaurant_id: RESTAURANT_ID,
+    category_id: MOBILE_CATEGORY_ID,
+    name: "Combo Mobile E2E",
+    description: "Produto de teste com acompanhamento obrigatório",
+    price: 24.9,
+    image_url: null,
+    is_active: true,
+    addons: [{
+      id: "mobile-sides-e2e",
+      title: "Acompanhamento E2E",
+      required: true,
+      min_options: 1,
+      max_options: 1,
+      options: [
+        { name: "Arroz E2E", price: 2 },
+        { name: "Batata E2E", price: 3 },
+      ],
+    }],
+  });
+  assertNoError(mobileProductError, "Falha ao criar combo mobile E2E");
 
   // Local fixture only: a paused item in an active category, and a category
   // containing only paused items. Neither should appear on the public menu.

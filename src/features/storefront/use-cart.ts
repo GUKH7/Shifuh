@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CartItem, Product } from "./types";
 import { toggleAddonSelection } from "./product-options";
+import { reconcilePersistedCart } from "./cart-reconciliation";
 
 const LEGACY_CART_STORAGE_PREFIX = "gestor-delivery:";
 const SHIFUH_CART_STORAGE_PREFIX = "shifuh:";
@@ -20,17 +21,20 @@ function resolveCartStorageKeys(storageKey: string) {
   return { current: storageKey, legacy: null };
 }
 
-export function useCart(storageKey: string) {
+export function useCart(storageKey: string, catalogProducts: Product[] | null = null) {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [addonSelections, setAddonSelections] = useState<Record<string, any[]>>({});
   const [quantity, setQuantity] = useState(1);
   const [observation, setObservation] = useState("");
   const [editingCartItemId, setEditingCartItemId] = useState<string | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [cartHydrated, setCartHydrated] = useState(false);
+  const [hydratedKey, setHydratedKey] = useState<string | null>(null);
+  const [cartNotice, setCartNotice] = useState("");
   const { current: currentStorageKey, legacy: legacyStorageKey } = resolveCartStorageKeys(storageKey);
+  const cartHydrated = hydratedKey === currentStorageKey;
 
   useEffect(() => {
+    if (catalogProducts === null || cartHydrated) return;
     try {
       const candidateKeys = legacyStorageKey
         ? [currentStorageKey, legacyStorageKey]
@@ -43,12 +47,21 @@ export function useCart(storageKey: string) {
         try {
           const parsed = JSON.parse(savedCart);
           if (!Array.isArray(parsed)) continue;
-
-          setCart(parsed);
+          const result = reconcilePersistedCart(parsed, catalogProducts);
+          setCart(result.items);
+          if (result.removedCount || result.repricedCount) {
+            const updates = [
+              result.removedCount ? `${result.removedCount} item(ns) indisponível(is) removido(s)` : "",
+              result.repricedCount ? `${result.repricedCount} preço(s) atualizado(s)` : "",
+            ].filter(Boolean);
+            setCartNotice(`Sacola atualizada: ${updates.join(" e ")}.`);
+          } else {
+            setCartNotice("");
+          }
 
           if (candidateKey === legacyStorageKey) {
             try {
-              window.localStorage.setItem(currentStorageKey, savedCart);
+              window.localStorage.setItem(currentStorageKey, JSON.stringify(result.items));
               window.localStorage.removeItem(legacyStorageKey);
             } catch (migrationError) {
               console.warn("Não foi possível migrar a sacola para a chave Shifuh.", migrationError);
@@ -62,9 +75,9 @@ export function useCart(storageKey: string) {
     } catch (error) {
       console.warn("Não foi possível acessar a sacola salva.", error);
     } finally {
-      setCartHydrated(true);
+      setHydratedKey(currentStorageKey);
     }
-  }, [currentStorageKey, legacyStorageKey]);
+  }, [catalogProducts, cartHydrated, currentStorageKey, legacyStorageKey]);
 
   useEffect(() => {
     if (!cartHydrated) return;
@@ -217,6 +230,8 @@ export function useCart(storageKey: string) {
     observation,
     editingCartItemId,
     cart,
+    cartNotice,
+    dismissCartNotice: () => setCartNotice(""),
     cartSubtotal,
     cartQuantity,
     setQuantity,

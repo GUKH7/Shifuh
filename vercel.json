@@ -16,7 +16,8 @@
       "feat/manual-customer-quick-registration-20261108": false,
       "feat/customer-hub-retention-20261109": false,
       "fix/hide-paused-storefront-products-20261109": false,
-      "feat/mobile-purchase-ux-20261111": false
+      "feat/mobile-purchase-ux-20261111": false,
+      "fix/storefront-cart-mobile-postrelease-20261114": false
     }
   }
 }

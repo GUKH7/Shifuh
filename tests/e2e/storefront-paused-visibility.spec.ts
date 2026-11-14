@@ -5,17 +5,17 @@ test("cardápio público omite produtos pausados e categorias vazias, mas manté
 
   await expect(page.getByRole("heading", { name: "Loja E2E CI", level: 1 })).toBeVisible();
 
-  // The local fixture has three products: one active and two paused.
+  // The local fixture has two active products and two paused.
   // One of the paused items is in an otherwise empty active category.
   const productCards = page.locator("[data-product-card]");
-  await expect(productCards).toHaveCount(1);
+  await expect(productCards).toHaveCount(2);
   await expect(productCards.first()).toContainText("Prato E2E CI");
-  await expect(page.locator("[data-category-tab]")).toHaveCount(1);
+  await expect(page.locator("[data-category-tab]")).toHaveCount(2);
   await expect(page.getByText("Categoria Pausada E2E", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Prato Pausado E2E", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Produto Exclusivo Pausado E2E", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Indisponível", { exact: true })).toHaveCount(0);
-  await expect(page.getByText("1 item", { exact: true })).toBeVisible();
+  await expect(page.getByText("1 item", { exact: true })).toHaveCount(2);
 
   const search = page.getByPlaceholder("Buscar no cardápio");
   await search.fill("pausado");
