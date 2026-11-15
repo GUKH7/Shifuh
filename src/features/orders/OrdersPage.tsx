@@ -32,6 +32,7 @@ import { AdminPageHeader, AdminPageShell } from "@/components/ui/admin-primitive
 import { AdminEmptyState, AdminErrorState } from "@/components/ui/admin-page-states";
 import { OrdersSkeleton } from "./OrdersSkeleton";
 import { OrdersDatePicker } from "./OrdersDatePicker";
+import { selectNextPendingOrder } from "./order-queue";
 import "./orders-responsive.css";
 import type { IfoodCancellationReason, IfoodEventAudit, Order, OrderItem } from "./types";
 import {
@@ -874,6 +875,12 @@ export default function OrdersPage() {
     };
   }, [filteredOrders.length, orders]);
 
+  // The queue follows today's orders even when the list has search filters.
+  const nextPendingOrder = useMemo(
+    () => (isCurrentDate ? selectNextPendingOrder(orders, storeClock) : null),
+    [isCurrentDate, orders, storeClock],
+  );
+
   const getCount = (status: StatusFilter) =>
     status === "all"
       ? baseFilteredOrders.length
@@ -889,6 +896,11 @@ export default function OrdersPage() {
     setChannelFilter("all");
     setFulfillmentFilter("all");
     setPaymentFilter("all");
+  };
+
+  const openQuickOrder = (order: Order) => {
+    clearAllFilters();
+    setExpandedOrders([order.id]);
   };
 
   const loadIfoodEvents = async (order: Order, force = false) => {
@@ -1076,6 +1088,73 @@ export default function OrdersPage() {
         />
 
         <section className="space-y-4">
+          {isCurrentDate && (
+            <section aria-label="Atendimento rápido" className="rounded-2xl border border-orange-200 bg-[#fff8f3] p-4 shadow-sm sm:p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-wider text-[var(--brand)]">Fila rápida</p>
+                  <h2 className="mt-1 text-lg font-black text-gray-950">Próximo atendimento</h2>
+                  <p className="mt-1 text-xs font-semibold text-gray-600">
+                    {summary.pending} {summary.pending === 1 ? "pedido pendente" : "pedidos pendentes"} ·
+                    {" "}{summary.preparing} em preparo · {summary.delivering} em rota
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { clearAllFilters(); setActiveStatus("pending"); setExpandedOrders([]); }}
+                  className="inline-flex min-h-11 items-center justify-center rounded-xl border border-orange-200 bg-white px-3 text-xs font-black text-[var(--brand)]"
+                >
+                  Ver pendentes
+                </button>
+              </div>
+              {nextPendingOrder ? (
+                <div
+                  data-testid="orders-next-pending"
+                  data-quick-order-id={nextPendingOrder.id}
+                  className="mt-4 flex flex-col gap-3 rounded-xl border border-orange-100 bg-white p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4"
+                >
+                  <div className="min-w-0">
+                    <p className="text-xs font-black text-[var(--brand)]">Próximo a atender</p>
+                    <p className="mt-1 truncate text-base font-black text-gray-950">
+                      #{formatDisplayNumber(nextPendingOrder)} · {nextPendingOrder.customer_name}
+                    </p>
+                    <p className="mt-1 text-xs font-semibold text-gray-500">
+                      {getRelativeOrderTime(nextPendingOrder.created_at)} ·
+                      {" "}{getChannelLabel(nextPendingOrder)} · {getFulfillmentLabel(nextPendingOrder)} ·
+                      {" "}{nextPendingOrder.items.length} {nextPendingOrder.items.length === 1 ? "item" : "itens"}
+                    </p>
+                  </div>
+                  <div className="grid w-full grid-cols-2 gap-2 sm:w-auto">
+                    <button
+                      type="button"
+                      onClick={() => openQuickOrder(nextPendingOrder)}
+                      aria-label={`Ver detalhes do pedido ${formatDisplayNumber(nextPendingOrder)} na fila rápida`}
+                      className="min-h-11 rounded-xl border border-[var(--line)] bg-white px-3 text-xs font-black text-gray-700"
+                    >Ver detalhes</button>
+                    <button
+                      type="button"
+                      onClick={() => void handlePrimaryAction(nextPendingOrder)}
+                      disabled={
+                        busyIfoodAction.startsWith(`${nextPendingOrder.id}:`) ||
+                        statusUpdatingOrderId === nextPendingOrder.id
+                      }
+                      aria-label={`Aceitar pedido ${formatDisplayNumber(nextPendingOrder)} na fila rápida`}
+                      className="min-h-11 rounded-xl bg-[var(--brand)] px-3 text-xs font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {busyIfoodAction.startsWith(`${nextPendingOrder.id}:`) ||
+                      statusUpdatingOrderId === nextPendingOrder.id ? "Atualizando..." : "Aceitar agora"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p className="mt-3 rounded-xl bg-white px-3 py-4 text-sm font-semibold text-gray-600">
+                  {summary.pending > 0
+                    ? "Sem pedidos imediatos. Os pendentes restantes estão agendados para depois."
+                    : "Nenhum pedido aguardando atendimento agora."}
+                </p>
+              )}
+            </section>
+          )}
           <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Filtrar pedidos por situação">
             {STATUS_FILTERS.map((tab) => (
               <button
@@ -1294,7 +1373,7 @@ export default function OrdersPage() {
                             <button
                               type="button"
                               onClick={(event) => { event.stopPropagation(); void handlePrimaryAction(order); }}
-                              disabled={busyIfoodAction.startsWith(`${order.id}:`)}
+                              disabled={busyIfoodAction.startsWith(`${order.id}:`) || statusUpdatingOrderId === order.id}
                               className="inline-flex h-9 min-w-0 items-center justify-center rounded-xl bg-[var(--brand)] px-2 text-[11px] font-black text-white shadow-sm disabled:opacity-50"
                               aria-label={primaryActionLabel}
                             >
