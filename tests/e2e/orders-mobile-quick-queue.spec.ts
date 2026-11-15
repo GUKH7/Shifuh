@@ -24,7 +24,10 @@ test("mobile: fila rápida abre detalhes e aceita pedido com Supabase isolado", 
     customer_name: "Cliente Fila Rápida E2E", customer_phone: "11981112233",
     subtotal: 23.5, delivery_fee: 0, discount: 0, total: 23.5,
     status: "pending", payment_method: "pix", is_test: true,
-    created_at: new Date().toISOString(),
+    // A previously created pending order may survive commercial E2E; use a
+    // due scheduled fixture from an earlier day so this is deterministically oldest.
+    created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+    scheduled_for: new Date().toISOString(),
   });
   expect(insertError).toBeNull();
 
