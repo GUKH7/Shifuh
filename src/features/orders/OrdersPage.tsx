@@ -1130,7 +1130,7 @@ export default function OrdersPage() {
                       onClick={() => openQuickOrder(nextPendingOrder)}
                       aria-label={`Ver detalhes do pedido ${formatDisplayNumber(nextPendingOrder)} na fila rápida`}
                       className="min-h-11 rounded-xl border border-[var(--line)] bg-white px-3 text-xs font-black text-gray-700"
-                    >Ver detalhes</button>
+                    >Abrir pedido</button>
                     <button
                       type="button"
                       onClick={() => void handlePrimaryAction(nextPendingOrder)}
