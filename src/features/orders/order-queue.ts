@@ -1,4 +1,5 @@
 import type { Order } from "./types";
+import { is99FoodOrder } from "@/lib/integrations/order-channels";
 
 /** Oldest pending order due now. Future scheduled orders are not fast-tracked. */
 export function selectNextPendingOrder(orders: readonly Order[], now: Date): Order | null {
@@ -7,7 +8,7 @@ export function selectNextPendingOrder(orders: readonly Order[], now: Date): Ord
   const currentTime = now.getTime();
 
   for (const order of orders) {
-    if (order.status !== "pending") continue;
+    if (order.status !== "pending" || is99FoodOrder(order)) continue;
     if (order.scheduled_for) {
       const scheduledTime = Date.parse(order.scheduled_for);
       if (!Number.isFinite(scheduledTime) || scheduledTime > currentTime) continue;
