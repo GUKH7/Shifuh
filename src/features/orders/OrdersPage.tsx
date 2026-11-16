@@ -454,10 +454,9 @@ export default function OrdersPage() {
 
   const updateStatus = async (order: Order, newStatus: OrderStatus, cancellationReason = "") => {
     setStatusUpdatingOrderId(order.id);
-    setOrders((prev) =>
-      prev.map((current) => (current.id === order.id ? { ...current, status: newStatus } : current)),
-    );
 
+    // Keep the order pending in the quick queue while the request is in flight.
+    // The server is authoritative: never present an unconfirmed acceptance.
     try {
       const response = await fetch(`/api/orders/${order.id}/status`, {
         method: "PATCH",
@@ -480,6 +479,12 @@ export default function OrdersPage() {
         void fetchOrders();
         return false;
       }
+
+      // Only remove the pending order from the quick queue once the API has
+      // confirmed that the status change persisted successfully.
+      setOrders((prev) =>
+        prev.map((current) => (current.id === order.id ? { ...current, status: newStatus } : current)),
+      );
 
       showToast({
         title: "Status atualizado",
