@@ -99,6 +99,13 @@ function loadRoute(state, aliases = {}) {
       return { NextResponse: { json: (body, init) => Response.json(body, init) } };
     }
 
+    if (request === "@/lib/integrations/order-channels") {
+      return {
+        is99FoodOrder: (order) =>
+          String(order?.external_source || "").trim().toLowerCase() === "99food",
+      };
+    }
+
     if (request === "@/lib/supabase/server") {
       return {
         createClient: async () => createSupabaseMock(state, "authenticated"),
@@ -226,4 +233,27 @@ test("exige motivo ao cancelar e inclui a orientação na mensagem", async () =>
     cancellation_reason: "Item indisponível",
   });
   assert.match(sentMessages[0].message, /Motivo: Item indisponível/);
+});
+
+
+test("bloqueia PATCH local em pedido 99Food ainda não homologado", async () => {
+  const state = baseState();
+  state.order.external_source = "99food";
+  const { PATCH } = loadRoute(state, {
+    "@/lib/whatsapp-bot": {
+      sendWhatsappMessage: async () => { throw new Error("Não pode enviar mensagem"); },
+    },
+  });
+
+  const response = await PATCH(
+    new Request("http://local.test/api/orders/order-1/status", {
+      method: "PATCH",
+      body: JSON.stringify({ status: "preparing" }),
+    }),
+    { params: Promise.resolve({ id: "order-1" }) },
+  );
+
+  assert.equal(response.status, 409);
+  assert.match((await response.json()).error, /99Food/);
+  assert.equal(state.orderUpdates.length, 0);
 });
