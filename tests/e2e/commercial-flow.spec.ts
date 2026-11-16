@@ -127,7 +127,8 @@ test.describe("fluxo comercial completo", () => {
     await page.goto("/admin/orders");
     await page.waitForURL((url) => url.pathname === "/admin/orders", { timeout: 20_000 });
 
-    const customer = page.getByText("Cliente E2E CI", { exact: true }).first();
+    await expect(page.getByRole("region", { name: "Atendimento rápido" })).toBeVisible();
+    const customer = page.locator(".orders-table-row").getByText("Cliente E2E CI", { exact: true }).first();
     await expect(customer).toBeVisible({ timeout: 20_000 });
     await expect(page.getByText(`#${orderPayload.displayNumber}`, { exact: true }).first()).toBeVisible();
 
