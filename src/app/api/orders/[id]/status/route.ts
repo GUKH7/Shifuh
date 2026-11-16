@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { sendWhatsappMessage } from "@/lib/whatsapp-bot";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
+import { is99FoodOrder } from "@/lib/integrations/order-channels";
 
 type OrderStatus = "pending" | "preparing" | "delivering" | "done" | "canceled";
 
@@ -90,7 +91,7 @@ export async function PATCH(request: Request, context: Params) {
     const { id } = await context.params;
     const { data: order, error: orderError } = await supabase
       .from("orders")
-      .select("id, restaurant_id, customer_name, customer_phone, status, display_number")
+      .select("id, restaurant_id, customer_name, customer_phone, status, display_number, external_source")
       .eq("id", id)
       .maybeSingle();
 
@@ -107,6 +108,15 @@ export async function PATCH(request: Request, context: Params) {
 
     if (restaurantError || !restaurant) {
       return NextResponse.json({ error: "Acesso negado ao pedido." }, { status: 403 });
+    }
+
+    // A marketplace order must never be marked accepted locally before its
+    // upstream marketplace confirms the change. 99Food is not homologated yet.
+    if (is99FoodOrder(order)) {
+      return NextResponse.json(
+        { error: "A integração 99Food ainda não está homologada. Não é possível alterar este pedido." },
+        { status: 409 },
+      );
     }
 
     const admin = createAdminClient();

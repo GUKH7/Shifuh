@@ -12,6 +12,7 @@ import "./admin-logo-radius.css";
 const ADMIN_SEARCH_ITEMS = [
   { label: "Dashboard", href: "/admin", keywords: ["inicio", "dashboard", "resumo", "painel"] },
   { label: "Pedidos", href: "/admin/orders", keywords: ["pedido", "pedidos", "entregas", "fila"] },
+  { label: "Integrações", href: "/admin/integrations", keywords: ["integracoes", "integrações", "ifood", "99", "99food", "delivery", "marketplace"] },
   { label: "Histórico", href: "/admin/history", keywords: ["historico", "vendas", "concluidos"] },
   { label: "Cardápios", href: "/admin/menu", keywords: ["cardapio", "menu", "produtos", "categorias"] },
   { label: "Clientes", href: "/admin/clients", keywords: ["clientes", "crm", "contatos"] },

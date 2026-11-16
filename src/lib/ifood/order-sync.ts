@@ -350,6 +350,7 @@ export async function upsertLocalOrderFromIfood(
     .from("orders")
     .select("id, display_number, status, external_payload, cancellation_reason")
     .eq("restaurant_id", restaurantId)
+    .eq("external_source", "ifood")
     .eq("external_order_id", event.orderId)
     .maybeSingle(), signal);
 
