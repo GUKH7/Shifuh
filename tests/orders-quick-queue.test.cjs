@@ -14,7 +14,23 @@ const compiled = ts.transpileModule(source, {
 const mod = new Module(helperFile, module);
 mod.filename = helperFile;
 mod.paths = Module._nodeModulePaths(path.dirname(helperFile));
-mod._compile(compiled, helperFile);
+const channelFile = path.join(root, "src/lib/integrations/order-channels.ts");
+const channels = new Module(channelFile, module);
+channels.filename = channelFile;
+channels.paths = Module._nodeModulePaths(path.dirname(channelFile));
+channels._compile(ts.transpileModule(fs.readFileSync(channelFile, "utf8"), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+}).outputText, channelFile);
+const originalLoad = Module._load;
+Module._load = function loadWithChannels(request, parent, isMain) {
+  if (request === "@/lib/integrations/order-channels") return channels.exports;
+  return originalLoad.call(this, request, parent, isMain);
+};
+try {
+  mod._compile(compiled, helperFile);
+} finally {
+  Module._load = originalLoad;
+}
 const { selectNextPendingOrder } = mod.exports;
 
 const now = new Date("2026-11-15T12:00:00Z");
@@ -51,6 +67,13 @@ test("não sugere concluídos ou agendados sem horário válido", () => {
 test("desempata cronologias inválidas de modo determinístico", () => {
   const list = [order("b", "invalid"), order("a", "invalid")];
   assert.equal(selectNextPendingOrder(list, now).id, "a");
+});
+
+test("não permite que pedidos 99Food sem conector entrem na fila de aceite", () => {
+  const candidate = { ...order("99-order", "2026-11-15T09:00:00Z"), external_source: "99food" };
+  const native = order("own-order", "2026-11-15T11:30:00Z");
+  assert.equal(selectNextPendingOrder([candidate, native], now)?.id, "own-order");
+  assert.equal(selectNextPendingOrder([candidate], now), null);
 });
 
 test("UI abre detalhes e reutiliza ação autenticada de aceite", () => {
