@@ -52,12 +52,48 @@ test("mobile: fila rápida abre detalhes e aceita pedido com Supabase isolado", 
     await expect(details).toBeVisible();
     await details.getByRole("button", { name: "Fechar detalhes do pedido" }).click();
 
+    const statusUrl = `/api/orders/${id}/status`;
+    // A failed PATCH must NOT make a pending order disappear from the queue.
+    let rejectFirstAttempt = true;
+    await page.route(`**${statusUrl}`, async (route) => {
+      if (rejectFirstAttempt) {
+        rejectFirstAttempt = false;
+        await route.fulfill({
+          status: 503,
+          contentType: "application/json",
+          body: JSON.stringify({ error: "Falha simulada no aceite" }),
+        });
+        return;
+      }
+      await route.continue();
+    });
+
+    const failedResponsePromise = page.waitForResponse((response) =>
+      response.url().endsWith(statusUrl) && response.request().method() === "PATCH",
+    );
     await quickCard.getByRole("button", { name: /Aceitar pedido/ }).click();
-    await expect(queue.locator(`[data-quick-order-id="${id}"]`)).toHaveCount(0, { timeout: 12_000 });
-    const { data: updated, error: updatedError } = await supabase.from("orders")
+    expect((await failedResponsePromise).status()).toBe(503);
+    await expect(quickCard).toHaveAttribute("data-quick-order-id", id);
+    await expect(quickCard.getByRole("button", { name: /Aceitar pedido/ })).toBeEnabled();
+    const { data: pending } = await supabase.from("orders")
       .select("status").eq("id", id).single();
-    expect(updatedError).toBeNull();
-    expect(updated?.status).toBe("preparing");
+    expect(pending?.status).toBe("pending");
+
+    // After the real API confirms the update, the order can leave the queue.
+    const acceptedResponsePromise = page.waitForResponse((response) =>
+      response.url().endsWith(statusUrl) && response.request().method() === "PATCH",
+    );
+    await quickCard.getByRole("button", { name: /Aceitar pedido/ }).click();
+    const acceptedResponse = await acceptedResponsePromise;
+    expect(acceptedResponse.status()).toBe(200);
+    const acceptedPayload = await acceptedResponse.json();
+    expect(acceptedPayload.order?.status).toBe("preparing");
+    await expect(queue.locator(`[data-quick-order-id="${id}"]`)).toHaveCount(0, { timeout: 12_000 });
+    await expect.poll(async () => {
+      const { data, error } = await supabase.from("orders").select("status").eq("id", id).single();
+      expect(error).toBeNull();
+      return data?.status;
+    }, { timeout: 12_000 }).toBe("preparing");
 
     const pageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(pageWidth).toBeLessThanOrEqual(page.viewportSize()!.width + 2);
