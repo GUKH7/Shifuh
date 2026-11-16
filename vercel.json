@@ -19,7 +19,8 @@
       "feat/mobile-purchase-ux-20261111": false,
       "fix/storefront-cart-mobile-postrelease-20261114": false,
       "feat/louder-order-chime-20261114": false,
-      "feat/orders-quick-queue-mobile-20261115": false
+      "feat/orders-quick-queue-mobile-20261115": false,
+      "feat/ifood-99food-integration-foundation-20261116": false
     }
   }
 }
