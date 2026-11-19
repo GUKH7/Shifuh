@@ -43,13 +43,17 @@
    Requer `FOOD99_LOCAL_E2E=1`, Supabase local inicializado e
    `node scripts/e2e-seed.mjs` executado primeiro.
 
-**Limitação desta entrega:** não foi possível alterar o workflow
-`.github/workflows/ci.yml` para executar automaticamente o script SQL
-específico (ação de escrita bloqueada). O workflow existente executa
-`supabase db reset` sobre um Supabase local descartável, de modo que a
-migration é testada quanto à aplicação, mas o novo script E2E de
-concorrência **não é chamado automaticamente**. Não considerar este teste
-E2E aprovado até sua execução separada em ambiente local autorizado.
+**Homologação SQL local automatizada:** o workflow `.github/workflows/ci.yml`
+permaneceu inalterado. Após `supabase db reset` e `node scripts/e2e-seed.mjs`
+no banco descartável do CI, o comando existente `test:e2e:commercial` de
+`package.json` agora executa `cross-env FOOD99_LOCAL_E2E=1 node
+scripts/99food-transactional-local-homologation.mjs` antes dos testes de
+interface, com encadeamento `&&` (falha bloqueia o Commercial E2E).
+O CI automático #44582803536 confirmou no log:
+`99Food local-only transactional homologation: PASS (25 races, tenants, auth, replay, chronology).`
+Validation Gate, Commercial E2E e Release Gate passaram, e Deploy production
+foi `skipped`. Isso não valida o contrato oficial ainda inacessível nem
+é aprovação para aplicar esta migration em banco remoto.
 
 ## Checklist antes de conectar 99Food real
 
@@ -61,8 +65,9 @@ E2E aprovado até sua execução separada em ambiente local autorizado.
   do adaptador e da função SQL.
 - Substituir explicitamente o adaptador de fixtures por um adaptador
   oficial com testes de contrato baseados na documentação autorizada.
-- Homologar corrida SQL e reconciliação no Supabase local, sem migrar
-  nem consumir dados reais antes de aprovação separada.
+- Repetir homologação de corrida SQL com fixtures do contrato oficial e
+  cobrir falhas/retentativas adicionais no Supabase local, sem migrar nem
+  consumir dados reais antes de aprovação separada.
 - Revisar, com autorização, a migration para implantação futura.
   Não criar webhook público nem emitir ACK antes de persistir com sucesso.
 
