@@ -65,8 +65,7 @@ export function create99FoodLocalTransactionalStore(
       if (validated.channel !== "99food" ||
           validated.restaurantId !== trustedRestaurantId ||
           validated.orderKey !== event.orderKey ||
-          validated.eventKey !== event.eventKey ||
-          validated.merchantId !== undefined) {
+          validated.eventKey !== event.eventKey) {
         throw new Error("99Food staged event scope mismatch");
       }
 
