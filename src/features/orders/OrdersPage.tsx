@@ -33,6 +33,7 @@ import { AdminEmptyState, AdminErrorState } from "@/components/ui/admin-page-sta
 import { OrdersSkeleton } from "./OrdersSkeleton";
 import { OrdersDatePicker } from "./OrdersDatePicker";
 import { selectNextPendingOrder } from "./order-queue";
+import { is99FoodOrder } from "@/lib/integrations/order-channels";
 import "./orders-responsive.css";
 import type { IfoodCancellationReason, IfoodEventAudit, Order, OrderItem } from "./types";
 import {
@@ -72,7 +73,7 @@ type RestaurantConfig = {
 
 type OrderStatus = Order["status"];
 type StatusFilter = (typeof STATUS_FILTERS)[number]["id"];
-type ChannelFilter = "all" | "ifood" | "whatsapp" | "counter";
+type ChannelFilter = "all" | "ifood" | "99food" | "whatsapp" | "counter";
 type FulfillmentFilter = "all" | "delivery" | "pickup";
 type IfoodAction =
   | "confirm"
@@ -156,6 +157,7 @@ function formatSelectedDateLabel(dateValue: string) {
 
 function getChannelLabel(order: Order) {
   if (isIfoodOrder(order)) return "iFood";
+  if (is99FoodOrder(order)) return "99Food";
   if (formatIfoodOrderType(order) === "Retirada") return "Balcão";
   return "WhatsApp";
 }
@@ -171,6 +173,7 @@ function isPickupOrder(order: Order) {
 }
 
 function getPrimaryActionLabel(order: Order) {
+  if (is99FoodOrder(order)) return "";
   if (order.status === "pending") return "Aceitar pedido";
   if (order.status === "preparing") {
     return isPickupOrder(order)
@@ -182,6 +185,7 @@ function getPrimaryActionLabel(order: Order) {
 }
 
 function getCompactPrimaryActionLabel(order: Order) {
+  if (is99FoodOrder(order)) return "";
   if (order.status === "pending") return "Aceitar";
   if (order.status === "preparing") {
     return isPickupOrder(order)
@@ -590,6 +594,14 @@ export default function OrdersPage() {
   };
 
   const handlePrimaryAction = async (order: Order) => {
+    if (is99FoodOrder(order)) {
+      showToast({
+        title: "99Food ainda não conectada",
+        description: "Aguarde a homologação do conector antes de alterar pedidos dessa plataforma.",
+        tone: "error",
+      });
+      return;
+    }
     if (order.status === "pending") {
       if (isIfoodOrder(order)) {
         await runIfoodAction(order, "confirm");
@@ -834,6 +846,7 @@ export default function OrdersPage() {
       const matchesChannel =
         channelFilter === "all" ||
         (channelFilter === "ifood" && channelLabel === "iFood") ||
+        (channelFilter === "99food" && channelLabel === "99Food") ||
         (channelFilter === "whatsapp" && channelLabel === "WhatsApp") ||
         (channelFilter === "counter" && channelLabel === "Balcão");
       const matchesFulfillment =
@@ -1225,6 +1238,7 @@ export default function OrdersPage() {
                 >
                   <option value="all">Todos os canais</option>
                   <option value="ifood">iFood</option>
+                  <option value="99food">99Food</option>
                   <option value="whatsapp">WhatsApp</option>
                   <option value="counter">Balcão</option>
                 </select>
@@ -1338,9 +1352,9 @@ export default function OrdersPage() {
 
                         <div className="orders-table-cell flex items-center justify-center gap-2" data-label="Canal">
                           <span className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${
-                            isIfoodOrder(order) ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-600"
+                            isIfoodOrder(order) ? "bg-red-50 text-red-600" : is99FoodOrder(order) ? "bg-orange-50 text-orange-700" : "bg-emerald-50 text-emerald-600"
                           }`}>
-                            {isIfoodOrder(order) ? <Store size={15} /> : <ClipboardList size={15} />}
+                            {isIfoodOrder(order) || is99FoodOrder(order) ? <Store size={15} /> : <ClipboardList size={15} />}
                           </span>
                           <div>
                             <p className="text-xs font-black text-gray-950">{channelLabel}</p>
@@ -1374,6 +1388,11 @@ export default function OrdersPage() {
                         </div>
 
                         <div className="orders-table-cell orders-actions-cell flex items-center gap-1 xl:justify-center" data-label="Ações">
+                          {is99FoodOrder(order) && (
+                            <span className="text-[10px] font-bold text-amber-800" title="99Food aguardando homologação">
+                              Conector pendente
+                            </span>
+                          )}
                           {primaryActionLabel && (
                             <button
                               type="button"
@@ -1614,7 +1633,7 @@ export default function OrdersPage() {
                                 </button>
                               )}
 
-                              {(order.status === "pending" || order.status === "preparing") && (
+                              {(order.status === "pending" || order.status === "preparing") && !is99FoodOrder(order) && (
                                 <button
                                   type="button"
                                   onClick={() =>
