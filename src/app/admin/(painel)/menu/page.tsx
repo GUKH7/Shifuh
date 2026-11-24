@@ -23,6 +23,7 @@ import {
   X,
 } from "lucide-react";
 import ProductModal from "@/components/product-modal";
+import { isMenuProductAvailable, matchesMenuAvailabilityFilter, type MenuAvailabilityFilter } from "@/features/menu/product-availability";
 import { getCurrentRestaurant } from "@/lib/supabase/restaurant";
 import { useToast } from "@/components/ui/toast-provider";
 import { AdminPageHeader, AdminPageShell } from "@/components/ui/admin-primitives";
@@ -54,6 +55,7 @@ export default function AdminDashboard() {
   const [products, setProducts] = useState<any[]>([]);
   const productsRef = useRef<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [availabilityFilter, setAvailabilityFilter] = useState<MenuAvailabilityFilter>("all");
   const [sortBy, setSortBy] = useState<SortKey>("manual");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
@@ -465,11 +467,18 @@ export default function AdminDashboard() {
     setEditingCategoryId(null);
   };
 
-  const handleDragStart = (index: number) => setDraggedCategoryIndex(index);
+  // A filtered list does not preserve the indices of the full category list.
+  // Never persist category positions while the visible set is partial.
+  const canReorderCategories = !searchTerm.trim() && availabilityFilter === "all" &&
+    !isSavingCategory && !isSavingProductOrder && !draggedProduct;
+
+  const handleDragStart = (index: number) => {
+    if (canReorderCategories) setDraggedCategoryIndex(index);
+  };
 
   const handleDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault();
-    if (draggedCategoryIndex === null || draggedCategoryIndex === index) return;
+    if (!canReorderCategories || draggedCategoryIndex === null || draggedCategoryIndex === index) return;
 
     const newCategories = [...categories];
     const item = newCategories[draggedCategoryIndex];
@@ -480,7 +489,9 @@ export default function AdminDashboard() {
   };
 
   const handleDragEnd = async () => {
+    const startedOnFullList = draggedCategoryIndex !== null && canReorderCategories;
     setDraggedCategoryIndex(null);
+    if (!startedOnFullList) return;
     setIsSavingCategory(true);
 
     const updates = categories.map((category, index) => ({ id: category.id, order: index + 1 }));
@@ -491,7 +502,7 @@ export default function AdminDashboard() {
     setIsSavingCategory(false);
   };
 
-  const canReorderProducts = sortBy === "manual" && !searchTerm.trim() && !isSavingProductOrder;
+  const canReorderProducts = sortBy === "manual" && !searchTerm.trim() && !isSavingProductOrder && availabilityFilter === "all";
 
   const handleProductDragStart = (event: React.DragEvent, product: any) => {
     if (!canReorderProducts) {
@@ -599,6 +610,13 @@ export default function AdminDashboard() {
   const formatPrice = (value: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
+  const availableProductCount = useMemo(() => {
+    const categoryById = new Map(categories.map((category) => [category.id, category]));
+    return products.filter((product) =>
+      isMenuProductAvailable(product, categoryById.get(product.category_id)),
+    ).length;
+  }, [categories, products]);
+
   const filteredCategories = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
 
@@ -606,6 +624,7 @@ export default function AdminDashboard() {
       .map((category) => {
         const categoryProducts = products.filter((product) => {
           if (product.category_id !== category.id) return false;
+          if (!matchesMenuAvailabilityFilter(product, category, availabilityFilter)) return false;
 
           if (!term) return true;
 
@@ -634,8 +653,8 @@ export default function AdminDashboard() {
           categoryProducts: sortedProducts,
         };
       })
-      .filter((category) => !searchTerm || category.categoryProducts.length > 0);
-  }, [categories, products, searchTerm, sortBy, sortDirection]);
+      .filter((category) => (availabilityFilter === "all" && !term) || category.categoryProducts.length > 0);
+  }, [categories, products, searchTerm, availabilityFilter, sortBy, sortDirection]);
 
   const activeFilteredCategories = useMemo(
     () => filteredCategories.filter((category) => category.is_active !== false),
@@ -703,6 +722,29 @@ export default function AdminDashboard() {
             : <>{categories.length} categorias e {products.length} produtos na loja</>}
       </p>
 
+      <div role="group" aria-label="Filtrar produtos por disponibilidade" className="flex flex-wrap items-center gap-2">
+        <span className="mr-1 text-xs font-bold text-gray-500">Mostrar produtos:</span>
+        {([
+          ["all", "Todos", products.length],
+          ["available", "Disponíveis", availableProductCount],
+          ["unavailable", "Indisponíveis", products.length - availableProductCount],
+        ] as const).map(([filter, label, count]) => (
+          <button
+            key={filter}
+            type="button"
+            aria-pressed={availabilityFilter === filter}
+            onClick={() => setAvailabilityFilter(filter)}
+            className={`rounded-xl border px-3 py-2 text-xs font-bold transition-colors ${
+              availabilityFilter === filter
+                ? "border-orange-200 bg-[var(--brand-soft)] text-[var(--brand)]"
+                : "border-[var(--line)] bg-white text-gray-600 hover:bg-[#fbf7f2]"
+            }`}
+          >
+            {label} ({count})
+          </button>
+        ))}
+      </div>
+
       <div className="grid min-w-0 gap-6 2xl:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
         <div className="min-w-0 space-y-5">
           <div className="surface-card rounded-[26px] p-5">
@@ -718,7 +760,9 @@ export default function AdminDashboard() {
                   <p className="mt-2 max-w-xl text-xs leading-5 text-gray-500">
                     {searchTerm.trim()
                       ? "Limpe a busca para arrastar e reposicionar os produtos."
-                      : "Arraste os produtos pelo ícone de alça para definir a ordem exibida na vitrine."}
+                      : availabilityFilter !== "all"
+                        ? "Selecione Todos para arrastar e reposicionar os produtos."
+                        : "Arraste os produtos pelo ícone de alça para definir a ordem exibida na vitrine."}
                   </p>
                 )}
               </div>
@@ -785,14 +829,16 @@ export default function AdminDashboard() {
               <div className="surface-card flex min-h-[420px] flex-col items-center justify-center rounded-[26px] px-6 text-center">
                 <p className="text-lg font-black text-gray-950">Nada encontrado</p>
                 <p className="mt-2 max-w-md text-sm leading-6 text-gray-500">
-                  Não encontramos itens ou categorias com esse termo. Tente outra busca ou limpe o campo.
+                  {availabilityFilter !== "all"
+                    ? "Nenhum produto corresponde aos filtros atuais. Experimente outra disponibilidade ou limpe os filtros."
+                    : "Não encontramos itens ou categorias com esse termo. Tente outra busca ou limpe o campo."}
                 </p>
-                {searchTerm && (
+                {(searchTerm || availabilityFilter !== "all") && (
                   <button
-                    onClick={() => setSearchTerm("")}
+                    onClick={() => { setSearchTerm(""); setAvailabilityFilter("all"); }}
                     className="mt-4 rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-bold text-gray-700"
                   >
-                    Limpar busca
+                    Limpar filtros
                   </button>
                 )}
               </div>
@@ -804,7 +850,7 @@ export default function AdminDashboard() {
                 return (
                   <div
                     key={category.id}
-                    draggable={!isEditing && !draggedProduct}
+                    draggable={!isEditing && canReorderCategories}
                     onDragStart={() => handleDragStart(index)}
                     onDragOver={(e) => handleDragOver(e, index)}
                     onDragEnd={handleDragEnd}
@@ -814,7 +860,13 @@ export default function AdminDashboard() {
                   >
                     <div className="flex min-w-0 items-center justify-between gap-4 border-b border-[var(--line)] bg-white px-5 py-4">
                       <div className="flex min-w-0 flex-1 items-center gap-3">
-                        <button className="rounded-xl bg-[#fbf7f2] p-2 text-gray-400">
+                        <button
+                          type="button"
+                          disabled={!canReorderCategories}
+                          title={canReorderCategories ? "Arrastar categoria" : "Limpe os filtros para reordenar categorias"}
+                          aria-label={`Reordenar categoria ${category.name}`}
+                          className="rounded-xl bg-[#fbf7f2] p-2 text-gray-400 disabled:cursor-not-allowed disabled:text-gray-300"
+                        >
                           <GripVertical size={18} />
                         </button>
 
@@ -948,7 +1000,9 @@ export default function AdminDashboard() {
                                     ? "Selecione Ordem manual para reposicionar"
                                     : searchTerm.trim()
                                       ? "Limpe a busca para reposicionar"
-                                      : "Arrastar para reposicionar"
+                                      : availabilityFilter !== "all"
+                                        ? "Selecione Todos para reposicionar"
+                                        : "Arrastar para reposicionar"
                                 }
                                 aria-label={`Reposicionar produto ${product.name}`}
                               >
