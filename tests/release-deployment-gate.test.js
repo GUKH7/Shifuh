@@ -9,10 +9,13 @@ const { releaseContextError } = require("../scripts/verify-release-context.cjs")
 const sha = "a".repeat(40);
 const valid = {
   eventName: "workflow_dispatch",
+  workflowRef: "GUKH7/Shifuh/.github/workflows/release-production.yml@refs/heads/main",
   deployProductionApproved: "true",
+  confirmation: "PUBLICAR-SHIFUH-PRODUCAO",
   ref: "refs/heads/main",
   gateResult: "success",
   expectedSha: sha,
+  requestedSha: sha,
   remoteSha: sha,
 };
 
@@ -24,6 +27,16 @@ test("deployment guard fails closed for unsuccessful, missing or unrelated CI co
   const invalidCases = [
     { eventName: "pull_request" },
     { eventName: "push" },
+    { workflowRef: "GUKH7/Shifuh/.github/workflows/ci.yml@refs/heads/main" },
+    { workflowRef: "GUKH7/Shifuh/.github/workflows/release-production.yml@refs/heads/feature" },
+    { workflowRef: undefined },
+    { confirmation: "" },
+    { confirmation: "PUBLICAR-SHIFUH-PRODUCAO " },
+    { confirmation: "false" },
+    { confirmation: undefined },
+    { requestedSha: "b".repeat(40) },
+    { requestedSha: "invalid" },
+    { requestedSha: undefined },
     { deployProductionApproved: "false" },
     { deployProductionApproved: "TRUE" },
     { deployProductionApproved: undefined },
@@ -70,41 +83,60 @@ test("Vercel keeps Git auto-deploy of main disabled independently of preview pro
   assert.deepEqual(config.regions, ["pdx1"]);
 });
 
-test("workflow retains automatic gates and defaults manual production authorization to false", () => {
-  const workflow = fs.readFileSync(path.join(__dirname, "..", ".github", "workflows", "ci.yml"), "utf8");
-  const config = workflow.split("\n  workflow_dispatch:\n")[1].split("\n  pull_request:\n")[0];
-  assert.match(config, /deploy_production:/);
-  assert.match(config, /type: boolean/);
-  assert.match(config, /required: false/);
-  assert.match(config, /default: false/);
-  assert.match(workflow, /\n  pull_request:\n  push:\n    branches:\n      - main/);
-  assert.match(workflow, /release-gate:\s*\n[\s\S]*?needs:\s*\n\s+- validate\s*\n\s+- commercial-e2e/);
+const workflowPath = path.join(__dirname, "..", ".github", "workflows");
+const validationWorkflow = fs.readFileSync(path.join(workflowPath, "ci.yml"), "utf8");
+const productionWorkflow = fs.readFileSync(path.join(workflowPath, "release-production.yml"), "utf8");
+
+test("CI manual validation has no deployment inputs, secrets or deployment job", () => {
+  const ci = validationWorkflow;
+  assert.match(ci, /\n  workflow_dispatch:\s*\n  [\s\S]*?workflow_call:/);
+  assert.match(ci, /\n  pull_request:\s*\n  push:\s*\n    branches:\s*\n      - main/);
+  assert.match(ci, /release-gate:\s*\n[\s\S]*?needs:\s*\n\s+- validate\s*\n\s+- commercial-e2e/);
+  assert.doesNotMatch(ci, /deploy_production:|inputs\.deploy_production|deploy-production:|vercel deploy|VERCEL_TOKEN|environment: production/);
 });
 
-test("manual production run has isolated concurrency and cannot be canceled by push CI", () => {
-  const workflow = fs.readFileSync(path.join(__dirname, "..", ".github", "workflows", "ci.yml"), "utf8");
-  const concurrency = workflow.split("\nconcurrency:\n")[1].split("\njobs:\n")[0];
-  assert.match(concurrency, /inputs\.deploy_production == true/);
-  assert.match(concurrency, /'manual-production' \|\| 'checks'/);
-  assert.match(concurrency, /cancel-in-progress: \$\{\{ !\(/);
+test("CI concurrency cannot cancel a distinct production-release workflow", () => {
+  assert.match(validationWorkflow, /group: checks-\$\{\{ github\.workflow \}\}-\$\{\{ github\.ref \}\}-\$\{\{ github\.event_name \}\}/);
+  assert.match(validationWorkflow, /cancel-in-progress: true/);
+  assert.match(productionWorkflow, /group: production-release-workflow-/);
+  assert.match(productionWorkflow, /cancel-in-progress: false/);
 });
 
-test("production deploy job depends on Release gate and requires explicit manual authorization on main", () => {
-  const workflow = fs.readFileSync(path.join(__dirname, "..", ".github", "workflows", "ci.yml"), "utf8");
-  const deployJob = workflow.split("\n  deploy-production:\n")[1];
-  assert.ok(deployJob, "gated production job must exist");
-  assert.match(deployJob, /needs: release-gate/);
-  assert.match(deployJob, /github\.event_name == 'workflow_dispatch'/);
-  assert.match(deployJob, /github\.ref == 'refs\/heads\/main'/);
-  assert.match(deployJob, /inputs\.deploy_production == true/);
-  assert.doesNotMatch(deployJob, /github\.event_name == 'push'/);
-  assert.match(deployJob, /DEPLOY_PRODUCTION_APPROVED: \$\{\{ inputs\.deploy_production \}\}/);
-  assert.match(deployJob, /needs\.release-gate\.result == 'success'/);
-  assert.equal((deployJob.match(/node scripts\/verify-release-context\.cjs/g) || []).length, 2);
-  assert.equal((deployJob.match(/git ls-remote origin refs\/heads\/main/g) || []).length, 2);
-  assert.match(deployJob, /vercel deploy --prebuilt --prod --yes/);
-  assert.match(deployJob, /environment: production/);
-  assert.match(deployJob, /group: shifuh-production-deployment/);
-  assert.match(deployJob, /cancel-in-progress: false/);
-  assert.match(workflow, /release-gate:\s*\n[\s\S]*?needs:\s*\n\s+- validate\s*\n\s+- commercial-e2e/);
+test("dedicated release requires typed exact commit SHA, confirmation and current main", () => {
+  const release = productionWorkflow;
+  assert.match(release, /\n  workflow_dispatch:\s*\n    inputs:/);
+  assert.match(release, /commit_sha:\s*\n[\s\S]*?type: string\s*\n\s+required: true/);
+  assert.match(release, /confirmation:\s*\n[\s\S]*?type: string\s*\n\s+required: true/);
+  assert.match(release, /REQUESTED_SHA: \$\{\{ inputs\.commit_sha \}\}/);
+  assert.match(release, /test "\$CONFIRMATION" = "PUBLICAR-SHIFUH-PRODUCAO"/);
+  assert.match(release, /test "\$REQUESTED_SHA" = "\$RUN_SHA"/);
+  assert.match(release, /github\.ref == 'refs\/heads\/main'/);
+  assert.doesNotMatch(release, /\n  (?:pull_request|push|workflow_run):/);
+});
+
+test("dedicated release reuses all CI gates before ever accessing deploy credentials", () => {
+  const release = productionWorkflow;
+  assert.match(release, /gates:\s*\n    name:[^\n]*\n    needs: authorize\s*\n    uses: \.\/\.github\/workflows\/ci\.yml/);
+  const deploy = release.split("\n  deploy-production:\n")[1];
+  assert.ok(deploy, "production job only exists in dedicated release");
+  assert.match(deploy, /needs:\s*\n      - authorize\s*\n      - gates/);
+  assert.match(deploy, /needs\.gates\.result == 'success'/);
+  assert.match(deploy, /inputs\.commit_sha == github\.sha/);
+  assert.match(deploy, /inputs\.confirmation == 'PUBLICAR-SHIFUH-PRODUCAO'/);
+  assert.match(deploy, /environment: production/);
+  assert.match(deploy, /group: shifuh-production-deployment/);
+  assert.match(deploy, /cancel-in-progress: false/);
+  assert.match(deploy, /CI_GATE_RESULT: \$\{\{ needs\.gates\.result \}\}/);
+  assert.match(deploy, /RELEASE_EXPECTED_SHA: \$\{\{ inputs\.commit_sha \}\}/);
+  assert.match(deploy, /RELEASE_CONFIRMATION: \$\{\{ inputs\.confirmation \}\}/);
+  assert.equal((deploy.match(/node scripts\/verify-release-context\.cjs/g) || []).length, 2);
+  assert.equal((deploy.match(/git ls-remote origin refs\/heads\/main/g) || []).length, 2);
+  assert.match(deploy, /vercel deploy --prebuilt --prod --yes/);
+});
+
+test("README records that the #204 merge commit already exists and must not be merged twice", () => {
+  const guidance = fs.readFileSync(path.join(__dirname, "..", "docs", "release-control.md"), "utf8");
+  assert.match(guidance, /PR #204/);
+  assert.match(guidance, /2d2c682779c9acb77aac4452d25e3127b0a77229/);
+  assert.match(guidance, /sem repetir o merge/);
 });
