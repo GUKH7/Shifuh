@@ -33,6 +33,8 @@ type LocalOrderStatus = "pending" | "preparing" | "delivering" | "done" | "cance
 
 type ExistingIfoodEventState = {
   ifood_event_id: string;
+  merchant_id?: string;
+  ifood_order_id?: string;
   processed_at: string | null;
   acknowledged_at: string | null;
   processing_lease_until?: string | null;
@@ -305,6 +307,10 @@ export async function upsertLocalOrderFromIfood(
   }
 
   const detailsMerchant = details.merchant as { id?: unknown } | undefined;
+  const ordersOnly = process.env.IFOOD_ORDERS_ONLY === "true";
+  if (ordersOnly && (typeof detailsMerchant?.id !== "string" || typeof details.id !== "string")) {
+    throw new Error("Detalhes do pedido sem identidade oficial verificável.");
+  }
   if (typeof detailsMerchant?.id === "string" &&
       detailsMerchant.id.trim().toLowerCase() !== event.merchantId.trim().toLowerCase()) {
     throw new Error("Detalhes do pedido iFood pertencem a outro merchant.");
@@ -357,11 +363,21 @@ export async function upsertLocalOrderFromIfood(
   const cancellation = buildCancellationMetadata(event);
   const existingOrderQuery = await withIfoodSqlSignal(admin
     .from("orders")
-    .select("id, display_number, status, external_payload, cancellation_reason")
+    .select("id, display_number, status, external_source, external_payload, cancellation_reason")
     .eq("restaurant_id", restaurantId)
     .eq("external_order_id", event.orderId)
     .maybeSingle(), signal);
 
+  if (existingOrderQuery.error) throw new Error("Falha ao localizar pedido iFood existente.");
+  if (ordersOnly && existingOrderQuery.data) {
+    const saved = existingOrderQuery.data;
+    const payload = saved.external_payload as Record<string, unknown> | null;
+    const savedMerchant = (payload?.merchant as { id?: unknown } | undefined)?.id;
+    if (saved.external_source !== "ifood" || typeof savedMerchant !== "string" ||
+        savedMerchant.trim().toLowerCase() !== event.merchantId.trim().toLowerCase()) {
+      throw new Error("Pedido histórico pertence a outra integração; atualização bloqueada.");
+    }
+  }
   let localOrderId = existingOrderQuery.data?.id || null;
   const existingStatus = (existingOrderQuery.data?.status as LocalOrderStatus | null) || null;
   const nextStatus: LocalOrderStatus = mappedStatus || existingStatus || "pending";
@@ -435,6 +451,17 @@ export async function upsertLocalOrderFromIfood(
     }
 
     localOrderId = createdOrder.order_id;
+    if (ordersOnly) {
+      const persisted = await withIfoodSqlSignal(admin.from("orders")
+        .select("external_source, external_payload").eq("id", localOrderId)
+        .eq("restaurant_id", restaurantId).single(), signal);
+      const payload = persisted.data?.external_payload as Record<string, unknown> | null | undefined;
+      const merchant = (payload?.merchant as { id?: unknown } | undefined)?.id;
+      if (persisted.error || persisted.data?.external_source !== "ifood" ||
+          typeof merchant !== "string" || merchant.trim().toLowerCase() !== event.merchantId.trim().toLowerCase()) {
+        throw new Error("Identidade do pedido persistido não corresponde ao merchant oficial.");
+      }
+    }
     if (nextStatus === "canceled") {
       // The shared order-creation RPC has no cancellation_reason argument.
       // Persist it explicitly for orders whose first iFood event is CAN.
@@ -535,7 +562,7 @@ export async function syncIfoodOrdersForRestaurant({
       if (process.env.IFOOD_PERSISTED_REPLAY_ENABLED === "true") {
         const { data, error } = await withIfoodSqlSignal(admin
           .from("ifood_order_events")
-          .select("ifood_event_id, processed_at, acknowledged_at, processing_lease_until")
+          .select("ifood_event_id, merchant_id, ifood_order_id, processed_at, acknowledged_at, processing_lease_until")
           .eq("restaurant_id", restaurantId)
           .in("ifood_event_id", eventIds), signal);
         if (error) throw new Error("Falha ao consultar reservas iFood.");
@@ -543,7 +570,7 @@ export async function syncIfoodOrdersForRestaurant({
       } else {
         const { data, error } = await withIfoodSqlSignal(admin
           .from("ifood_order_events")
-          .select("ifood_event_id, processed_at, acknowledged_at")
+          .select("ifood_event_id, merchant_id, ifood_order_id, processed_at, acknowledged_at")
           .eq("restaurant_id", restaurantId)
           .in("ifood_event_id", eventIds), signal);
         if (error) throw new Error("Falha ao consultar eventos iFood.");
@@ -551,6 +578,14 @@ export async function syncIfoodOrdersForRestaurant({
       }
     }
 
+    if (existingEvents.some(row =>
+      (typeof row.merchant_id === "string" && row.merchant_id.toLowerCase() !== merchantId.toLowerCase()) ||
+      (process.env.IFOOD_ORDERS_ONLY === "true" && typeof row.merchant_id !== "string") ||
+      (typeof row.ifood_order_id === "string" &&
+        sortedEvents.some(event => event.id === row.ifood_event_id && event.orderId !== row.ifood_order_id))
+    )) {
+      throw new Error("ID de evento já reservado a outro merchant ou pedido; lote bloqueado.");
+    }
     const existingEventById = new Map(
       (existingEvents || []).map((event) => [event.ifood_event_id, event]),
     );
@@ -608,6 +643,7 @@ export async function syncIfoodOrdersForRestaurant({
             processed_at: new Date().toISOString(),
           })
           .eq("restaurant_id", restaurantId)
+          .eq("merchant_id", merchantId)
           .eq("ifood_event_id", event.id), signal);
         if (processedUpdateError) {
           throw new Error("Pedido salvo, mas evento não pôde ser marcado como processado.");

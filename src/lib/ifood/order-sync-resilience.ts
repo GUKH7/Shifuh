@@ -263,7 +263,7 @@ async function recoverPendingAcknowledgements(restaurantId: string, merchantId: 
   return deliverLegacyIfoodAcks(admin, restaurantId, merchantId, ids, acknowledgeIfoodOrderEvents, signal);
 }
 
-async function schedulePendingEventRetries(restaurantId: string, reason: string, attemptedFailedEventIds: string[], signal?: AbortSignal) {
+async function schedulePendingEventRetries(restaurantId: string, merchantId: string, reason: string, attemptedFailedEventIds: string[], signal?: AbortSignal) {
   // A failed polling request did not attempt any stored event. Never increment
   // all pending events or dead-letter them due to an external API outage.
   if (!attemptedFailedEventIds.length) return { scheduled: 0, deadLettered: 0 };
@@ -273,6 +273,7 @@ async function schedulePendingEventRetries(restaurantId: string, reason: string,
     .from("ifood_order_events")
     .select("ifood_event_id, retry_count")
     .eq("restaurant_id", restaurantId)
+    .eq("merchant_id", merchantId)
     .in("ifood_event_id", attemptedFailedEventIds)
     .is("processed_at", null)
     .is("dead_lettered_at", null)
@@ -309,6 +310,7 @@ async function schedulePendingEventRetries(restaurantId: string, reason: string,
       .from("ifood_order_events")
       .update(update)
       .eq("restaurant_id", restaurantId)
+      .eq("merchant_id", merchantId)
       .eq("ifood_event_id", row.ifood_event_id)
       .is("processed_at", null), signal);
 
@@ -353,6 +355,7 @@ async function runWithRetries(params: ResilientSyncParams): Promise<IfoodSyncRes
       );
       const retryResult = await schedulePendingEventRetries(
         params.restaurantId,
+        params.merchantId,
         "Falha real ao processar o evento; nova tentativa agendada.",
         result.failedEventIds,
         params.signal,
@@ -392,16 +395,17 @@ async function runWithRetries(params: ResilientSyncParams): Promise<IfoodSyncRes
 export async function syncIfoodOrdersWithResilience(
   params: ResilientSyncParams,
 ): Promise<IfoodSyncResult> {
-  const existing = runningSyncs.get(params.restaurantId);
+  const syncKey = `${params.restaurantId}:${params.merchantId.toLowerCase()}`;
+  const existing = runningSyncs.get(syncKey);
   if (existing) {
     const result = (await existing) as IfoodSyncResult;
     return { ...result, serialized: true };
   }
 
   const task = runWithRetries(params).finally(() => {
-    runningSyncs.delete(params.restaurantId);
+    runningSyncs.delete(syncKey);
   });
-  runningSyncs.set(params.restaurantId, task);
+  runningSyncs.set(syncKey, task);
 
   return task;
 }
