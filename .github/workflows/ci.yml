@@ -156,6 +156,9 @@ jobs:
       - name: Seed commercial fixture
         run: node scripts/e2e-seed.mjs
 
+      - name: Verify concurrent iFood merchant claims against isolated Postgres
+        run: IFOOD_MERCHANT_UNIQUENESS_E2E=1 node scripts/ifood-merchant-uniqueness-homologation.mjs
+
       - name: Verify iFood event leases against isolated Postgres
         run: IFOOD_LEASE_E2E=1 node scripts/test-ifood-event-leases.mjs
 

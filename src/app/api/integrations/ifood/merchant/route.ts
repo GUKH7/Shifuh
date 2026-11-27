@@ -1,3 +1,4 @@
+import { assertIfoodMerchantBinding, IfoodMerchantConflictError } from "@/lib/ifood/merchant-isolation";
 import { NextResponse } from "next/server";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import {
@@ -7,7 +8,6 @@ import {
   getIfoodMerchantOpeningHours,
   getIfoodMerchantStatus,
   listIfoodMerchantInterruptions,
-  listIfoodMerchants,
   setIfoodMerchantOpeningHours,
   type IfoodOpeningHourShift,
 } from "@/lib/ifood/merchant";
@@ -61,12 +61,13 @@ async function assertOwnedRestaurant(restaurantId: string) {
 
 async function getStoredMerchantId(restaurantId: string) {
   const admin = createAdminClient();
-  const { data } = await admin
+  const { data, error } = await admin
     .from("ifood_integrations")
     .select("merchant_id")
     .eq("restaurant_id", restaurantId)
     .maybeSingle();
 
+  if (error) throw new Error("Não foi possível verificar o vínculo iFood.");
   return data?.merchant_id || null;
 }
 
@@ -91,15 +92,22 @@ export async function POST(request: Request) {
 
     const action = body.action || "overview";
     const storedMerchantId = await getStoredMerchantId(restaurantId);
-    const merchantId = body.merchantId?.trim() || storedMerchantId;
+    const merchantId = body.merchantId?.trim().toLowerCase() || storedMerchantId;
+    if (merchantId) {
+      const admin = createAdminClient();
+      if (!storedMerchantId || merchantId.toLowerCase() !== storedMerchantId.trim().toLowerCase()) {
+        throw new IfoodMerchantConflictError();
+      }
+      await assertIfoodMerchantBinding(admin, restaurantId, merchantId);
+    }
 
     if (action === "overview") {
-      const merchants = await listIfoodMerchants();
-
+      // Never enumerate all merchants of the centralized iFood application
+      // to an individual tenant.
       if (!merchantId) {
         return NextResponse.json({
           ok: true,
-          merchants,
+          merchants: [],
           details: null,
           status: null,
           interruptions: null,
@@ -116,7 +124,7 @@ export async function POST(request: Request) {
 
       return NextResponse.json({
         ok: true,
-        merchants,
+        merchants: details.status === "fulfilled" && details.value ? [details.value] : [],
         details: await readSettled(details),
         status: await readSettled(status),
         interruptions: await readSettled(interruptions),
@@ -173,6 +181,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ error: "Ação Merchant inválida." }, { status: 400 });
   } catch (error) {
+    if (error instanceof IfoodMerchantConflictError) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
+    }
     console.error("Erro na integração Merchant iFood:", error);
     return NextResponse.json(
       {

@@ -1,3 +1,4 @@
+import { assertIfoodMerchantBinding, IfoodMerchantConflictError } from "@/lib/ifood/merchant-isolation";
 import { NextResponse } from "next/server";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import {
@@ -110,6 +111,7 @@ export async function POST(request: Request) {
       );
     }
 
+    await assertIfoodMerchantBinding(admin, restaurantId, integration.merchant_id);
     const savedIds = getSavedCatalogIds(integration.notes);
     const ids = savedIds || createHomologationIds();
 
@@ -133,7 +135,8 @@ export async function POST(request: Request) {
         last_catalog_export_at: new Date().toISOString(),
         notes: stringifyIntegrationNotes(integration.notes, ids),
       })
-      .eq("restaurant_id", restaurantId);
+      .eq("restaurant_id", restaurantId)
+      .eq("merchant_id", integration.merchant_id);
 
     return NextResponse.json({
       ok: true,
@@ -151,6 +154,9 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
+    if (error instanceof IfoodMerchantConflictError) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
+    }
     console.error("Erro ao gerenciar catálogo do iFood:", error);
     return NextResponse.json(
       {

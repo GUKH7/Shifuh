@@ -437,7 +437,7 @@ export default function SettingsPage() {
       })
       .eq("id", restaurantId);
 
-    let ifoodError: { message?: string } | null = null;
+    let ifoodError: { message?: string; code?: string } | null = null;
 
     if (!error && restaurantId) {
       const shouldStampConnectedAt =
@@ -448,7 +448,7 @@ export default function SettingsPage() {
         .upsert(
           {
             restaurant_id: restaurantId,
-            merchant_id: ifoodIntegration.merchantId || null,
+            merchant_id: ifoodIntegration.merchantId.trim().toLowerCase() || null,
             merchant_name: ifoodIntegration.merchantName || null,
             catalog_id: ifoodIntegration.catalogId || null,
             auth_type: ifoodIntegration.authType,
@@ -478,7 +478,13 @@ export default function SettingsPage() {
       const missingPrintColumn = currentError?.message?.includes("printer_auto_print");
       const missingIfoodTable = currentError?.message?.includes("ifood_integrations");
 
-      if (missingPrintColumn) {
+      if (ifoodError?.code === "23505") {
+        showToast({
+          title: "Merchant iFood indisponível",
+          description: "Revise o vínculo do iFood com o suporte. Não foi possível salvar esta integração.",
+          tone: "error",
+        });
+      } else if (missingPrintColumn) {
         showToast({
           title: "Migration pendente no Supabase",
           description: "A migration 010_auto_print_on_accept.sql ainda precisa ser aplicada.",

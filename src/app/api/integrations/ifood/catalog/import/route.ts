@@ -1,3 +1,4 @@
+import { assertIfoodMerchantBinding, IfoodMerchantConflictError } from "@/lib/ifood/merchant-isolation";
 import { NextResponse } from "next/server";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import {
@@ -68,6 +69,7 @@ export async function POST(request: Request) {
     }
 
     const merchantId = integration.merchant_id;
+    await assertIfoodMerchantBinding(admin, restaurantId, merchantId);
     let catalogId = integration.catalog_id;
 
     if (!catalogId) {
@@ -229,7 +231,8 @@ export async function POST(request: Request) {
         status: integration.status === "disconnected" ? "configuring" : integration.status,
         last_catalog_import_at: new Date().toISOString(),
       })
-      .eq("restaurant_id", restaurantId);
+      .eq("restaurant_id", restaurantId)
+      .eq("merchant_id", integration.merchant_id);
 
     return NextResponse.json({
       ok: true,
@@ -243,6 +246,9 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
+    if (error instanceof IfoodMerchantConflictError) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
+    }
     console.error("Erro ao importar catálogo do iFood:", error);
     return NextResponse.json(
       {

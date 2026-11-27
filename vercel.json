@@ -21,7 +21,8 @@
       "feat/louder-order-chime-20261114": false,
       "feat/orders-quick-queue-mobile-20261115": false,
       "feat/menu-availability-filters-20261124": false,
-      "fix/ci-validation-only-and-separate-release-20261125": false
+      "fix/ci-validation-only-and-separate-release-20261125": false,
+      "fix/ifood-merchant-isolation-20261127": false
     }
   }
 }

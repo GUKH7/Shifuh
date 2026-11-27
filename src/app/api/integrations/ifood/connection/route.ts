@@ -1,3 +1,4 @@
+import { assertIfoodMerchantBinding, IfoodMerchantConflictError } from "@/lib/ifood/merchant-isolation";
 import { NextResponse } from "next/server";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import {
@@ -16,7 +17,7 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json()) as ConnectionPayload;
     const restaurantId = body.restaurantId?.trim();
-    const merchantId = body.merchantId?.trim();
+    const merchantId = body.merchantId?.trim().toLowerCase();
     const catalogId = body.catalogId?.trim();
 
     if (!restaurantId) {
@@ -47,6 +48,7 @@ export async function POST(request: Request) {
     const checkedAt = new Date().toISOString();
     const details: string[] = [];
 
+    if (merchantId) await assertIfoodMerchantBinding(admin, restaurantId, merchantId, "claim");
     await validateIfoodCredentials();
     details.push("As credenciais do app responderam corretamente no OAuth centralizado.");
 
@@ -102,6 +104,7 @@ export async function POST(request: Request) {
       );
 
     if (upsertError) {
+      if (upsertError.code === "23505") throw new IfoodMerchantConflictError();
       throw new Error(
         upsertError.message || "Não foi possível salvar os dados validados da integração iFood.",
       );
@@ -121,6 +124,9 @@ export async function POST(request: Request) {
         : "As credenciais e o merchant estão válidos, mas ainda falta definir um catálogo utilizável.",
     });
   } catch (error) {
+    if (error instanceof IfoodMerchantConflictError) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
+    }
     console.error("Erro ao validar integração iFood:", error);
 
     return NextResponse.json(

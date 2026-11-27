@@ -304,6 +304,15 @@ export async function upsertLocalOrderFromIfood(
     throw new Error(`Não foi possível obter os detalhes do pedido ${event.orderId} no iFood.`);
   }
 
+  const detailsMerchant = details.merchant as { id?: unknown } | undefined;
+  if (typeof detailsMerchant?.id === "string" &&
+      detailsMerchant.id.trim().toLowerCase() !== event.merchantId.trim().toLowerCase()) {
+    throw new Error("Detalhes do pedido iFood pertencem a outro merchant.");
+  }
+  if (typeof details.id === "string" && details.id !== event.orderId) {
+    throw new Error("Detalhes do pedido iFood não correspondem ao evento.");
+  }
+
   const customer = getOrderCustomer(details);
   const address = getOrderAddress(details);
   const items = buildOrderItems(details);
@@ -508,6 +517,12 @@ export async function syncIfoodOrdersForRestaurant({
   try {
     const polledEvents = await pollIfoodOrderEvents(merchantId, signal);
     signal?.throwIfAborted();
+    if (polledEvents.some(event =>
+      typeof event.merchantId !== "string" ||
+      event.merchantId.trim().toLowerCase() !== merchantId.trim().toLowerCase()
+    )) {
+      throw new Error("Polling iFood retornou evento de merchant divergente; lote não processado nem reconhecido.");
+    }
     const sortedEvents = [...polledEvents].sort((a, b) =>
       String(a.createdAt || "").localeCompare(String(b.createdAt || "")),
     );
@@ -647,7 +662,8 @@ export async function syncIfoodOrdersForRestaurant({
       .update({
         last_order_sync_at: new Date().toISOString(),
       })
-      .eq("restaurant_id", restaurantId), signal);
+      .eq("restaurant_id", restaurantId)
+      .eq("merchant_id", merchantId), signal);
 
     const summary =
       sortedEvents.length > 0

@@ -1,3 +1,4 @@
+import { assertIfoodMerchantBinding } from "@/lib/ifood/merchant-isolation";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { syncIfoodOrdersForRestaurant } from "@/lib/ifood/order-sync";
@@ -48,6 +49,7 @@ export async function GET(request: Request) {
     }
 
     try {
+      await assertIfoodMerchantBinding(admin, integration.restaurant_id, integration.merchant_id, "bound", budget.signal);
       const merchantStatus = await getIfoodMerchantStatus(integration.merchant_id, budget.signal);
       const orderSummary = integration.order_sync_enabled
         ? await syncIfoodOrdersForRestaurant({
