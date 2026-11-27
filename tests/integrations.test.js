@@ -211,8 +211,8 @@ function loadRoute(filePath, state, aliases = {}) {
       return aliases[request];
     }
 
-    if (request === "@/lib/ifood/merchant-isolation") {
-      const file = path.join(projectRoot, "src/lib/ifood/merchant-isolation.ts");
+    if (request === "@/lib/ifood/merchant-isolation" || request === "@/lib/ifood/capabilities") {
+      const file = path.join(projectRoot, request === "@/lib/ifood/capabilities" ? "src/lib/ifood/capabilities.ts" : "src/lib/ifood/merchant-isolation.ts");
       const child = new Module(file, module.parent);
       child.filename = file;
       child.paths = Module._nodeModulePaths(path.dirname(file));
