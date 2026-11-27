@@ -1,3 +1,4 @@
+import { assertIfoodMerchantBinding, IfoodMerchantConflictError } from "@/lib/ifood/merchant-isolation";
 import { NextResponse } from "next/server";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import {
@@ -91,7 +92,16 @@ export async function POST(request: Request) {
 
     const action = body.action || "overview";
     const storedMerchantId = await getStoredMerchantId(restaurantId);
-    const merchantId = body.merchantId?.trim() || storedMerchantId;
+    const merchantId = body.merchantId?.trim().toLowerCase() || storedMerchantId;
+    if (merchantId) {
+      const admin = createAdminClient();
+      if (action !== "overview" &&
+          (!storedMerchantId || merchantId.toLowerCase() !== storedMerchantId.trim().toLowerCase())) {
+        throw new IfoodMerchantConflictError();
+      }
+      await assertIfoodMerchantBinding(admin, restaurantId, merchantId,
+        action === "overview" ? "claim" : "bound");
+    }
 
     if (action === "overview") {
       const merchants = await listIfoodMerchants();
@@ -173,6 +183,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ error: "Ação Merchant inválida." }, { status: 400 });
   } catch (error) {
+    if (error instanceof IfoodMerchantConflictError) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
+    }
     console.error("Erro na integração Merchant iFood:", error);
     return NextResponse.json(
       {

@@ -417,3 +417,26 @@ test("legacy polling does not resend ACK for a durably acknowledged event", asyn
   assert.equal(summary.eventsAcknowledged,0);
   assert.equal(sends,0);
 });
+
+test("lote com merchant divergente não persiste eventos nem envia ACK", async () => {
+  const state = { existingEvents: [], insertedEvents: [], eventUpdates: [],
+    insertedOrders: [], insertedItems: [], syncRunUpdates: [] };
+  let detailsCalls = 0;
+  let ackCalls = 0;
+  const mock = {
+    pollIfoodOrderEvents: async () => [
+      { id: "valid", code: "PLC", orderId: "valid-order", merchantId: "merchant-1" },
+      { id: "foreign", code: "PLC", orderId: "foreign-order", merchantId: "merchant-2" },
+    ],
+    getIfoodOrderDetails: async () => { detailsCalls++; },
+    acknowledgeIfoodOrderEvents: async () => { ackCalls++; },
+    mapIfoodEventCodeToStatus: () => "pending",
+  };
+  await assert.rejects(loadOrderSync(state, mock).syncIfoodOrdersForRestaurant({
+    restaurantId: "restaurant-1", merchantId: "merchant-1", source: "cron",
+  }), /merchant divergente/);
+  assert.equal(detailsCalls, 0);
+  assert.equal(ackCalls, 0);
+  assert.deepEqual(state.insertedEvents, []);
+  assert.deepEqual(state.insertedOrders, []);
+});

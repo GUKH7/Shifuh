@@ -95,6 +95,11 @@ class QueryBuilder {
     return this;
   }
 
+  ilike(column, value) {
+    this.filters.push({ column, value, ilike: true });
+    return this;
+  }
+
   order(column, options) {
     this.ordering = this.ordering || [];
     this.ordering.push({ column, options });
@@ -141,6 +146,15 @@ class QueryBuilder {
   }
 
   resolve() {
+    if (this.table === "ifood_integrations" && this.operation === "select") {
+      const rows = this.state.bindings || (this.state.integration ? [{
+        restaurant_id: this.state.ownedRestaurant?.id,
+        ...this.state.integration,
+      }] : []);
+      const merchant = this.filters.find(filter => filter.ilike)?.value;
+      return Promise.resolve({ data: rows.filter(row => !merchant || row.merchant_id?.toLowerCase() === merchant), error: this.state.bindingError || null });
+    }
+
     if (this.table === "ifood_integrations" && this.operation === "upsert") {
       this.state.integrationUpserts.push({
         payload: this.payload,
@@ -195,6 +209,15 @@ function loadRoute(filePath, state, aliases = {}) {
   Module._load = function patchedLoad(request, parent, isMain) {
     if (Object.prototype.hasOwnProperty.call(aliases, request)) {
       return aliases[request];
+    }
+
+    if (request === "@/lib/ifood/merchant-isolation") {
+      const file = path.join(projectRoot, "src/lib/ifood/merchant-isolation.ts");
+      const child = new Module(file, module.parent);
+      child.filename = file;
+      child.paths = Module._nodeModulePaths(path.dirname(file));
+      child._compile(compileTs(file), file);
+      return child.exports;
     }
 
     if (request === "next/server") {
@@ -306,6 +329,8 @@ test("valida conexao iFood e salva merchant/catalogo resolvido", async () => {
 
 test("confirma pedido iFood e atualiza status local", async () => {
   const state = {
+    integration: { merchant_id: "merchant-1", order_sync_enabled: true },
+    events: [{ id: "event-1" }],
     user: { id: "user-1" },
     ownedRestaurant: { id: "restaurant-1", user_id: "user-1" },
     order: {
@@ -339,7 +364,7 @@ test("confirma pedido iFood e atualiza status local", async () => {
   assert.deepEqual(state.orderUpdates, [
     {
       payload: { status: "preparing" },
-      filters: [{ column: "id", value: "order-1" }],
+      filters: [{ column: "id", value: "order-1" }, { column: "restaurant_id", value: "restaurant-1" }],
     },
   ]);
 });
@@ -421,7 +446,7 @@ test("sincroniza pedidos iFood para loja autorizada e habilita sync", async () =
   assert.deepEqual(state.integrationUpdates, [
     {
       payload: { order_sync_enabled: true, status: "configuring" },
-      filters: [{ column: "restaurant_id", value: "restaurant-1" }],
+      filters: [{ column: "restaurant_id", value: "restaurant-1" }, { column: "merchant_id", value: "merchant-1" }],
     },
   ]);
 });
@@ -511,4 +536,58 @@ test("bloqueia listagem de eventos para pedido que nao e do iFood", async () => 
 
   assert.equal(response.status, 400);
   assert.match(body.error, /iFood/i);
+});
+
+test("merchant duplicado bloqueia cadastro antes do OAuth e do catálogo", async () => {
+  const state = {
+    user: { id: "user-1" }, ownedRestaurant: { id: "restaurant-1", user_id: "user-1" },
+    bindings: [{ restaurant_id: "restaurant-2", merchant_id: "merchant-1" }],
+    integrationUpserts: [], orderUpdates: [],
+  };
+  let upstreamCalls = 0;
+  const { POST } = loadRoute(ifoodConnectionRoutePath, state, {
+    "@/lib/ifood/catalog": {
+      validateIfoodCredentials: async () => { upstreamCalls++; },
+      listIfoodCatalogs: async () => { upstreamCalls++; return []; },
+      pickMainCatalog: () => null,
+    },
+  });
+  const response = await POST(jsonRequest({ restaurantId: "restaurant-1", merchantId: " MERCHANT-1 " }));
+  assert.equal(response.status, 409);
+  assert.equal(upstreamCalls, 0);
+  assert.equal(state.integrationUpserts.length, 0);
+  assert.doesNotMatch((await readJson(response)).error, /restaurant-2/);
+});
+
+test("polling manual não reativa merchant vinculado a duas lojas", async () => {
+  const state = {
+    user: { id: "user-1" }, ownedRestaurant: { id: "restaurant-1", user_id: "user-1" },
+    integration: { merchant_id: "merchant-1", status: "configuring" },
+    bindings: [{ restaurant_id: "restaurant-1", merchant_id: "merchant-1" }, { restaurant_id: "restaurant-2", merchant_id: "merchant-1" }],
+    integrationUpdates: [],
+  };
+  let polling = 0;
+  const { POST } = loadRoute(ifoodSyncRoutePath, state, {
+    "@/lib/ifood/orders": { IfoodApiError: class extends Error {} },
+    "@/lib/ifood/order-sync": { syncIfoodOrdersForRestaurant: async () => { polling++; } },
+  });
+  assert.equal((await POST(jsonRequest({ restaurantId: "restaurant-1" }))).status, 409);
+  assert.equal(polling, 0);
+  assert.equal(state.integrationUpdates.length, 0);
+});
+
+test("ação em pedido histórico de integração desabilitada não chama iFood", async () => {
+  const state = {
+    user: { id: "user-1" }, ownedRestaurant: { id: "restaurant-1", user_id: "user-1" },
+    integration: { merchant_id: "merchant-1", order_sync_enabled: false },
+    order: { id: "order-1", restaurant_id: "restaurant-1", external_source: "ifood", external_order_id: "external-1" },
+    orderUpdates: [],
+  };
+  let calls = 0;
+  const { POST } = loadRoute(ifoodActionRoutePath, state, {
+    "@/lib/ifood/orders": { confirmIfoodOrder: async () => { calls++; } },
+  });
+  assert.equal((await POST(jsonRequest({ orderId: "order-1", action: "confirm" }))).status, 409);
+  assert.equal(calls, 0);
+  assert.equal(state.orderUpdates.length, 0);
 });

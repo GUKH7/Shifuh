@@ -1,3 +1,4 @@
+import { assertIfoodMerchantBinding } from "@/lib/ifood/merchant-isolation";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { syncIfoodOrdersWithResilience } from "@/lib/ifood/order-sync-resilience";
@@ -58,6 +59,7 @@ export async function GET(request: Request) {
             durationMs: 0, error: "Orçamento do cron insuficiente; integração adiada." };
         }
         try {
+          await assertIfoodMerchantBinding(admin, integration.restaurant_id, integration.merchant_id, "bound", budget.signal);
           const summary = await syncIfoodOrdersWithResilience({
             restaurantId: integration.restaurant_id,
             merchantId: integration.merchant_id,

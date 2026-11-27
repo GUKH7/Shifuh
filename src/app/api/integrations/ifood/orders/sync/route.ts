@@ -1,3 +1,4 @@
+import { assertIfoodMerchantBinding, IfoodMerchantConflictError } from "@/lib/ifood/merchant-isolation";
 import { NextResponse } from "next/server";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { IfoodApiError } from "@/lib/ifood/orders";
@@ -50,25 +51,35 @@ export async function POST(request: Request) {
       );
     }
 
+    await assertIfoodMerchantBinding(admin, restaurantId, integration.merchant_id);
     const summary = await syncIfoodOrdersForRestaurant({
       restaurantId,
       merchantId: integration.merchant_id,
       source: "manual",
     });
 
-    await admin
+    const { error: enableError } = await admin
       .from("ifood_integrations")
       .update({
         order_sync_enabled: true,
         ...(integration.status === "disconnected" ? { status: "configuring" } : {}),
       })
-      .eq("restaurant_id", restaurantId);
+      .eq("restaurant_id", restaurantId)
+      .eq("merchant_id", integration.merchant_id);
+
+    if (enableError) {
+      if (enableError.code === "23505") throw new IfoodMerchantConflictError();
+      throw new Error("Não foi possível habilitar a sincronização iFood.");
+    }
 
     return NextResponse.json({
       ok: true,
       summary,
     });
   } catch (error) {
+    if (error instanceof IfoodMerchantConflictError) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
+    }
     console.error("Erro ao sincronizar pedidos do iFood:", error);
 
     if (error instanceof IfoodApiError && error.status === 400) {

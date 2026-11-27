@@ -1,3 +1,4 @@
+import { assertIfoodMerchantBinding, IfoodMerchantConflictError } from "@/lib/ifood/merchant-isolation";
 import { NextResponse } from "next/server";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import {
@@ -93,6 +94,22 @@ export async function POST(request: Request) {
       );
     }
     const admin = createAdminClient();
+    const { data: integration, error: bindingError } = await admin.from("ifood_integrations")
+      .select("merchant_id, order_sync_enabled")
+      .eq("restaurant_id", order.restaurant_id)
+      .maybeSingle();
+    if (bindingError) throw new Error("Não foi possível verificar o vínculo iFood.");
+    if (!integration?.merchant_id || !integration.order_sync_enabled) throw new IfoodMerchantConflictError();
+    await assertIfoodMerchantBinding(admin, order.restaurant_id, integration.merchant_id);
+    const { data: linkedEvents, error: linkedError } = await admin.from("ifood_order_events")
+      .select("id")
+      .eq("restaurant_id", order.restaurant_id)
+      .eq("local_order_id", order.id)
+      .eq("ifood_order_id", ifoodOrderId)
+      .eq("merchant_id", integration.merchant_id)
+      .limit(1);
+    if (linkedError) throw new Error("Não foi possível verificar a origem do pedido iFood.");
+    if (!linkedEvents?.length) throw new IfoodMerchantConflictError();
 
     if (action === "cancellation_reasons") {
       const reasons = await getIfoodCancellationReasons(ifoodOrderId);
@@ -101,19 +118,19 @@ export async function POST(request: Request) {
 
     if (action === "confirm") {
       await confirmIfoodOrder(ifoodOrderId);
-      await admin.from("orders").update({ status: "preparing" }).eq("id", order.id);
+      await admin.from("orders").update({ status: "preparing" }).eq("id", order.id).eq("restaurant_id", order.restaurant_id);
       return NextResponse.json({ ok: true, status: "preparing" });
     }
 
     if (action === "dispatch") {
       await dispatchIfoodOrder(ifoodOrderId);
-      await admin.from("orders").update({ status: "delivering" }).eq("id", order.id);
+      await admin.from("orders").update({ status: "delivering" }).eq("id", order.id).eq("restaurant_id", order.restaurant_id);
       return NextResponse.json({ ok: true, status: "delivering" });
     }
 
     if (action === "ready_to_pickup") {
       await readyToPickupIfoodOrder(ifoodOrderId);
-      await admin.from("orders").update({ status: "preparing" }).eq("id", order.id);
+      await admin.from("orders").update({ status: "preparing" }).eq("id", order.id).eq("restaurant_id", order.restaurant_id);
       return NextResponse.json({ ok: true, status: "preparing" });
     }
 
@@ -137,13 +154,16 @@ export async function POST(request: Request) {
       await admin
         .from("orders")
         .update({ cancellation_reason: reason })
-        .eq("id", order.id);
+        .eq("id", order.id).eq("restaurant_id", order.restaurant_id);
 
       return NextResponse.json({ ok: true, cancellation });
     }
 
     return NextResponse.json({ error: "Ação iFood inválida." }, { status: 400 });
   } catch (error) {
+    if (error instanceof IfoodMerchantConflictError) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
+    }
     console.error("Erro ao executar ação de pedido iFood:", error);
     return NextResponse.json(
       {
