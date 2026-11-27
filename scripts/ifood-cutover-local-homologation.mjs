@@ -15,10 +15,21 @@ export async function verifyCutoverLocally() {
   assert.ok(["localhost","127.0.0.1"].includes(url.hostname), "Remote database forbidden");
   assert.equal(url.protocol,"postgresql:");
   assert.equal(url.username,"postgres");
+  assert.equal(url.pathname,"/postgres");
+  assert.ok(url.port && Number(url.port)>0 && Number(url.port)<=65535);
+  assert.equal(url.search,"");
+  assert.equal(url.hash,"");
+  // Explicit libpq options: PGDATABASE is a database name, not a portable URI parser.
+  // Strip inherited PG* configuration (including service files and host overrides).
+  const localEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("PG")));
+  localEnv.PGPASSWORD = decodeURIComponent(url.password);
+  localEnv.PGCONNECT_TIMEOUT = "5";
+  const localArgs = ["-X","-qAt","-w","-h",url.hostname,"-p",url.port,"-U","postgres","-d","postgres","-v","ON_ERROR_STOP=1"];
+
   const setup = readFileSync(fileURLToPath(new URL("./ifood-merchant-cutover-procedure.sql",import.meta.url)),"utf8");
   function run(sql) {
     return new Promise((resolve,reject)=>{
-      const child=spawn("psql",["-X","-qAt","-v","ON_ERROR_STOP=1"],{env:{...process.env,PGDATABASE:value},stdio:["pipe","pipe","pipe"]});
+      const child=spawn("psql",localArgs,{env:localEnv,stdio:["pipe","pipe","pipe"]});
       let stdout="", stderr="";
       child.stdout.on("data",d=>stdout+=d);
       child.stderr.on("data",d=>stderr+=d);
@@ -55,6 +66,10 @@ export async function verifyCutoverLocally() {
     assert.ok(hash && preserved);
     const interruption=await run(setup+"\nbegin;"+call(old,target)+"select 1/0; commit;");
     assert.notEqual(interruption.code,0); assert.equal(await current(),old);
+    assert.equal(await checked(`select count(*) from ifood_private.merchant_ownership where merchant_key='${target}';`),"0");
+    // Closing a session with an open transaction must also undo the replacement.
+    await checked(setup+"\nbegin;"+call(old,target)+"\n\\q\n");
+    assert.equal(await current(),old);
     assert.equal(await checked(`select count(*) from ifood_private.merchant_ownership where merchant_key='${target}';`),"0");
     const racers=await Promise.all([run(setup+"\nbegin;"+call(old,target)+"select pg_sleep(0.5);commit;"),run(setup+"\nbegin;"+call(old,target)+"commit;")]);
     assert.equal(racers.filter(r=>r.code===0).length,1,JSON.stringify(racers.map(r=>({code:r.code,stderr:r.stderr}))));
