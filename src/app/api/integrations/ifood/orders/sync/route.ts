@@ -1,3 +1,4 @@
+import { isIfoodOrdersOnly, isIfoodCutoverPaused } from "@/lib/ifood/capabilities";
 import { assertIfoodMerchantBinding, IfoodMerchantConflictError } from "@/lib/ifood/merchant-isolation";
 import { NextResponse } from "next/server";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
@@ -37,10 +38,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Loja não encontrada." }, { status: 404 });
     }
 
+    if (isIfoodCutoverPaused()) return NextResponse.json({ error: "Integração iFood em manutenção." }, { status: 503 });
     const admin = createAdminClient();
     const { data: integration, error: integrationError } = await admin
       .from("ifood_integrations")
-      .select("merchant_id, status")
+      .select("merchant_id, status, order_sync_enabled")
       .eq("restaurant_id", restaurantId)
       .maybeSingle();
 
@@ -51,12 +53,16 @@ export async function POST(request: Request) {
       );
     }
 
+    if (isIfoodOrdersOnly() && !integration.order_sync_enabled) return NextResponse.json({ error: "Sincronização oficial ainda não ativada." }, { status: 409 });
     await assertIfoodMerchantBinding(admin, restaurantId, integration.merchant_id);
     const summary = await syncIfoodOrdersForRestaurant({
       restaurantId,
       merchantId: integration.merchant_id,
       source: "manual",
     });
+
+    // Official mode must not re-enable a binding paused during the request.
+    if (isIfoodOrdersOnly()) return NextResponse.json({ ok: true, summary });
 
     const { error: enableError } = await admin
       .from("ifood_integrations")

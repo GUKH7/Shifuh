@@ -1,3 +1,4 @@
+import { assertIfoodModuleAvailable } from "@/lib/ifood/capabilities";
 import { getIfoodAccessToken } from "@/lib/ifood/catalog";
 
 const IFOOD_MERCHANT_API_BASE_URL =
@@ -24,7 +25,9 @@ async function ifoodMerchantRequest<T>(
   path: string,
   init?: IfoodMerchantRequestInit,
 ): Promise<T | null> {
+  assertIfoodModuleAvailable();
   const token = await getIfoodAccessToken();
+  assertIfoodModuleAvailable();
   const response = await fetch(`${IFOOD_MERCHANT_API_BASE_URL}${path}`, {
     ...init,
     headers: {

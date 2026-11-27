@@ -59,7 +59,7 @@ import {
   normalizeWorkHours,
   readJsonResponse,
 } from "./utils";
-export default function SettingsPage() {
+export default function SettingsPage({ ifoodOrdersOnly = false, ifoodCutoverPaused = false }: { ifoodOrdersOnly?: boolean; ifoodCutoverPaused?: boolean }) {
   const router = useRouter();
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -439,7 +439,7 @@ export default function SettingsPage() {
 
     let ifoodError: { message?: string; code?: string } | null = null;
 
-    if (!error && restaurantId) {
+    if (!error && restaurantId && !ifoodOrdersOnly && !ifoodCutoverPaused) {
       const shouldStampConnectedAt =
         ifoodIntegration.status === "connected" && !ifoodIntegration.connectedAt;
 
@@ -1486,9 +1486,19 @@ export default function SettingsPage() {
         <CollapsibleSection
           icon={<ArrowDownUp size={20} />}
           title="Canal iFood"
-          description="Receba pedidos e mantenha catálogo e loja sincronizados sem expor detalhes técnicos para a operação."
+          description={ifoodOrdersOnly ? "Receba e acompanhe pedidos. Catálogo e gestão da loja ainda não autorizados." : "Receba pedidos e mantenha catálogo e loja sincronizados sem expor detalhes técnicos para a operação."}
           defaultOpen={false}
         >
+          {ifoodOrdersOnly || ifoodCutoverPaused ? (
+            <div className="mt-4 rounded-2xl border p-4 text-sm">
+              <p className="font-bold">{ifoodCutoverPaused ? "Integração temporariamente suspensa" : "Integração oficial — Order e Events"}</p>
+              <p className="mt-2">Merchant: {ifoodIntegration.merchantId || "Aguardando configuração administrativa"}</p>
+              <p className="mt-1">Pedidos: {!ifoodCutoverPaused && ifoodIntegration.orderSyncEnabled ? "Ativos" : "Desativados"}. Catálogo e gestão da loja indisponíveis.</p>
+              <button type="button" onClick={handleSyncIfoodOrders} disabled={ifoodCutoverPaused || !ifoodIntegration.orderSyncEnabled || !ifoodIntegration.merchantId || isSyncingIfoodOrders} className="mt-3 rounded-xl border px-4 py-2 disabled:opacity-50">Buscar pedidos agora</button>
+              <button type="button" onClick={handleCheckIfoodConnection} disabled={ifoodCutoverPaused || isCheckingIfoodConnection} className="ml-2 mt-3 rounded-xl border px-4 py-2 disabled:opacity-50">Testar OAuth</button>
+              {ifoodConnectionCheck.status !== "idle" && <p className="mt-3">{ifoodConnectionCheck.summary}</p>}
+            </div>
+          ) : (
           <div className="mt-6 rounded-[24px] border border-[var(--line)] bg-[#fcfaf7] p-5">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0 flex-1">
@@ -2048,6 +2058,7 @@ export default function SettingsPage() {
               </div>
             </details>
           </div>
+          )}
         </CollapsibleSection>
 
 

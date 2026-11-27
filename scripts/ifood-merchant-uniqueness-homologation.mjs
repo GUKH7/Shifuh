@@ -114,3 +114,7 @@ try {
   const cleanup = await db.from("ifood_integrations").delete().in("restaurant_id", ids);
   assert.ifError(cleanup.error);
 }
+
+// Same disposable local fixture; never calls the provider.
+const { verifyCutoverLocally } = await import("./ifood-cutover-local-homologation.mjs");
+await verifyCutoverLocally();

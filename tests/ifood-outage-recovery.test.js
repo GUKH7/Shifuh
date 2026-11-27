@@ -16,6 +16,7 @@ function loadTs(filename, mocks) {
   const original = Module._load;
   Module._load = function(request, parent, main) {
     if (Object.hasOwn(mocks, request)) return mocks[request];
+    if (request === "@/lib/ifood/capabilities") return loadTs(path.join(root, "src/lib/ifood/capabilities.ts"), {});
     return original.call(this, request, parent, main);
   };
   try {

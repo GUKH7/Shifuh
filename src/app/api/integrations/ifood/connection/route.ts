@@ -1,3 +1,4 @@
+import { isIfoodOrdersOnly, isIfoodCutoverPaused } from "@/lib/ifood/capabilities";
 import { assertIfoodMerchantBinding, IfoodMerchantConflictError } from "@/lib/ifood/merchant-isolation";
 import { NextResponse } from "next/server";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
@@ -44,6 +45,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Loja não encontrada." }, { status: 404 });
     }
 
+    if (isIfoodCutoverPaused()) return NextResponse.json({ error: "Integração iFood em manutenção." }, { status: 503 });
     const admin = createAdminClient();
     const checkedAt = new Date().toISOString();
     const details: string[] = [];
@@ -66,6 +68,17 @@ export async function POST(request: Request) {
       });
     }
 
+    if (isIfoodOrdersOnly()) {
+      // OAuth alone does not establish provider permission for an arbitrary merchant.
+      // Binding changes are deliberately reserved for the separately approved cutover.
+      await assertIfoodMerchantBinding(admin, restaurantId, merchantId, "bound");
+      return NextResponse.json({
+        ok: true, stage: "credentials", checkedAt, details,
+        merchantFound: false, localBindingVerified: true, catalogResolved: false, catalogsCount: 0,
+        resolvedCatalogId: null, ordersOnly: true, providerMerchantVerified: false,
+        summary: "Credenciais OAuth válidas e vínculo local existente. Catálogo não autorizado; acesso ao merchant depende da validação oficial.",
+      });
+    }
     const catalogs = await listIfoodCatalogs(merchantId);
     details.push(`O merchant respondeu com ${catalogs.length} catálogo(s) disponível(is).`);
 

@@ -1,3 +1,2 @@
-"use client";
-
-export { default } from "@/features/settings/SettingsWorkspace";
+export const dynamic = "force-dynamic";
+export { default } from "@/features/settings/SettingsWorkspaceServer";

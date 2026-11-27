@@ -1,3 +1,4 @@
+import { isIfoodOrdersOnly, isIfoodCutoverPaused } from "@/lib/ifood/capabilities";
 import { assertIfoodMerchantBinding } from "@/lib/ifood/merchant-isolation";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
@@ -22,6 +23,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
   }
 
+  if (isIfoodCutoverPaused()) return NextResponse.json({ paused: true }, { status: 503 });
   const startedAt = Date.now();
   const budget = createIfoodCronBudget();
   try {
@@ -50,7 +52,7 @@ export async function GET(request: Request) {
 
     try {
       await assertIfoodMerchantBinding(admin, integration.restaurant_id, integration.merchant_id, "bound", budget.signal);
-      const merchantStatus = await getIfoodMerchantStatus(integration.merchant_id, budget.signal);
+      const merchantStatus = isIfoodOrdersOnly() ? null : await getIfoodMerchantStatus(integration.merchant_id, budget.signal);
       const orderSummary = integration.order_sync_enabled
         ? await syncIfoodOrdersForRestaurant({
             restaurantId: integration.restaurant_id,

@@ -50,6 +50,7 @@ export async function GET(request: Request) {
     )
     .eq("restaurant_id", order.restaurant_id)
     .eq("ifood_order_id", order.external_order_id)
+    .eq("local_order_id", order.id)
     .order("event_created_at", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false })
     .limit(20);

@@ -22,7 +22,8 @@
       "feat/orders-quick-queue-mobile-20261115": false,
       "feat/menu-availability-filters-20261124": false,
       "fix/ci-validation-only-and-separate-release-20261125": false,
-      "fix/ifood-merchant-isolation-20261127": false
+      "fix/ifood-merchant-isolation-20261127": false,
+      "feat/ifood-orders-only-cutover-20261127": false
     }
   }
 }
