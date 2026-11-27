@@ -1,3 +1,4 @@
+import { isIfoodCutoverPaused } from "@/lib/ifood/capabilities";
 import { assertIfoodMerchantBinding } from "@/lib/ifood/merchant-isolation";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
@@ -26,6 +27,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
   }
 
+  if (isIfoodCutoverPaused()) return NextResponse.json({ paused: true }, { status: 503 });
   const startedAt = Date.now();
   const budget = createIfoodCronBudget();
   try {

@@ -1,3 +1,4 @@
+import { assertIfoodOrdersAvailable } from "@/lib/ifood/capabilities";
 import { getIfoodAccessToken } from "@/lib/ifood/catalog";
 
 const IFOOD_MERCHANT_API_BASE_URL =
@@ -80,7 +81,9 @@ async function ifoodOrderRequest<T>(
     retryAttempts?: number;
   },
 ): Promise<T | null> {
+  assertIfoodOrdersAvailable();
   const token = await getIfoodAccessToken();
+  assertIfoodOrdersAvailable();
   const retry = Boolean(init?.retry);
   const maxAttempts = retry
     ? Math.max(1, init?.retryAttempts || DEFAULT_RETRY_ATTEMPTS)

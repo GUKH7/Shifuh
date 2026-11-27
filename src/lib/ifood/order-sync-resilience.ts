@@ -251,6 +251,7 @@ async function recoverPendingAcknowledgements(restaurantId: string, merchantId: 
     .from("ifood_order_events")
     .select("ifood_event_id")
     .eq("restaurant_id", restaurantId)
+    .eq("merchant_id", merchantId)
     .not("processed_at", "is", null)
     .is("acknowledged_at", null)
     .order("processed_at", { ascending: true })

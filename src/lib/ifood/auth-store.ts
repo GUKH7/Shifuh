@@ -1,9 +1,17 @@
-import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/server";
 import { requireIfoodTokenEncryptionKey } from "@/lib/ifood/token-encryption-config";
 
 const TOKEN_SCOPE = process.env.VERCEL_ENV || process.env.NODE_ENV || "development";
 const SAFETY_WINDOW_MS = 60_000;
+
+// Scope includes the current credential pair and API origins, not just the environment.
+// HMAC prevents disclosure of credential material in the database key.
+export function getIfoodTokenScope(clientId: string, clientSecret: string, authUrl: string, apiUrl: string) {
+  const fingerprint = createHmac("sha256", encryptionKey())
+    .update(JSON.stringify([clientId, clientSecret, authUrl, apiUrl])).digest("hex");
+  return `${TOKEN_SCOPE}:v2:${fingerprint}`;
+}
 
 type StoredToken = {
   access_token_encrypted: string;
@@ -34,12 +42,12 @@ function decrypt(value: string) {
   ]).toString("utf8");
 }
 
-export async function readPersistedIfoodToken() {
+export async function readPersistedIfoodToken(scope: string) {
   const admin = createAdminClient() as any;
   const { data, error } = await admin
     .from("ifood_oauth_tokens")
     .select("access_token_encrypted, expires_at")
-    .eq("environment", TOKEN_SCOPE)
+    .eq("environment", scope)
     .maybeSingle();
 
   if (error || !data) return null;
@@ -50,11 +58,11 @@ export async function readPersistedIfoodToken() {
   return { accessToken: decrypt(stored.access_token_encrypted), expiresAt };
 }
 
-export async function persistIfoodToken(accessToken: string, expiresAt: number) {
+export async function persistIfoodToken(scope: string, accessToken: string, expiresAt: number) {
   const admin = createAdminClient() as any;
   const { error } = await admin.from("ifood_oauth_tokens").upsert(
     {
-      environment: TOKEN_SCOPE,
+      environment: scope,
       access_token_encrypted: encrypt(accessToken),
       expires_at: new Date(expiresAt).toISOString(),
       updated_at: new Date().toISOString(),

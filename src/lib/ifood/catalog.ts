@@ -1,5 +1,7 @@
+import { assertIfoodModuleAvailable } from "@/lib/ifood/capabilities";
 import {
   getIfoodTokenEnvironment,
+  getIfoodTokenScope,
   persistIfoodToken,
   readPersistedIfoodToken,
 } from "@/lib/ifood/auth-store";
@@ -18,8 +20,8 @@ const REQUEST_TIMEOUT_MS = 15_000;
 type IfoodTokenResponse = { accessToken: string; type?: string; expiresIn?: number };
 type CachedIfoodToken = { accessToken: string; expiresAt: number; source: "memory" | "database" | "oauth" };
 
-let cachedToken: CachedIfoodToken | null = null;
-let tokenRequest: Promise<CachedIfoodToken> | null = null;
+const cachedTokens = new Map<string, CachedIfoodToken>();
+const tokenRequests = new Map<string, Promise<CachedIfoodToken>>();
 
 export class IfoodAuthenticationError extends Error {
   code: "missing_credentials" | "invalid_credentials" | "missing_scope" | "temporarily_unavailable" | "invalid_response" | "token_storage";
@@ -78,16 +80,16 @@ function classifyOAuthFailure(status: number, body: string) {
   return new IfoodAuthenticationError("invalid_credentials", "O iFood recusou a autenticação do aplicativo.", status);
 }
 
-function memoryToken() {
-  if (!cachedToken || Date.now() >= cachedToken.expiresAt - 60_000) {
-    cachedToken = null;
+function memoryToken(scope: string) {
+  const token = cachedTokens.get(scope);
+  if (!token || Date.now() >= token.expiresAt - 60_000) {
+    cachedTokens.delete(scope);
     return null;
   }
-  return cachedToken;
+  return token;
 }
 
-async function requestIfoodAccessToken(): Promise<CachedIfoodToken> {
-  const { clientId, clientSecret } = getIfoodCredentials();
+async function requestIfoodAccessToken(scope: string, clientId: string, clientSecret: string): Promise<CachedIfoodToken> {
   try {
     requireIfoodTokenEncryptionKey();
   } catch (error) {
@@ -122,7 +124,7 @@ async function requestIfoodAccessToken(): Promise<CachedIfoodToken> {
 
   const expiresAt = Date.now() + Math.max((data.expiresIn || 21_600) * 1000, 300_000);
   try {
-    await persistIfoodToken(data.accessToken, expiresAt);
+    await persistIfoodToken(scope, data.accessToken, expiresAt);
   } catch {
     throw new IfoodAuthenticationError("token_storage", "O token foi obtido, mas não pôde ser armazenado com segurança.");
   }
@@ -131,34 +133,37 @@ async function requestIfoodAccessToken(): Promise<CachedIfoodToken> {
 }
 
 export async function getIfoodAccessToken() {
-  const memory = memoryToken();
+  const { clientId, clientSecret } = getIfoodCredentials();
+  const scope = getIfoodTokenScope(clientId, clientSecret, IFOOD_AUTH_URL, IFOOD_MERCHANT_API_BASE_URL);
+  const memory = memoryToken(scope);
   if (memory) return memory.accessToken;
-
-  try {
-    const persisted = await readPersistedIfoodToken();
-    if (persisted) {
-      cachedToken = { ...persisted, source: "database" };
-      return cachedToken.accessToken;
-    }
-  } catch (error) {
-    logAuthenticationFailure(error);
-  }
-
-  if (!tokenRequest) {
-    tokenRequest = requestIfoodAccessToken()
-      .then((token) => (cachedToken = token))
-      .catch((error) => {
+  let pending = tokenRequests.get(scope);
+  if (!pending) {
+    pending = (async () => {
+      try {
+        const persisted = await readPersistedIfoodToken(scope);
+        if (persisted) return { ...persisted, source: "database" as const };
+      } catch (error) {
         logAuthenticationFailure(error);
-        throw error;
-      })
-      .finally(() => { tokenRequest = null; });
+      }
+      return requestIfoodAccessToken(scope, clientId, clientSecret);
+    })().then(token => {
+      cachedTokens.set(scope, token);
+      return token;
+    }).catch(error => {
+      logAuthenticationFailure(error);
+      throw error;
+    }).finally(() => { tokenRequests.delete(scope); });
+    tokenRequests.set(scope, pending);
   }
-  return (await tokenRequest).accessToken;
+  return (await pending).accessToken;
 }
 
 export async function validateIfoodCredentials() {
   const startedAt = Date.now();
   const accessToken = await getIfoodAccessToken();
+  const { clientId, clientSecret } = getIfoodCredentials();
+  const cachedToken = memoryToken(getIfoodTokenScope(clientId, clientSecret, IFOOD_AUTH_URL, IFOOD_MERCHANT_API_BASE_URL));
   return {
     ok: true,
     environment: getIfoodTokenEnvironment(),
@@ -173,6 +178,7 @@ export async function validateIfoodCredentials() {
 }
 
 export async function ifoodRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  assertIfoodModuleAvailable();
   const token = await getIfoodAccessToken();
   const response = await fetch(`${IFOOD_MERCHANT_API_BASE_URL}${path}`, {
     ...init,

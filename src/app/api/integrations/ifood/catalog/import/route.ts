@@ -1,3 +1,4 @@
+import { isIfoodOrdersOnly, isIfoodCutoverPaused } from "@/lib/ifood/capabilities";
 import { assertIfoodMerchantBinding, IfoodMerchantConflictError } from "@/lib/ifood/merchant-isolation";
 import { NextResponse } from "next/server";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
@@ -18,6 +19,8 @@ function normalizeMoney(value: unknown) {
 }
 
 export async function POST(request: Request) {
+  if (isIfoodCutoverPaused()) return NextResponse.json({ error: "Integração iFood em manutenção." }, { status: 503 });
+  if (isIfoodOrdersOnly()) return NextResponse.json({ error: "Módulo não autorizado: integração exclusiva Order e Events." }, { status: 403 });
   try {
     const body = (await request.json()) as ImportPayload;
     const restaurantId = body.restaurantId?.trim();
