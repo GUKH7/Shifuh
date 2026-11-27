@@ -618,3 +618,46 @@ test("visão Merchant recusa ID não vinculado antes de consultar iFood", async 
   assert.equal(result.status, 409);
   assert.equal(calls, 0);
 });
+
+test("Order/Events: OAuth diagnosis never calls Catalog or claims a new merchant", async () => {
+  const old = process.env.IFOOD_ORDERS_ONLY;
+  process.env.IFOOD_ORDERS_ONLY = "true";
+  try {
+    const state = { user: {id:"user-1"}, ownedRestaurant:{id:"restaurant-1",user_id:"user-1"},
+      integration:{merchant_id:"merchant-1",order_sync_enabled:false}, integrationUpserts:[], orderUpdates:[] };
+    let oauth=0, catalog=0;
+    const {POST}=loadRoute(ifoodConnectionRoutePath,state,{"@/lib/ifood/catalog":{
+      validateIfoodCredentials:async()=>{oauth++;},
+      listIfoodCatalogs:async()=>{catalog++;throw Error("unavailable");},pickMainCatalog:()=>null}});
+    const response=await POST(jsonRequest({restaurantId:"restaurant-1",merchantId:"merchant-1"}));
+    const body=await readJson(response);
+    assert.equal(response.status,200);
+    assert.equal(body.localBindingVerified,true);
+    assert.equal(body.providerMerchantVerified,false);
+    assert.equal(body.merchantFound,false);
+    assert.equal(catalog,0);
+    assert.equal(oauth,1);
+    assert.equal(state.integrationUpserts.length,0);
+    const unknown=await POST(jsonRequest({restaurantId:"restaurant-1",merchantId:"merchant-2"}));
+    assert.equal(unknown.status,409);
+    assert.equal(catalog,0);
+    assert.equal(state.integrationUpserts.length,0);
+  } finally {if(old===undefined) delete process.env.IFOOD_ORDERS_ONLY;else process.env.IFOOD_ORDERS_ONLY=old;}
+});
+
+test("Order/Events: manual polling never enables a suspended binding", async () => {
+  const old = process.env.IFOOD_ORDERS_ONLY;
+  process.env.IFOOD_ORDERS_ONLY="true";
+  try {
+    const state={user:{id:"user-1"},ownedRestaurant:{id:"restaurant-1",user_id:"user-1"},
+      integration:{merchant_id:"merchant-1",order_sync_enabled:false},integrationUpdates:[]};
+    let calls=0;
+    const {POST}=loadRoute(ifoodSyncRoutePath,state,{"@/lib/ifood/orders":{IfoodApiError:class extends Error{}},
+      "@/lib/ifood/order-sync":{syncIfoodOrdersForRestaurant:async()=>{calls++;return {eventsReceived:0};}}});
+    const paused=await POST(jsonRequest({restaurantId:"restaurant-1"}));
+    assert.equal(paused.status,409);assert.equal(calls,0);
+    state.integration.order_sync_enabled=true;
+    const active=await POST(jsonRequest({restaurantId:"restaurant-1"}));
+    assert.equal(active.status,200);assert.equal(calls,1);assert.equal(state.integrationUpdates.length,0);
+  } finally {if(old===undefined) delete process.env.IFOOD_ORDERS_ONLY;else process.env.IFOOD_ORDERS_ONLY=old;}
+});

@@ -180,6 +180,7 @@ export async function validateIfoodCredentials() {
 export async function ifoodRequest<T>(path: string, init?: RequestInit): Promise<T> {
   assertIfoodModuleAvailable();
   const token = await getIfoodAccessToken();
+  assertIfoodModuleAvailable();
   const response = await fetch(`${IFOOD_MERCHANT_API_BASE_URL}${path}`, {
     ...init,
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", ...(init?.headers || {}) },

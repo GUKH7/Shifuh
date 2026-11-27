@@ -61,6 +61,9 @@ export async function POST(request: Request) {
       source: "manual",
     });
 
+    // Official mode must not re-enable a binding paused during the request.
+    if (isIfoodOrdersOnly()) return NextResponse.json({ ok: true, summary });
+
     const { error: enableError } = await admin
       .from("ifood_integrations")
       .update({

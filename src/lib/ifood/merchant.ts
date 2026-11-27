@@ -27,6 +27,7 @@ async function ifoodMerchantRequest<T>(
 ): Promise<T | null> {
   assertIfoodModuleAvailable();
   const token = await getIfoodAccessToken();
+  assertIfoodModuleAvailable();
   const response = await fetch(`${IFOOD_MERCHANT_API_BASE_URL}${path}`, {
     ...init,
     headers: {

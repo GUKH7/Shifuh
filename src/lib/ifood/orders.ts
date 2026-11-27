@@ -91,6 +91,8 @@ async function ifoodOrderRequest<T>(
   const { retry: _retry, retryAttempts: _retryAttempts, ...requestInit } = init || {};
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    assertIfoodOrdersAvailable();
+    requestInit.signal?.throwIfAborted();
     let response: Response;
 
     try {

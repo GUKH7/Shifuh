@@ -73,8 +73,8 @@ export async function POST(request: Request) {
       // Binding changes are deliberately reserved for the separately approved cutover.
       await assertIfoodMerchantBinding(admin, restaurantId, merchantId, "bound");
       return NextResponse.json({
-        ok: true, stage: "merchant", checkedAt, details,
-        merchantFound: true, catalogResolved: false, catalogsCount: 0,
+        ok: true, stage: "credentials", checkedAt, details,
+        merchantFound: false, localBindingVerified: true, catalogResolved: false, catalogsCount: 0,
         resolvedCatalogId: null, ordersOnly: true, providerMerchantVerified: false,
         summary: "Credenciais OAuth válidas e vínculo local existente. Catálogo não autorizado; acesso ao merchant depende da validação oficial.",
       });
