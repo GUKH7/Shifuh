@@ -132,25 +132,6 @@ jobs:
             supabase init
           fi
 
-      - name: Materialize pending iFood merchant migration (local CI only)
-        shell: bash
-        run: |
-          set -euo pipefail
-          supabase migration new ifood_merchant_uniqueness
-          migration="$(find supabase/migrations -maxdepth 1 -name '*_ifood_merchant_uniqueness.sql' -print)"
-          test -f "$migration"
-          cp docs/operations/ifood-merchant-uniqueness.pending.sql "$migration"
-          mkdir -p generated-migrations
-          cp "$migration" generated-migrations/
-
-      - name: Upload generated local migration for review
-        uses: actions/upload-artifact@v4
-        with:
-          name: ifood-merchant-uniqueness-migration
-          path: generated-migrations/*.sql
-          if-no-files-found: error
-          retention-days: 7
-
       - name: Start isolated Supabase
         run: |
           supabase start
@@ -176,7 +157,7 @@ jobs:
         run: node scripts/e2e-seed.mjs
 
       - name: Verify concurrent iFood merchant claims against isolated Postgres
-        run: IFOOD_MERCHANT_UNIQUENESS_E2E=1 node scripts/test-ifood-merchant-uniqueness.mjs
+        run: IFOOD_MERCHANT_UNIQUENESS_E2E=1 node scripts/ifood-merchant-uniqueness-homologation.mjs
 
       - name: Verify iFood event leases against isolated Postgres
         run: IFOOD_LEASE_E2E=1 node scripts/test-ifood-event-leases.mjs
