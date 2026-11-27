@@ -8,7 +8,6 @@ import {
   getIfoodMerchantOpeningHours,
   getIfoodMerchantStatus,
   listIfoodMerchantInterruptions,
-  listIfoodMerchants,
   setIfoodMerchantOpeningHours,
   type IfoodOpeningHourShift,
 } from "@/lib/ifood/merchant";
@@ -62,12 +61,13 @@ async function assertOwnedRestaurant(restaurantId: string) {
 
 async function getStoredMerchantId(restaurantId: string) {
   const admin = createAdminClient();
-  const { data } = await admin
+  const { data, error } = await admin
     .from("ifood_integrations")
     .select("merchant_id")
     .eq("restaurant_id", restaurantId)
     .maybeSingle();
 
+  if (error) throw new Error("Não foi possível verificar o vínculo iFood.");
   return data?.merchant_id || null;
 }
 
@@ -95,21 +95,19 @@ export async function POST(request: Request) {
     const merchantId = body.merchantId?.trim().toLowerCase() || storedMerchantId;
     if (merchantId) {
       const admin = createAdminClient();
-      if (action !== "overview" &&
-          (!storedMerchantId || merchantId.toLowerCase() !== storedMerchantId.trim().toLowerCase())) {
+      if (!storedMerchantId || merchantId.toLowerCase() !== storedMerchantId.trim().toLowerCase()) {
         throw new IfoodMerchantConflictError();
       }
-      await assertIfoodMerchantBinding(admin, restaurantId, merchantId,
-        action === "overview" ? "claim" : "bound");
+      await assertIfoodMerchantBinding(admin, restaurantId, merchantId);
     }
 
     if (action === "overview") {
-      const merchants = await listIfoodMerchants();
-
+      // Never enumerate all merchants of the centralized iFood application
+      // to an individual tenant.
       if (!merchantId) {
         return NextResponse.json({
           ok: true,
-          merchants,
+          merchants: [],
           details: null,
           status: null,
           interruptions: null,
@@ -126,7 +124,7 @@ export async function POST(request: Request) {
 
       return NextResponse.json({
         ok: true,
-        merchants,
+        merchants: details.status === "fulfilled" && details.value ? [details.value] : [],
         details: await readSettled(details),
         status: await readSettled(status),
         interruptions: await readSettled(interruptions),

@@ -135,7 +135,8 @@ export async function POST(request: Request) {
         last_catalog_export_at: new Date().toISOString(),
         notes: stringifyIntegrationNotes(integration.notes, ids),
       })
-      .eq("restaurant_id", restaurantId);
+      .eq("restaurant_id", restaurantId)
+      .eq("merchant_id", integration.merchant_id);
 
     return NextResponse.json({
       ok: true,

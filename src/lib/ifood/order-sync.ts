@@ -662,7 +662,8 @@ export async function syncIfoodOrdersForRestaurant({
       .update({
         last_order_sync_at: new Date().toISOString(),
       })
-      .eq("restaurant_id", restaurantId), signal);
+      .eq("restaurant_id", restaurantId)
+      .eq("merchant_id", merchantId), signal);
 
     const summary =
       sortedEvents.length > 0

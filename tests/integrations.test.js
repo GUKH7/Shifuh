@@ -591,3 +591,30 @@ test("ação em pedido histórico de integração desabilitada não chama iFood"
   assert.equal(calls, 0);
   assert.equal(state.orderUpdates.length, 0);
 });
+
+test("visão Merchant sem vínculo não enumera lojas da aplicação centralizada", async () => {
+  const state = { user: { id: "user-1" }, ownedRestaurant: { id: "restaurant-1", user_id: "user-1" } };
+  const route = path.join(projectRoot, "src/app/api/integrations/ifood/merchant/route.ts");
+  let calls = 0;
+  const { POST } = loadRoute(route, state, {
+    "@/lib/ifood/merchant": { listIfoodMerchants: async () => { calls++; return []; } },
+  });
+  const result = await POST(jsonRequest({ restaurantId: "restaurant-1", action: "overview" }));
+  assert.equal(result.status, 200);
+  assert.deepEqual((await readJson(result)).merchants, []);
+  assert.equal(calls, 0);
+});
+
+test("visão Merchant recusa ID não vinculado antes de consultar iFood", async () => {
+  const state = { user: { id: "user-1" }, ownedRestaurant: { id: "restaurant-1", user_id: "user-1" },
+    integration: { merchant_id: "merchant-1" } };
+  const route = path.join(projectRoot, "src/app/api/integrations/ifood/merchant/route.ts");
+  let calls = 0;
+  const { POST } = loadRoute(route, state, {
+    "@/lib/ifood/merchant": { getIfoodMerchantDetails: async () => { calls++; return {}; },
+      listIfoodMerchants: async () => { calls++; return []; } },
+  });
+  const result = await POST(jsonRequest({ restaurantId: "restaurant-1", merchantId: "merchant-2", action: "overview" }));
+  assert.equal(result.status, 409);
+  assert.equal(calls, 0);
+});

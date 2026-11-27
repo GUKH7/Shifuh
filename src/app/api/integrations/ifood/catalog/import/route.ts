@@ -231,7 +231,8 @@ export async function POST(request: Request) {
         status: integration.status === "disconnected" ? "configuring" : integration.status,
         last_catalog_import_at: new Date().toISOString(),
       })
-      .eq("restaurant_id", restaurantId);
+      .eq("restaurant_id", restaurantId)
+      .eq("merchant_id", integration.merchant_id);
 
     return NextResponse.json({
       ok: true,

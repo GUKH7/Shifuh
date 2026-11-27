@@ -57,7 +57,59 @@ try {
   assert.ifError(after.error);
   assert.equal(after.data.find(row => row.restaurant_id === ids[0]).merchant_id, ownMerchant);
   assert.equal(after.data.find(row => row.restaurant_id === ids[1]).merchant_id, foreignMerchant);
-  console.log("Merchant exclusivity: concurrent claim, case normalization, authenticated direct writes and tenant RLS verified on local Postgres.");
+  // A live binding is immutable even when disabled. Neither clearing nor
+  // replacing the Merchant via the authenticated settings path is allowed.
+  const disabled = await tenant.from("ifood_integrations")
+    .update({ order_sync_enabled: false }).eq("restaurant_id", ids[0]).select("id");
+  assert.ifError(disabled.error);
+  assert.equal(disabled.data.length, 1);
+  for (const merchant_id of [null, randomUUID()]) {
+    const denied = await tenant.from("ifood_integrations")
+      .update({ merchant_id }).eq("restaurant_id", ids[0]);
+    assert.equal(denied.error?.code, "23505");
+  }
+  const deniedDelete = await tenant.from("ifood_integrations").delete().eq("restaurant_id", ids[0]);
+  assert.equal(deniedDelete.error?.code, "23505");
+  const privateRead = await tenant.schema("ifood_private").from("merchant_ownership").select("*");
+  assert.ok(privateRead.error, "Ownership registry must not be exposed");
+  const privateAdminWrite = await db.schema("ifood_private").from("merchant_ownership")
+    .update({ restaurant_id: ids[1] }).eq("merchant_key", ownMerchant.toLowerCase());
+  assert.ok(privateAdminWrite.error, "Service API must not rewrite the registry");
+
+  // Pause an operation holding the old binding, then emulate privileged
+  // maintenance deleting the integration. A second tenant must not acquire
+  // the same Merchant while that operation is outstanding (or afterwards).
+  let resume;
+  const suspended = new Promise(resolve => { resume = resolve; });
+  let observedMerchant;
+  const oldOperation = (async () => {
+    const lookup = await db.from("ifood_integrations").select("merchant_id")
+      .eq("restaurant_id", ids[0]).single();
+    assert.ifError(lookup.error);
+    observedMerchant = lookup.data.merchant_id;
+    await suspended;
+    return observedMerchant;
+  })();
+  try {
+    while (!observedMerchant) {
+      await Promise.race([oldOperation, new Promise(resolve => setTimeout(resolve, 5))]);
+    }
+    assert.equal(observedMerchant, ownMerchant);
+    assert.ifError((await db.from("ifood_integrations").delete().in("restaurant_id", ids)).error);
+    const transfer = await db.from("ifood_integrations")
+      .insert({ restaurant_id: ids[1], merchant_id: ownMerchant.toUpperCase(), order_sync_enabled: true });
+    assert.equal(transfer.error?.code, "23505", "Former merchant cannot move across tenants");
+    const rebind = await db.from("ifood_integrations")
+      .insert({ restaurant_id: ids[0], merchant_id: ownMerchant, order_sync_enabled: true });
+    assert.ifError(rebind.error);
+  } finally {
+    resume();
+    await oldOperation;
+  }
+  const finalRows = await db.from("ifood_integrations").select("restaurant_id, merchant_id").in("restaurant_id", ids);
+  assert.ifError(finalRows.error);
+  assert.deepEqual(finalRows.data, [{ restaurant_id: ids[0], merchant_id: ownMerchant }]);
+  console.log("Merchant ownership fence: concurrent claim, direct RLS, disabled binding immutability, private registry and transfer during suspended operation verified on local Postgres.");
 } finally {
   const cleanup = await db.from("ifood_integrations").delete().in("restaurant_id", ids);
   assert.ifError(cleanup.error);
